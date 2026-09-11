@@ -67,9 +67,14 @@ func Abort(reason, msg string) StepResult {
 //
 // In contrast to Abort(), this function keeps up the dogu's reconciliation.
 func RequeueWithError(err error, reason string) StepResult {
+	readyMessage := ""
+	if err != nil {
+		readyMessage = err.Error()
+	}
+
 	return StepResult{
 		Err:          err,
-		ReadyMessage: reason,
-		// Message will be derived from the error
+		ReadyReason:  reason,
+		ReadyMessage: readyMessage,
 	}
 }

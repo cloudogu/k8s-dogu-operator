@@ -13,7 +13,6 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
@@ -26,14 +25,14 @@ const (
 // The actions are set up as [v3.Step]s during the use-case construction, independently of the dogu at hand, i. e. different
 // dogus within the same lifecycle phase traverse the same list of steps.
 type DoguUseCase struct {
-	steps         []v3.Step
-	k8sClient     client.Client
-	eventRecorder record.EventRecorder
+	steps         []Step
+	k8sClient     K8sClient
+	eventRecorder EventRecorder
 }
 
 func NewDoguDeleteUseCase(client client.Client) *DoguUseCase {
 	return &DoguUseCase{
-		steps:     []v3.Step{},
+		steps:     []Step{},
 		k8sClient: client,
 	}
 }
@@ -44,9 +43,9 @@ func NewDoguDeleteUseCase(client client.Client) *DoguUseCase {
 // Unfortunately, this is the only way to provide the steps in the correct order.
 // Uber fx provides value groups to use variadic parameters like NewDoguInstallOrChangeUseCase(steps ...doguv3.Step),
 // but these are unordered.
-func NewDoguInstallOrChangeUseCase(OCIStep *install.EnsureOCIRepositoryStep, waitOCIStep *install.WaitForOCIRepositoryReadyStep, client client.Client, recorder record.EventRecorder) *DoguUseCase {
+func NewDoguInstallOrChangeUseCase(OCIStep *install.EnsureOCIRepositoryStep, waitOCIStep *install.WaitForOCIRepositoryReadyStep, client K8sClient, recorder EventRecorder) *DoguUseCase {
 	return &DoguUseCase{
-		steps: []v3.Step{
+		steps: []Step{
 			OCIStep,
 			waitOCIStep,
 		},
