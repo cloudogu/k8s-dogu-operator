@@ -4,11 +4,13 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/cloudogu/cesapp-lib/core"
+	dccv3 "github.com/cloudogu/dogu-lib/doguv3/doguregistry/dcc/config"
 	ctrl "sigs.k8s.io/controller-runtime"
 )
 
@@ -39,6 +41,8 @@ var log = ctrl.Log.WithName("config")
 const (
 	envVarProxyUrl                                = "PROXY_URL"
 	envVarNamespace                               = "NAMESPACE"
+	envVarDoguV3RegistryEndpoint                  = "DOGU_V3_REGISTRY_ENDPOINT"
+	envVarDoguV3RegistryInsecureSkipVerify        = "DOGU_V3_REGISTRY_INSECURE_SKIP_VERIFY"
 	envVarDoguRegistryEndpoint                    = "DOGU_REGISTRY_ENDPOINT"
 	envVarDoguRegistryUsername                    = "DOGU_REGISTRY_USERNAME"
 	envVarDoguRegistryPassword                    = "DOGU_REGISTRY_PASSWORD"
@@ -54,10 +58,11 @@ const (
 
 // DoguRegistryData contains all necessary data for the dogu registry.
 type DoguRegistryData struct {
-	Endpoint  string `json:"endpoint"`
-	Username  string `json:"username"`
-	Password  string `json:"password"`
-	URLSchema string `json:"urlschema"`
+	Endpoint   string `json:"endpoint"`
+	Username   string `json:"username"`
+	Password   string `json:"password"`
+	URLSchema  string `json:"urlschema"`
+	V3Endpoint string `json:"v3Endpoint"`
 }
 
 // OperatorConfig contains all configurable values for the dogu operator.
@@ -180,11 +185,20 @@ func readDoguRegistryData() (DoguRegistryData, error) {
 		urlschema = "default"
 	}
 
+	v3Endpoint, found := os.LookupEnv(envVarDoguV3RegistryEndpoint)
+	if !found {
+		log.Info(fmt.Sprintf("Dogu V3 registry url not set. Using v3 dogus requires to set the %q key in secret %q", "v3Endpoint", "k8s-dogu-operator-dogu-registry"))
+	} else {
+		// remove tailing slash
+		v3Endpoint = strings.TrimSuffix(v3Endpoint, "/")
+	}
+
 	return DoguRegistryData{
-		Endpoint:  endpoint,
-		Username:  username,
-		Password:  password,
-		URLSchema: urlschema,
+		Endpoint:   endpoint,
+		Username:   username,
+		Password:   password,
+		URLSchema:  urlschema,
+		V3Endpoint: v3Endpoint,
 	}, nil
 }
 
@@ -211,13 +225,9 @@ func (o *OperatorConfig) GetRemoteConfiguration() (*core.Remote, error) {
 		endpoint = strings.TrimSuffix(endpoint, "dogus")
 	}
 
-	proxyURL, found := os.LookupEnv(envVarProxyUrl)
-	proxySettings := core.ProxySettings{}
-	if found && len(proxyURL) > 0 {
-		var err error
-		if proxySettings, err = configureProxySettings(proxyURL); err != nil {
-			return nil, err
-		}
+	proxySettings, err := getV2ProxySettings()
+	if err != nil {
+		return nil, err
 	}
 
 	return &core.Remote{
@@ -228,13 +238,65 @@ func (o *OperatorConfig) GetRemoteConfiguration() (*core.Remote, error) {
 	}, nil
 }
 
-func configureProxySettings(proxyURL string) (core.ProxySettings, error) {
-	parsedURL, err := url.Parse(proxyURL)
+// GetV3RemoteConfiguration creates a remote configuration with the configured values.
+// It uses the default values for caching configuration from the dogu-lib.
+func (o *OperatorConfig) GetV3RemoteConfiguration() (*dccv3.DoguRegistryConfiguration, error) {
+	proxySettings, err := getV3ProxySettings()
 	if err != nil {
-		return core.ProxySettings{}, fmt.Errorf("invalid proxy url: %w", err)
+		return nil, err
 	}
 
-	proxySettings := core.ProxySettings{}
+	insecure := false
+	env, b := os.LookupEnv(envVarDoguV3RegistryInsecureSkipVerify)
+	if b && strings.ToLower(env) == "true" {
+		log.Info("Dogu V3 registry insecure skip verify is set to true")
+		insecure = true
+	}
+
+	return &dccv3.DoguRegistryConfiguration{
+		BaseURL:            o.DoguRegistry.V3Endpoint,
+		ProxySettings:      proxySettings,
+		InsecureSkipVerify: insecure,
+		UserAgent:          fmt.Sprintf("k8s-dogu-operator/%s (%s/%s)", o.Version, runtime.GOOS, runtime.GOARCH),
+		URLSchema:          o.DoguRegistry.URLSchema,
+	}, nil
+}
+
+func getV2ProxySettings() (core.ProxySettings, error) {
+	settings, err := getV3ProxySettings()
+	if err != nil {
+		return core.ProxySettings{}, err
+	}
+
+	return core.ProxySettings{
+		Enabled:  settings.Enabled,
+		Server:   settings.Server,
+		Port:     settings.Port,
+		Username: settings.Username,
+		Password: settings.Password,
+	}, nil
+}
+
+func getV3ProxySettings() (dccv3.ProxySettings, error) {
+	proxyURL, found := os.LookupEnv(envVarProxyUrl)
+	proxySettings := dccv3.ProxySettings{}
+	if found && len(proxyURL) > 0 {
+		var err error
+		if proxySettings, err = configureProxySettings(proxyURL); err != nil {
+			return dccv3.ProxySettings{}, err
+		}
+	}
+
+	return proxySettings, nil
+}
+
+func configureProxySettings(proxyURL string) (dccv3.ProxySettings, error) {
+	parsedURL, err := url.Parse(proxyURL)
+	if err != nil {
+		return dccv3.ProxySettings{}, fmt.Errorf("invalid proxy url: %w", err)
+	}
+
+	proxySettings := dccv3.ProxySettings{}
 	proxySettings.Enabled = true
 	if parsedURL.User != nil {
 		proxySettings.Username = parsedURL.User.Username()
@@ -247,11 +309,19 @@ func configureProxySettings(proxyURL string) (core.ProxySettings, error) {
 
 	port, err := strconv.Atoi(parsedURL.Port())
 	if err != nil {
-		return core.ProxySettings{}, fmt.Errorf("invalid port %s: %w", parsedURL.Port(), err)
+		return dccv3.ProxySettings{}, fmt.Errorf("invalid port %s: %w", parsedURL.Port(), err)
 	}
 	proxySettings.Port = port
 
 	return proxySettings, nil
+}
+
+// GetV3RemoteCredentials creates a remote credential pair for dogu v3 with the configured values.
+func (o *OperatorConfig) GetV3RemoteCredentials() *dccv3.Credentials {
+	return &dccv3.Credentials{
+		Username: o.DoguRegistry.Username,
+		Password: o.DoguRegistry.Password,
+	}
 }
 
 // GetRemoteCredentials creates a remote credential pair with the configured values.

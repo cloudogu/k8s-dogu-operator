@@ -56,6 +56,18 @@ spec:
                 secretKeyRef:
                   key: endpoint
                   name: k8s-dogu-operator-dogu-registry
+            - name: DOGU_V3_REGISTRY_ENDPOINT
+              valueFrom:
+                secretKeyRef:
+                  key: v3Endpoint
+                  name: k8s-dogu-operator-dogu-registry
+                  optional: true
+            - name: DOGU_V3_REGISTRY_INSECURE_SKIP_VERIFY
+              valueFrom:
+                secretKeyRef:
+                  key: v3InsecureSkipVerify
+                  name: k8s-dogu-operator-dogu-registry
+                  optional: true
             - name: DOGU_REGISTRY_USERNAME
               valueFrom:
                 secretKeyRef:

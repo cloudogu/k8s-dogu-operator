@@ -73,10 +73,17 @@ func allOptions() fx.Option {
 func v3Options() fx.Option {
 	return fx.Options(
 		fx.Provide(
-			// v3 steps
-			// install/update
-			installv3.NewDummyStep,
-			// delete
+			// Dependencies
+			fx.Annotate(
+				initfx.NewDoguV3RegistryReader,
+				fx.As(new(installv3.DoguRegistryReader)),
+			),
+
+			// install/update steps
+			installv3.NewEnsureOCIRepositoryStep,
+			installv3.NewWaitForOCIRepositoryReadyStep,
+
+			// delete steps
 
 			// usecases
 			fx.Annotate(
@@ -104,7 +111,7 @@ func k8sOptions() fx.Option {
 			initfx.NewManagerOptions,
 			ctrl.GetConfig,
 			initfx.NewScheme,
-			fx.Annotate(initfx.NewK8sClient, fx.As(new(client.Client))),
+			fx.Annotate(initfx.NewK8sClient, fx.As(new(client.Client)), fx.As(new(installv3.K8sClient)), fx.As(new(usecasev3.K8sClient))),
 			fx.Annotate(initfx.NewKubernetesClientSet, fx.As(new(kubernetes.Interface))),
 			fx.Annotate(initfx.NewRestClient, fx.As(new(rest.Interface))),
 			fx.Annotate(initfx.NewConfigMapInterface, fx.As(new(v1.ConfigMapInterface)), fx.As(new(repository.ConfigMapClient))),
@@ -123,7 +130,7 @@ func k8sOptions() fx.Option {
 			fx.Annotate(initfx.NewWarpMenuEntryInterface, fx.As(new(warpClientV1.WarpMenuEntryInterface))),
 			fx.Annotate(health.NewShutdownHandler, fx.As(new(health.HealthShutdownHandler))),
 			fx.Annotate(initfx.NewControllerManager, fx.As(new(ctrlMan.Manager))),
-			fx.Annotate(initfx.NewEventRecorder, fx.As(new(record.EventRecorder))),
+			fx.Annotate(initfx.NewEventRecorder, fx.As(new(record.EventRecorder)), fx.As(new(installv3.EventRecorder)), fx.As(new(usecasev3.EventRecorder))),
 		),
 	)
 }

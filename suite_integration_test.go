@@ -18,11 +18,13 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/exec"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/imageregistry"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/initfx"
+	flux "github.com/fluxcd/source-controller/api/v1"
 	"github.com/sirupsen/logrus"
 	"go.uber.org/fx/fxtest"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/apimachinery/pkg/runtime"
+	clientScheme "k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -177,9 +179,14 @@ var _ = ginkgo.BeforeSuite(func() {
 	k8sClientSet, err = kubernetes.NewForConfig(cfg)
 	gomega.Expect(err).ToNot(gomega.HaveOccurred())
 
-	err = doguscheme.AddToScheme(scheme.Scheme)
+	scheme := runtime.NewScheme()
+	err = clientScheme.AddToScheme(scheme)
 	gomega.Expect(err).ToNot(gomega.HaveOccurred())
-	k8sClient, err = client.New(cfg, client.Options{Scheme: scheme.Scheme})
+	err = doguscheme.AddToScheme(scheme)
+	gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	err = flux.AddToScheme(scheme)
+	gomega.Expect(err).ToNot(gomega.HaveOccurred())
+	k8sClient, err = client.New(cfg, client.Options{Scheme: scheme})
 	gomega.Expect(err).ToNot(gomega.HaveOccurred())
 
 	ginkgo.By("creating operator config")

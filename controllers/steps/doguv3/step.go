@@ -26,12 +26,20 @@ type StepResult struct {
 	Err error
 	// Continue with a value of true flags if another requeue should be conducted. Otherwise, the dogu wil no longer be reconciled. This field will be evaluated after checks for RequeueAfter or Err.
 	Continue bool
+	// ReadyReason contains the reason for the ready condition.
+	// We add the information to the StepResult in v3 because the reonciler should set the ready condition in a central place.
+	// The steps should set other specific conditions.
+	ReadyReason string
+	// ReadyMessage contains the message for the ready condition.
+	ReadyMessage string
 }
 
 // RequeueAfter is a convenience function returning a StepResult with the given duration, indicating a requeue without further error.
-func RequeueAfter(requeueAfter time.Duration) StepResult {
+func RequeueAfter(requeueAfter time.Duration, reason, msg string) StepResult {
 	return StepResult{
 		RequeueAfter: requeueAfter,
+		ReadyReason:  reason,
+		ReadyMessage: msg,
 	}
 }
 
@@ -47,17 +55,26 @@ func Continue() StepResult {
 // Abort is a convenience function returning a StepResult that indicates to end this step and the reconciliation in the dogu's lifecycle in general.
 //
 // Its counterpart is Continue() for continuing the dogu's reconciliation.
-func Abort() StepResult {
+func Abort(reason, msg string) StepResult {
 	return StepResult{
-		Continue: false,
+		Continue:     false,
+		ReadyReason:  reason,
+		ReadyMessage: msg,
 	}
 }
 
 // RequeueWithError is a convenience function returning a StepResult that indicates to end this step.
 //
 // In contrast to Abort(), this function keeps up the dogu's reconciliation.
-func RequeueWithError(err error) StepResult {
+func RequeueWithError(err error, reason string) StepResult {
+	readyMessage := ""
+	if err != nil {
+		readyMessage = err.Error()
+	}
+
 	return StepResult{
-		Err: err,
+		Err:          err,
+		ReadyReason:  reason,
+		ReadyMessage: readyMessage,
 	}
 }
