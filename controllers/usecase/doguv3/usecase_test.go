@@ -192,7 +192,7 @@ func TestDoguUseCase_HandleUntilApplied(t *testing.T) {
 				return clientMock, nil, doguResource, []Step{stepMock1, stepMock2}
 			},
 			want: 0,
-			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
+			wantErr: func(t assert.TestingT, err error, i ...any) bool {
 				return assert.ErrorIs(t, err, assert.AnError, i...)
 			},
 		},
@@ -261,7 +261,7 @@ func TestDoguUseCase_HandleUntilApplied(t *testing.T) {
 				return clientMock, nil, doguResource, []Step{stepMock1, stepMock2}
 			},
 			want: 0,
-			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
+			wantErr: func(t assert.TestingT, err error, i ...any) bool {
 				return assert.ErrorIs(t, err, assert.AnError, i...)
 			},
 			assertFn: func(t *testing.T, doguResource *v3beta1.Dogu) {
@@ -325,7 +325,7 @@ func TestDoguUseCase_HandleUntilApplied(t *testing.T) {
 				return clientMock, nil, doguResource, []Step{stepMock1, stepMock2}
 			},
 			want: 0,
-			wantErr: func(t assert.TestingT, err error, i ...interface{}) bool {
+			wantErr: func(t assert.TestingT, err error, i ...any) bool {
 				return assert.ErrorIs(t, err, assert.AnError, i...)
 			},
 		},
