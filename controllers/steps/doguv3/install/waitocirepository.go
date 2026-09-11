@@ -14,7 +14,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metautil "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
@@ -25,11 +24,11 @@ const (
 )
 
 type WaitForOCIRepositoryReadyStep struct {
-	k8sClient     client.Client
-	eventRecorder record.EventRecorder
+	k8sClient     K8sClient
+	eventRecorder EventRecorder
 }
 
-func NewWaitForOCIRepositoryReadyStep(k8sClient client.Client, recorder record.EventRecorder) *WaitForOCIRepositoryReadyStep {
+func NewWaitForOCIRepositoryReadyStep(k8sClient K8sClient, recorder EventRecorder) *WaitForOCIRepositoryReadyStep {
 	return &WaitForOCIRepositoryReadyStep{k8sClient: k8sClient, eventRecorder: recorder}
 }
 
@@ -121,7 +120,7 @@ func getOCIRepositoryChartAvailableReasonMessage(repo *flux.OCIRepository) (stri
 		}
 	}
 
-	// Use ready condition as fallback
+	// Use ready condition as fallback if no fetch failed condition is present
 	readyCondition := metautil.FindStatusCondition(repo.Status.Conditions, meta.ReadyCondition)
 	if readyCondition != nil && readyCondition.Status == metav1.ConditionFalse {
 		return v3beta1.ReasonDownloadFailed, readyCondition.Message, true

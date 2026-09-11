@@ -13,8 +13,6 @@ import (
 	flux "github.com/fluxcd/source-controller/api/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/tools/record"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
@@ -30,12 +28,12 @@ const (
 
 // EnsureOCIRepositoryStep ensures the OCIRepository resource.
 type EnsureOCIRepositoryStep struct {
-	k8sClient     client.Client
+	k8sClient     K8sClient
 	doguRegistry  DoguRegistryReader
-	eventRecorder record.EventRecorder
+	eventRecorder EventRecorder
 }
 
-func NewEnsureOCIRepositoryStep(k8sClient client.Client, doguRegistry DoguRegistryReader, recorder record.EventRecorder) *EnsureOCIRepositoryStep {
+func NewEnsureOCIRepositoryStep(k8sClient K8sClient, doguRegistry DoguRegistryReader, recorder EventRecorder) *EnsureOCIRepositoryStep {
 	return &EnsureOCIRepositoryStep{
 		k8sClient:     k8sClient,
 		doguRegistry:  doguRegistry,
