@@ -204,3 +204,41 @@ func TestGetStage(t *testing.T) {
 	})
 
 }
+
+func TestGetImageConfigCacheSize(t *testing.T) {
+	t.Run("should return default when env var is not set", func(t *testing.T) {
+		// given
+		t.Setenv(envVarImageConfigCacheSize, "")
+		require.NoError(t, os.Unsetenv(envVarImageConfigCacheSize))
+
+		// when
+		size := getImageConfigCacheSize()
+
+		// then
+		assert.Equal(t, defaultImageConfigCacheSize, size)
+	})
+
+	tests := []struct {
+		name  string
+		value string
+		want  int
+	}{
+		{name: "should return the configured positive size", value: "10", want: 10},
+		{name: "should return zero to disable the cache", value: "0", want: 0},
+		{name: "should return a negative value to disable the cache", value: "-1", want: -1},
+		{name: "should return default on an unparseable value", value: "not-a-number", want: defaultImageConfigCacheSize},
+		{name: "should return default on an empty value", value: " ", want: defaultImageConfigCacheSize},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// given
+			t.Setenv(envVarImageConfigCacheSize, tt.value)
+
+			// when
+			size := getImageConfigCacheSize()
+
+			// then
+			assert.Equal(t, tt.want, size)
+		})
+	}
+}

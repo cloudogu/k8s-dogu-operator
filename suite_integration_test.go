@@ -67,7 +67,7 @@ var (
 	oldCtrlBuilder                       func(m manager.Manager) *ctrl.Builder
 	oldNewCommandExecutor                func(cli client.Client, restConfig *rest.Config, clientSet kubernetes.Interface, coreV1RestClient rest.Interface) exec.CommandExecutor
 	oldNewRemoteDoguDescriptorRepository func(operatorConfig *config.OperatorConfig) (dogu.RemoteDoguDescriptorRepository, error)
-	oldNewImageRegistry                  func() imageregistry.ImageRegistry
+	oldNewImageRegistry                  func(operatorConfig *config.OperatorConfig) imageregistry.ImageRegistry
 	oldGetArgs                           func() initfx.Args
 	oldGetWebhookServer                  func() webhook.Server
 )
@@ -138,7 +138,7 @@ var _ = ginkgo.BeforeSuite(func() {
 	}
 
 	oldNewImageRegistry = initfx.NewImageRegistry
-	initfx.NewImageRegistry = func() imageregistry.ImageRegistry {
+	initfx.NewImageRegistry = func(operatorConfig *config.OperatorConfig) imageregistry.ImageRegistry {
 		return ImageRegistryMock
 	}
 

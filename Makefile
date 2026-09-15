@@ -3,8 +3,8 @@ ARTIFACT_ID=k8s-dogu-operator
 VERSION=3.29.0
 
 IMAGE=cloudogu/${ARTIFACT_ID}:${VERSION}
-GOTAG=1.26.5
-MOCKERY_VERSION=v2.53.6
+GOTAG=1.26.8
+MOCKERY_VERSION=v2.53.7
 LINT_VERSION=v2.13.2
 MAKEFILES_VERSION=10.11.1
 
@@ -27,6 +27,7 @@ include build/make/clean.mk
 include build/make/digital-signature.mk
 include build/make/k8s-controller.mk
 include build/make/mocks.mk
+include build/make/vulnerability-scan.mk
 
 .PHONY: mocks
 mocks: ${MOCKERY_BIN} ${MOCKERY_YAML} ## target is used to generate mocks for all interfaces in a project.

@@ -5,6 +5,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Changed
+- [#332] In-memory LRU cache for pulled dogu image configs to reduce the request burst on the container registry
+  - Configurable via the `IMAGE_CONFIG_CACHE_SIZE` environment variable / `controllerManager.env.imageConfigCacheSize`
+    Helm value (default `50`); set to `0` to disable caching
+  - Relies on immutable image references
 
 ## [v3.29.0] - 2026-09-03
 ### Added

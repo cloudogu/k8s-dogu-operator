@@ -31,6 +31,9 @@ controllerManager:
     doguDescriptorMaxRetries: 20
     getServiceAccountPodMaxRetries: 5
     requeueTimeForDoguResourceInNanoseconds: 5000000000
+    # imageConfigCacheSize is the maximum number of dogu image configs cached in memory
+    # Set to 0 to disable caching.
+    imageConfigCacheSize: 50
   resourceLimits:
     memory: 105M
   resourceRequests:
