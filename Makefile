@@ -27,6 +27,7 @@ include build/make/clean.mk
 include build/make/digital-signature.mk
 include build/make/k8s-controller.mk
 include build/make/mocks.mk
+include build/make/vulnerability-scan.mk
 
 .PHONY: mocks
 mocks: ${MOCKERY_BIN} ${MOCKERY_YAML} ## target is used to generate mocks for all interfaces in a project.

@@ -78,6 +78,10 @@ node('docker') {
                             stage("Lint helm") {
                                 make 'helm-lint'
                             }
+
+                            stage("Go Vuln Check") {
+                            	make 'govulncheck'
+                            }
                         }
 
         stage('SonarQube') {

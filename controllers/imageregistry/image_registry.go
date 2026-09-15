@@ -25,18 +25,44 @@ var (
 
 // craneContainerImageRegistry is a component to interact with a container registry.
 // It is able to pull the config of an image and uses the crane library
-type craneContainerImageRegistry struct{}
+type craneContainerImageRegistry struct {
+	// cache holds previously pulled image configs keyed by their image reference. It is nil when caching is disabled.
+	cache *lruImageConfigCache
+}
 
-// NewCraneContainerImageRegistry creates a new instance of craneContainerImageRegistry
-func NewCraneContainerImageRegistry() ImageRegistry {
-	return &craneContainerImageRegistry{}
+// NewCraneContainerImageRegistry creates a new instance of craneContainerImageRegistry. The cacheSize sizes the
+// in-memory image config cache; a value <= 0 disables caching.
+func NewCraneContainerImageRegistry(cacheSize int) ImageRegistry {
+	return &craneContainerImageRegistry{cache: newImageConfigCache(cacheSize)}
+}
+
+// newImageConfigCache creates the image config cache. A non-positive size disables caching (returns nil).
+func newImageConfigCache(size int) *lruImageConfigCache {
+	if size <= 0 {
+		return nil
+	}
+
+	return newLRUImageConfigCache(size)
 }
 
 // PullImageConfig pulls an image with the crane library. It uses basic auth for the registry authentication.
+//
+// If an image config cache is configured, the config for a given image reference is served from the cache instead of
+// pulling it from the registry again. This avoids bursts of registry requests when the same image is inspected
+// repeatedly (e.g. across reconcile retries or by several reconcile steps). The cached config must not be mutated by
+// callers, as it is shared across all consumers of a cache hit.
 func (i *craneContainerImageRegistry) PullImageConfig(ctx context.Context, image string) (*imagev1.ConfigFile, error) {
+	logger := log.FromContext(ctx)
+
+	if i.cache != nil {
+		if cachedConfig, ok := i.cache.Get(image); ok {
+			logger.Info(fmt.Sprintf("Using cached image config for image: [%s]", image))
+			return cachedConfig, nil
+		}
+	}
+
 	ctxOpt := crane.WithContext(ctx)
 
-	logger := log.FromContext(ctx)
 	logger.Info(fmt.Sprintf("Try to pull image manifest from image: [%s]", image))
 
 	transport := remote.DefaultTransport
@@ -80,5 +106,14 @@ func (i *craneContainerImageRegistry) PullImageConfig(ctx context.Context, image
 		return nil, fmt.Errorf("error pulling image: %w", err)
 	}
 
-	return img.ConfigFile()
+	configFile, err := img.ConfigFile()
+	if err != nil {
+		return nil, err
+	}
+
+	if i.cache != nil {
+		i.cache.Add(image, configFile)
+	}
+
+	return configFile, nil
 }
