@@ -21,10 +21,8 @@ import (
 
 var (
 	readyRepository = &flux.OCIRepository{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: testNamespace,
-			Name:      testDoguName,
-		},
+		Namespace: testNamespace,
+		Name:      testDoguName,
 		Status: flux.OCIRepositoryStatus{
 			Conditions: []metav1.Condition{
 				{
@@ -116,10 +114,8 @@ func TestWaitForOCIRepositoryReadyStep_Run(t *testing.T) {
 			name: "should process update chartavailable status if oci repository is not ready",
 			setup: func(t *testing.T) (K8sClient, EventRecorder, *v3beta1.Dogu) {
 				notReadyRepository := &flux.OCIRepository{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace: testNamespace,
-						Name:      testDoguName,
-					},
+					Namespace: testNamespace,
+					Name:      testDoguName,
 				}
 				doguResource := testDoguResource.DeepCopy()
 				c := fake.NewClientBuilder().WithScheme(testScheme).WithObjects(notReadyRepository, doguResource).Build()
@@ -196,10 +192,8 @@ func TestWaitForOCIRepositoryReadyStep_updateChartUnavailableStatus(t *testing.T
 				return nil, nil, testDoguResource.DeepCopy()
 			},
 			repo: &flux.OCIRepository{
-				ObjectMeta: metav1.ObjectMeta{
-					Namespace: testNamespace,
-					Name:      testDoguName,
-				},
+				Namespace: testNamespace,
+				Name:      testDoguName,
 			},
 			want: doguv3.RequeueAfter(defaultRequeueAfter, v3beta1.ReasonInstalling, ""),
 		},
@@ -214,10 +208,8 @@ func TestWaitForOCIRepositoryReadyStep_updateChartUnavailableStatus(t *testing.T
 				return c, nil, doguResource
 			},
 			repo: &flux.OCIRepository{
-				ObjectMeta: metav1.ObjectMeta{
-					Namespace: testNamespace,
-					Name:      testDoguName,
-				},
+				Namespace: testNamespace,
+				Name:      testDoguName,
 				Status: flux.OCIRepositoryStatus{
 					Conditions: []metav1.Condition{
 						{
@@ -249,10 +241,8 @@ func TestWaitForOCIRepositoryReadyStep_updateChartUnavailableStatus(t *testing.T
 				return c, nil, doguResource
 			},
 			repo: &flux.OCIRepository{
-				ObjectMeta: metav1.ObjectMeta{
-					Namespace: testNamespace,
-					Name:      testDoguName,
-				},
+				Namespace: testNamespace,
+				Name:      testDoguName,
 				Status: flux.OCIRepositoryStatus{
 					Conditions: []metav1.Condition{
 						{Type: meta.ReadyCondition, Status: metav1.ConditionFalse},
@@ -286,10 +276,8 @@ func TestWaitForOCIRepositoryReadyStep_updateChartUnavailableStatus(t *testing.T
 				return c, nil, doguResource
 			},
 			repo: &flux.OCIRepository{
-				ObjectMeta: metav1.ObjectMeta{
-					Namespace: testNamespace,
-					Name:      testDoguName,
-				},
+				Namespace: testNamespace,
+				Name:      testDoguName,
 				Status: flux.OCIRepositoryStatus{
 					Conditions: []metav1.Condition{
 						{Type: meta.ReadyCondition, Status: metav1.ConditionFalse},
@@ -323,10 +311,8 @@ func TestWaitForOCIRepositoryReadyStep_updateChartUnavailableStatus(t *testing.T
 				return c, nil, doguResource
 			},
 			repo: &flux.OCIRepository{
-				ObjectMeta: metav1.ObjectMeta{
-					Namespace: testNamespace,
-					Name:      testDoguName,
-				},
+				Namespace: testNamespace,
+				Name:      testDoguName,
 				Status: flux.OCIRepositoryStatus{
 					Conditions: []metav1.Condition{
 						{Type: meta.ReadyCondition, Status: metav1.ConditionFalse},
@@ -360,10 +346,8 @@ func TestWaitForOCIRepositoryReadyStep_updateChartUnavailableStatus(t *testing.T
 				return c, nil, doguResource
 			},
 			repo: &flux.OCIRepository{
-				ObjectMeta: metav1.ObjectMeta{
-					Namespace: testNamespace,
-					Name:      testDoguName,
-				},
+				Namespace: testNamespace,
+				Name:      testDoguName,
 				Status: flux.OCIRepositoryStatus{
 					Conditions: []metav1.Condition{
 						{Type: meta.ReadyCondition, Status: metav1.ConditionFalse},
@@ -397,10 +381,8 @@ func TestWaitForOCIRepositoryReadyStep_updateChartUnavailableStatus(t *testing.T
 				return c, nil, doguResource
 			},
 			repo: &flux.OCIRepository{
-				ObjectMeta: metav1.ObjectMeta{
-					Namespace: testNamespace,
-					Name:      testDoguName,
-				},
+				Namespace: testNamespace,
+				Name:      testDoguName,
 				Status: flux.OCIRepositoryStatus{
 					Conditions: []metav1.Condition{
 						{Type: meta.ReadyCondition, Status: metav1.ConditionFalse},
@@ -439,10 +421,8 @@ func TestWaitForOCIRepositoryReadyStep_updateChartUnavailableStatus(t *testing.T
 				return c, nil, doguResource
 			},
 			repo: &flux.OCIRepository{
-				ObjectMeta: metav1.ObjectMeta{
-					Namespace: testNamespace,
-					Name:      testDoguName,
-				},
+				Namespace: testNamespace,
+				Name:      testDoguName,
 				Status: flux.OCIRepositoryStatus{
 					Conditions: []metav1.Condition{
 						{
@@ -474,10 +454,8 @@ func TestWaitForOCIRepositoryReadyStep_updateChartUnavailableStatus(t *testing.T
 				return c, nil, doguResource
 			},
 			repo: &flux.OCIRepository{
-				ObjectMeta: metav1.ObjectMeta{
-					Namespace: testNamespace,
-					Name:      testDoguName,
-				},
+				Namespace: testNamespace,
+				Name:      testDoguName,
 				Status: flux.OCIRepositoryStatus{
 					Conditions: []metav1.Condition{
 						{
@@ -509,10 +487,8 @@ func TestWaitForOCIRepositoryReadyStep_updateChartUnavailableStatus(t *testing.T
 				return c, nil, doguResource
 			},
 			repo: &flux.OCIRepository{
-				ObjectMeta: metav1.ObjectMeta{
-					Namespace: testNamespace,
-					Name:      testDoguName,
-				},
+				Namespace: testNamespace,
+				Name:      testDoguName,
 				Status: flux.OCIRepositoryStatus{
 					Conditions: []metav1.Condition{
 						{

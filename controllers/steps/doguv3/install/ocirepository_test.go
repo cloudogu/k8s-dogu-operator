@@ -43,10 +43,8 @@ var (
 		Version: testVersion,
 	}
 	testDoguResource = &v3beta1.Dogu{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      testDoguName,
-			Namespace: testNamespace,
-		},
+		Name:      testDoguName,
+		Namespace: testNamespace,
 		Spec: v3beta1.DoguSpec{
 			Name:          testDoguName,
 			DoguNamespace: testDoguNamespace,
@@ -115,10 +113,8 @@ func TestEnsureOCIRepositoryStep_Run(t *testing.T) {
 			setup: func(t *testing.T) (K8sClient, DoguRegistryReader, EventRecorder, *v3beta1.Dogu) {
 				doguResource := testDoguResource.DeepCopy()
 				existingRepository := &flux.OCIRepository{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace: testNamespace,
-						Name:      testDoguName,
-					},
+					Namespace: testNamespace,
+					Name:      testDoguName,
 					Spec: flux.OCIRepositorySpec{
 						URL: "oci://localhost:5000/testing/nexus/0.9.0",
 						Reference: &flux.OCIRepositoryRef{
@@ -194,10 +190,8 @@ func TestEnsureOCIRepositoryStep_Run(t *testing.T) {
 			setup: func(t *testing.T) (K8sClient, DoguRegistryReader, EventRecorder, *v3beta1.Dogu) {
 				doguResource := testDoguResource.DeepCopy()
 				existingRepository := &flux.OCIRepository{
-					ObjectMeta: metav1.ObjectMeta{
-						Namespace: testNamespace,
-						Name:      testDoguName,
-					},
+					Namespace: testNamespace,
+					Name:      testDoguName,
 					Spec: flux.OCIRepositorySpec{
 						URL: "oci://localhost:5000/testing/nexus/0.9.0",
 						Reference: &flux.OCIRepositoryRef{

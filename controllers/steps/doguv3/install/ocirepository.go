@@ -59,10 +59,8 @@ func (eor *EnsureOCIRepositoryStep) Run(ctx context.Context, doguResource *v3bet
 
 	// Set OCIRepository metadata for lookup
 	repository := &flux.OCIRepository{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: doguResource.Namespace,
-			Name:      doguResource.Spec.Name,
-		},
+		Namespace: doguResource.Namespace,
+		Name:      doguResource.Spec.Name,
 	}
 
 	// Use patch because the repository resource will be updated from the source-controller.
