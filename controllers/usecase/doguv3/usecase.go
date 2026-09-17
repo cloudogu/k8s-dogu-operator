@@ -59,7 +59,7 @@ func NewDoguInstallOrChangeUseCase(ociStep *install.EnsureOCIRepositoryStep, wai
 //   - a requeue if a step needs more time or errored in a way that might be handled programmatically
 //   - an abortion of the dogus reconciliation
 //
-// If the dogu executed all steps successfully, the duration and the error will contain null values and the bool is set to true indicating the dogu phase is done.
+// If the dogu executed all steps successfully, the duration and the error will contain null values indicating the dogu phase is done.
 func (duc *DoguUseCase) HandleUntilApplied(ctx context.Context, doguResource *v3beta1.Dogu) (time.Duration, error) {
 	for _, s := range duc.steps {
 		result := s.Run(ctx, doguResource)
