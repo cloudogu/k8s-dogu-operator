@@ -42,6 +42,9 @@ const (
 	envVarProxyUrl                                = "PROXY_URL"
 	envVarNamespace                               = "NAMESPACE"
 	envVarDoguV3RegistryEndpoint                  = "DOGU_V3_REGISTRY_ENDPOINT"
+	envVarDoguV3RegistryUsername                  = "DOGU_V3_REGISTRY_USERNAME"
+	envVarDoguV3RegistryPassword                  = "DOGU_V3_REGISTRY_PASSWORD"
+	envVarDoguV3RegistryURLSchema                 = "DOGU_V3_REGISTRY_URLSCHEMA"
 	envVarDoguV3RegistryInsecureSkipVerify        = "DOGU_V3_REGISTRY_INSECURE_SKIP_VERIFY"
 	envVarDoguRegistryEndpoint                    = "DOGU_REGISTRY_ENDPOINT"
 	envVarDoguRegistryUsername                    = "DOGU_REGISTRY_USERNAME"
@@ -61,13 +64,14 @@ const (
 // IMAGE_CONFIG_CACHE_SIZE is unset or invalid.
 const defaultImageConfigCacheSize = 50
 
+const v3DoguRegistryMissingAttributeFmt = "Dogu V3 registry %s not set. Using v3 dogus requires to set the attribute in the secret dogu-registry-v3"
+
 // DoguRegistryData contains all necessary data for the dogu registry.
 type DoguRegistryData struct {
-	Endpoint   string `json:"endpoint"`
-	Username   string `json:"username"`
-	Password   string `json:"password"`
-	URLSchema  string `json:"urlschema"`
-	V3Endpoint string `json:"v3Endpoint"`
+	Endpoint  string `json:"endpoint"`
+	Username  string `json:"username"`
+	Password  string `json:"password"`
+	URLSchema string `json:"urlschema"`
 }
 
 // OperatorConfig contains all configurable values for the dogu operator.
@@ -76,6 +80,8 @@ type OperatorConfig struct {
 	Namespace string `json:"namespace"`
 	// DoguRegistry contains all necessary data for the dogu registry.
 	DoguRegistry DoguRegistryData `json:"dogu_registry"`
+	// DoguV3Registry contains all necessary data for the dogu v3 registry.
+	DoguV3Registry DoguRegistryData `json:"dogu_v3_registry"`
 	// Version contains the current version of the operator
 	Version *core.Version `json:"version"`
 	// NetworkPoliciesEnabled defines whether network policies should be created for dogus and their dependencies
@@ -146,6 +152,7 @@ func NewOperatorConfig(version Version) (*OperatorConfig, error) {
 		DisablePostfixDependencyCheck: getDisablePostfixDependencyCheck(),
 		RequeueTimeForDoguReconciler:  doguReconcilerRequeueTime,
 		ImageConfigCacheSize:          getImageConfigCacheSize(),
+		DoguV3Registry:                readDoguV3RegistryData(),
 	}, nil
 }
 
@@ -168,6 +175,39 @@ func readDoguReconcilerRequeueTime() (time.Duration, error) {
 		return defaultRequeueTime, err
 	}
 	return time.Duration(requeueTime), nil
+}
+
+// For now the dogu v3 registry is optional, so we do not return errors here if env vars are not found.
+func readDoguV3RegistryData() DoguRegistryData {
+	endpoint, found := os.LookupEnv(envVarDoguV3RegistryEndpoint)
+	if !found {
+		log.Info(fmt.Sprintf(v3DoguRegistryMissingAttributeFmt, "endpoint"))
+	} else {
+		// remove tailing slash
+		endpoint = strings.TrimSuffix(endpoint, "/")
+	}
+
+	username, found := os.LookupEnv(envVarDoguV3RegistryUsername)
+	if !found {
+		log.Info(fmt.Sprintf(v3DoguRegistryMissingAttributeFmt, "username"))
+	}
+
+	password, found := os.LookupEnv(envVarDoguV3RegistryPassword)
+	if !found {
+		log.Info(fmt.Sprintf(v3DoguRegistryMissingAttributeFmt, "password"))
+	}
+
+	urlSchema, found := os.LookupEnv(envVarDoguV3RegistryURLSchema)
+	if !found {
+		urlSchema = "default"
+	}
+
+	return DoguRegistryData{
+		Endpoint:  endpoint,
+		Username:  username,
+		Password:  password,
+		URLSchema: urlSchema,
+	}
 }
 
 func readDoguRegistryData() (DoguRegistryData, error) {
@@ -194,20 +234,11 @@ func readDoguRegistryData() (DoguRegistryData, error) {
 		urlschema = "default"
 	}
 
-	v3Endpoint, found := os.LookupEnv(envVarDoguV3RegistryEndpoint)
-	if !found {
-		log.Info(fmt.Sprintf("Dogu V3 registry url not set. Using v3 dogus requires to set the %q key in secret %q", "v3Endpoint", "k8s-dogu-operator-dogu-registry"))
-	} else {
-		// remove tailing slash
-		v3Endpoint = strings.TrimSuffix(v3Endpoint, "/")
-	}
-
 	return DoguRegistryData{
-		Endpoint:   endpoint,
-		Username:   username,
-		Password:   password,
-		URLSchema:  urlschema,
-		V3Endpoint: v3Endpoint,
+		Endpoint:  endpoint,
+		Username:  username,
+		Password:  password,
+		URLSchema: urlschema,
 	}, nil
 }
 
@@ -263,11 +294,11 @@ func (o *OperatorConfig) GetV3RemoteConfiguration() (*dccv3.DoguRegistryConfigur
 	}
 
 	return &dccv3.DoguRegistryConfiguration{
-		BaseURL:            o.DoguRegistry.V3Endpoint,
+		BaseURL:            o.DoguV3Registry.Endpoint,
 		ProxySettings:      proxySettings,
 		InsecureSkipVerify: insecure,
 		UserAgent:          fmt.Sprintf("k8s-dogu-operator/%s (%s/%s)", o.Version, runtime.GOOS, runtime.GOARCH),
-		URLSchema:          o.DoguRegistry.URLSchema,
+		URLSchema:          o.DoguV3Registry.URLSchema,
 	}, nil
 }
 
@@ -328,8 +359,8 @@ func configureProxySettings(proxyURL string) (dccv3.ProxySettings, error) {
 // GetV3RemoteCredentials creates a remote credential pair for dogu v3 with the configured values.
 func (o *OperatorConfig) GetV3RemoteCredentials() *dccv3.Credentials {
 	return &dccv3.Credentials{
-		Username: o.DoguRegistry.Username,
-		Password: o.DoguRegistry.Password,
+		Username: o.DoguV3Registry.Username,
+		Password: o.DoguV3Registry.Password,
 	}
 }
 
