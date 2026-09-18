@@ -10,26 +10,22 @@ import (
 	stepsv3 "github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv3"
 	"github.com/fluxcd/pkg/apis/meta"
 	flux "github.com/fluxcd/source-controller/api/v1"
-	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metautil "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 const (
 	defaultRequeueAfter = 5 * time.Second
-	successMessage      = "Chart successfully downloaded by source-controller"
 )
 
 type WaitForOCIRepositoryReadyStep struct {
-	k8sClient     K8sClient
-	eventRecorder EventRecorder
+	k8sClient K8sClient
 }
 
-func NewWaitForOCIRepositoryReadyStep(k8sClient K8sClient, recorder EventRecorder) *WaitForOCIRepositoryReadyStep {
-	return &WaitForOCIRepositoryReadyStep{k8sClient: k8sClient, eventRecorder: recorder}
+func NewWaitForOCIRepositoryReadyStep(k8sClient K8sClient) *WaitForOCIRepositoryReadyStep {
+	return &WaitForOCIRepositoryReadyStep{k8sClient: k8sClient}
 }
 
 // Run checks the ready condition of the previously created flux OCIRepository.
@@ -44,24 +40,22 @@ func (wor *WaitForOCIRepositoryReadyStep) Run(ctx context.Context, doguResource 
 	if err != nil {
 		return stepsv3.RequeueWithError(fmt.Errorf("failed to get OCIRepository: %w", err), v3beta1.ReasonInstalling)
 	}
+	if repo.Status.ObservedGeneration != repo.Generation {
+		return stepsv3.RequeueAfter(defaultRequeueAfter, v3beta1.ReasonInstalling, "")
+	}
 
 	// Not ready yet, update status and requeue
-	if !metautil.IsStatusConditionTrue(repo.Status.Conditions, meta.ReadyCondition) {
+	if !isOCIRepositoryReady(repo) {
 		return wor.updateChartUnavailableStatus(ctx, doguResource, repo)
 	}
 
-	// If success status did not change, continue with next step
-	if !metautil.SetStatusCondition(&doguResource.Status.Conditions, getSuccessfulChartAvailableCondition(doguResource)) {
-		return stepsv3.Continue()
-	}
+	return stepsv3.Continue()
+}
 
-	if stepResult, success := wor.updateDoguResourceStatus(ctx, doguResource, "failed to update oci success condition"); success {
-		wor.eventRecorder.Event(doguResource, v1.EventTypeNormal, v3beta1.ConditionChartAvailable, successMessage)
-		log.FromContext(ctx).Info(successMessage)
-		return stepsv3.Continue()
-	} else {
-		return stepResult
-	}
+func isOCIRepositoryReady(repo *flux.OCIRepository) bool {
+	condition := metautil.FindStatusCondition(repo.Status.Conditions, meta.ReadyCondition)
+	// A retained Ready condition may describe an artifact from an older repository specification.
+	return condition != nil && condition.Status == metav1.ConditionTrue && condition.ObservedGeneration == repo.Generation
 }
 
 func (wor *WaitForOCIRepositoryReadyStep) updateChartUnavailableStatus(ctx context.Context, doguResource *v3beta1.Dogu, repo *flux.OCIRepository) stepsv3.StepResult {
@@ -80,7 +74,7 @@ func (wor *WaitForOCIRepositoryReadyStep) updateChartUnavailableStatus(ctx conte
 	}
 
 	// Write ChartUnavailable status to resource
-	if stepResult, success := wor.updateDoguResourceStatus(ctx, doguResource, "failed to update oci failure condition"); !success {
+	if stepResult, success := updateDoguResourceStatus(ctx, wor.k8sClient, doguResource, "failed to update oci failure condition"); !success {
 		return stepResult
 	}
 
@@ -88,8 +82,8 @@ func (wor *WaitForOCIRepositoryReadyStep) updateChartUnavailableStatus(ctx conte
 	return stepsv3.Abort(reason, msg)
 }
 
-func (wor *WaitForOCIRepositoryReadyStep) updateDoguResourceStatus(ctx context.Context, doguResource *v3beta1.Dogu, errorMessage string) (stepsv3.StepResult, bool) {
-	updateErr := wor.k8sClient.Status().Update(ctx, doguResource)
+func updateDoguResourceStatus(ctx context.Context, k8sClient K8sClient, doguResource *v3beta1.Dogu, errorMessage string) (stepsv3.StepResult, bool) {
+	updateErr := k8sClient.Status().Update(ctx, doguResource)
 	if updateErr != nil {
 		// cache lag
 		if errors.IsConflict(updateErr) {
@@ -127,10 +121,6 @@ func getOCIRepositoryChartAvailableReasonMessage(repo *flux.OCIRepository) (stri
 	}
 
 	return "", "", false
-}
-
-func getSuccessfulChartAvailableCondition(doguResource *v3beta1.Dogu) metav1.Condition {
-	return getChartAvailableCondition(metav1.ConditionTrue, v3beta1.ReasonSucceeded, successMessage, doguResource.Generation)
 }
 
 func getFailureChartAvailableCondition(doguResource *v3beta1.Dogu, reason, msg string) metav1.Condition {

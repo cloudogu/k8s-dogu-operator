@@ -11,7 +11,6 @@ import (
 	flux "github.com/fluxcd/source-controller/api/v1"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -21,13 +20,22 @@ import (
 
 var (
 	readyRepository = &flux.OCIRepository{
-		Namespace: testNamespace,
-		Name:      testDoguName,
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace:  testNamespace,
+			Name:       testDoguName,
+			Generation: 1,
+		},
 		Status: flux.OCIRepositoryStatus{
+			ObservedGeneration: 1,
+			Artifact: &meta.Artifact{
+				URL:    "http://source-controller/artifact.tgz",
+				Digest: "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+			},
 			Conditions: []metav1.Condition{
 				{
-					Type:   meta.ReadyCondition,
-					Status: metav1.ConditionTrue,
+					Type:               meta.ReadyCondition,
+					Status:             metav1.ConditionTrue,
+					ObservedGeneration: 1,
 				},
 			},
 		},
@@ -43,7 +51,7 @@ func TestWaitForOCIRepositoryReadyStep_Run(t *testing.T) {
 		assertFn func(t *testing.T, client K8sClient)
 	}{
 		{
-			name: "should continue and update status on dogu resource if ocirepository is ready",
+			name: "should continue without updating the dogu status if the OCIRepository is ready",
 			setup: func(t *testing.T) (K8sClient, EventRecorder, *v3beta1.Dogu) {
 				doguResource := testDoguResource.DeepCopy()
 				c := fake.NewClientBuilder().
@@ -51,10 +59,7 @@ func TestWaitForOCIRepositoryReadyStep_Run(t *testing.T) {
 					WithObjects(readyRepository, doguResource).
 					WithStatusSubresource(&v3beta1.Dogu{}).Build()
 
-				recorderMock := NewMockEventRecorder(t)
-				recorderMock.EXPECT().Event(doguResource, v1.EventTypeNormal, v3beta1.ConditionChartAvailable, successMessage)
-
-				return c, recorderMock, doguResource
+				return c, nil, doguResource
 			},
 			want: testStepResultContinue,
 			assertFn: func(t *testing.T, client K8sClient) {
@@ -63,32 +68,26 @@ func TestWaitForOCIRepositoryReadyStep_Run(t *testing.T) {
 
 				require.NoError(t, err)
 				conditions := dogu.Status.Conditions
-				assert.Len(t, conditions, 1)
-				assert.Equal(t, v3beta1.ConditionChartAvailable, conditions[0].Type)
-				assert.Equal(t, metav1.ConditionTrue, conditions[0].Status)
-				assert.Equal(t, v3beta1.ReasonSucceeded, conditions[0].Reason)
-				assert.Equal(t, successMessage, conditions[0].Message)
+				assert.Empty(t, conditions)
 			},
 		},
 		{
-			name: "should continue and not writing dogu status if repository is ready and dogu resource contains success status condition",
+			name: "should requeue without evaluating conditions from an older generation",
 			setup: func(t *testing.T) (K8sClient, EventRecorder, *v3beta1.Dogu) {
-				doguResource := testDoguResource.DeepCopy()
-				doguResource.Status.Conditions = []metav1.Condition{
-					{
-						Type:    v3beta1.ConditionChartAvailable,
-						Status:  metav1.ConditionTrue,
-						Reason:  v3beta1.ReasonSucceeded,
-						Message: successMessage,
-					},
-				}
-				c := fake.NewClientBuilder().
-					WithScheme(testScheme).
-					WithObjects(readyRepository).Build()
-
-				return c, nil, doguResource
+				repository := readyRepository.DeepCopy()
+				repository.Generation++
+				repository.Status.Conditions[0].Status = metav1.ConditionFalse
+				repository.Status.Conditions = append(repository.Status.Conditions, metav1.Condition{
+					Type:               flux.FetchFailedCondition,
+					Status:             metav1.ConditionTrue,
+					ObservedGeneration: repository.Status.ObservedGeneration,
+					Reason:             flux.AuthenticationFailedReason,
+					Message:            "stale authentication error",
+				})
+				c := fake.NewClientBuilder().WithScheme(testScheme).WithObjects(repository).Build()
+				return c, nil, testDoguResource.DeepCopy()
 			},
-			want: testStepResultContinue,
+			want: doguv3.RequeueAfter(defaultRequeueAfter, v3beta1.ReasonInstalling, ""),
 		},
 		{
 			name: "should requeue without error if the dogu resource is not found",
@@ -123,51 +122,11 @@ func TestWaitForOCIRepositoryReadyStep_Run(t *testing.T) {
 			},
 			want: doguv3.RequeueAfter(defaultRequeueAfter, v3beta1.ReasonInstalling, ""),
 		},
-		{
-			name: "should requeue without error if repo is ready but conflict error on writing dogu status condition",
-			setup: func(t *testing.T) (K8sClient, EventRecorder, *v3beta1.Dogu) {
-				doguResource := testDoguResource.DeepCopy()
-				c := fake.NewClientBuilder().
-					WithScheme(testScheme).
-					WithObjects(readyRepository, doguResource).
-					WithStatusSubresource(&v3beta1.Dogu{}).
-					WithInterceptorFuncs(interceptor.Funcs{
-						SubResourceUpdate: func(ctx context.Context, c client.Client, subResourceName string, obj client.Object, opts ...client.SubResourceUpdateOption) error {
-							if subResourceName == "status" {
-								return conflictErr
-							}
-							return c.SubResource(subResourceName).Update(ctx, obj, opts...)
-						},
-					}).Build()
-				return c, nil, doguResource
-			},
-			want: doguv3.RequeueAfter(defaultRequeueAfter, v3beta1.ReasonInstalling, conflictErr.Error()),
-		},
-		{
-			name: "should requeue with error if repo is ready but non conflict error on writing dogu status condition",
-			setup: func(t *testing.T) (K8sClient, EventRecorder, *v3beta1.Dogu) {
-				doguResource := testDoguResource.DeepCopy()
-				c := fake.NewClientBuilder().
-					WithScheme(testScheme).
-					WithObjects(readyRepository, doguResource).
-					WithStatusSubresource(&v3beta1.Dogu{}).
-					WithInterceptorFuncs(interceptor.Funcs{
-						SubResourceUpdate: func(ctx context.Context, c client.Client, subResourceName string, obj client.Object, opts ...client.SubResourceUpdateOption) error {
-							if subResourceName == "status" {
-								return assert.AnError
-							}
-							return c.SubResource(subResourceName).Update(ctx, obj, opts...)
-						},
-					}).Build()
-				return c, nil, doguResource
-			},
-			want: doguv3.RequeueWithError(fmt.Errorf("%s: %w", "failed to update oci success condition", assert.AnError), v3beta1.DoguStatusInstalling),
-		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			k8sClient, eventRecorder, doguResource := tt.setup(t)
-			wor := &WaitForOCIRepositoryReadyStep{k8sClient: k8sClient, eventRecorder: eventRecorder}
+			k8sClient, _, doguResource := tt.setup(t)
+			wor := &WaitForOCIRepositoryReadyStep{k8sClient: k8sClient}
 
 			assert.Equalf(t, tt.want, wor.Run(testCtx, doguResource), "Run(%v, %v)", testCtx, doguResource)
 
@@ -504,8 +463,8 @@ func TestWaitForOCIRepositoryReadyStep_updateChartUnavailableStatus(t *testing.T
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			k8sClient, eventRecorder, doguResource := tt.setup(t)
-			wor := &WaitForOCIRepositoryReadyStep{k8sClient: k8sClient, eventRecorder: eventRecorder}
+			k8sClient, _, doguResource := tt.setup(t)
+			wor := &WaitForOCIRepositoryReadyStep{k8sClient: k8sClient}
 
 			assert.Equalf(t, tt.want, wor.updateChartUnavailableStatus(testCtx, doguResource, tt.repo), "updateChartUnavailableStatus(%v, %v, %v)", testCtx, doguResource, tt.repo)
 
@@ -519,13 +478,11 @@ func TestWaitForOCIRepositoryReadyStep_updateChartUnavailableStatus(t *testing.T
 func TestNewWaitForOCIRepositoryReadyStep(t *testing.T) {
 	// given
 	clientMock := NewMockK8sClient(t)
-	recorderMock := NewMockEventRecorder(t)
 
 	// when
-	sut := NewWaitForOCIRepositoryReadyStep(clientMock, recorderMock)
+	sut := NewWaitForOCIRepositoryReadyStep(clientMock)
 
 	// then
 	assert.NotNil(t, sut)
 	assert.Equal(t, clientMock, sut.k8sClient)
-	assert.Equal(t, recorderMock, sut.eventRecorder)
 }
