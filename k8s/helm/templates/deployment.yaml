@@ -67,11 +67,13 @@ spec:
                 secretKeyRef:
                   key: username
                   name: dogu-registry-v3
+                  optional: true
             - name: DOGU_V3_REGISTRY_PASSWORD
               valueFrom:
                 secretKeyRef:
                   key: password
                   name: dogu-registry-v3
+                  optional: true
             - name: DOGU_V3_REGISTRY_URLSCHEMA
               valueFrom:
                 secretKeyRef:
