@@ -35,3 +35,19 @@ kubectl --namespace <cesNamespace> create secret generic k8s-dogu-operator-dogu-
 ```
 
 After that the `k8s-dogu-operator` can be [installed](installing_operator_into_cluster_en.md) as usual.
+
+## Configuring the Dogu V3 Registry
+
+A separate secret, `dogu-registry-v3`, is used for the API V3.
+Structurally, the configuration remains nearly identical to the `k8s-dogu-operator-dogu-registry` secret.
+
+```bash
+kubectl --namespace <cesNamespace> create secret generic dogu-registry-v3 \
+--from-literal=endpoint=“https://my-registry.com/api/v3” \
+--from-literal=username=“myusername” \
+--from-literal=password=“mypassword” \
+--from-literal=urlschema=“default” \
+--from-literal=insecureSkipVerify=false
+```
+
+> As long as the Dogu operator does not yet fully support API v3, this secret is optional.
