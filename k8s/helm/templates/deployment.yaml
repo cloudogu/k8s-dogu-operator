@@ -158,6 +158,9 @@ spec:
             - mountPath: /etc/ssl/certs/dogu-registry-cert.pem
               name: dogu-registry-cert
               subPath: dogu-registry-cert.pem
+            - mountPath: /etc/ssl/certs/dogu-v3-registry-cert.pem
+              name: dogu-v3-registry-cert
+              subPath: dogu-v3-registry-cert.pem
             - mountPath: /etc/ssl/certs/docker-registry-cert.pem
               name: docker-registry-cert
               subPath: docker-registry-cert.pem
@@ -179,6 +182,10 @@ spec:
           secret:
             optional: true
             secretName: dogu-registry-cert
+        - name: dogu-v3-registry-cert
+          secret:
+            optional: true
+            secretName: dogu-v3-registry-cert
         - name: webhook-cert
           secret:
             secretName: k8s-dogu-operator-webhook-cert
