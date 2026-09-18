@@ -1,6 +1,6 @@
 # Set these to the desired values
 ARTIFACT_ID=k8s-dogu-operator
-VERSION=3.29.0
+VERSION=3.29.1
 
 IMAGE=cloudogu/${ARTIFACT_ID}:${VERSION}
 GOTAG=1.26.8
