@@ -78,10 +78,13 @@ func v3Options() fx.Option {
 				initfx.NewDoguV3RegistryReader,
 				fx.As(new(installv3.DoguRegistryReader)),
 			),
+			fx.Annotate(initfx.NewChartArtifactHTTPClient, fx.As(new(installv3.HTTPClient))),
+			fx.Annotate(installv3.NewHTTPChartArtifactLoader, fx.As(new(installv3.ChartArtifactLoader))),
 
 			// install/update steps
 			installv3.NewEnsureOCIRepositoryStep,
 			installv3.NewWaitForOCIRepositoryReadyStep,
+			installv3.NewLoadChartArtifactStep,
 
 			// delete steps
 
