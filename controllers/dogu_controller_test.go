@@ -1,13 +1,14 @@
 package controllers
 
 import (
-	context "context"
+	"context"
 	"errors"
 	"fmt"
 	"testing"
 	"time"
 
 	v2 "github.com/cloudogu/k8s-dogu-lib/v3/api/v2"
+	"github.com/cloudogu/k8s-dogu-lib/v3/api/v3beta1"
 	opConfig "github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
 	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
@@ -43,7 +44,7 @@ func TestNewDoguReconciler(t *testing.T) {
 		managerMock.EXPECT().GetRESTMapper().Return(nil)
 
 		// when
-		reconciler, err := NewDoguReconciler(nil, nil, nil, nil, nil, nil, nil, managerMock, &opConfig.OperatorConfig{ExpositionEnabled: true, WarpMenuEntryEnabled: true})
+		reconciler, err := NewDoguReconciler(nil, nil, nil, nil, nil, nil, nil, nil, nil, managerMock, &opConfig.OperatorConfig{ExpositionEnabled: true, WarpMenuEntryEnabled: true})
 
 		// then
 		assert.NoError(t, err)
@@ -63,7 +64,7 @@ func TestNewDoguReconciler(t *testing.T) {
 		}()
 
 		// when
-		_, err := NewDoguReconciler(nil, nil, nil, nil, nil, nil, nil, nil, &opConfig.OperatorConfig{ExpositionEnabled: true, WarpMenuEntryEnabled: true})
+		_, err := NewDoguReconciler(nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, &opConfig.OperatorConfig{ExpositionEnabled: true, WarpMenuEntryEnabled: true})
 
 		// then
 		require.Error(t, err)
@@ -71,13 +72,17 @@ func TestNewDoguReconciler(t *testing.T) {
 }
 
 func TestDoguReconciler_Reconcile(t *testing.T) {
+	testRequest := controllerruntime.Request{NamespacedName: types.NamespacedName{Name: testCasDoguName, Namespace: testNamespace}}
+	testTimestamp := new(v1.NewTime(time.Now()))
 	type fields struct {
-		clientFn            func(t *testing.T) client.Client
-		doguChangeHandlerFn func(t *testing.T) DoguUsecase
-		doguDeleteHandlerFn func(t *testing.T) DoguUsecase
-		doguInterfaceFn     func(t *testing.T) doguInterface
-		requeueHandlerFn    func(t *testing.T) RequeueHandler
-		eventRecorderFn     func(t *testing.T) eventRecorder
+		clientFn              func(t *testing.T) client.Client
+		doguChangeHandlerFn   func(t *testing.T) DoguUsecase
+		doguDeleteHandlerFn   func(t *testing.T) DoguUsecase
+		doguV3ChangeHandlerFn func(t *testing.T) DoguV3InstallOrChangeUseCase
+		doguV3DeleteHandlerFn func(t *testing.T) DoguV3DeleteUseCase
+		doguInterfaceFn       func(t *testing.T) doguInterface
+		requeueHandlerV2Fn    func(t *testing.T) RequeueHandlerV2
+		eventRecorderFn       func(t *testing.T) eventRecorder
 	}
 	tests := []struct {
 		name    string
@@ -94,20 +99,8 @@ func TestDoguReconciler_Reconcile(t *testing.T) {
 					mck.EXPECT().Get(testCtx, types.NamespacedName{}, &v2.Dogu{}).Return(assert.AnError)
 					return mck
 				},
-				doguChangeHandlerFn: func(t *testing.T) DoguUsecase {
-					return NewMockDoguUsecase(t)
-				},
-				doguDeleteHandlerFn: func(t *testing.T) DoguUsecase {
-					return NewMockDoguUsecase(t)
-				},
-				doguInterfaceFn: func(t *testing.T) doguInterface {
-					return newMockDoguInterface(t)
-				},
-				eventRecorderFn: func(t *testing.T) eventRecorder {
-					return newMockEventRecorder(t)
-				},
-				requeueHandlerFn: func(t *testing.T) RequeueHandler {
-					mck := NewMockRequeueHandler(t)
+				requeueHandlerV2Fn: func(t *testing.T) RequeueHandlerV2 {
+					mck := NewMockRequeueHandlerV2(t)
 					mck.EXPECT().Handle(testCtx, &v2.Dogu{}, assert.AnError, time.Duration(0)).Return(controllerruntime.Result{Requeue: true, RequeueAfter: requeueTime}, nil)
 					return mck
 				},
@@ -117,33 +110,84 @@ func TestDoguReconciler_Reconcile(t *testing.T) {
 			wantErr: assert.NoError,
 		},
 		{
-			name: "should return and not requeue on incompatible dogu api version",
+			name: "should reconcile new change dogu api version v3",
 			fields: fields{
 				clientFn: func(t *testing.T) client.Client {
 					mck := NewMockK8sClient(t)
 					dogu := &v2.Dogu{}
 					mck.EXPECT().Get(testCtx, types.NamespacedName{Name: testCasDoguName, Namespace: testNamespace}, dogu).Return(nil).Run(func(ctx context.Context, key client.ObjectKey, obj client.Object, opts ...client.GetOption) {
 						*obj.(*v2.Dogu) = v2.Dogu{
-							ObjectMeta: v1.ObjectMeta{Name: testCasDoguName, Namespace: testNamespace, Annotations: map[string]string{"k8s.cloudogu.com/v3beta1-doguApiVersion": "v3beta1"}},
+							ObjectMeta: v1.ObjectMeta{Name: testCasDoguName, Namespace: testNamespace, Annotations: map[string]string{"k8s.cloudogu.com/v3beta1-doguApiVersion": "v3"}},
+							Spec:       v2.DoguSpec{Name: "official/" + testCasDoguName},
 						}
 					})
 					return mck
 				},
-				doguChangeHandlerFn: func(t *testing.T) DoguUsecase {
-					return NewMockDoguUsecase(t)
+				doguV3ChangeHandlerFn: func(t *testing.T) DoguV3InstallOrChangeUseCase {
+					v3HandlerMock := NewMockDoguV3InstallOrChangeUseCase(t)
+					v3Dogu := &v3beta1.Dogu{
+						ObjectMeta: v1.ObjectMeta{Name: testCasDoguName, Namespace: testNamespace, Annotations: map[string]string{}},
+						Spec: v3beta1.DoguSpec{
+							DoguApiVersion: "v3",
+							Name:           testCasDoguName,
+							DoguNamespace:  "official",
+						},
+					}
+					v3HandlerMock.EXPECT().HandleUntilApplied(testCtx, v3Dogu).Return(0, true, nil)
+					return v3HandlerMock
 				},
-				doguDeleteHandlerFn: func(t *testing.T) DoguUsecase {
-					return NewMockDoguUsecase(t)
-				},
-				doguInterfaceFn: func(t *testing.T) doguInterface {
-					return newMockDoguInterface(t)
-				},
-				eventRecorderFn: func(t *testing.T) eventRecorder {
-					return newMockEventRecorder(t)
-				},
-				requeueHandlerFn: func(t *testing.T) RequeueHandler { return NewMockRequeueHandler(t) },
 			},
-			req:     controllerruntime.Request{NamespacedName: types.NamespacedName{Name: testCasDoguName, Namespace: testNamespace}},
+			req:     testRequest,
+			want:    controllerruntime.Result{},
+			wantErr: assert.NoError,
+		},
+		{
+			name: "should reconcile new delete dogu api version v3",
+			fields: fields{
+				clientFn: func(t *testing.T) client.Client {
+					mck := NewMockK8sClient(t)
+					dogu := &v2.Dogu{}
+					mck.EXPECT().Get(testCtx, types.NamespacedName{Name: testCasDoguName, Namespace: testNamespace}, dogu).Return(nil).Run(func(ctx context.Context, key client.ObjectKey, obj client.Object, opts ...client.GetOption) {
+						*obj.(*v2.Dogu) = v2.Dogu{
+							ObjectMeta: v1.ObjectMeta{Name: testCasDoguName, Namespace: testNamespace, DeletionTimestamp: testTimestamp, Annotations: map[string]string{"k8s.cloudogu.com/v3beta1-doguApiVersion": "v3"}},
+							Spec:       v2.DoguSpec{Name: "official/" + testCasDoguName},
+						}
+					})
+					return mck
+				},
+				doguV3DeleteHandlerFn: func(t *testing.T) DoguV3DeleteUseCase {
+					v3HandlerMock := NewMockDoguV3DeleteUseCase(t)
+					v3Dogu := &v3beta1.Dogu{
+						ObjectMeta: v1.ObjectMeta{Name: testCasDoguName, Namespace: testNamespace, DeletionTimestamp: testTimestamp, Annotations: map[string]string{}},
+						Spec: v3beta1.DoguSpec{
+							DoguApiVersion: "v3",
+							Name:           testCasDoguName,
+							DoguNamespace:  "official",
+						},
+					}
+					v3HandlerMock.EXPECT().HandleUntilApplied(testCtx, v3Dogu).Return(0, true, nil)
+					return v3HandlerMock
+				},
+			},
+			req:     testRequest,
+			want:    controllerruntime.Result{},
+			wantErr: assert.NoError,
+		},
+		{
+			name: "should stop reconciliation on invalid dogu v2 to v3 conversion",
+			fields: fields{
+				clientFn: func(t *testing.T) client.Client {
+					mck := NewMockK8sClient(t)
+					dogu := &v2.Dogu{}
+					mck.EXPECT().Get(testCtx, types.NamespacedName{Name: testCasDoguName, Namespace: testNamespace}, dogu).Return(nil).Run(func(ctx context.Context, key client.ObjectKey, obj client.Object, opts ...client.GetOption) {
+						*obj.(*v2.Dogu) = v2.Dogu{
+							ObjectMeta: v1.ObjectMeta{Name: testCasDoguName, Namespace: testNamespace, Annotations: map[string]string{"k8s.cloudogu.com/v3beta1-doguApiVersion": "v4"}},
+						}
+					})
+					return mck
+				},
+			},
+			req:     testRequest,
 			want:    controllerruntime.Result{},
 			wantErr: assert.NoError,
 		},
@@ -159,21 +203,6 @@ func TestDoguReconciler_Reconcile(t *testing.T) {
 						Build()
 
 					return mck
-				},
-				doguChangeHandlerFn: func(t *testing.T) DoguUsecase {
-					return NewMockDoguUsecase(t)
-				},
-				doguDeleteHandlerFn: func(t *testing.T) DoguUsecase {
-					return NewMockDoguUsecase(t)
-				},
-				doguInterfaceFn: func(t *testing.T) doguInterface {
-					return newMockDoguInterface(t)
-				},
-				eventRecorderFn: func(t *testing.T) eventRecorder {
-					return newMockEventRecorder(t)
-				},
-				requeueHandlerFn: func(t *testing.T) RequeueHandler {
-					return NewMockRequeueHandler(t)
 				},
 			},
 			req:     controllerruntime.Request{},
@@ -213,8 +242,8 @@ func TestDoguReconciler_Reconcile(t *testing.T) {
 					mck.EXPECT().Event(mock.AnythingOfType("*v2.Dogu"), v3.EventTypeNormal, ReasonReconcileStarted, "reconciliation started")
 					return mck
 				},
-				requeueHandlerFn: func(t *testing.T) RequeueHandler {
-					mck := NewMockRequeueHandler(t)
+				requeueHandlerV2Fn: func(t *testing.T) RequeueHandlerV2 {
+					mck := NewMockRequeueHandlerV2(t)
 					mck.EXPECT().Handle(testCtx, mock.AnythingOfType("*v2.Dogu"), errors.Join(assert.AnError), time.Duration(0)).Return(controllerruntime.Result{Requeue: true, RequeueAfter: requeueTime}, nil)
 					return mck
 				},
@@ -256,8 +285,8 @@ func TestDoguReconciler_Reconcile(t *testing.T) {
 					mck.EXPECT().Event(mock.AnythingOfType("*v2.Dogu"), v3.EventTypeNormal, ReasonReconcileStarted, "reconciliation started")
 					return mck
 				},
-				requeueHandlerFn: func(t *testing.T) RequeueHandler {
-					mck := NewMockRequeueHandler(t)
+				requeueHandlerV2Fn: func(t *testing.T) RequeueHandlerV2 {
+					mck := NewMockRequeueHandlerV2(t)
 					mck.EXPECT().Handle(testCtx, mock.AnythingOfType("*v2.Dogu"), errors.Join(assert.AnError), time.Duration(0)).Return(controllerruntime.Result{Requeue: true, RequeueAfter: requeueTime}, nil)
 					return mck
 				},
@@ -299,8 +328,8 @@ func TestDoguReconciler_Reconcile(t *testing.T) {
 					mck.EXPECT().Event(mock.AnythingOfType("*v2.Dogu"), v3.EventTypeNormal, ReasonReconcileStarted, "reconciliation started")
 					return mck
 				},
-				requeueHandlerFn: func(t *testing.T) RequeueHandler {
-					mck := NewMockRequeueHandler(t)
+				requeueHandlerV2Fn: func(t *testing.T) RequeueHandlerV2 {
+					mck := NewMockRequeueHandlerV2(t)
 					mck.EXPECT().Handle(testCtx, mock.AnythingOfType("*v2.Dogu"), nil, time.Duration(0)).Return(controllerruntime.Result{Requeue: false, RequeueAfter: 0}, nil)
 					return mck
 				},
@@ -342,8 +371,8 @@ func TestDoguReconciler_Reconcile(t *testing.T) {
 					mck.EXPECT().Event(mock.AnythingOfType("*v2.Dogu"), v3.EventTypeNormal, ReasonReconcileStarted, "reconciliation started")
 					return mck
 				},
-				requeueHandlerFn: func(t *testing.T) RequeueHandler {
-					mck := NewMockRequeueHandler(t)
+				requeueHandlerV2Fn: func(t *testing.T) RequeueHandlerV2 {
+					mck := NewMockRequeueHandlerV2(t)
 					mck.EXPECT().Handle(testCtx, mock.AnythingOfType("*v2.Dogu"), nil, time.Duration(0)).Return(controllerruntime.Result{Requeue: false, RequeueAfter: 0}, nil)
 					return mck
 				},
@@ -355,13 +384,49 @@ func TestDoguReconciler_Reconcile(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			var k8sClient K8sClient
+			if tt.fields.clientFn != nil {
+				k8sClient = tt.fields.clientFn(t)
+			}
+
+			var doguChangeHandler DoguInstallOrChangeUseCase
+			if tt.fields.doguChangeHandlerFn != nil {
+				doguChangeHandler = tt.fields.doguChangeHandlerFn(t)
+			}
+			var doguDeleteHandler DoguDeleteUseCase
+			if tt.fields.doguDeleteHandlerFn != nil {
+				doguDeleteHandler = tt.fields.doguDeleteHandlerFn(t)
+			}
+			var doguV3ChangeHandler DoguV3InstallOrChangeUseCase
+			if tt.fields.doguV3ChangeHandlerFn != nil {
+				doguV3ChangeHandler = tt.fields.doguV3ChangeHandlerFn(t)
+			}
+			var doguV3DeleteHandler DoguV3DeleteUseCase
+			if tt.fields.doguV3DeleteHandlerFn != nil {
+				doguV3DeleteHandler = tt.fields.doguV3DeleteHandlerFn(t)
+			}
+			var doguClientInterface doguInterface
+			if tt.fields.doguInterfaceFn != nil {
+				doguClientInterface = tt.fields.doguInterfaceFn(t)
+			}
+			var requeueHandlerV2 RequeueHandlerV2
+			if tt.fields.requeueHandlerV2Fn != nil {
+				requeueHandlerV2 = tt.fields.requeueHandlerV2Fn(t)
+			}
+			var eventRecoder eventRecorder
+			if tt.fields.eventRecorderFn != nil {
+				eventRecoder = tt.fields.eventRecorderFn(t)
+			}
+
 			r := &DoguReconciler{
-				client:            tt.fields.clientFn(t),
-				doguChangeHandler: tt.fields.doguChangeHandlerFn(t),
-				doguDeleteHandler: tt.fields.doguDeleteHandlerFn(t),
-				doguInterface:     tt.fields.doguInterfaceFn(t),
-				requeueHandler:    tt.fields.requeueHandlerFn(t),
-				eventRecorder:     tt.fields.eventRecorderFn(t),
+				client:              k8sClient,
+				doguChangeHandler:   doguChangeHandler,
+				doguDeleteHandler:   doguDeleteHandler,
+				doguV3ChangeHandler: doguV3ChangeHandler,
+				doguV3DeleteHandler: doguV3DeleteHandler,
+				doguInterface:       doguClientInterface,
+				requeueHandlerV2:    requeueHandlerV2,
+				eventRecorder:       eventRecoder,
 			}
 			got, err := r.Reconcile(testCtx, tt.req)
 			if !tt.wantErr(t, err, fmt.Sprintf("Reconcile(%v, %v)", testCtx, tt.req)) {
@@ -386,4 +451,29 @@ func TestDoguReconciler_webhookRegister(t *testing.T) {
 		// then
 		require.ErrorContains(t, err, "failed to setup dogu webhook with manager")
 	})
+}
+
+func TestDoguV2ConvertsToV3(t *testing.T) {
+	v2Dogu := &v2.Dogu{
+		ObjectMeta: v1.ObjectMeta{
+			Name:        testDoguName,
+			Namespace:   testNamespace,
+			Annotations: map[string]string{"k8s.cloudogu.com/v3beta1-doguApiVersion": "v3"},
+		},
+		Spec: v2.DoguSpec{Name: "official/" + testDoguName},
+	}
+
+	v3Dogu := &v3beta1.Dogu{}
+	err := v2Dogu.ConvertTo(v3Dogu)
+
+	require.NoError(t, err)
+	v3Dogu2 := &v3beta1.Dogu{
+		ObjectMeta: v1.ObjectMeta{Name: testDoguName, Namespace: testNamespace, Annotations: map[string]string{}},
+		Spec: v3beta1.DoguSpec{
+			Name:           testDoguName,
+			DoguNamespace:  "official",
+			DoguApiVersion: "v3",
+		},
+	}
+	assert.Equal(t, v3Dogu, v3Dogu2)
 }

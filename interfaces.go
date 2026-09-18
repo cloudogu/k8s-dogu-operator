@@ -5,6 +5,7 @@ import (
 	authRegClientV1 "github.com/cloudogu/k8s-auth-registration-lib/client/typed/api/v1"
 	doguClient "github.com/cloudogu/k8s-dogu-lib/v3/client"
 	doguv2 "github.com/cloudogu/k8s-dogu-lib/v3/client/typed/api/v2"
+	"github.com/cloudogu/k8s-dogu-lib/v3/client/typed/api/v3beta1"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/exec"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/imageregistry"
 	warpmenuentryv1 "github.com/cloudogu/k8s-warp-menu-entry-lib/client/typed/api/v1"
@@ -88,8 +89,26 @@ type doguV2Interface interface {
 
 //nolint:unused
 //goland:noinspection GoUnusedType
+type doguV2Client interface {
+	doguv2.DoguInterface
+}
+
+//nolint:unused
+//goland:noinspection GoUnusedType
 type doguRestartInterface interface {
 	doguv2.DoguRestartInterface
+}
+
+//nolint:unused
+//goland:noinspection GoUnusedType
+type doguV3Interface interface {
+	v3beta1.DoguV3beta1Interface
+}
+
+//nolint:unused
+//goland:noinspection GoUnusedType
+type doguV3Client interface {
+	v3beta1.DoguInterface
 }
 
 // mocks for integration tests

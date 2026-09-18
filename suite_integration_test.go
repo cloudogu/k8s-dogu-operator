@@ -43,7 +43,7 @@ import (
 
 // These tests use Ginkgo (BDD-style Go testing framework). Refer to
 // http://onsi.github.io/ginkgo/ to learn more about Ginkgo.
-var doguV2Client *doguv2.DoguV2Interface
+var doguV2 *doguv2.DoguV2Interface
 var k8sClientSet controllers.ClientSet
 var testEnv *envtest.Environment
 
@@ -67,7 +67,7 @@ var (
 	oldCtrlBuilder                       func(m manager.Manager) *ctrl.Builder
 	oldNewCommandExecutor                func(cli client.Client, restConfig *rest.Config, clientSet kubernetes.Interface, coreV1RestClient rest.Interface) exec.CommandExecutor
 	oldNewRemoteDoguDescriptorRepository func(operatorConfig *config.OperatorConfig) (dogu.RemoteDoguDescriptorRepository, error)
-	oldNewImageRegistry                  func() imageregistry.ImageRegistry
+	oldNewImageRegistry                  func(operatorConfig *config.OperatorConfig) imageregistry.ImageRegistry
 	oldGetArgs                           func() initfx.Args
 	oldGetWebhookServer                  func() webhook.Server
 )
@@ -138,7 +138,7 @@ var _ = ginkgo.BeforeSuite(func() {
 	}
 
 	oldNewImageRegistry = initfx.NewImageRegistry
-	initfx.NewImageRegistry = func() imageregistry.ImageRegistry {
+	initfx.NewImageRegistry = func(operatorConfig *config.OperatorConfig) imageregistry.ImageRegistry {
 		return ImageRegistryMock
 	}
 
@@ -172,7 +172,7 @@ var _ = ginkgo.BeforeSuite(func() {
 	ginkgo.By("creating clients")
 	doguClientset, err := doguClient.NewForConfig(cfg)
 	gomega.Expect(err).ToNot(gomega.HaveOccurred())
-	doguV2Client = new(doguClientset.DoguV2())
+	doguV2 = new(doguClientset.DoguV2())
 
 	k8sClientSet, err = kubernetes.NewForConfig(cfg)
 	gomega.Expect(err).ToNot(gomega.HaveOccurred())
@@ -198,7 +198,7 @@ var _ = ginkgo.BeforeSuite(func() {
 	ginkgo.By("starting application")
 	go func() {
 		defer ginkgo.GinkgoRecover()
-		fxApp = fxtest.New(ginkgo.GinkgoT(), options()...).RequireStart()
+		fxApp = fxtest.New(ginkgo.GinkgoT(), allOptions()).RequireStart()
 	}()
 }, 60)
 

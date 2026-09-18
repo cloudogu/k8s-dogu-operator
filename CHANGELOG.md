@@ -6,11 +6,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v3.29.1] - 2026-09-18
+### Changed
+- [#332] In-memory LRU cache for pulled dogu image configs to reduce the request burst on the container registry
+  - Configurable via the `IMAGE_CONFIG_CACHE_SIZE` environment variable / `controllerManager.env.imageConfigCacheSize`
+    Helm value (default `50`); set to `0` to disable caching
+  - Relies on immutable image references
+
 ## [v3.29.0] - 2026-09-03
 ### Added
 - [#326] Support the `v3beta1` Dogu CRD API version via a conversion webhook; `v2` remains the storage version for now to avoid unnecessary webhook calls during the migration period
   - Requires `cert-manager` to issue the webhook's TLS certificate; see `docs/development/v3beta1_conversion_webhook_en.md`
   - The operator only processes `v2` dogus for now; non-v2 dogus are safely skipped/rejected
+- [#329] Add Dogu v3 handler stub
+  - this allows for implementing the handling of API v3 dogus in a safe and v2-independent way
 
 ## [v3.28.0] - 2026-08-28
 ### Added
