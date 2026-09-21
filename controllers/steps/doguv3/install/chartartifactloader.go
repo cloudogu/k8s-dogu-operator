@@ -51,7 +51,9 @@ func (loaderService *HTTPChartArtifactLoader) GetChart(ctx context.Context, arti
 	}
 
 	if cached, ok := loaderService.cache.Get(expected.String()); ok {
-		return loadChart(cached.([]byte))
+		if archive, isArchive := cached.([]byte); isArchive {
+			return loadChart(archive)
+		}
 	}
 
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, parsedURL.String(), nil)
@@ -66,15 +68,8 @@ func (loaderService *HTTPChartArtifactLoader) GetChart(ctx context.Context, arti
 		_ = response.Body.Close()
 	}()
 
-	if response.StatusCode == http.StatusNotFound {
-		return nil, fmt.Errorf("%w: unexpected HTTP status %s", errChartArtifactNotFound, response.Status)
-	}
-	if response.StatusCode != http.StatusOK {
-		if response.StatusCode == http.StatusRequestTimeout || response.StatusCode == http.StatusTooManyRequests || response.StatusCode >= http.StatusInternalServerError {
-			return nil, fmt.Errorf("failed to download chart artifact: unexpected HTTP status %s", response.Status)
-		}
-
-		return nil, fmt.Errorf("%w: unexpected HTTP status %s", errInvalidChartArtifact, response.Status)
+	if err = validateResponseStatus(response); err != nil {
+		return nil, err
 	}
 
 	data, err := io.ReadAll(io.LimitReader(response.Body, maxChartArtifactSize+1))
@@ -98,6 +93,19 @@ func (loaderService *HTTPChartArtifactLoader) GetChart(ctx context.Context, arti
 	loaderService.cache.Add(expected.String(), data)
 
 	return loadedChart, nil
+}
+
+func validateResponseStatus(response *http.Response) error {
+	switch {
+	case response.StatusCode == http.StatusOK:
+		return nil
+	case response.StatusCode == http.StatusNotFound:
+		return fmt.Errorf("%w: unexpected HTTP status %s", errChartArtifactNotFound, response.Status)
+	case response.StatusCode == http.StatusRequestTimeout || response.StatusCode == http.StatusTooManyRequests || response.StatusCode >= http.StatusInternalServerError:
+		return fmt.Errorf("failed to download chart artifact: unexpected HTTP status %s", response.Status)
+	default:
+		return fmt.Errorf("%w: unexpected HTTP status %s", errInvalidChartArtifact, response.Status)
+	}
 }
 
 func loadChart(data []byte) (*chart.Chart, error) {
