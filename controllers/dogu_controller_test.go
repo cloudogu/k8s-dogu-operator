@@ -133,7 +133,7 @@ func TestDoguReconciler_Reconcile(t *testing.T) {
 							DoguNamespace:  "official",
 						},
 					}
-					v3HandlerMock.EXPECT().HandleUntilApplied(testCtx, v3Dogu).Return(0, true, nil)
+					v3HandlerMock.EXPECT().HandleUntilApplied(testCtx, v3Dogu).Return(0, nil)
 					return v3HandlerMock
 				},
 			},
@@ -165,7 +165,7 @@ func TestDoguReconciler_Reconcile(t *testing.T) {
 							DoguNamespace:  "official",
 						},
 					}
-					v3HandlerMock.EXPECT().HandleUntilApplied(testCtx, v3Dogu).Return(0, true, nil)
+					v3HandlerMock.EXPECT().HandleUntilApplied(testCtx, v3Dogu).Return(0, nil)
 					return v3HandlerMock
 				},
 			},

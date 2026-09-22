@@ -56,7 +56,7 @@ type DoguUsecase interface {
 	HandleUntilApplied(ctx context.Context, doguResource *v2.Dogu) (time.Duration, bool, error)
 }
 type DoguV3Usecase interface {
-	HandleUntilApplied(ctx context.Context, doguResource *v3beta1.Dogu) (time.Duration, bool, error)
+	HandleUntilApplied(ctx context.Context, doguResource *v3beta1.Dogu) (time.Duration, error)
 }
 
 // RequeueHandlerV2 abstracts the process to decide whether a requeue process should be done based on received errors.
