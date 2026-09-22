@@ -1,10 +1,13 @@
 package config
 
 import (
+	"fmt"
 	"os"
+	"runtime"
 	"testing"
 
 	"github.com/cloudogu/cesapp-lib/core"
+	dccv3 "github.com/cloudogu/dogu-lib/doguv3/doguregistry/dcc/config"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -13,6 +16,10 @@ import (
 func TestNewOperatorConfig(t *testing.T) {
 	_ = os.Unsetenv("NAMESPACE")
 	_ = os.Unsetenv("DOGU_REGISTRY_ENDPOINT")
+	_ = os.Unsetenv("DOGU_V3_REGISTRY_ENDPOINT")
+	_ = os.Unsetenv("DOGU_V3_REGISTRY_USERNAME")
+	_ = os.Unsetenv("DOGU_V3_REGISTRY_PASSWORD")
+	_ = os.Unsetenv("DOGU_V3_REGISTRY_INSECURE_SKIP_VERIFY")
 	_ = os.Unsetenv("DOGU_REGISTRY_USERNAME")
 	_ = os.Unsetenv("DOGU_REGISTRY_PASSWORD")
 	_ = os.Unsetenv("DOGU_REGISTRY_URLSCHEMA")
@@ -25,6 +32,13 @@ func TestNewOperatorConfig(t *testing.T) {
 		Endpoint: "myEndpoint",
 		Username: "myUsername",
 		Password: "myPassword",
+	}
+
+	expectedV3DoguRegistryData := DoguRegistryData{
+		Endpoint:  "v3Endpoint",
+		Username:  "v3User",
+		Password:  "v3Password",
+		URLSchema: "default",
 	}
 
 	t.Run("Error on missing namespace env var", func(t *testing.T) {
@@ -78,6 +92,9 @@ func TestNewOperatorConfig(t *testing.T) {
 	t.Setenv("EXPOSITION_ENABLED", "true")
 	t.Setenv("WARP_MENU_ENTRY_ENABLED", "true")
 	t.Setenv("DISABLE_POSTFIX_DEPENDENCY_CHECK", "true")
+	t.Setenv("DOGU_V3_REGISTRY_ENDPOINT", expectedV3DoguRegistryData.Endpoint)
+	t.Setenv("DOGU_V3_REGISTRY_USERNAME", expectedV3DoguRegistryData.Username)
+	t.Setenv("DOGU_V3_REGISTRY_PASSWORD", expectedV3DoguRegistryData.Password)
 
 	t.Run("Create config successfully", func(t *testing.T) {
 		// when
@@ -92,6 +109,7 @@ func TestNewOperatorConfig(t *testing.T) {
 		assert.True(t, operatorConfig.AuthRegistrationEnabled)
 		assert.True(t, operatorConfig.ExpositionEnabled)
 		assert.True(t, operatorConfig.WarpMenuEntryEnabled)
+		assert.Equal(t, expectedV3DoguRegistryData, operatorConfig.DoguV3Registry)
 	})
 }
 
@@ -120,7 +138,6 @@ func TestOperatorConfig_GetRemoteConfiguration(t *testing.T) {
 	t.Setenv(envVarNamespace, "test")
 	t.Setenv(envVarDoguRegistryEndpoint, "myEndpoint")
 	t.Setenv(envVarDoguRegistryUsername, "user")
-	t.Setenv(envVarDoguRegistryPassword, "password")
 	t.Setenv(envVarDoguRegistryPassword, "password")
 	t.Setenv(envVarNetworkPolicyEnabled, "true")
 	t.Setenv(envVarAuthRegistrationEnabled, "false")
@@ -169,6 +186,24 @@ func TestOperatorConfig_GetRemoteCredentials(t *testing.T) {
 
 	// when
 	remoteCredentials := o.GetRemoteCredentials()
+
+	// then
+	assert.NotNil(t, remoteCredentials)
+	assert.Equal(t, "testUsername", remoteCredentials.Username)
+	assert.Equal(t, "testPassword", remoteCredentials.Password)
+}
+
+func TestOperatorConfig_GetV3RemoteCredentials(t *testing.T) {
+	// given
+	o := &OperatorConfig{
+		DoguV3Registry: DoguRegistryData{
+			Username: "testUsername",
+			Password: "testPassword",
+		},
+	}
+
+	// when
+	remoteCredentials := o.GetV3RemoteCredentials()
 
 	// then
 	assert.NotNil(t, remoteCredentials)
@@ -239,6 +274,76 @@ func TestGetImageConfigCacheSize(t *testing.T) {
 
 			// then
 			assert.Equal(t, tt.want, size)
+		})
+	}
+}
+
+func TestOperatorConfig_GetV3RemoteConfiguration(t *testing.T) {
+	type fields struct {
+		DoguV3Registry DoguRegistryData
+	}
+	endpoint := "https://v3.dogu.cloudogu.com"
+	schema := "default"
+	tests := []struct {
+		name    string
+		fields  fields
+		want    *dccv3.DoguRegistryConfiguration
+		wantErr assert.ErrorAssertionFunc
+		setEnv  func(t *testing.T)
+	}{
+		{
+			name: "success",
+			fields: fields{
+				DoguV3Registry: DoguRegistryData{
+					Endpoint:  endpoint,
+					URLSchema: schema,
+				},
+			},
+			want: &dccv3.DoguRegistryConfiguration{
+				BaseURL:       endpoint,
+				ProxySettings: dccv3.ProxySettings{},
+				UserAgent:     fmt.Sprintf("k8s-dogu-operator/%s (%s/%s)", "1.0.0", runtime.GOOS, runtime.GOARCH),
+				URLSchema:     schema,
+			},
+			wantErr: assert.NoError,
+		},
+		{
+			name: "success with insecure",
+			fields: fields{
+				DoguV3Registry: DoguRegistryData{
+					Endpoint:  endpoint,
+					URLSchema: schema,
+				},
+			},
+			want: &dccv3.DoguRegistryConfiguration{
+				BaseURL:            endpoint,
+				ProxySettings:      dccv3.ProxySettings{},
+				UserAgent:          fmt.Sprintf("k8s-dogu-operator/%s (%s/%s)", "1.0.0", runtime.GOOS, runtime.GOARCH),
+				URLSchema:          schema,
+				InsecureSkipVerify: true,
+			},
+			wantErr: assert.NoError,
+			setEnv: func(t *testing.T) {
+				t.Setenv("DOGU_V3_REGISTRY_INSECURE_SKIP_VERIFY", "true")
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.setEnv != nil {
+				tt.setEnv(t)
+			}
+			version, err := core.ParseVersion("1.0.0")
+			require.NoError(t, err)
+			o := &OperatorConfig{
+				DoguV3Registry: tt.fields.DoguV3Registry,
+				Version:        &version,
+			}
+			got, err := o.GetV3RemoteConfiguration()
+			if !tt.wantErr(t, err, fmt.Sprintf("GetV3RemoteConfiguration()")) {
+				return
+			}
+			assert.Equalf(t, tt.want, got, "GetV3RemoteConfiguration()")
 		})
 	}
 }
