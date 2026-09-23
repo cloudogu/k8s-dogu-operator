@@ -2,11 +2,9 @@ package install
 
 import (
 	"context"
-	"net/http"
 
 	"github.com/cloudogu/dogu-lib/doguv3"
 	doguv3steps "github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv3"
-	"helm.sh/helm/v3/pkg/chart"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -21,14 +19,6 @@ type K8sClient interface {
 
 type EventRecorder interface {
 	Event(object runtime.Object, eventtype, reason, message string)
-}
-
-type HTTPClient interface {
-	Do(req *http.Request) (*http.Response, error)
-}
-
-type ChartArtifactLoader interface {
-	GetChart(ctx context.Context, artifactURL, expectedDigest string) (*chart.Chart, error)
 }
 
 type Step interface {
