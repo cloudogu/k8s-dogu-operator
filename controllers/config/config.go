@@ -21,8 +21,7 @@ const (
 )
 
 const (
-	defaultRequeueTime                = time.Second * 5
-	defaultHelmReconciliationInterval = time.Second * 15
+	defaultRequeueTime = time.Second * 5
 )
 
 const cacheDir = "/tmp/dogu-registry-cache"
@@ -61,6 +60,7 @@ const (
 	envVarRequeueTimeForDoguResourceInNanoseconds = "REQUEUE_TIME_FOR_DOGU_RESOURCE_IN_NANOSECONDS"
 	envVarImageConfigCacheSize                    = "IMAGE_CONFIG_CACHE_SIZE"
 	envVarHelmReconciliationInterval              = "HELM_RECONCILIATION_INTERVAL"
+	envVarHelmRetryInterval                       = "HELM_RETRY_INTERVAL"
 	errMsgFailedToParseEnvVarValue                = "failed to parse value of environment variable %s: %w"
 )
 
@@ -107,6 +107,8 @@ type OperatorConfig struct {
 	ImageConfigCacheSize int `json:"image_config_cache_size"`
 	// HelmReconciliationInterval defines the interval in which dogu Helm releases should be reconciled by helm-controller
 	HelmReconciliationInterval time.Duration `json:"helm_reconciliation_interval"`
+	// HelmRetryInterval defines the interval in which Helm installs or upgrade for a dogu should be retried on error
+	HelmRetryInterval time.Duration `json:"helm_retry_interval"`
 }
 
 type Version string
@@ -142,11 +144,17 @@ func NewOperatorConfig(version Version) (*OperatorConfig, error) {
 	}
 	log.Info(fmt.Sprintf("Found stored dogu reconciler requeue time! Using requeue time %s", doguReconcilerRequeueTime.String()))
 
-	helmReconciliationInterval, err := readHelmReconciliationInterval()
+	helmReconciliationInterval, err := readDuration(envVarHelmReconciliationInterval)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read helm reconciliation interval: %w", err)
 	}
 	log.Info(fmt.Sprintf("Found stored helm reconciliation interval! Using interval %s", helmReconciliationInterval))
+
+	helmRetryInterval, err := readDuration(envVarHelmRetryInterval)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read helm retry interval: %w", err)
+	}
+	log.Info(fmt.Sprintf("Found stored helm retry interval! Using interval %s", helmRetryInterval))
 
 	return &OperatorConfig{
 		Namespace:                     namespace,
@@ -161,6 +169,7 @@ func NewOperatorConfig(version Version) (*OperatorConfig, error) {
 		ImageConfigCacheSize:          getImageConfigCacheSize(),
 		DoguV3Registry:                readDoguV3RegistryData(),
 		HelmReconciliationInterval:    helmReconciliationInterval,
+		HelmRetryInterval:             helmRetryInterval,
 	}, nil
 }
 
@@ -485,14 +494,14 @@ func getImageConfigCacheSize() int {
 	return size
 }
 
-func readHelmReconciliationInterval() (time.Duration, error) {
-	timeString, err := getRequiredEnvVar(envVarHelmReconciliationInterval)
+func readDuration(envVar string) (time.Duration, error) {
+	timeString, err := getRequiredEnvVar(envVar)
 	if err != nil {
-		return defaultHelmReconciliationInterval, err
+		return 0, err
 	}
 	duration, err := time.ParseDuration(timeString)
 	if err != nil {
-		return defaultHelmReconciliationInterval, fmt.Errorf("value of env var [%s] is no valid duration: %w", envVarHelmReconciliationInterval, err)
+		return 0, fmt.Errorf("value of env var [%s] is no valid duration: %w", envVar, err)
 	}
 	return duration, nil
 }

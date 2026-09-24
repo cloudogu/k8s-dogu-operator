@@ -29,6 +29,7 @@ func TestNewOperatorConfig(t *testing.T) {
 	_ = os.Unsetenv("WARP_MENU_ENTRY_ENABLED")
 	_ = os.Unsetenv("REQUEUE_TIME_FOR_DOGU_RESOURCE_IN_NANOSECONDS")
 	_ = os.Unsetenv("HELM_RECONCILIATION_INTERVAL")
+	_ = os.Unsetenv("HELM_RETRY_INTERVAL")
 
 	expectedNamespace := "myNamespace"
 	expectedDoguRegistryData := DoguRegistryData{
@@ -146,6 +147,18 @@ func TestNewOperatorConfig(t *testing.T) {
 	})
 
 	t.Setenv("HELM_RECONCILIATION_INTERVAL", "15s")
+
+	t.Run("Error on missing duration for helm retry", func(t *testing.T) {
+		// when
+		operatorConfig, err := NewOperatorConfig("0.0.0")
+
+		// then
+		require.Error(t, err)
+		assert.ErrorContains(t, err, "failed to get env var [HELM_RETRY_INTERVAL]: environment variable HELM_RETRY_INTERVAL must be set")
+		assert.Nil(t, operatorConfig)
+	})
+
+	t.Setenv("HELM_RETRY_INTERVAL", "300s")
 	t.Run("Create config successfully", func(t *testing.T) {
 		// when
 		operatorConfig, err := NewOperatorConfig("0.1.0")
@@ -162,6 +175,7 @@ func TestNewOperatorConfig(t *testing.T) {
 		assert.Equal(t, expectedV3DoguRegistryData, operatorConfig.DoguV3Registry)
 		assert.Equal(t, 50*time.Microsecond, operatorConfig.RequeueTimeForDoguReconciler)
 		assert.Equal(t, 15*time.Second, operatorConfig.HelmReconciliationInterval)
+		assert.Equal(t, 5*time.Minute, operatorConfig.HelmRetryInterval)
 	})
 }
 
@@ -197,6 +211,7 @@ func TestOperatorConfig_GetRemoteConfiguration(t *testing.T) {
 	t.Setenv(envVarWarpMenuEntryEnabled, "false")
 	t.Setenv(envVarRequeueTimeForDoguResourceInNanoseconds, "5")
 	t.Setenv(envVarHelmReconciliationInterval, "3m")
+	t.Setenv(envVarHelmRetryInterval, "5m")
 
 	for _, tt := range tests {
 		t.Setenv(envVarDoguRegistryURLSchema, tt.urlSchemaEnv)
