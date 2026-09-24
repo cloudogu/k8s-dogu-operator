@@ -113,12 +113,7 @@ type Version string
 
 // NewOperatorConfig creates a new operator config by reading values from the environment variables
 func NewOperatorConfig(version Version) (*OperatorConfig, error) {
-	stage, err := getRequiredEnvVar(StageEnvironmentVariable)
-	if err != nil {
-		log.Error(err, "Error reading stage environment variable. Use Stage production")
-	}
-	Stage = stage
-
+	Stage = getEnvVarWithDefault(StageEnvironmentVariable, Stage)
 	if Stage == StageDevelopment {
 		log.Info("Starting in development mode! This is not recommended for production!")
 	}
@@ -172,7 +167,7 @@ func NewOperatorConfig(version Version) (*OperatorConfig, error) {
 func readNamespace() (string, error) {
 	namespace, err := getRequiredEnvVar(envVarNamespace)
 	if err != nil {
-		return "", newEnvVarError(envVarNamespace, err)
+		return "", err
 	}
 
 	return namespace, nil
@@ -181,7 +176,7 @@ func readNamespace() (string, error) {
 func readDoguReconcilerRequeueTime() (time.Duration, error) {
 	requeueTimeString, err := getRequiredEnvVar(envVarRequeueTimeForDoguResourceInNanoseconds)
 	if err != nil {
-		return defaultRequeueTime, newEnvVarError(envVarRequeueTimeForDoguResourceInNanoseconds, err)
+		return defaultRequeueTime, err
 	}
 	requeueTime, err := strconv.ParseFloat(requeueTimeString, 64)
 	if err != nil {
@@ -226,26 +221,22 @@ func readDoguV3RegistryData() DoguRegistryData {
 func readDoguRegistryData() (DoguRegistryData, error) {
 	endpoint, err := getRequiredEnvVar(envVarDoguRegistryEndpoint)
 	if err != nil {
-		return DoguRegistryData{}, newEnvVarError(envVarDoguRegistryEndpoint, err)
+		return DoguRegistryData{}, err
 	}
 	// remove tailing slash
 	endpoint = strings.TrimSuffix(endpoint, "/")
 
 	username, err := getRequiredEnvVar(envVarDoguRegistryUsername)
 	if err != nil {
-		return DoguRegistryData{}, newEnvVarError(envVarDoguRegistryUsername, err)
+		return DoguRegistryData{}, err
 	}
 
 	password, err := getRequiredEnvVar(envVarDoguRegistryPassword)
 	if err != nil {
-		return DoguRegistryData{}, newEnvVarError(envVarDoguRegistryPassword, err)
+		return DoguRegistryData{}, err
 	}
 
-	urlschema, err := getRequiredEnvVar(envVarDoguRegistryURLSchema)
-	if err != nil {
-		log.Info(envVarDoguRegistryURLSchema + " not set, using default")
-		urlschema = "default"
-	}
+	urlschema := getEnvVarWithDefault(envVarDoguRegistryURLSchema, "default")
 
 	return DoguRegistryData{
 		Endpoint:  endpoint,
@@ -255,10 +246,20 @@ func readDoguRegistryData() (DoguRegistryData, error) {
 	}, nil
 }
 
+func getEnvVarWithDefault(name string, defaultValue string) string {
+	value, found := os.LookupEnv(name)
+	if !found {
+		log.Info("environment variable not set, using default.", "variable", name, "default", defaultValue)
+		return defaultValue
+	}
+	return value
+
+}
+
 func getRequiredEnvVar(name string) (string, error) {
 	ns, found := os.LookupEnv(name)
 	if !found {
-		return "", fmt.Errorf("environment variable %s must be set", name)
+		return "", fmt.Errorf("failed to get env var [%s]: environment variable %s must be set", name, name)
 	}
 	return ns, nil
 }
@@ -385,10 +386,6 @@ func (o *OperatorConfig) GetRemoteCredentials() *core.Credentials {
 	}
 }
 
-func newEnvVarError(envVar string, err error) error {
-	return fmt.Errorf("failed to get env var [%s]: %w", envVar, err)
-}
-
 func getNetworkPoliciesEnabled() bool {
 	netPolEnabledStr, found := os.LookupEnv(envVarNetworkPolicyEnabled)
 	if !found {
@@ -491,7 +488,7 @@ func getImageConfigCacheSize() int {
 func readHelmReconciliationInterval() (time.Duration, error) {
 	timeString, err := getRequiredEnvVar(envVarHelmReconciliationInterval)
 	if err != nil {
-		return defaultHelmReconciliationInterval, newEnvVarError(envVarHelmReconciliationInterval, err)
+		return defaultHelmReconciliationInterval, err
 	}
 	duration, err := time.ParseDuration(timeString)
 	if err != nil {
