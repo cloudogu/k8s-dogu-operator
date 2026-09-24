@@ -181,7 +181,7 @@ func readNamespace() (string, error) {
 func readDoguReconcilerRequeueTime() (time.Duration, error) {
 	requeueTimeString, err := getRequiredEnvVar(envVarRequeueTimeForDoguResourceInNanoseconds)
 	if err != nil {
-		return defaultRequeueTime, newEnvVarError(envVarNamespace, err)
+		return defaultRequeueTime, newEnvVarError(envVarRequeueTimeForDoguResourceInNanoseconds, err)
 	}
 	requeueTime, err := strconv.ParseFloat(requeueTimeString, 64)
 	if err != nil {
