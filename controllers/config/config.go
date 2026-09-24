@@ -20,7 +20,10 @@ const (
 	StageEnvironmentVariable = "STAGE"
 )
 
-const defaultRequeueTime = time.Second * 5
+const (
+	defaultRequeueTime                = time.Second * 5
+	defaultHelmReconciliationInterval = time.Second * 15
+)
 
 const cacheDir = "/tmp/dogu-registry-cache"
 
@@ -57,6 +60,7 @@ const (
 	envVarDisablePostfixDependencyCheck           = "DISABLE_POSTFIX_DEPENDENCY_CHECK"
 	envVarRequeueTimeForDoguResourceInNanoseconds = "REQUEUE_TIME_FOR_DOGU_RESOURCE_IN_NANOSECONDS"
 	envVarImageConfigCacheSize                    = "IMAGE_CONFIG_CACHE_SIZE"
+	envVarHelmReconciliationInterval              = "HELM_RECONCILIATION_INTERVAL"
 	errMsgFailedToParseEnvVarValue                = "failed to parse value of environment variable %s: %w"
 )
 
@@ -101,6 +105,8 @@ type OperatorConfig struct {
 	// ImageConfigCacheSize defines the maximum number of dogu image configs kept in the in-memory image config cache.
 	// A value <= 0 disables the cache.
 	ImageConfigCacheSize int `json:"image_config_cache_size"`
+	// HelmReconciliationInterval defines the interval in which dogu Helm releases should be reconciled by helm-controller
+	HelmReconciliationInterval time.Duration `json:"helm_reconciliation_interval"`
 }
 
 type Version string
@@ -141,6 +147,12 @@ func NewOperatorConfig(version Version) (*OperatorConfig, error) {
 	}
 	log.Info(fmt.Sprintf("Found stored dogu reconciler requeue time! Using requeue time %s", doguReconcilerRequeueTime.String()))
 
+	helmReconciliationInterval, err := readHelmReconciliationInterval()
+	if err != nil {
+		return nil, fmt.Errorf("failed to read helm reconciliation interval: %w", err)
+	}
+	log.Info(fmt.Sprintf("Found stored helm reconciliation interval! Using interval %s", helmReconciliationInterval))
+
 	return &OperatorConfig{
 		Namespace:                     namespace,
 		DoguRegistry:                  doguRegistryData,
@@ -153,6 +165,7 @@ func NewOperatorConfig(version Version) (*OperatorConfig, error) {
 		RequeueTimeForDoguReconciler:  doguReconcilerRequeueTime,
 		ImageConfigCacheSize:          getImageConfigCacheSize(),
 		DoguV3Registry:                readDoguV3RegistryData(),
+		HelmReconciliationInterval:    helmReconciliationInterval,
 	}, nil
 }
 
@@ -473,6 +486,18 @@ func getImageConfigCacheSize() int {
 	}
 
 	return size
+}
+
+func readHelmReconciliationInterval() (time.Duration, error) {
+	timeString, err := getRequiredEnvVar(envVarHelmReconciliationInterval)
+	if err != nil {
+		return defaultHelmReconciliationInterval, newEnvVarError(envVarHelmReconciliationInterval, err)
+	}
+	duration, err := time.ParseDuration(timeString)
+	if err != nil {
+		return defaultHelmReconciliationInterval, fmt.Errorf("value of env var [%s] is no valid duration: %w", envVarHelmReconciliationInterval, err)
+	}
+	return duration, nil
 }
 
 func GetStage() (string, error) {

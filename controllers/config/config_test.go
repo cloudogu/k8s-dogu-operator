@@ -5,6 +5,7 @@ import (
 	"os"
 	"runtime"
 	"testing"
+	"time"
 
 	"github.com/cloudogu/cesapp-lib/core"
 	dccv3 "github.com/cloudogu/dogu-lib/doguv3/doguregistry/dcc/config"
@@ -26,6 +27,7 @@ func TestNewOperatorConfig(t *testing.T) {
 	_ = os.Unsetenv("AUTH_REGISTRATION_ENABLED")
 	_ = os.Unsetenv("EXPOSITION_ENABLED")
 	_ = os.Unsetenv("WARP_MENU_ENTRY_ENABLED")
+	_ = os.Unsetenv("HELM_RECONCILIATION_INTERVAL")
 
 	expectedNamespace := "myNamespace"
 	expectedDoguRegistryData := DoguRegistryData{
@@ -96,6 +98,29 @@ func TestNewOperatorConfig(t *testing.T) {
 	t.Setenv("DOGU_V3_REGISTRY_USERNAME", expectedV3DoguRegistryData.Username)
 	t.Setenv("DOGU_V3_REGISTRY_PASSWORD", expectedV3DoguRegistryData.Password)
 
+	t.Run("Error on missing duration for helm reconciliation", func(t *testing.T) {
+		// when
+		operatorConfig, err := NewOperatorConfig("0.0.0")
+
+		// then
+		require.Error(t, err)
+		assert.ErrorContains(t, err, "failed to get env var [HELM_RECONCILIATION_INTERVAL]: environment variable HELM_RECONCILIATION_INTERVAL must be set")
+		assert.Nil(t, operatorConfig)
+	})
+
+	t.Setenv("HELM_RECONCILIATION_INTERVAL", "24")
+	t.Run("Error on invalid duration for helm reconciliation", func(t *testing.T) {
+		// when
+		operatorConfig, err := NewOperatorConfig("0.0.0")
+
+		// then
+		require.Error(t, err)
+		assert.ErrorContains(t, err, "failed to read helm reconciliation interval:")
+		assert.ErrorContains(t, err, "value of env var [HELM_RECONCILIATION_INTERVAL] is no valid duration")
+		assert.Nil(t, operatorConfig)
+	})
+
+	t.Setenv("HELM_RECONCILIATION_INTERVAL", "15s")
 	t.Run("Create config successfully", func(t *testing.T) {
 		// when
 		operatorConfig, err := NewOperatorConfig("0.1.0")
@@ -110,6 +135,7 @@ func TestNewOperatorConfig(t *testing.T) {
 		assert.True(t, operatorConfig.ExpositionEnabled)
 		assert.True(t, operatorConfig.WarpMenuEntryEnabled)
 		assert.Equal(t, expectedV3DoguRegistryData, operatorConfig.DoguV3Registry)
+		assert.Equal(t, 15*time.Second, operatorConfig.HelmReconciliationInterval)
 	})
 }
 
@@ -144,6 +170,7 @@ func TestOperatorConfig_GetRemoteConfiguration(t *testing.T) {
 	t.Setenv(envVarExpositionEnabled, "false")
 	t.Setenv(envVarWarpMenuEntryEnabled, "false")
 	t.Setenv(envVarRequeueTimeForDoguResourceInNanoseconds, "5")
+	t.Setenv(envVarHelmReconciliationInterval, "3m")
 
 	for _, tt := range tests {
 		t.Setenv(envVarDoguRegistryURLSchema, tt.urlSchemaEnv)
