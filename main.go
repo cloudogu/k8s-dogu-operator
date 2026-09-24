@@ -82,6 +82,7 @@ func v3Options() fx.Option {
 			// install/update steps
 			installv3.NewEnsureOCIRepositoryStep,
 			installv3.NewWaitForOCIRepositoryReadyStep,
+			installv3.NewEnsureHelmReleaseStep,
 
 			// delete steps
 
