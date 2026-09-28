@@ -16,7 +16,6 @@ import (
 	digest "github.com/opencontainers/go-digest"
 	helmchart "helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chart/loader"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metautil "k8s.io/apimachinery/pkg/api/meta"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -49,24 +48,26 @@ func NewChartProvider(k8sClient client.Client, httpClient *http.Client) ChartPro
 func (provider *chartProvider) GetChart(ctx context.Context, doguResource *v3beta1.Dogu) (*helmchart.Chart, error) {
 	repository, err := provider.getRepository(ctx, doguResource)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get repository: %w", err)
 	}
 
 	artifactURL, expectedDigest, err := getArtifactMetadata(repository)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get artifact metadata: %w", err)
 	}
 
-	return provider.downloadChart(ctx, artifactURL, expectedDigest)
+	loadedChart, err := provider.downloadChart(ctx, artifactURL, expectedDigest)
+	if err != nil {
+		return nil, fmt.Errorf("failed to download chart: %w", err)
+	}
+
+	return loadedChart, nil
 }
 
 func (provider *chartProvider) getRepository(ctx context.Context, doguResource *v3beta1.Dogu) (*flux.OCIRepository, error) {
 	repository := &flux.OCIRepository{}
 	key := client.ObjectKey{Namespace: doguResource.Namespace, Name: doguResource.Spec.Name}
 	if err := provider.k8sClient.Get(ctx, key, repository); err != nil {
-		if apierrors.IsNotFound(err) {
-			return nil, fmt.Errorf("OCIRepository %s not found: %w", key, err)
-		}
 		return nil, fmt.Errorf("failed to get OCIRepository %s: %w", key, err)
 	}
 
@@ -99,12 +100,12 @@ func getArtifactMetadata(repository *flux.OCIRepository) (*url.URL, digest.Diges
 func (provider *chartProvider) downloadChart(ctx context.Context, artifactURL *url.URL, expectedDigest digest.Digest) (*helmchart.Chart, error) {
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, artifactURL.String(), nil)
 	if err != nil {
-		return nil, newInvalidChartArtifactError(fmt.Errorf("failed to create artifact request: %w", err))
+		return nil, newInvalidChartArtifactError(fmt.Errorf("failed to create artifact HTTP request: %w", err))
 	}
 
 	response, err := provider.httpClient.Do(request)
 	if err != nil {
-		return nil, fmt.Errorf("failed to download chart artifact: %w", err)
+		return nil, fmt.Errorf("failed to execute artifact HTTP GET request: %w", err)
 	}
 	defer func() {
 		_ = response.Body.Close()
