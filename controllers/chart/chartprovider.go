@@ -111,8 +111,8 @@ func (provider *chartProvider) downloadChart(ctx context.Context, artifactURL *u
 		_ = response.Body.Close()
 	}()
 
-	if err = validateResponseStatus(response); err != nil {
-		return nil, err
+	if response.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("unexpected HTTP status %s", response.Status)
 	}
 
 	verifier := expectedDigest.Verifier()
@@ -130,20 +130,4 @@ func (provider *chartProvider) downloadChart(ctx context.Context, artifactURL *u
 	}
 
 	return loadedChart, nil
-}
-
-func validateResponseStatus(response *http.Response) error {
-	switch response.StatusCode {
-	case http.StatusOK:
-		return nil
-	case http.StatusNotFound:
-		return fmt.Errorf("chart artifact not ready: unexpected HTTP status %s", response.Status)
-	case http.StatusRequestTimeout, http.StatusTooManyRequests:
-		return fmt.Errorf("failed to download chart artifact: unexpected HTTP status %s", response.Status)
-	default:
-		if response.StatusCode >= http.StatusInternalServerError {
-			return fmt.Errorf("failed to download chart artifact: unexpected HTTP status %s", response.Status)
-		}
-		return newInvalidChartArtifactError(fmt.Errorf("unexpected HTTP status %s", response.Status))
-	}
 }

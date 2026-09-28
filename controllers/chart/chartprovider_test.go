@@ -6,6 +6,7 @@ import (
 	"compress/gzip"
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"testing"
@@ -170,34 +171,15 @@ func TestChartProviderRejectsInvalidArchive(t *testing.T) {
 	require.True(t, isInvalidChartArtifactError(err))
 }
 
-func TestChartProviderClassifiesHTTPStatus(t *testing.T) {
+func TestChartProviderRejectsNonOKHTTPStatus(t *testing.T) {
 	archive := createTestChartArchive(t)
-	tests := []struct {
-		status  int
-		invalid bool
-	}{
-		{status: http.StatusNotFound},
-		{status: http.StatusBadRequest, invalid: true},
-		{status: http.StatusRequestTimeout},
-		{status: http.StatusTooManyRequests},
-		{status: http.StatusServiceUnavailable},
-	}
+	provider := newTestProvider(t, readyRepository(archive), responseTransport(http.StatusBadRequest, nil))
 
-	for _, tt := range tests {
-		t.Run(http.StatusText(tt.status), func(t *testing.T) {
-			provider := newTestProvider(t, readyRepository(archive), responseTransport(tt.status, nil))
+	actual, err := provider.GetChart(context.Background(), testDoguResource())
 
-			actual, err := provider.GetChart(context.Background(), testDoguResource())
-
-			assert.Nil(t, actual)
-			require.Error(t, err)
-			if tt.invalid {
-				require.True(t, isInvalidChartArtifactError(err))
-			} else {
-				assert.False(t, isInvalidChartArtifactError(err))
-			}
-		})
-	}
+	assert.Nil(t, actual)
+	require.ErrorContains(t, err, "400 Bad Request")
+	assert.False(t, isInvalidChartArtifactError(err))
 }
 
 func TestChartProviderReturnsTransportAndReadErrors(t *testing.T) {
@@ -313,7 +295,7 @@ func (function roundTripFunc) RoundTrip(request *http.Request) (*http.Response, 
 }
 
 func response(statusCode int, body io.ReadCloser) *http.Response {
-	return &http.Response{StatusCode: statusCode, Status: http.StatusText(statusCode), Body: body}
+	return &http.Response{StatusCode: statusCode, Status: fmt.Sprintf("%d %s", statusCode, http.StatusText(statusCode)), Body: body}
 }
 
 func responseTransport(statusCode int, body []byte) http.RoundTripper {
