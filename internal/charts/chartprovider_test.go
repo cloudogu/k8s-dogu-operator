@@ -1,4 +1,4 @@
-package chart
+package charts
 
 import (
 	"archive/tar"
