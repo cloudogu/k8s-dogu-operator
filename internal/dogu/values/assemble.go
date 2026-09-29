@@ -43,7 +43,7 @@ type Assembler struct {
 	k8s client.Client
 }
 
-func (a Assembler) Assemble(ctx context.Context, cr *v3beta1.Dogu, patchTpl []byte) (Values, error) {
+func (a Assembler) Assemble(ctx context.Context, cr *v3beta1.Dogu, valuesMeta []byte) (Values, error) {
 	logger := log.FromContext(ctx)
 
 	crValues, err := getDoguCRValues(cr)
@@ -51,7 +51,7 @@ func (a Assembler) Assemble(ctx context.Context, cr *v3beta1.Dogu, patchTpl []by
 		return nil, fmt.Errorf("failed to dogu spec values: %w", err)
 	}
 
-	doguMetaValues, err := getDoguMetaValues(cr, patchTpl, logger)
+	doguMetaValues, err := getDoguMetaValues(cr, valuesMeta, logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get values from dogu values meta: %w", err)
 	}
