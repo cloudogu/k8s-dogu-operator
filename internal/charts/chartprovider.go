@@ -45,6 +45,20 @@ func NewChartProvider(k8sClient client.Client, httpClient *http.Client) ChartPro
 	return &chartProvider{k8sClient: k8sClient, httpClient: httpClient}
 }
 
+func (provider *chartProvider) ArtifactDigest(ctx context.Context, doguResource *v3beta1.Dogu) (string, error) {
+	repository, err := provider.getRepository(ctx, doguResource)
+	if err != nil {
+		return "", fmt.Errorf("failed to get repository: %w", err)
+	}
+
+	_, expectedDigest, err := getArtifactMetadata(repository)
+	if err != nil {
+		return "", fmt.Errorf("failed to get artifact metadata: %w", err)
+	}
+
+	return expectedDigest.String(), nil
+}
+
 func (provider *chartProvider) GetChart(ctx context.Context, doguResource *v3beta1.Dogu) (*helmchart.Chart, error) {
 	repository, err := provider.getRepository(ctx, doguResource)
 	if err != nil {
