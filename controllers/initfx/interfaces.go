@@ -20,6 +20,7 @@ import (
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
+	"sigs.k8s.io/controller-runtime/pkg/webhook"
 )
 
 type DoguConfigRepository interface {
@@ -178,4 +179,10 @@ type eventRecorder interface {
 //goland:noinspection GoUnusedType
 type restInterface interface {
 	rest.Interface
+}
+
+//nolint:unused
+//goland:noinspection GoUnusedType
+type webhookServer interface {
+	webhook.Server
 }

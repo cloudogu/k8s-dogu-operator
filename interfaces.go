@@ -8,6 +8,7 @@ import (
 	"github.com/cloudogu/k8s-dogu-lib/v3/client/typed/api/v3beta1"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/exec"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/imageregistry"
+	expClientV1 "github.com/cloudogu/k8s-exposition-lib/client/typed/api/v1"
 	warpmenuentryv1 "github.com/cloudogu/k8s-warp-menu-entry-lib/client/typed/api/v1"
 	"k8s.io/client-go/kubernetes"
 	appsv1 "k8s.io/client-go/kubernetes/typed/apps/v1"
@@ -153,4 +154,16 @@ type warpMenuEntryClient interface {
 //goland:noinspection GoUnusedType
 type warpMenuEntryInterface interface {
 	warpmenuentryv1.WarpMenuEntryInterface
+}
+
+//nolint:unused
+//goland:noinspection GoUnusedType
+type expositionClient interface {
+	expClientV1.ApiV1Interface
+}
+
+//nolint:unused
+//goland:noinspection GoUnusedType
+type expositionInterface interface {
+	expClientV1.ExpositionInterface
 }
