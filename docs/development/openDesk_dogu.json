@@ -1,0 +1,34 @@
+{
+  "Name": "internal/opendesk",
+  "Version": "1.18.2-1",
+  "DisplayName": "openDesk",
+  "Description": "openDesk is the customisable office and collaboration suite designed specifically for your needs in public administration.",
+  "Url": "https://www.opendesk.eu",
+  "Logo": "https://www.zendis.de/media/pages/newsroom/presse/12029a19d4-1746615438/opendesk-logo-rgb-color.svg",
+  "Category": "Office",
+  "Tags": [
+    "experimental",
+    "office",
+    "collaboration"
+  ],
+  "Dependencies": [
+    {
+      "type": "client",
+      "name": "k8s-dogu-operator",
+      "version": ">=3.30.0"
+    },
+    {
+      "type": "client",
+      "name": "cesapp",
+      "version": "<0.0.0"
+    },
+    {
+      "type": "client",
+      "name": "ces-setup",
+      "version": "<0.0.0"
+    }
+  ],
+  "Properties": {
+    "kind": "Helmfile"
+  }
+}
