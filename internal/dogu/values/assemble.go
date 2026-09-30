@@ -39,10 +39,12 @@ type MetadataMapping struct {
 
 type Values map[string]any
 
+// Assembler allows to patch a dogu YAML with chart patch templates and global config values from the cluster.
 type Assembler struct {
 	k8s client.Client
 }
 
+// Assemble merges the given dogu CR YAML with chart patch templates and global config values.
 func (a Assembler) Assemble(ctx context.Context, cr *v3beta1.Dogu, patchTpl []byte) (Values, error) {
 	logger := log.FromContext(ctx)
 
@@ -58,7 +60,7 @@ func (a Assembler) Assemble(ctx context.Context, cr *v3beta1.Dogu, patchTpl []by
 
 	globalConfigValues, err := getGlobalConfigValues(ctx, cr, a.k8s)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get values from global config:%w", err)
+		return nil, fmt.Errorf("failed to get values from global config: %w", err)
 	}
 
 	finalValues := mergeValues(crValues, globalConfigValues, doguMetaValues)
@@ -115,9 +117,9 @@ func getDoguMetaValues(cr *v3beta1.Dogu, patchTpl []byte, logger logr.Logger) (V
 	return mappedValues, nil
 }
 
-func getGlobalConfigValues(ctx context.Context, cr *v3beta1.Dogu, s client.Client) (Values, error) {
+func getGlobalConfigValues(ctx context.Context, cr *v3beta1.Dogu, cl client.Client) (Values, error) {
 	gcm := &coreV1.ConfigMap{}
-	if gErr := s.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: globalConfigName}, gcm); gErr != nil {
+	if gErr := cl.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: globalConfigName}, gcm); gErr != nil {
 		return nil, fmt.Errorf("failed to get global config: %w", gErr)
 	}
 

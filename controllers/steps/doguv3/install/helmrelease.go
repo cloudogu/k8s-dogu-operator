@@ -128,12 +128,15 @@ func (ehr *EnsureHelmReleaseStep) Run(ctx context.Context, doguResource *v3beta1
 func combineValues(ctx context.Context, dogu *v3beta1.Dogu) (*v1.JSON, error) {
 	assembler := values3.Assembler{}
 	values, err := assembler.Assemble(ctx, dogu, nil)
+
 	if err != nil {
 		return nil, err
 	}
 	bytes, err := json.Marshal(values)
+
 	if err != nil {
 		return nil, err
 	}
+
 	return &v1.JSON{Raw: bytes}, nil
 }
