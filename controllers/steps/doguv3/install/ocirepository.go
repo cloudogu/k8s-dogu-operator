@@ -8,6 +8,7 @@ import (
 	"github.com/cloudogu/dogu-lib/doguv3"
 	doguv3reg "github.com/cloudogu/dogu-lib/doguv3/doguregistry"
 	"github.com/cloudogu/k8s-dogu-lib/v3/api/v3beta1"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/resource"
 	stepsv3 "github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv3"
 	"github.com/fluxcd/pkg/apis/meta"
 	flux "github.com/fluxcd/source-controller/api/v1"
@@ -18,8 +19,7 @@ import (
 )
 
 const (
-	fluxShardingLabelKey   = "sharding.fluxcd.io/key"
-	fluxShardingLabelValue = "ces"
+	labelKeyFluxSharding = "sharding.fluxcd.io/key"
 )
 
 const (
@@ -69,7 +69,7 @@ func (eor *EnsureOCIRepositoryStep) Run(ctx context.Context, doguResource *v3bet
 		if repository.Labels == nil {
 			repository.Labels = make(map[string]string)
 		}
-		repository.Labels[fluxShardingLabelKey] = fluxShardingLabelValue
+		repository.Labels[labelKeyFluxSharding] = resource.LabelValueCes
 		repository.Labels[v3beta1.DoguLabelName] = doguResource.Spec.Name
 		repository.Labels[v3beta1.DoguLabelVersion] = doguResource.Spec.Version
 		repository.Spec = flux.OCIRepositorySpec{

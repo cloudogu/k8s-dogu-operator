@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	v2 "github.com/cloudogu/k8s-dogu-lib/v3/api/v2"
 	"github.com/cloudogu/k8s-dogu-lib/v3/api/v3beta1"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/resource"
@@ -61,7 +62,7 @@ func (ehr *EnsureHelmReleaseStep) Run(ctx context.Context, doguResource *v3beta1
 		if release.Labels == nil {
 			release.Labels = make(map[string]string)
 		}
-		release.Labels[fluxShardingLabelKey] = fluxShardingLabelValue
+		release.Labels[labelKeyFluxSharding] = resource.LabelValueCes
 		release.Labels[v3beta1.DoguLabelName] = doguResource.Spec.Name
 		release.Labels[v3beta1.DoguLabelVersion] = doguResource.Spec.Version
 		release.Spec = flux.HelmReleaseSpec{
@@ -73,13 +74,13 @@ func (ehr *EnsureHelmReleaseStep) Run(ctx context.Context, doguResource *v3beta1
 			},
 			Install: &flux.Install{
 				Strategy: &flux.InstallStrategy{
-					Name:          "RetryOnFailure",
+					Name:          string(flux.ActionStrategyRetryOnFailure),
 					RetryInterval: &ehr.retryInterval,
 				},
 			},
 			Upgrade: &flux.Upgrade{
 				Strategy: &flux.UpgradeStrategy{
-					Name:          "RetryOnFailure",
+					Name:          string(flux.ActionStrategyRetryOnFailure),
 					RetryInterval: &ehr.retryInterval,
 				},
 			},
@@ -92,14 +93,13 @@ func (ehr *EnsureHelmReleaseStep) Run(ctx context.Context, doguResource *v3beta1
 			CommonMetadata: &flux.CommonMetadata{
 				Annotations: nil,
 				Labels: map[string]string{
-					// TODO find appropriate constants
-					"app":                       "ces",
-					"k8s.cloudogu.com/app":      "ces",
-					"dogu.name":                 doguResource.Spec.Name,
-					v3beta1.DoguLabelName:       doguResource.Spec.Name,
-					"app.kubernetes.io/name":    doguResource.Spec.Name,
-					"app.kubernetes.io/version": doguResource.Spec.Version,
-					"app.kubernetes.io/part-of": "ces",
+					resource.LabelKeyApp:                    resource.LabelValueCes,
+					resource.LabelKeyK8sCloudoguComApp:      resource.LabelValueCes,
+					v2.DoguLabelName:                        doguResource.Spec.Name,
+					v3beta1.DoguLabelName:                   doguResource.Spec.Name,
+					resource.LabelKeyAppKubernetesIoName:    doguResource.Spec.Name,
+					resource.LabelKeyAppKubernetesIoVersion: doguResource.Spec.Version,
+					resource.LabelKeyAppKubernetesIoPartOf:  resource.LabelValueCes,
 				},
 			},
 		}
