@@ -46,7 +46,8 @@ func (ehr *EnsureHelmReleaseStep) Run(ctx context.Context, doguResource *v3beta1
 	//	return stepsv3.RequeueWithError(err, v3beta1.ReasonInstalling)
 	//}
 
-	values, err := combineValues(ctx, doguResource)
+	assembler := values3.NewAssembler(ehr.k8sClient)
+	values, err := combineValues(ctx, doguResource, assembler)
 	if err != nil {
 		return stepsv3.RequeueWithError(err, v3beta1.ReasonInstalling)
 	}
@@ -125,8 +126,8 @@ func (ehr *EnsureHelmReleaseStep) Run(ctx context.Context, doguResource *v3beta1
 	return stepsv3.Continue()
 }
 
-func combineValues(ctx context.Context, dogu *v3beta1.Dogu) (*v1.JSON, error) {
-	assembler := values3.Assembler{}
+func combineValues(ctx context.Context, dogu *v3beta1.Dogu, assembler *values3.Assembler) (*v1.JSON, error) {
+
 	values, err := assembler.Assemble(ctx, dogu, nil)
 
 	if err != nil {

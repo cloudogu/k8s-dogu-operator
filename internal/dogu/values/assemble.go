@@ -44,6 +44,11 @@ type Assembler struct {
 	k8s client.Client
 }
 
+// NewAssembler creates a new dogu YAML assembler.
+func NewAssembler(k8s client.Client) *Assembler {
+	return &Assembler{k8s: k8s}
+}
+
 // Assemble merges the given dogu CR YAML with chart patch templates and global config values.
 func (a Assembler) Assemble(ctx context.Context, cr *v3beta1.Dogu, patchTpl []byte) (Values, error) {
 	logger := log.FromContext(ctx)
