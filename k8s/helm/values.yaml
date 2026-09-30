@@ -34,6 +34,8 @@ controllerManager:
     # imageConfigCacheSize is the maximum number of dogu image configs cached in memory
     # Set to 0 to disable caching.
     imageConfigCacheSize: 50
+    # WARNING: Helmfile support is only an experimental PoC and not for production use.
+    experimentalHelmfileSupport: false
   resourceLimits:
     memory: 105M
   resourceRequests:

@@ -50,6 +50,7 @@ const (
 	envVarDoguRegistryUsername                    = "DOGU_REGISTRY_USERNAME"
 	envVarDoguRegistryPassword                    = "DOGU_REGISTRY_PASSWORD"
 	envVarDoguRegistryURLSchema                   = "DOGU_REGISTRY_URLSCHEMA"
+	envVarExperimentalHelmfileSupport             = "EXPERIMENTAL_HELMFILE_SUPPORT"
 	envVarNetworkPolicyEnabled                    = "NETWORK_POLICIES_ENABLED"
 	envVarAuthRegistrationEnabled                 = "AUTH_REGISTRATION_ENABLED"
 	envVarExpositionEnabled                       = "EXPOSITION_ENABLED"
@@ -101,6 +102,9 @@ type OperatorConfig struct {
 	// ImageConfigCacheSize defines the maximum number of dogu image configs kept in the in-memory image config cache.
 	// A value <= 0 disables the cache.
 	ImageConfigCacheSize int `json:"image_config_cache_size"`
+	// ExperimentalHelmfileSupport defines whether the operator should install v2 dogus of kind helmfile.
+	// This is only an experimental PoC and not for production use.
+	ExperimentalHelmfileSupport bool `json:"experimental_helmfile_support"`
 }
 
 type Version string
@@ -153,6 +157,7 @@ func NewOperatorConfig(version Version) (*OperatorConfig, error) {
 		RequeueTimeForDoguReconciler:  doguReconcilerRequeueTime,
 		ImageConfigCacheSize:          getImageConfigCacheSize(),
 		DoguV3Registry:                readDoguV3RegistryData(),
+		ExperimentalHelmfileSupport:   getExperimentalHelmfileSupport(),
 	}, nil
 }
 
@@ -374,6 +379,22 @@ func (o *OperatorConfig) GetRemoteCredentials() *core.Credentials {
 
 func newEnvVarError(envVar string, err error) error {
 	return fmt.Errorf("failed to get env var [%s]: %w", envVar, err)
+}
+
+func getExperimentalHelmfileSupport() bool {
+	helmfileSupportStr, found := os.LookupEnv(envVarExperimentalHelmfileSupport)
+	if !found {
+		log.Info(fmt.Sprintf("Environment variable %s not set. Enabling network policies by default", envVarExperimentalHelmfileSupport))
+		return false
+	}
+
+	helmfileSupport, err := strconv.ParseBool(helmfileSupportStr)
+	if err != nil {
+		log.Error(fmt.Errorf(errMsgFailedToParseEnvVarValue, envVarExperimentalHelmfileSupport, err), "Disabling experimental helmfile support by default")
+		return false
+	}
+
+	return helmfileSupport
 }
 
 func getNetworkPoliciesEnabled() bool {

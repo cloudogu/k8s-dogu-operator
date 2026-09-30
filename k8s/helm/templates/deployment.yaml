@@ -126,6 +126,8 @@ spec:
                   name: ces-proxy
                   key: url
                   optional: true
+            - name: EXPERIMENTAL_HELMFILE_SUPPORT
+              value: {{ quote .Values.controllerManager.env.experimentalHelmfileSupport | default false }}
           image: "{{ .Values.controllerManager.image.registry }}/{{ .Values.controllerManager.image.repository }}:{{ .Values.controllerManager.image.tag }}"
           imagePullPolicy: {{ .Values.controllerManager.imagePullPolicy | default "IfNotPresent" }}
           livenessProbe:
