@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -26,9 +27,66 @@ type ResizeChecker interface {
 	Check(ctx context.Context, renderedObjects []client.Object) (CheckResult, error)
 }
 
+type resizeChecker struct {
+	k8s client.Reader
+}
+
+// NewResizeChecker creates a checker that reads live PVCs with the given Kubernetes client.
+func NewResizeChecker(k8s client.Reader) ResizeChecker {
+	return &resizeChecker{k8s: k8s}
+}
+
 type desiredClaim struct {
 	key     client.ObjectKey
 	storage resource.Quantity
+}
+
+func (c *resizeChecker) Check(ctx context.Context, renderedObjects []client.Object) (CheckResult, error) {
+	desiredClaims, err := extractDesiredClaims(renderedObjects)
+	if err != nil {
+		return CheckResult{}, err
+	}
+
+	result := CheckResult{}
+	for _, desired := range desiredClaims {
+		request, include, checkErr := c.checkPVC(ctx, desired)
+		if checkErr != nil {
+			return CheckResult{}, checkErr
+		}
+		if include {
+			result.ResizeRequests = append(result.ResizeRequests, request)
+		}
+	}
+
+	return result, nil
+}
+
+func (c *resizeChecker) checkPVC(ctx context.Context, desired desiredClaim) (ResizeRequest, bool, error) {
+	livePVC := &corev1.PersistentVolumeClaim{}
+	err := c.k8s.Get(ctx, desired.key, livePVC)
+	if apierrors.IsNotFound(err) {
+		return ResizeRequest{}, false, nil
+	}
+	if err != nil {
+		return ResizeRequest{}, false, fmt.Errorf("failed to read live PVC %q: %w", desired.key, err)
+	}
+
+	current, found := livePVC.Spec.Resources.Requests[corev1.ResourceStorage]
+	if !found {
+		return ResizeRequest{}, false, fmt.Errorf("live PVC %q has no storage request", desired.key)
+	}
+
+	request := ResizeRequest{
+		PVC:     desired.key,
+		Desired: desired.storage.DeepCopy(),
+	}
+
+	switch desired.storage.Cmp(current) {
+	case 1:
+		return request, true, nil
+	default:
+		return ResizeRequest{}, false, nil
+	}
 }
 
 func extractDesiredClaims(renderedObjects []client.Object) ([]desiredClaim, error) {
