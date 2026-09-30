@@ -50,7 +50,7 @@ func (eor *EnsureOCIRepositoryStep) Run(ctx context.Context, doguResource *v3bet
 	}
 	dogu, err := eor.doguRegistry.Get(ctx, identifier)
 	if err != nil {
-		err = fmt.Errorf("failed to get dogu descriptor for identifier %v: %w", identifier, err)
+		err = fmt.Errorf("failed to get dogu descriptor for identifier %s: %w", identifier, err)
 		if doguv3reg.IsGenericError(err) || doguv3reg.IsUnauthorizedError(err) || doguv3reg.IsForbiddenError(err) || doguv3reg.IsNotFoundError(err) {
 			return stepsv3.Abort(v3beta1.ReasonDownloadFailed, err.Error())
 		}
