@@ -55,6 +55,8 @@ func TestNewOperatorConfig(t *testing.T) {
 		assert.Nil(t, operatorConfig)
 	})
 
+	// please note the env vars are set sequentially over the course of different test closures.
+	// This is to avoid repeated settings of mandatory env vars but might also prevent parallel testing.
 	t.Setenv("NAMESPACE", expectedNamespace)
 	t.Run("Error on missing dogu registry endpoint var", func(t *testing.T) {
 		// when
