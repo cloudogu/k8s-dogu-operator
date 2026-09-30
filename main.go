@@ -251,6 +251,7 @@ func v2StepOptions() fx.Option {
 
 			// install or change steps
 			install.NewInitializeConditionsStep,
+			install.NewExperimentalHelmfileStep,
 			install.NewHealthCheckStep,
 			install.NewFetchRemoteDoguDescriptorStep,
 			install.NewValidationStep,
