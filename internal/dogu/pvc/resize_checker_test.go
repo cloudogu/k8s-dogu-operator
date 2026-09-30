@@ -66,6 +66,21 @@ func TestResizeChecker_CheckStandalonePVCs(t *testing.T) {
 		assert.Equal(t, "2Gi", result.ResizeRequests[0].Desired.String())
 		assert.NoError(t, result.ResizeRequests[0].Err)
 	})
+
+	t.Run("returns a typed shrink error on its PVC request", func(t *testing.T) {
+		live := newPVC("data", "10Gi", nil)
+		checker := NewResizeChecker(fake.NewClientBuilder().WithObjects(live).Build())
+
+		result, err := checker.Check(ctx, []client.Object{newPVC("data", "2Gi", nil)})
+
+		require.NoError(t, err)
+		require.Len(t, result.ResizeRequests, 1)
+		var shrinkError *VolumeShrinkError
+		require.ErrorAs(t, result.ResizeRequests[0].Err, &shrinkError)
+		assert.Equal(t, client.ObjectKey{Namespace: testNamespace, Name: "data"}, shrinkError.PVC)
+		assert.Equal(t, "10Gi", shrinkError.Current.String())
+		assert.Equal(t, "2Gi", shrinkError.Desired.String())
+	})
 }
 
 func TestResizeChecker_CheckErrors(t *testing.T) {

@@ -82,6 +82,13 @@ func (c *resizeChecker) checkPVC(ctx context.Context, desired desiredClaim) (Res
 	}
 
 	switch desired.storage.Cmp(current) {
+	case -1:
+		request.Err = &VolumeShrinkError{
+			PVC:     desired.key,
+			Current: current.DeepCopy(),
+			Desired: desired.storage.DeepCopy(),
+		}
+		return request, true, nil
 	case 1:
 		return request, true, nil
 	default:
