@@ -17,6 +17,8 @@ import (
 	usecasev2 "github.com/cloudogu/k8s-dogu-operator/v3/controllers/usecase/doguv2"
 	usecasev3 "github.com/cloudogu/k8s-dogu-operator/v3/controllers/usecase/doguv3"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/warpmenuentry"
+	"github.com/cloudogu/k8s-dogu-operator/v3/internal/charts"
+	"github.com/cloudogu/k8s-dogu-operator/v3/internal/dogu/values"
 	"go.uber.org/fx"
 	"k8s.io/client-go/tools/record"
 
@@ -79,9 +81,17 @@ func v3Options() fx.Option {
 				fx.As(new(installv3.DoguRegistryReader)),
 			),
 
+			// chart rendering/validation dependencies
+			initfx.NewChartHTTPClient,
+			initfx.NewChartCapabilities,
+			charts.NewChartProvider,
+			fx.Annotate(charts.NewService, fx.As(new(installv3.ChartService))),
+			fx.Annotate(values.NewAssembler, fx.As(new(installv3.ValueAssembler))),
+
 			// install/update steps
 			installv3.NewEnsureOCIRepositoryStep,
 			installv3.NewWaitForOCIRepositoryReadyStep,
+			installv3.NewValidateChartStep,
 
 			// delete steps
 

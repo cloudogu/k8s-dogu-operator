@@ -21,8 +21,8 @@ import (
 
 // The consumer-side interfaces must stay satisfied by the real production types.
 var (
-	_ ChartService = (*charts.Service)(nil)
-	_ Assembler    = values.Assembler{}
+	_ ChartService   = (*charts.Service)(nil)
+	_ ValueAssembler = values.Assembler{}
 )
 
 var assembledValues = values.Values{"replicaCount": 1}

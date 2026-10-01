@@ -14,7 +14,7 @@ import (
 
 // Ensure that mockChartLoader does implement chartLoader.
 // If this is not the case, regenerate this file with mockery.
-var _ chartLoader = &mockChartLoader{}
+var _ ChartProvider = &mockChartLoader{}
 
 // mockChartLoader is a mock implementation of chartLoader.
 //

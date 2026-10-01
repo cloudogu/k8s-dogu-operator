@@ -43,6 +43,11 @@ type Assembler struct {
 	k8s client.Client
 }
 
+// NewAssembler creates an Assembler that reads the global config from the cluster via the given client.
+func NewAssembler(k8s client.Client) *Assembler {
+	return &Assembler{k8s: k8s}
+}
+
 func (a Assembler) Assemble(ctx context.Context, cr *v3beta1.Dogu, valuesMeta []byte) (Values, error) {
 	logger := log.FromContext(ctx)
 

@@ -6,22 +6,16 @@ import (
 	"sync"
 
 	"github.com/cloudogu/k8s-dogu-lib/v3/api/v3beta1"
-	helmChart "helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chartutil"
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-type chartLoader interface {
-	ArtifactDigest(ctx context.Context, doguResource *v3beta1.Dogu) (string, error)
-	GetChart(ctx context.Context, doguResource *v3beta1.Dogu) (*helmChart.Chart, error)
-}
-
 // Service is the dogu-keyed facade over chart rendering/validation. It is the seam both the
 // validation step and the PVC-resize step depend on. It owns a per-dogu load cache (keyed by the
 // dogu's NamespacedName, invalidated when the artifact digest changes)
 type Service struct {
-	loader     chartLoader
+	loader     ChartProvider
 	restConfig *rest.Config
 	caps       *chartutil.Capabilities
 
@@ -31,7 +25,7 @@ type Service struct {
 
 // NewService creates a Service. caps should be discovered once from the cluster (KubeVersion +
 // API versions) so local renders gate API versions the same way Flux will.
-func NewService(loader chartLoader, restConfig *rest.Config, caps *chartutil.Capabilities) *Service {
+func NewService(loader ChartProvider, restConfig *rest.Config, caps *chartutil.Capabilities) *Service {
 	return &Service{
 		loader:     loader,
 		restConfig: restConfig,
