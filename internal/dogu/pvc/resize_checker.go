@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -111,16 +112,52 @@ func extractDesiredClaims(renderedObjects []client.Object) ([]desiredClaim, erro
 	var claims []desiredClaim
 
 	for _, object := range renderedObjects {
-		pvc, ok := object.(*corev1.PersistentVolumeClaim)
-		if !ok {
-			continue
+		switch typedObject := object.(type) {
+		case *corev1.PersistentVolumeClaim:
+			claim, err := desiredClaimFromPVC(typedObject)
+			if err != nil {
+				return nil, err
+			}
+			claims = append(claims, claim)
+		case *appsv1.StatefulSet:
+			statefulSetClaims, err := desiredClaimsFromStatefulSet(typedObject)
+			if err != nil {
+				return nil, err
+			}
+			claims = append(claims, statefulSetClaims...)
 		}
+	}
 
-		claim, err := desiredClaimFromPVC(pvc)
-		if err != nil {
-			return nil, err
+	return claims, nil
+}
+
+func desiredClaimsFromStatefulSet(statefulSet *appsv1.StatefulSet) ([]desiredClaim, error) {
+	replicas := int32(1)
+	if statefulSet.Spec.Replicas != nil {
+		replicas = *statefulSet.Spec.Replicas
+	}
+	if replicas < 0 {
+		return nil, fmt.Errorf("rendered StatefulSet %q has negative replicas", client.ObjectKeyFromObject(statefulSet))
+	}
+
+	startOrdinal := int32(0)
+	if statefulSet.Spec.Ordinals != nil {
+		startOrdinal = statefulSet.Spec.Ordinals.Start
+	}
+
+	claims := make([]desiredClaim, 0, len(statefulSet.Spec.VolumeClaimTemplates)*int(replicas))
+	for _, template := range statefulSet.Spec.VolumeClaimTemplates {
+		for ordinal := startOrdinal; ordinal < startOrdinal+replicas; ordinal++ {
+			pvc := template.DeepCopy()
+			pvc.Name = fmt.Sprintf("%s-%s-%d", template.Name, statefulSet.Name, ordinal)
+			pvc.Namespace = statefulSet.Namespace
+
+			claim, err := desiredClaimFromPVC(pvc)
+			if err != nil {
+				return nil, err
+			}
+			claims = append(claims, claim)
 		}
-		claims = append(claims, claim)
 	}
 
 	return claims, nil

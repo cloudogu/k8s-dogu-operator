@@ -7,11 +7,13 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
@@ -127,6 +129,79 @@ func TestResizeChecker_CheckStorageClass(t *testing.T) {
 	}
 }
 
+func TestResizeChecker_CheckStatefulSetClaims(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("checks every volume claim template for every replica", func(t *testing.T) {
+		statefulSet := newStatefulSet("postgres", ptr.To[int32](2), 0,
+			newPVC("data", "2Gi", nil),
+			newPVC("logs", "1Gi", nil),
+		)
+		liveData0 := newPVC("data-postgres-0", "1Gi", nil)
+		liveData1 := newPVC("data-postgres-1", "2Gi", nil)
+		liveLogs0 := newPVC("logs-postgres-0", "2Gi", nil)
+		checker := NewResizeChecker(fake.NewClientBuilder().WithObjects(liveData0, liveData1, liveLogs0).Build())
+
+		result, err := checker.Check(ctx, []client.Object{statefulSet})
+
+		require.NoError(t, err)
+		require.Len(t, result.ResizeRequests, 2)
+		requests := resizeRequestsByName(result.ResizeRequests)
+		require.Contains(t, requests, "data-postgres-0")
+		assert.NoError(t, requests["data-postgres-0"].Err)
+		require.Contains(t, requests, "logs-postgres-0")
+		var shrinkError *VolumeShrinkError
+		require.ErrorAs(t, requests["logs-postgres-0"].Err, &shrinkError)
+	})
+
+	t.Run("defaults nil replicas to one", func(t *testing.T) {
+		statefulSet := newStatefulSet("postgres", nil, 0, newPVC("data", "2Gi", nil))
+		live := newPVC("data-postgres-0", "1Gi", nil)
+		checker := NewResizeChecker(fake.NewClientBuilder().WithObjects(live).Build())
+
+		result, err := checker.Check(ctx, []client.Object{statefulSet})
+
+		require.NoError(t, err)
+		require.Len(t, result.ResizeRequests, 1)
+		assert.Equal(t, client.ObjectKey{Namespace: testNamespace, Name: "data-postgres-0"}, result.ResizeRequests[0].PVC)
+	})
+
+	t.Run("does not derive PVCs for zero replicas", func(t *testing.T) {
+		statefulSet := newStatefulSet("postgres", ptr.To[int32](0), 0, newPVC("data", "2Gi", nil))
+		checker := NewResizeChecker(fake.NewClientBuilder().Build())
+
+		result, err := checker.Check(ctx, []client.Object{statefulSet})
+
+		require.NoError(t, err)
+		assert.Empty(t, result.ResizeRequests)
+	})
+
+	t.Run("uses the configured start ordinal", func(t *testing.T) {
+		statefulSet := newStatefulSet("postgres", ptr.To[int32](2), 3, newPVC("data", "2Gi", nil))
+		live3 := newPVC("data-postgres-3", "1Gi", nil)
+		live4 := newPVC("data-postgres-4", "1Gi", nil)
+		checker := NewResizeChecker(fake.NewClientBuilder().WithObjects(live3, live4).Build())
+
+		result, err := checker.Check(ctx, []client.Object{statefulSet})
+
+		require.NoError(t, err)
+		require.Len(t, result.ResizeRequests, 2)
+		requests := resizeRequestsByName(result.ResizeRequests)
+		assert.Contains(t, requests, "data-postgres-3")
+		assert.Contains(t, requests, "data-postgres-4")
+	})
+
+	t.Run("rejects negative replicas in rendered output", func(t *testing.T) {
+		statefulSet := newStatefulSet("postgres", ptr.To[int32](-1), 0, newPVC("data", "2Gi", nil))
+		checker := NewResizeChecker(fake.NewClientBuilder().Build())
+
+		result, err := checker.Check(ctx, []client.Object{statefulSet})
+
+		require.ErrorContains(t, err, "rendered StatefulSet \"ecosystem/postgres\" has negative replicas")
+		assert.Empty(t, result.ResizeRequests)
+	})
+}
+
 func TestResizeChecker_CheckErrors(t *testing.T) {
 	ctx := context.Background()
 
@@ -187,6 +262,35 @@ func newPVC(name, storage string, storageClass *string) *corev1.PersistentVolume
 			},
 		},
 	}
+}
+
+func newStatefulSet(name string, replicas *int32, startOrdinal int32, templates ...*corev1.PersistentVolumeClaim) *appsv1.StatefulSet {
+	volumeClaimTemplates := make([]corev1.PersistentVolumeClaim, 0, len(templates))
+	for _, template := range templates {
+		volumeClaimTemplates = append(volumeClaimTemplates, *template.DeepCopy())
+	}
+
+	statefulSet := &appsv1.StatefulSet{
+		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: testNamespace},
+		Spec: appsv1.StatefulSetSpec{
+			Replicas:             replicas,
+			VolumeClaimTemplates: volumeClaimTemplates,
+		},
+	}
+	if startOrdinal != 0 {
+		statefulSet.Spec.Ordinals = &appsv1.StatefulSetOrdinals{Start: startOrdinal}
+	}
+
+	return statefulSet
+}
+
+func resizeRequestsByName(requests []ResizeRequest) map[string]ResizeRequest {
+	result := make(map[string]ResizeRequest, len(requests))
+	for _, request := range requests {
+		result[request.PVC.Name] = request
+	}
+
+	return result
 }
 
 type errorReader struct {
