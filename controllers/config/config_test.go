@@ -350,3 +350,25 @@ func TestOperatorConfig_GetV3RemoteConfiguration(t *testing.T) {
 		})
 	}
 }
+
+func Test_getDoguV3Enabled(t *testing.T) {
+	tests := []struct {
+		name   string
+		want   bool
+		setEnv func(t *testing.T)
+	}{
+		{
+			name: "return default false on invalid value",
+			want: false,
+			setEnv: func(t *testing.T) {
+				t.Setenv("DOGU_V3_ENABLED", "invalid")
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.setEnv(t)
+			assert.Equalf(t, tt.want, getDoguV3Enabled(), "getDoguV3Enabled()")
+		})
+	}
+}
