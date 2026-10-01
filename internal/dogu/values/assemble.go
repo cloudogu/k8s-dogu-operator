@@ -39,18 +39,19 @@ type MetadataMapping struct {
 
 type Values map[string]any
 
-// Assembler allows to patch a dogu YAML with chart patch templates and global config values from the cluster.
+// Assembler allows to patch a dogu Helm values with dogu-values-metadata and global config values from the cluster.
 type Assembler struct {
 	k8s client.Client
 }
 
-// NewAssembler creates a new dogu YAML assembler.
+// NewAssembler creates a new dogu Helm values assembler.
 func NewAssembler(k8s client.Client) *Assembler {
 	return &Assembler{k8s: k8s}
 }
 
-// Assemble merges the given dogu CR YAML with chart patch templates and global config values.
-func (a Assembler) Assemble(ctx context.Context, cr *v3beta1.Dogu, patchTpl []byte) (Values, error) {
+// Assemble merges the given Helm values from dogu CR YAML along with the dogu-values-metadata.yaml, as well global
+// config values and returns them.
+func (a Assembler) Assemble(ctx context.Context, cr *v3beta1.Dogu, valuesMeta []byte) (Values, error) {
 	logger := log.FromContext(ctx)
 
 	crValues, err := getDoguCRValues(cr)
@@ -58,7 +59,7 @@ func (a Assembler) Assemble(ctx context.Context, cr *v3beta1.Dogu, patchTpl []by
 		return nil, fmt.Errorf("failed to dogu spec values: %w", err)
 	}
 
-	doguMetaValues, err := getDoguMetaValues(cr, patchTpl, logger)
+	doguMetaValues, err := getDoguMetaValues(cr, valuesMeta, logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get values from dogu values meta: %w", err)
 	}

@@ -26,28 +26,22 @@ type EnsureHelmReleaseStep struct {
 	eventRecorder         EventRecorder
 	helmReconcileInterval metav1.Duration
 	retryInterval         metav1.Duration
-	globalConfigRepo      resource.GlobalConfigRepository
+	doguMetadataValueSvc  DoguValuesMetadataService
 }
 
-func NewEnsureHelmReleaseStep(k8sClient K8sClient, operatorConfig config.OperatorConfig, globalConfigRepo resource.GlobalConfigRepository, recorder EventRecorder) *EnsureHelmReleaseStep {
+func NewEnsureHelmReleaseStep(k8sClient K8sClient, operatorConfig config.OperatorConfig, doguMetadataValueSvc DoguValuesMetadataService, recorder EventRecorder) *EnsureHelmReleaseStep {
 	return &EnsureHelmReleaseStep{
 		k8sClient:             k8sClient,
 		eventRecorder:         recorder,
 		helmReconcileInterval: metav1.Duration{Duration: operatorConfig.HelmReconciliationInterval},
 		retryInterval:         metav1.Duration{Duration: operatorConfig.HelmRetryInterval},
-		globalConfigRepo:      globalConfigRepo,
+		doguMetadataValueSvc:  doguMetadataValueSvc,
 	}
 }
 
 func (ehr *EnsureHelmReleaseStep) Run(ctx context.Context, doguResource *v3beta1.Dogu) stepsv3.StepResult {
-	//globalConfig, err := ehr.globalConfigRepo.Get(ctx)
-	//if err != nil {
-	//	err = fmt.Errorf("failed to get global config to configure dogu %s:%s: %w", doguResource.Namespace, doguResource.Name, err)
-	//	return stepsv3.RequeueWithError(err, v3beta1.ReasonInstalling)
-	//}
-
 	templateAsm := values3.NewAssembler(ehr.k8sClient)
-	values, err := combineValues(ctx, doguResource, templateAsm)
+	values, err := combineValues(ctx, doguResource, ehr.doguMetadataValueSvc, templateAsm)
 	if err != nil {
 		return stepsv3.RequeueWithError(err, v3beta1.ReasonInstalling)
 	}
@@ -128,18 +122,19 @@ func (ehr *EnsureHelmReleaseStep) Run(ctx context.Context, doguResource *v3beta1
 	return stepsv3.Continue()
 }
 
-func combineValues(ctx context.Context, dogu *v3beta1.Dogu, assembler valueAssembler) (*v1.JSON, error) {
-	var noExtraPatchTpl []byte
-	values, err := assembler.Assemble(ctx, dogu, noExtraPatchTpl)
-
+func combineValues(ctx context.Context, dogu *v3beta1.Dogu, doguMetadataValueSvc DoguValuesMetadataService, valueAssembler valueAssembler) (*v1.JSON, error) {
+	metaValues, _, err := doguMetadataValueSvc.DoguMetaValues(ctx, dogu)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to retrieve dogu metadata values: %w", err)
 	}
-	bytes, err := json.Marshal(values)
 
+	values, err := valueAssembler.Assemble(ctx, dogu, metaValues)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to assemble dogu values: %w", err)
 	}
+
+	// this case the error is probably unreachable because the assembler has already pushed the values object into a YAML parser.
+	bytes, _ := json.Marshal(values)
 
 	return &v1.JSON{Raw: bytes}, nil
 }

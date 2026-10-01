@@ -17,11 +17,13 @@ func Test_combineValues(t *testing.T) {
 		inputDogu := &v3beta1.Dogu{}
 		assembledDoguValues := values3.Values{"foo": "bar", "fqdn": "example.invalid", "logging": "error"}
 		valueAsmMock := newMockDoguPatchAssembler(t)
-		var patchtpl []byte
-		valueAsmMock.EXPECT().Assemble(testCtx, inputDogu, patchtpl).Return(assembledDoguValues, nil)
+		var doguMetadataValues []byte
+		doguValuesMetadataSvcMock := newMockDoguMetadataValueService(t)
+		doguValuesMetadataSvcMock.EXPECT().DoguMetaValues(testCtx, inputDogu).Return(doguMetadataValues, true, nil)
+		valueAsmMock.EXPECT().Assemble(testCtx, inputDogu, doguMetadataValues).Return(assembledDoguValues, nil)
 
 		// when
-		actual, err := combineValues(testCtx, inputDogu, valueAsmMock)
+		actual, err := combineValues(testCtx, inputDogu, doguValuesMetadataSvcMock, valueAsmMock)
 
 		// then
 		require.NoError(t, err)
@@ -30,18 +32,36 @@ func Test_combineValues(t *testing.T) {
 		expectedJson := v1.JSON{Raw: expectedBytes}
 		assert.Equal(t, expectedJson, *actual)
 	})
-	t.Run("should fail", func(t *testing.T) {
+
+	t.Run("should fail on dogu metadata value service retrieval", func(t *testing.T) {
 		// given
 		inputDogu := &v3beta1.Dogu{}
 		valueAsmMock := newMockDoguPatchAssembler(t)
-		var patchtpl []byte
-		valueAsmMock.EXPECT().Assemble(testCtx, inputDogu, patchtpl).Return(nil, assert.AnError)
+		doguValuesMetadataSvcMock := newMockDoguMetadataValueService(t)
+		doguValuesMetadataSvcMock.EXPECT().DoguMetaValues(testCtx, inputDogu).Return(nil, false, assert.AnError)
 
 		// when
-		_, err := combineValues(testCtx, inputDogu, valueAsmMock)
+		_, err := combineValues(testCtx, inputDogu, doguValuesMetadataSvcMock, valueAsmMock)
 
 		// then
 		require.Error(t, err)
-		assert.ErrorContains(t, err, "assert.AnError general error for testing")
+		assert.ErrorContains(t, err, "failed to retrieve dogu metadata values: ")
+	})
+
+	t.Run("should fail on dogu value assembly", func(t *testing.T) {
+		// given
+		inputDogu := &v3beta1.Dogu{}
+		var doguMetadataValues []byte
+		doguValuesMetadataSvcMock := newMockDoguMetadataValueService(t)
+		doguValuesMetadataSvcMock.EXPECT().DoguMetaValues(testCtx, inputDogu).Return(doguMetadataValues, true, nil)
+		valueAsmMock := newMockDoguPatchAssembler(t)
+		valueAsmMock.EXPECT().Assemble(testCtx, inputDogu, doguMetadataValues).Return(nil, assert.AnError)
+
+		// when
+		_, err := combineValues(testCtx, inputDogu, doguValuesMetadataSvcMock, valueAsmMock)
+
+		// then
+		require.Error(t, err)
+		assert.ErrorContains(t, err, "failed to assemble dogu values: ")
 	})
 }

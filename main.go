@@ -1,6 +1,9 @@
 package main
 
 import (
+	"context"
+
+	beta1 "github.com/cloudogu/k8s-dogu-lib/v3/api/v3beta1"
 	doguv2 "github.com/cloudogu/k8s-dogu-lib/v3/client/typed/api/v2"
 	"github.com/cloudogu/k8s-dogu-lib/v3/client/typed/api/v3beta1"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/additionalMount"
@@ -136,6 +139,17 @@ func k8sOptions() fx.Option {
 	)
 }
 
+type dummyDoguValuesMetadataService struct{}
+
+func newDummyDoguValuesMetadataService() *dummyDoguValuesMetadataService {
+	return &dummyDoguValuesMetadataService{}
+}
+
+func (d dummyDoguValuesMetadataService) DoguMetaValues(ctx context.Context, doguResource *beta1.Dogu) ([]byte, bool, error) {
+	// TODO remove me in favor of an actual doguValuesMetadataService implementation
+	return nil, false, nil
+}
+
 //nolint:funlen
 func v2DependencyOptions() fx.Option {
 	return fx.Options(
@@ -213,6 +227,9 @@ func v2DependencyOptions() fx.Option {
 			controllers.NewDoguEvents,
 			controllers.NewDoguEventsIn,
 			controllers.NewDoguEventsOut,
+
+			// TODO initialize the doguValuesMetadataService for the helmReleaseStep otherwise the operator does not work
+			fx.Annotate(newDummyDoguValuesMetadataService, fx.As(new(installv3.DoguValuesMetadataService))),
 
 			// use-cases
 			fx.Annotate(
