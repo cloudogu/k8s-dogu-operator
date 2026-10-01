@@ -4,7 +4,9 @@ import (
 	"context"
 
 	"github.com/cloudogu/dogu-lib/doguv3"
+	"github.com/cloudogu/k8s-dogu-lib/v3/api/v3beta1"
 	doguv3steps "github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv3"
+	values3 "github.com/cloudogu/k8s-dogu-operator/v3/internal/dogu/values"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -23,4 +25,8 @@ type EventRecorder interface {
 
 type Step interface {
 	doguv3steps.Step
+}
+
+type valueAssembler interface {
+	Assemble(ctx context.Context, cr *v3beta1.Dogu, patchTpl []byte) (values3.Values, error)
 }
