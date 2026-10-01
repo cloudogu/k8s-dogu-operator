@@ -2,6 +2,7 @@ package pvc
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
@@ -37,8 +38,9 @@ func NewResizeChecker(k8s client.Reader) ResizeChecker {
 }
 
 type desiredClaim struct {
-	key     client.ObjectKey
-	storage resource.Quantity
+	key          client.ObjectKey
+	storage      resource.Quantity
+	storageClass *string
 }
 
 func (c *resizeChecker) Check(ctx context.Context, renderedObjects []client.Object) (CheckResult, error) {
@@ -81,19 +83,28 @@ func (c *resizeChecker) checkPVC(ctx context.Context, desired desiredClaim) (Res
 		Desired: desired.storage.DeepCopy(),
 	}
 
+	if desired.storageClass != nil && !equalStringPointers(desired.storageClass, livePVC.Spec.StorageClassName) {
+		request.Err = &StorageClassImmutableError{
+			PVC:     desired.key,
+			Current: copyStringPointer(livePVC.Spec.StorageClassName),
+			Desired: copyStringPointer(desired.storageClass),
+		}
+	}
+
 	switch desired.storage.Cmp(current) {
 	case -1:
-		request.Err = &VolumeShrinkError{
+		request.Err = errors.Join(request.Err, &VolumeShrinkError{
 			PVC:     desired.key,
 			Current: current.DeepCopy(),
 			Desired: desired.storage.DeepCopy(),
+		})
+	case 0:
+		if request.Err == nil {
+			return ResizeRequest{}, false, nil
 		}
-		return request, true, nil
-	case 1:
-		return request, true, nil
-	default:
-		return ResizeRequest{}, false, nil
 	}
+
+	return request, true, nil
 }
 
 func extractDesiredClaims(renderedObjects []client.Object) ([]desiredClaim, error) {
@@ -122,7 +133,25 @@ func desiredClaimFromPVC(pvc *corev1.PersistentVolumeClaim) (desiredClaim, error
 	}
 
 	return desiredClaim{
-		key:     client.ObjectKeyFromObject(pvc),
-		storage: storage.DeepCopy(),
+		key:          client.ObjectKeyFromObject(pvc),
+		storage:      storage.DeepCopy(),
+		storageClass: copyStringPointer(pvc.Spec.StorageClassName),
 	}, nil
+}
+
+func equalStringPointers(left, right *string) bool {
+	if left == nil || right == nil {
+		return left == right
+	}
+
+	return *left == *right
+}
+
+func copyStringPointer(value *string) *string {
+	if value == nil {
+		return nil
+	}
+
+	copy := *value
+	return &copy
 }

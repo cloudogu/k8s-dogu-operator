@@ -20,6 +20,7 @@ const testNamespace = "ecosystem"
 
 func TestResizeChecker_CheckStandalonePVCs(t *testing.T) {
 	ctx := context.Background()
+	fast := "fast"
 
 	t.Run("returns an empty result when there are no rendered PVCs", func(t *testing.T) {
 		checker := NewResizeChecker(fake.NewClientBuilder().Build())
@@ -39,8 +40,8 @@ func TestResizeChecker_CheckStandalonePVCs(t *testing.T) {
 		assert.Empty(t, result.ResizeRequests)
 	})
 
-	t.Run("treats equivalent quantities as unchanged", func(t *testing.T) {
-		live := newPVC("data", "1024Mi", nil)
+	t.Run("treats equivalent quantities and a defaulted storage class as unchanged", func(t *testing.T) {
+		live := newPVC("data", "1024Mi", &fast)
 		checker := NewResizeChecker(fake.NewClientBuilder().WithObjects(live).Build())
 
 		result, err := checker.Check(ctx, []client.Object{newPVC("data", "1Gi", nil)})
@@ -81,6 +82,49 @@ func TestResizeChecker_CheckStandalonePVCs(t *testing.T) {
 		assert.Equal(t, "10Gi", shrinkError.Current.String())
 		assert.Equal(t, "2Gi", shrinkError.Desired.String())
 	})
+}
+
+func TestResizeChecker_CheckStorageClass(t *testing.T) {
+	ctx := context.Background()
+	fast := "fast"
+	slow := "slow"
+	empty := ""
+
+	tests := []struct {
+		name         string
+		desiredClass *string
+		currentClass *string
+		wantError    bool
+	}{
+		{name: "both unset", desiredClass: nil, currentClass: nil},
+		{name: "desired unset accepts a defaulted live class", desiredClass: nil, currentClass: &fast},
+		{name: "same explicit class", desiredClass: &fast, currentClass: &fast},
+		{name: "different explicit class", desiredClass: &slow, currentClass: &fast, wantError: true},
+		{name: "explicit desired class and unset live class", desiredClass: &fast, currentClass: nil, wantError: true},
+		{name: "explicit empty desired class is not unset", desiredClass: &empty, currentClass: nil, wantError: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			live := newPVC("data", "1Gi", tt.currentClass)
+			checker := NewResizeChecker(fake.NewClientBuilder().WithObjects(live).Build())
+
+			result, err := checker.Check(ctx, []client.Object{newPVC("data", "1Gi", tt.desiredClass)})
+
+			require.NoError(t, err)
+			if !tt.wantError {
+				assert.Empty(t, result.ResizeRequests)
+				return
+			}
+
+			require.Len(t, result.ResizeRequests, 1)
+			var storageClassError *StorageClassImmutableError
+			require.ErrorAs(t, result.ResizeRequests[0].Err, &storageClassError)
+			assert.Equal(t, client.ObjectKey{Namespace: testNamespace, Name: "data"}, storageClassError.PVC)
+			assert.Equal(t, tt.currentClass, storageClassError.Current)
+			assert.Equal(t, tt.desiredClass, storageClassError.Desired)
+		})
+	}
 }
 
 func TestResizeChecker_CheckErrors(t *testing.T) {
