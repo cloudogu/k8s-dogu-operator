@@ -33,8 +33,8 @@ func NewEnsureHelmReleaseStep(k8sClient K8sClient, operatorConfig config.Operato
 	return &EnsureHelmReleaseStep{
 		k8sClient:             k8sClient,
 		eventRecorder:         recorder,
-		helmReconcileInterval: metav1.Duration{Duration: operatorConfig.HelmReconciliationInterval},
-		retryInterval:         metav1.Duration{Duration: operatorConfig.HelmRetryInterval},
+		helmReconcileInterval: metav1.Duration{Duration: operatorConfig.DoguHelmReconciliationInterval},
+		retryInterval:         metav1.Duration{Duration: operatorConfig.DoguHelmRetryInterval},
 		doguMetadataValueSvc:  doguMetadataValueSvc,
 	}
 }

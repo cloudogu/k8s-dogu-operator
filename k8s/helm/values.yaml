@@ -31,12 +31,12 @@ controllerManager:
     doguDescriptorMaxRetries: 20
     getServiceAccountPodMaxRetries: 5
     requeueTimeForDoguResourceInNanoseconds: 5000000000
-    # helmReconciliationInterval defines the interval in which dogu Helm releases should be reconciled by helm-controller.
+    # doguHelmReconciliationInterval defines the interval in which dogu Helm releases should be reconciled by helm-controller.
     # Values are suffixed by duration units f.i. 30s.
-    helmReconciliationInterval: 30s
-    # helmRetryInterval defines the interval in which Helm installs or upgrade for a dogu should be retried on error.
+    doguHelmReconciliationInterval: 30s
+    # doguHelmRetryInterval defines the interval in which Helm installs or upgrade for a dogu should be retried on error.
     # Values are suffixed by duration units f.i. 5m.
-    helmRetryInterval: 5m
+    doguHelmRetryInterval: 5m
     # imageConfigCacheSize is the maximum number of dogu image configs cached in memory
     # Set to 0 to disable caching.
     imageConfigCacheSize: 50

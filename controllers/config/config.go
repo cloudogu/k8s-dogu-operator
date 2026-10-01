@@ -59,8 +59,8 @@ const (
 	envVarDisablePostfixDependencyCheck           = "DISABLE_POSTFIX_DEPENDENCY_CHECK"
 	envVarRequeueTimeForDoguResourceInNanoseconds = "REQUEUE_TIME_FOR_DOGU_RESOURCE_IN_NANOSECONDS"
 	envVarImageConfigCacheSize                    = "IMAGE_CONFIG_CACHE_SIZE"
-	envVarHelmReconciliationInterval              = "HELM_RECONCILIATION_INTERVAL"
-	envVarHelmRetryInterval                       = "HELM_RETRY_INTERVAL"
+	envVarDoguHelmReconciliationInterval          = "DOGU_HELM_RECONCILIATION_INTERVAL"
+	envVarDoguHelmRetryInterval                   = "DOGU_HELM_RETRY_INTERVAL"
 	errMsgFailedToParseEnvVarValue                = "failed to parse value of environment variable %s: %w"
 )
 
@@ -105,10 +105,10 @@ type OperatorConfig struct {
 	// ImageConfigCacheSize defines the maximum number of dogu image configs kept in the in-memory image config cache.
 	// A value <= 0 disables the cache.
 	ImageConfigCacheSize int `json:"image_config_cache_size"`
-	// HelmReconciliationInterval defines the interval in which dogu Helm releases should be reconciled by helm-controller
-	HelmReconciliationInterval time.Duration `json:"helm_reconciliation_interval"`
-	// HelmRetryInterval defines the interval in which Helm installs or upgrade for a dogu should be retried on error
-	HelmRetryInterval time.Duration `json:"helm_retry_interval"`
+	// DoguHelmReconciliationInterval defines the interval in which dogu Helm releases should be reconciled by helm-controller
+	DoguHelmReconciliationInterval time.Duration `json:"dogu_helm_reconciliation_interval"`
+	// DoguHelmRetryInterval defines the interval in which Helm installs or upgrade for a dogu should be retried on error
+	DoguHelmRetryInterval time.Duration `json:"dogu_helm_retry_interval"`
 }
 
 type Version string
@@ -144,32 +144,32 @@ func NewOperatorConfig(version Version) (*OperatorConfig, error) {
 	}
 	log.Info(fmt.Sprintf("Found stored dogu reconciler requeue time! Using requeue time %s", doguReconcilerRequeueTime.String()))
 
-	helmReconciliationInterval, err := readDuration(envVarHelmReconciliationInterval)
+	doguHelmReconciliationInterval, err := readDuration(envVarDoguHelmReconciliationInterval)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read helm reconciliation interval: %w", err)
 	}
-	log.Info(fmt.Sprintf("Found stored helm reconciliation interval! Using interval %s", helmReconciliationInterval))
+	log.Info(fmt.Sprintf("Found stored helm reconciliation interval! Using interval %s", doguHelmReconciliationInterval))
 
-	helmRetryInterval, err := readDuration(envVarHelmRetryInterval)
+	doguHelmRetryInterval, err := readDuration(envVarDoguHelmRetryInterval)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read helm retry interval: %w", err)
 	}
-	log.Info(fmt.Sprintf("Found stored helm retry interval! Using interval %s", helmRetryInterval))
+	log.Info(fmt.Sprintf("Found stored helm retry interval! Using interval %s", doguHelmRetryInterval))
 
 	return &OperatorConfig{
-		Namespace:                     namespace,
-		DoguRegistry:                  doguRegistryData,
-		Version:                       &parsedVersion,
-		NetworkPoliciesEnabled:        getNetworkPoliciesEnabled(),
-		AuthRegistrationEnabled:       getAuthRegistrationEnabled(),
-		ExpositionEnabled:             getExpositionEnabled(),
-		WarpMenuEntryEnabled:          getWarpMenuEntryEnabled(),
-		DisablePostfixDependencyCheck: getDisablePostfixDependencyCheck(),
-		RequeueTimeForDoguReconciler:  doguReconcilerRequeueTime,
-		ImageConfigCacheSize:          getImageConfigCacheSize(),
-		DoguV3Registry:                readDoguV3RegistryData(),
-		HelmReconciliationInterval:    helmReconciliationInterval,
-		HelmRetryInterval:             helmRetryInterval,
+		Namespace:                      namespace,
+		DoguRegistry:                   doguRegistryData,
+		Version:                        &parsedVersion,
+		NetworkPoliciesEnabled:         getNetworkPoliciesEnabled(),
+		AuthRegistrationEnabled:        getAuthRegistrationEnabled(),
+		ExpositionEnabled:              getExpositionEnabled(),
+		WarpMenuEntryEnabled:           getWarpMenuEntryEnabled(),
+		DisablePostfixDependencyCheck:  getDisablePostfixDependencyCheck(),
+		RequeueTimeForDoguReconciler:   doguReconcilerRequeueTime,
+		ImageConfigCacheSize:           getImageConfigCacheSize(),
+		DoguV3Registry:                 readDoguV3RegistryData(),
+		DoguHelmReconciliationInterval: doguHelmReconciliationInterval,
+		DoguHelmRetryInterval:          doguHelmRetryInterval,
 	}, nil
 }
 

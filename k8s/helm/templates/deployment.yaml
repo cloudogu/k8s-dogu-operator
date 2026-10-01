@@ -126,11 +126,10 @@ spec:
                   name: ces-proxy
                   key: url
                   optional: true
-            # TODO: helm is a bit too broad. Maybe use a HELM_RELEASE_... prefix to pin down the purpose?
-            - name: HELM_RECONCILIATION_INTERVAL
-              value: {{ quote .Values.controllerManager.env.helmReconciliationInterval | default "30s" }}
-            - name: HELM_RETRY_INTERVAL
-              value: {{ quote .Values.controllerManager.env.helmRetryInterval | default "5m" }}
+            - name: DOGU_HELM_RECONCILIATION_INTERVAL
+              value: {{ quote .Values.controllerManager.env.doguHelmReconciliationInterval | default "30s" }}
+            - name: DOGU_HELM_RETRY_INTERVAL
+              value: {{ quote .Values.controllerManager.env.doguHelmRetryInterval | default "5m" }}
           image: "{{ .Values.controllerManager.image.registry }}/{{ .Values.controllerManager.image.repository }}:{{ .Values.controllerManager.image.tag }}"
           imagePullPolicy: {{ .Values.controllerManager.imagePullPolicy | default "IfNotPresent" }}
           livenessProbe:
