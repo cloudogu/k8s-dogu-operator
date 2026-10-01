@@ -41,7 +41,7 @@ func NewEnsureHelmReleaseStep(k8sClient K8sClient, operatorConfig config.Operato
 
 func (ehr *EnsureHelmReleaseStep) Run(ctx context.Context, doguResource *v3beta1.Dogu) stepsv3.StepResult {
 	templateAsm := values3.NewAssembler(ehr.k8sClient)
-	values, err := combineValues(ctx, doguResource, ehr.doguMetadataValueSvc, templateAsm)
+	combinedValues, err := combineValues(ctx, doguResource, ehr.doguMetadataValueSvc, templateAsm)
 	if err != nil {
 		return stepsv3.RequeueWithError(err, v3beta1.ReasonInstalling)
 	}
@@ -54,51 +54,7 @@ func (ehr *EnsureHelmReleaseStep) Run(ctx context.Context, doguResource *v3beta1
 	// Use patch because the repository resource will be updated by the helm-controller.
 	// CreateOrUpdate would produce conflict errors and increase the number of reconciles.
 	result, err := controllerutil.CreateOrPatch(ctx, ehr.k8sClient, release, func() error {
-		if release.Labels == nil {
-			release.Labels = make(map[string]string)
-		}
-		release.Labels[labelKeyFluxSharding] = resource.LabelValueCes
-		release.Labels[v3beta1.DoguLabelName] = doguResource.Spec.Name
-		release.Labels[v3beta1.DoguLabelVersion] = doguResource.Spec.Version
-		release.Spec = flux.HelmReleaseSpec{
-			ChartRef: &flux.CrossNamespaceSourceReference{
-				APIVersion: "v1",
-				Kind:       fluxoci.OCIRepositoryKind,
-				Namespace:  doguResource.Namespace,
-				Name:       doguResource.Name,
-			},
-			Install: &flux.Install{
-				Strategy: &flux.InstallStrategy{
-					Name:          string(flux.ActionStrategyRetryOnFailure),
-					RetryInterval: &ehr.retryInterval,
-				},
-			},
-			Upgrade: &flux.Upgrade{
-				Strategy: &flux.UpgradeStrategy{
-					Name:          string(flux.ActionStrategyRetryOnFailure),
-					RetryInterval: &ehr.retryInterval,
-				},
-			},
-			Interval: ehr.helmReconcileInterval,
-			DriftDetection: &flux.DriftDetection{
-				Mode:   flux.DriftDetectionEnabled,
-				Ignore: []flux.IgnoreRule{},
-			},
-			Values: values,
-			CommonMetadata: &flux.CommonMetadata{
-				Annotations: nil,
-				Labels: map[string]string{
-					resource.LabelKeyApp:                    resource.LabelValueCes,
-					resource.LabelKeyK8sCloudoguComApp:      resource.LabelValueCes,
-					v2.DoguLabelName:                        doguResource.Spec.Name,
-					v3beta1.DoguLabelName:                   doguResource.Spec.Name,
-					resource.LabelKeyAppKubernetesIoName:    doguResource.Spec.Name,
-					resource.LabelKeyAppKubernetesIoVersion: doguResource.Spec.Version,
-					resource.LabelKeyAppKubernetesIoPartOf:  resource.LabelValueCes,
-				},
-			},
-		}
-
+		configureHelmRelease(release, doguResource, combinedValues, &ehr.retryInterval, &ehr.helmReconcileInterval)
 		return controllerutil.SetControllerReference(doguResource, release, ehr.k8sClient.Scheme())
 	})
 
@@ -120,6 +76,53 @@ func (ehr *EnsureHelmReleaseStep) Run(ctx context.Context, doguResource *v3beta1
 	}
 
 	return stepsv3.Continue()
+}
+
+func configureHelmRelease(release *flux.HelmRelease, doguResource *v3beta1.Dogu, values *v1.JSON, retryInterval *metav1.Duration, helmReconcileInterval *metav1.Duration) {
+	if release.Labels == nil {
+		release.Labels = make(map[string]string)
+	}
+	release.Labels[labelKeyFluxSharding] = resource.LabelValueCes
+	release.Labels[v3beta1.DoguLabelName] = doguResource.Spec.Name
+	release.Labels[v3beta1.DoguLabelVersion] = doguResource.Spec.Version
+	release.Spec = flux.HelmReleaseSpec{
+		ChartRef: &flux.CrossNamespaceSourceReference{
+			APIVersion: "v1",
+			Kind:       fluxoci.OCIRepositoryKind,
+			Namespace:  doguResource.Namespace,
+			Name:       doguResource.Name,
+		},
+		Install: &flux.Install{
+			Strategy: &flux.InstallStrategy{
+				Name:          string(flux.ActionStrategyRetryOnFailure),
+				RetryInterval: retryInterval,
+			},
+		},
+		Upgrade: &flux.Upgrade{
+			Strategy: &flux.UpgradeStrategy{
+				Name:          string(flux.ActionStrategyRetryOnFailure),
+				RetryInterval: retryInterval,
+			},
+		},
+		Interval: *helmReconcileInterval,
+		DriftDetection: &flux.DriftDetection{
+			Mode:   flux.DriftDetectionEnabled,
+			Ignore: []flux.IgnoreRule{},
+		},
+		Values: values,
+		CommonMetadata: &flux.CommonMetadata{
+			Annotations: nil,
+			Labels: map[string]string{
+				resource.LabelKeyApp:                    resource.LabelValueCes,
+				resource.LabelKeyK8sCloudoguComApp:      resource.LabelValueCes,
+				v2.DoguLabelName:                        doguResource.Spec.Name,
+				v3beta1.DoguLabelName:                   doguResource.Spec.Name,
+				resource.LabelKeyAppKubernetesIoName:    doguResource.Spec.Name,
+				resource.LabelKeyAppKubernetesIoVersion: doguResource.Spec.Version,
+				resource.LabelKeyAppKubernetesIoPartOf:  resource.LabelValueCes,
+			},
+		},
+	}
 }
 
 func combineValues(ctx context.Context, dogu *v3beta1.Dogu, doguMetadataValueSvc DoguValuesMetadataService, valueAssembler valueAssembler) (*v1.JSON, error) {
