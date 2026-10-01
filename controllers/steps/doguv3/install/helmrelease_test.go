@@ -30,4 +30,18 @@ func Test_combineValues(t *testing.T) {
 		expectedJson := v1.JSON{Raw: expectedBytes}
 		assert.Equal(t, expectedJson, *actual)
 	})
+	t.Run("should fail", func(t *testing.T) {
+		// given
+		inputDogu := &v3beta1.Dogu{}
+		valueAsmMock := newMockDoguPatchAssembler(t)
+		var patchtpl []byte
+		valueAsmMock.EXPECT().Assemble(testCtx, inputDogu, patchtpl).Return(nil, assert.AnError)
+
+		// when
+		_, err := combineValues(testCtx, inputDogu, valueAsmMock)
+
+		// then
+		require.Error(t, err)
+		assert.ErrorContains(t, err, "assert.AnError general error for testing")
+	})
 }
