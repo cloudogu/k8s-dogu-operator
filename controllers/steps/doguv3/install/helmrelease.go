@@ -119,6 +119,8 @@ func (ehr *EnsureHelmReleaseStep) Run(ctx context.Context, doguResource *v3beta1
 	case controllerutil.OperationResultUpdated:
 		ehr.eventRecorder.Event(doguResource, core.EventTypeNormal, v3beta1.ConditionChartAvailable, "HelmRelease updated")
 		log.FromContext(ctx).Info("updated HelmRelease", "name", release.Name)
+	case controllerutil.OperationResultNone:
+		// surprisingly, no change here, but idempotency is absolutely desired
 	default:
 		log.FromContext(ctx).Info("found unexpected operation result for helm release upsert", "result", result, "helm-release", release.Name)
 	}
