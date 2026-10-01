@@ -23,6 +23,7 @@ controllerManager:
     authRegistrationEnabled: false
     expositionEnabled: false
     warpMenuEntryEnabled: false
+    doguV3Enabled: false
     disablePostfixDependencyCheck: false
     doguStartupProbeTimeout: 1
     doguRestartSuccessfulHistoryLimit: 3
