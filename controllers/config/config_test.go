@@ -26,6 +26,7 @@ func TestNewOperatorConfig(t *testing.T) {
 	_ = os.Unsetenv("AUTH_REGISTRATION_ENABLED")
 	_ = os.Unsetenv("EXPOSITION_ENABLED")
 	_ = os.Unsetenv("WARP_MENU_ENTRY_ENABLED")
+	_ = os.Unsetenv("DOGU_V3_ENABLED")
 
 	expectedNamespace := "myNamespace"
 	expectedDoguRegistryData := DoguRegistryData{
@@ -91,6 +92,7 @@ func TestNewOperatorConfig(t *testing.T) {
 	t.Setenv("AUTH_REGISTRATION_ENABLED", "true")
 	t.Setenv("EXPOSITION_ENABLED", "true")
 	t.Setenv("WARP_MENU_ENTRY_ENABLED", "true")
+	t.Setenv("DOGU_V3_ENABLED", "true")
 	t.Setenv("DISABLE_POSTFIX_DEPENDENCY_CHECK", "true")
 	t.Setenv("DOGU_V3_REGISTRY_ENDPOINT", expectedV3DoguRegistryData.Endpoint)
 	t.Setenv("DOGU_V3_REGISTRY_USERNAME", expectedV3DoguRegistryData.Username)
@@ -109,6 +111,7 @@ func TestNewOperatorConfig(t *testing.T) {
 		assert.True(t, operatorConfig.AuthRegistrationEnabled)
 		assert.True(t, operatorConfig.ExpositionEnabled)
 		assert.True(t, operatorConfig.WarpMenuEntryEnabled)
+		assert.True(t, operatorConfig.DoguV3Enabled)
 		assert.Equal(t, expectedV3DoguRegistryData, operatorConfig.DoguV3Registry)
 	})
 }
@@ -344,6 +347,28 @@ func TestOperatorConfig_GetV3RemoteConfiguration(t *testing.T) {
 				return
 			}
 			assert.Equalf(t, tt.want, got, "GetV3RemoteConfiguration()")
+		})
+	}
+}
+
+func Test_getDoguV3Enabled(t *testing.T) {
+	tests := []struct {
+		name   string
+		want   bool
+		setEnv func(t *testing.T)
+	}{
+		{
+			name: "return default false on invalid value",
+			want: false,
+			setEnv: func(t *testing.T) {
+				t.Setenv("DOGU_V3_ENABLED", "invalid")
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.setEnv(t)
+			assert.Equalf(t, tt.want, getDoguV3Enabled(), "getDoguV3Enabled()")
 		})
 	}
 }

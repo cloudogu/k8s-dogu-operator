@@ -54,6 +54,7 @@ const (
 	envVarAuthRegistrationEnabled                 = "AUTH_REGISTRATION_ENABLED"
 	envVarExpositionEnabled                       = "EXPOSITION_ENABLED"
 	envVarWarpMenuEntryEnabled                    = "WARP_MENU_ENTRY_ENABLED"
+	envVarDoguV3Enabled                           = "DOGU_V3_ENABLED"
 	envVarDisablePostfixDependencyCheck           = "DISABLE_POSTFIX_DEPENDENCY_CHECK"
 	envVarRequeueTimeForDoguResourceInNanoseconds = "REQUEUE_TIME_FOR_DOGU_RESOURCE_IN_NANOSECONDS"
 	envVarImageConfigCacheSize                    = "IMAGE_CONFIG_CACHE_SIZE"
@@ -90,6 +91,8 @@ type OperatorConfig struct {
 	AuthRegistrationEnabled bool `json:"auth_registration_enabled"`
 	// ExpositionEnabled defines whether the operator should manage Exposition CRs for v2 dogus.
 	ExpositionEnabled bool `json:"exposition_enabled"`
+	// DoguV3Enabled defines whether the operator should allow v3 dogus.
+	DoguV3Enabled bool `json:"dogu_v3_enabled"`
 	// WarpMenuEntryEnabled defines whether the operator should manage WarpMenuEntry CRs for v2 dogus.
 	WarpMenuEntryEnabled bool `json:"warpmenuentry_enabled"`
 	// DisablePostfixDependencyCheck defines whether the operator should validate dependencies on postfix.
@@ -149,6 +152,7 @@ func NewOperatorConfig(version Version) (*OperatorConfig, error) {
 		AuthRegistrationEnabled:       getAuthRegistrationEnabled(),
 		ExpositionEnabled:             getExpositionEnabled(),
 		WarpMenuEntryEnabled:          getWarpMenuEntryEnabled(),
+		DoguV3Enabled:                 getDoguV3Enabled(),
 		DisablePostfixDependencyCheck: getDisablePostfixDependencyCheck(),
 		RequeueTimeForDoguReconciler:  doguReconcilerRequeueTime,
 		ImageConfigCacheSize:          getImageConfigCacheSize(),
@@ -374,6 +378,22 @@ func (o *OperatorConfig) GetRemoteCredentials() *core.Credentials {
 
 func newEnvVarError(envVar string, err error) error {
 	return fmt.Errorf("failed to get env var [%s]: %w", envVar, err)
+}
+
+func getDoguV3Enabled() bool {
+	doguV3EnabledStr, found := os.LookupEnv(envVarDoguV3Enabled)
+	if !found {
+		log.Info(fmt.Sprintf("Environment variable %s not set. Disable dogu v3 by default", envVarDoguV3Enabled))
+		return false
+	}
+
+	doguV3Enabled, err := strconv.ParseBool(doguV3EnabledStr)
+	if err != nil {
+		log.Error(fmt.Errorf(errMsgFailedToParseEnvVarValue, envVarDoguV3Enabled, err), "Disable dogu v3 by default")
+		return false
+	}
+
+	return doguV3Enabled
 }
 
 func getNetworkPoliciesEnabled() bool {

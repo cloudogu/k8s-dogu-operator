@@ -8,7 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - [#335] Download, verify and load Dogu v3 charts from Flux source-controller artifacts.
 
+### Fixed
+- [343] Add dogu v3 feature flag to avoid watching optional `flux.OCIRepository` resources.
+
 ## [v3.30.0] - 2026-09-22
+
+**Attention:** This release is faulty and only works if the flux `OCIRepository` CRD is installed in the cluster.
+
 ### Added
 - [#331] The creation of the flux `OCIRepository` resource for dogu v3 installation.
 
