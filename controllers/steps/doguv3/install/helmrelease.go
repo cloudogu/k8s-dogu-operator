@@ -29,7 +29,7 @@ type EnsureHelmReleaseStep struct {
 	doguMetadataValueSvc  DoguValuesMetadataService
 }
 
-func NewEnsureHelmReleaseStep(k8sClient K8sClient, operatorConfig config.OperatorConfig, doguMetadataValueSvc DoguValuesMetadataService, recorder EventRecorder) *EnsureHelmReleaseStep {
+func NewEnsureHelmReleaseStep(k8sClient K8sClient, operatorConfig *config.OperatorConfig, doguMetadataValueSvc DoguValuesMetadataService, recorder EventRecorder) *EnsureHelmReleaseStep {
 	return &EnsureHelmReleaseStep{
 		k8sClient:             k8sClient,
 		eventRecorder:         recorder,
