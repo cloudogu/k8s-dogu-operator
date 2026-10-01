@@ -136,6 +136,18 @@ metavalues:
 			want:         Values{},
 		},
 		{
+			name:         "nil patch template with mapped values returns empty map",
+			patchTpl:     nil,
+			mappedValues: map[string]string{"mainLogLevel": "debug"},
+			want:         Values{},
+		},
+		{
+			name:         "empty patch template with mapped values returns empty map",
+			patchTpl:     []byte{},
+			mappedValues: map[string]string{"mainLogLevel": "debug"},
+			want:         Values{},
+		},
+		{
 			name:         "mapping present and value found is translated",
 			patchTpl:     patchTpl,
 			mappedValues: map[string]string{"mainLogLevel": "debug"},
