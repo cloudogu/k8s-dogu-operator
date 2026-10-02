@@ -328,7 +328,7 @@ func (c createFailingClient) Scheme() *runtime.Scheme {
 	return c.delegate.Scheme()
 }
 
-func (c createFailingClient) Create(ctx context.Context, obj client.Object, opts ...client.CreateOption) error {
+func (c createFailingClient) Create(context.Context, client.Object, ...client.CreateOption) error {
 	return assert.AnError
 }
 
