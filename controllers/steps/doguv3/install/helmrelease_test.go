@@ -1,7 +1,9 @@
 package install
 
 import (
+	"context"
 	"encoding/json"
+	"fmt"
 	"testing"
 	"time"
 
@@ -9,13 +11,19 @@ import (
 	"github.com/cloudogu/k8s-dogu-lib/v3/api/v3beta1"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/resource"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv3"
 	values3 "github.com/cloudogu/k8s-dogu-operator/v3/internal/dogu/values"
 	fluxhelm "github.com/fluxcd/helm-controller/api/v2"
 	"github.com/fluxcd/pkg/apis/kustomize"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-	v1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
+	core "k8s.io/api/core/v1"
+	apiext "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 func Test_combineValues(t *testing.T) {
@@ -36,7 +44,7 @@ func Test_combineValues(t *testing.T) {
 		require.NoError(t, err)
 		expectedVal := values3.Values{"foo": "bar", "fqdn": "example.invalid", "logging": "error"}
 		expectedBytes, err := json.Marshal(expectedVal)
-		expectedJson := v1.JSON{Raw: expectedBytes}
+		expectedJson := apiext.JSON{Raw: expectedBytes}
 		assert.Equal(t, expectedJson, *actual)
 	})
 
@@ -88,7 +96,7 @@ func Test_configureHelmRelease(t *testing.T) {
 				Version:       "1.2.3",
 			},
 		}
-		values := &v1.JSON{}
+		values := &apiext.JSON{}
 		retryInterval := &metav1.Duration{Duration: 30 * time.Second}
 		reconcileInterval := &metav1.Duration{Duration: 60 * time.Second}
 
@@ -141,7 +149,7 @@ func Test_configureHelmRelease(t *testing.T) {
 				Version:       "1.2.3",
 			},
 		}
-		values := &v1.JSON{}
+		values := &apiext.JSON{}
 		retryInterval := &metav1.Duration{Duration: 30 * time.Second}
 		reconcileInterval := &metav1.Duration{Duration: 60 * time.Second}
 
@@ -162,7 +170,7 @@ func Test_configureHelmRelease(t *testing.T) {
 	})
 }
 
-func checkExpectedValues(t *testing.T, release *fluxhelm.HelmRelease, retryInterval *metav1.Duration, reconcileInterval *metav1.Duration, values *v1.JSON) {
+func checkExpectedValues(t *testing.T, release *fluxhelm.HelmRelease, retryInterval *metav1.Duration, reconcileInterval *metav1.Duration, values *apiext.JSON) {
 	assert.Equal(t, "dogu-release", release.Name)
 	assert.Equal(t, "namespace", release.Namespace)
 	assert.Empty(t, release.Spec.ReleaseName)
@@ -192,7 +200,7 @@ func checkExpectedValues(t *testing.T, release *fluxhelm.HelmRelease, retryInter
 }
 
 func TestNewEnsureHelmReleaseStep(t *testing.T) {
-	client := NewMockK8sClient(t)
+	k8sClient := NewMockK8sClient(t)
 	operatorConfig := &config.OperatorConfig{
 		DoguHelmRetryInterval:          1 * time.Second,
 		DoguHelmReconciliationInterval: 2 * time.Minute,
@@ -200,12 +208,130 @@ func TestNewEnsureHelmReleaseStep(t *testing.T) {
 	valueService := newMockDoguMetadataValueService(t)
 	recorder := NewMockEventRecorder(t)
 
-	step := NewEnsureHelmReleaseStep(client, operatorConfig, valueService, recorder)
+	step := NewEnsureHelmReleaseStep(k8sClient, operatorConfig, valueService, recorder)
 
 	assert.NotNil(t, step)
-	assert.Equal(t, client, step.k8sClient)
+	assert.Equal(t, k8sClient, step.k8sClient)
 	assert.Equal(t, valueService, step.doguMetadataValueSvc)
 	assert.Equal(t, recorder, step.eventRecorder)
 	assert.Equal(t, metav1.Duration{Duration: 1 * time.Second}, step.retryInterval)
 	assert.Equal(t, metav1.Duration{Duration: 2 * time.Minute}, step.helmReconcileInterval)
+}
+
+func TestEnsureHelmReleaseStep_Run(t *testing.T) {
+	testScheme := runtime.NewScheme()
+	_ = core.AddToScheme(testScheme)
+	_ = v3beta1.AddToScheme(testScheme)
+	_ = fluxhelm.AddToScheme(testScheme)
+	doguResource := &v3beta1.Dogu{
+		Name:      "dogu",
+		Namespace: "namespace",
+		Spec: v3beta1.DoguSpec{
+			Name:          "dogu",
+			DoguNamespace: "namespace",
+			Version:       "1.2.3",
+		},
+	}
+	globalConfig := core.ConfigMap{
+		Namespace: "namespace",
+		Name:      "global-config",
+		Data: map[string]string{
+			"config.yaml": "{}",
+		},
+	}
+
+	tests := []struct {
+		name       string
+		setupMocks func(*testing.T) (K8sClient, DoguValuesMetadataService, EventRecorder)
+		want       doguv3.StepResult
+	}{
+		{
+			name: "should retry on failing value assembling",
+			setupMocks: func(*testing.T) (K8sClient, DoguValuesMetadataService, EventRecorder) {
+				metaValueService := newMockDoguMetadataValueService(t)
+				metaValueService.EXPECT().DoguMetaValues(mock.Anything, doguResource).Return(nil, false, assert.AnError)
+				return nil, metaValueService, nil
+			},
+			want: doguv3.StepResult{
+				Err:          fmt.Errorf("failed to retrieve dogu metadata values: %w", assert.AnError),
+				ReadyReason:  "Installing",
+				ReadyMessage: "failed to retrieve dogu metadata values: assert.AnError general error for testing",
+				Continue:     false,
+			},
+		},
+		{
+			name: "should retry on failing create or patch",
+			setupMocks: func(*testing.T) (K8sClient, DoguValuesMetadataService, EventRecorder) {
+				k8sClient := createFailingClient{
+					delegate: fake.NewClientBuilder().WithScheme(testScheme).WithObjects(&globalConfig).Build(),
+				}
+
+				service := newMockDoguMetadataValueService(t)
+				service.EXPECT().DoguMetaValues(mock.Anything, doguResource).Return(nil, false, nil)
+				return k8sClient, service, nil
+			},
+			want: doguv3.StepResult{
+				Err:          fmt.Errorf("failed to createOrPatch HelmRelease \"dogu\": %w", assert.AnError),
+				ReadyReason:  "Installing",
+				ReadyMessage: "failed to createOrPatch HelmRelease \"dogu\": assert.AnError general error for testing",
+				Continue:     false,
+			},
+		},
+		{
+			name: "should continue on successful creation of helm release",
+			setupMocks: func(t *testing.T) (K8sClient, DoguValuesMetadataService, EventRecorder) {
+				k8sClient := fake.NewClientBuilder().WithScheme(testScheme).WithObjects(&globalConfig).Build()
+				service := newMockDoguMetadataValueService(t)
+				service.EXPECT().DoguMetaValues(mock.Anything, doguResource).Return(nil, false, nil)
+				recorder := NewMockEventRecorder(t)
+				recorder.EXPECT().Event(doguResource, core.EventTypeNormal, v3beta1.ConditionChartAvailable, "HelmRelease created")
+				return k8sClient, service, recorder
+			},
+			want: doguv3.Continue(),
+		},
+		{
+			name: "should continue on successful update of existing helm release",
+			setupMocks: func(t *testing.T) (K8sClient, DoguValuesMetadataService, EventRecorder) {
+				release := fluxhelm.HelmRelease{
+					Name:      "dogu",
+					Namespace: "namespace",
+				}
+				k8sClient := fake.NewClientBuilder().WithScheme(testScheme).WithObjects(&globalConfig, &release).Build()
+				service := newMockDoguMetadataValueService(t)
+				service.EXPECT().DoguMetaValues(mock.Anything, doguResource).Return(nil, false, nil)
+				recorder := NewMockEventRecorder(t)
+				recorder.EXPECT().Event(doguResource, core.EventTypeNormal, v3beta1.ConditionChartAvailable, "HelmRelease updated")
+				return k8sClient, service, recorder
+			},
+			want: doguv3.Continue(),
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			k8sClient, metaValueService, recorder := test.setupMocks(t)
+			step := &EnsureHelmReleaseStep{k8sClient: k8sClient, doguMetadataValueSvc: metaValueService, eventRecorder: recorder}
+
+			result := step.Run(t.Context(), doguResource)
+
+			assert.Equal(t, test.want, result)
+		})
+	}
+}
+
+type createFailingClient struct {
+	client.Client
+	delegate client.Client
+}
+
+func (c createFailingClient) Scheme() *runtime.Scheme {
+	return c.delegate.Scheme()
+}
+
+func (c createFailingClient) Create(ctx context.Context, obj client.Object, opts ...client.CreateOption) error {
+	return assert.AnError
+}
+
+func (c createFailingClient) Get(ctx context.Context, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
+	return c.delegate.Get(ctx, key, obj, opts...)
 }
