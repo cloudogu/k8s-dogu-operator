@@ -9,6 +9,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -26,7 +28,7 @@ type CheckResult struct {
 
 // ResizeChecker checks rendered Kubernetes objects against live PVCs without changing cluster resources.
 type ResizeChecker interface {
-	Check(ctx context.Context, renderedObjects []client.Object) (CheckResult, error)
+	Check(ctx context.Context, renderedObjects []*unstructured.Unstructured) (CheckResult, error)
 }
 
 type resizeChecker struct {
@@ -44,7 +46,7 @@ type desiredClaim struct {
 	storageClass *string
 }
 
-func (c *resizeChecker) Check(ctx context.Context, renderedObjects []client.Object) (CheckResult, error) {
+func (c *resizeChecker) Check(ctx context.Context, renderedObjects []*unstructured.Unstructured) (CheckResult, error) {
 	desiredClaims, err := extractDesiredClaims(renderedObjects)
 	if err != nil {
 		return CheckResult{}, err
@@ -108,19 +110,29 @@ func (c *resizeChecker) checkPVC(ctx context.Context, desired desiredClaim) (Res
 	return request, true, nil
 }
 
-func extractDesiredClaims(renderedObjects []client.Object) ([]desiredClaim, error) {
+func extractDesiredClaims(renderedObjects []*unstructured.Unstructured) ([]desiredClaim, error) {
 	var claims []desiredClaim
 
-	for _, object := range renderedObjects {
-		switch typedObject := object.(type) {
-		case *corev1.PersistentVolumeClaim:
-			claim, err := desiredClaimFromPVC(typedObject)
+	for _, unstructuredObject := range renderedObjects {
+		switch unstructuredObject.GetKind() {
+		case "PersistentVolumeClaim":
+			pvc := &corev1.PersistentVolumeClaim{}
+			if err := runtime.DefaultUnstructuredConverter.FromUnstructured(unstructuredObject.Object, pvc); err != nil {
+				return nil, fmt.Errorf("failed to convert rendered %s %q: %w", unstructuredObject.GetKind(), client.ObjectKeyFromObject(unstructuredObject), err)
+			}
+
+			claim, err := desiredClaimFromPVC(pvc)
 			if err != nil {
 				return nil, err
 			}
 			claims = append(claims, claim)
-		case *appsv1.StatefulSet:
-			statefulSetClaims, err := desiredClaimsFromStatefulSet(typedObject)
+		case "StatefulSet":
+			statefulSet := &appsv1.StatefulSet{}
+			if err := runtime.DefaultUnstructuredConverter.FromUnstructured(unstructuredObject.Object, statefulSet); err != nil {
+				return nil, fmt.Errorf("failed to convert rendered %s %q: %w", unstructuredObject.GetKind(), client.ObjectKeyFromObject(unstructuredObject), err)
+			}
+
+			statefulSetClaims, err := desiredClaimsFromStatefulSet(statefulSet)
 			if err != nil {
 				return nil, err
 			}
