@@ -39,6 +39,8 @@ func NewValidateChartStep(chartService ChartService, assembler ValueAssembler, k
 }
 
 func (vcs *ValidateChartStep) Run(ctx context.Context, doguResource *v3beta1.Dogu) stepsv3.StepResult {
+	logger := log.FromContext(ctx)
+
 	metaValues, _, err := vcs.chartService.DoguMetaValues(ctx, doguResource)
 	if err != nil {
 		return stepsv3.RequeueWithError(fmt.Errorf("failed to get dogu meta values: %w", err), v3beta1.ReasonInstalling)
@@ -57,12 +59,16 @@ func (vcs *ValidateChartStep) Run(ctx context.Context, doguResource *v3beta1.Dog
 
 			return vcs.abort(ctx, doguResource, v3beta1.ReasonSchemaInvalid, msg)
 		}
+
+		logger.Info("Successfully validated values against schema for dogu", "dogu", doguResource.Spec.Name)
 	}
 
 	if _, rErr := vcs.chartService.Render(ctx, doguResource, values); rErr != nil {
 		msg := fmt.Sprintf("chart could not be rendered: %v", rErr)
 		return vcs.abort(ctx, doguResource, ReasonRenderFailed, msg)
 	}
+
+	logger.Info("Successfully rendered dogu helm chart", "dogu", doguResource.Spec.Name)
 
 	return vcs.succeed(ctx, doguResource)
 }
