@@ -246,6 +246,26 @@ func TestExtractDesiredClaims(t *testing.T) {
 		assert.Zero(t, claims[0].storage.Cmp(resource.MustParse("2Gi")))
 	})
 
+	t.Run("rejects a standalone PVC without a namespace", func(t *testing.T) {
+		pvc := newPVC("data", "1Gi", nil)
+		pvc.Namespace = ""
+
+		claims, err := extractDesiredClaims(renderedObjects(t, pvc))
+
+		require.ErrorContains(t, err, "rendered PVC \"data\" has no namespace")
+		assert.Empty(t, claims)
+	})
+
+	t.Run("rejects a StatefulSet without a namespace", func(t *testing.T) {
+		statefulSet := newStatefulSet("postgres", ptr.To[int32](1), 0, newPVC("data", "1Gi", nil))
+		statefulSet.Namespace = ""
+
+		claims, err := extractDesiredClaims(renderedObjects(t, statefulSet))
+
+		require.ErrorContains(t, err, "rendered StatefulSet \"postgres\" has no namespace")
+		assert.Empty(t, claims)
+	})
+
 	t.Run("rejects a rendered PVC without a storage request", func(t *testing.T) {
 		pvc := newPVC("data", "1Gi", nil)
 		pvc.Spec.Resources.Requests = nil

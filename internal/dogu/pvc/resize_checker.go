@@ -144,6 +144,10 @@ func extractDesiredClaims(renderedObjects []*unstructured.Unstructured) ([]desir
 }
 
 func desiredClaimsFromStatefulSet(statefulSet *appsv1.StatefulSet) ([]desiredClaim, error) {
+	if statefulSet.Namespace == "" {
+		return nil, fmt.Errorf("rendered StatefulSet %q has no namespace", statefulSet.Name)
+	}
+
 	replicas := int32(1)
 	if statefulSet.Spec.Replicas != nil {
 		replicas = *statefulSet.Spec.Replicas
@@ -176,6 +180,10 @@ func desiredClaimsFromStatefulSet(statefulSet *appsv1.StatefulSet) ([]desiredCla
 }
 
 func desiredClaimFromPVC(pvc *corev1.PersistentVolumeClaim) (desiredClaim, error) {
+	if pvc.Namespace == "" {
+		return desiredClaim{}, fmt.Errorf("rendered PVC %q has no namespace", pvc.Name)
+	}
+
 	storage, found := pvc.Spec.Resources.Requests[corev1.ResourceStorage]
 	if !found {
 		return desiredClaim{}, fmt.Errorf("rendered PVC %q has no storage request", client.ObjectKeyFromObject(pvc))
