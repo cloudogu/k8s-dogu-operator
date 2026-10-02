@@ -18,6 +18,7 @@ require (
 	github.com/cloudogu/retry-lib v0.1.0
 	github.com/dlclark/regexp2 v1.12.0
 	github.com/fluxcd/helm-controller/api v1.6.4
+	github.com/fluxcd/pkg/apis/kustomize v1.19.2
 	github.com/fluxcd/pkg/apis/meta v1.30.2
 	github.com/fluxcd/source-controller/api v1.9.5
 	github.com/go-logr/logr v1.4.4
@@ -25,6 +26,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/onsi/ginkgo v1.16.5
 	github.com/onsi/gomega v1.43.0
+	github.com/opencontainers/go-digest v1.0.0
 	github.com/sirupsen/logrus v1.10.2
 	github.com/stretchr/testify v1.12.1
 	go.uber.org/fx v1.24.0
@@ -55,7 +57,6 @@ require (
 	github.com/emicklei/go-restful/v3 v3.13.0 // indirect
 	github.com/evanphx/json-patch/v5 v5.9.11 // indirect
 	github.com/fluxcd/pkg/apis/acl v0.10.0 // indirect
-	github.com/fluxcd/pkg/apis/kustomize v1.19.2 // indirect
 	github.com/fsnotify/fsnotify v1.9.0 // indirect
 	github.com/fxamacker/cbor/v2 v2.9.2 // indirect
 	github.com/gammazero/toposort v0.2.0 // indirect
@@ -88,7 +89,6 @@ require (
 	github.com/modern-go/reflect2 v1.0.3-0.20250322232337-35a7c28c31ee // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/nxadm/tail v1.4.11 // indirect
-	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.1.1 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
