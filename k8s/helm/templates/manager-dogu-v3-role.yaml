@@ -9,7 +9,6 @@ rules:
   - apiGroups:
       - "source.toolkit.fluxcd.io"
     resources:
-      - helmreleases
       - ocirepositories
     verbs:
       - create
@@ -20,7 +19,23 @@ rules:
   - apiGroups:
       - "source.toolkit.fluxcd.io"
     resources:
-      - helmreleases/status
       - ocirepositories/status
+    verbs:
+      - get
+  # dogu v3: create and delete flux resources analogous to the dogu CR
+  - apiGroups:
+      - "helm.toolkit.fluxcd.io"
+    resources:
+      - helmreleases
+    verbs:
+      - create
+      - list
+      - get
+      - watch
+      - patch
+  - apiGroups:
+      - "helm.toolkit.fluxcd.io"
+    resources:
+      - helmreleases/status
     verbs:
       - get
