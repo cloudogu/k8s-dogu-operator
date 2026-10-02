@@ -17,8 +17,6 @@ import (
 	usecasev2 "github.com/cloudogu/k8s-dogu-operator/v3/controllers/usecase/doguv2"
 	usecasev3 "github.com/cloudogu/k8s-dogu-operator/v3/controllers/usecase/doguv3"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/warpmenuentry"
-	"github.com/cloudogu/k8s-dogu-operator/v3/internal/charts"
-	"github.com/cloudogu/k8s-dogu-operator/v3/internal/dogu/values"
 	"go.uber.org/fx"
 	"k8s.io/client-go/tools/record"
 
@@ -75,37 +73,17 @@ func allOptions() fx.Option {
 func v3Options() fx.Option {
 	return fx.Options(
 		fx.Provide(
-			// Dependencies
+			// The DoguV3 subgraph is hand-wired in controllers/usecase/doguv3. NewDoguV3UseCases
+			// assembles every v3 dependency (chart stack, registry reader, install steps) into the
+			// two use-cases the reconciler consumes; fx only supplies the shared infra it takes and
+			// applies the reconciler's named tags to its two results.
 			fx.Annotate(
-				initfx.NewDoguV3RegistryReader,
-				fx.As(new(installv3.DoguRegistryReader)),
+				usecasev3.NewDoguV3UseCases,
+				fx.ResultTags(`name:"doguV3InstallOrChangeUseCase"`, `name:"doguV3DeleteUseCase"`),
 			),
-
-			// chart rendering/validation dependencies
-			initfx.NewChartHTTPClient,
-			initfx.NewChartCapabilities,
-			charts.NewChartProvider,
-			fx.Annotate(charts.NewService, fx.As(new(installv3.ChartService))),
-			fx.Annotate(values.NewAssembler, fx.As(new(installv3.ValueAssembler))),
-
-			// install/update steps
-			installv3.NewEnsureOCIRepositoryStep,
-			installv3.NewWaitForOCIRepositoryReadyStep,
-			installv3.NewValidateChartStep,
-
-			// delete steps
-
-			// usecases
-			fx.Annotate(
-				usecasev3.NewDoguDeleteUseCase,
-				fx.As(new(controllers.DoguV3DeleteUseCase)),
-				fx.ResultTags(`name:"doguV3DeleteUseCase"`),
-			),
-			fx.Annotate(
-				usecasev3.NewDoguInstallOrChangeUseCase,
-				fx.As(new(controllers.DoguV3InstallOrChangeUseCase)),
-				fx.ResultTags(`name:"doguV3InstallOrChangeUseCase"`),
-			),
+			// NewDoguV3Interface is provided but currently has no consumer (it is only embedded in
+			// the unused doguV3Client interface). Left as-is on purpose: removing it is a dead-code
+			// cleanup independent of this wiring change.
 			fx.Annotate(initfx.NewDoguV3Interface, fx.As(new(v3beta1.DoguInterface))),
 		),
 	)
