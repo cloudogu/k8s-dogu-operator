@@ -34,7 +34,7 @@ func Test_chart_render(t *testing.T) {
 	// Multi-doc split into two objects; _helpers.tpl and NOTES.txt excluded.
 	nameToKind := map[string]string{}
 	for _, o := range objs {
-		u := o.(*unstructured.Unstructured)
+		u := o
 		nameToKind[u.GetName()] = u.GetKind()
 	}
 	assert.Equal(t, map[string]string{
@@ -44,7 +44,7 @@ func Test_chart_render(t *testing.T) {
 
 	// .Values substitution + type fidelity: replicaCount rendered and decoded as int64.
 	for _, o := range objs {
-		u := o.(*unstructured.Unstructured)
+		u := o
 		if u.GetKind() == "Deployment" {
 			replicas, found, err := unstructured.NestedInt64(u.Object, "spec", "replicas")
 			require.NoError(t, err)
@@ -63,7 +63,7 @@ func Test_chart_render_usesDefaultsWhenValueOmitted(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, objs, 2)
 	for _, o := range objs {
-		u := o.(*unstructured.Unstructured)
+		u := o
 		if u.GetKind() == "Deployment" {
 			replicas, found, err := unstructured.NestedInt64(u.Object, "spec", "replicas")
 			require.NoError(t, err)

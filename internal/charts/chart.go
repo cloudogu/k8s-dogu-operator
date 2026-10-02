@@ -14,7 +14,6 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/util/yaml"
 	"k8s.io/client-go/rest"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
@@ -34,7 +33,7 @@ type chart struct {
 	digest string
 }
 
-func (c *chart) render(values map[string]any, restConfig *rest.Config) ([]client.Object, error) {
+func (c *chart) render(values map[string]any, restConfig *rest.Config) ([]*unstructured.Unstructured, error) {
 	rv, err := chartutil.ToRenderValuesWithSchemaValidation(c.raw, values, chartutil.ReleaseOptions{Name: c.ref.Name, Namespace: c.ref.Namespace}, c.caps, true)
 	if err != nil {
 		return nil, fmt.Errorf("failed to render values for chart: %w", err)
@@ -86,8 +85,8 @@ func (c *chart) getTemplateFile(name string) ([]byte, bool) {
 
 // parseRenderedFilesToObjects parses the map[string]string output from engine.RenderWithClient
 // into a flat slice of client.Object.
-func parseRenderedFilesToObjects(renderedFiles map[string]string) ([]client.Object, error) {
-	var objects []client.Object
+func parseRenderedFilesToObjects(renderedFiles map[string]string) ([]*unstructured.Unstructured, error) {
+	var objects []*unstructured.Unstructured
 
 	for fileName, content := range renderedFiles {
 		// Skip empty files, NOTES.txt, and template partials (_helpers.tpl)

@@ -7,6 +7,7 @@ import (
 
 	"github.com/cloudogu/k8s-dogu-lib/v3/api/v3beta1"
 	"helm.sh/helm/v3/pkg/chartutil"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -36,7 +37,7 @@ func NewService(loader ChartProvider, restConfig *rest.Config, caps *chartutil.C
 
 // Render renders the dogu's chart server-side against the cluster and returns the uninterpreted
 // objects. The result is shared and MUST be treated read-only by callers.
-func (s *Service) Render(ctx context.Context, doguResource *v3beta1.Dogu, values map[string]any) ([]client.Object, error) {
+func (s *Service) Render(ctx context.Context, doguResource *v3beta1.Dogu, values map[string]any) ([]*unstructured.Unstructured, error) {
 	c, err := s.chartFor(ctx, doguResource)
 	if err != nil {
 		return nil, err
