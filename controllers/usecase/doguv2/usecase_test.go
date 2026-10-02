@@ -146,6 +146,7 @@ func TestNewDoguInstallOrChangeUseCase(t *testing.T) {
 	t.Run("should successfully create dogu install or change use case with steps in correct order", func(t *testing.T) {
 		got := NewDoguInstallOrChangeUseCase(
 			&install.InitializeConditionsStep{},
+			&install.ExperimentalHelmfileStep{},
 			&install.HealthCheckStep{},
 			&install.FetchRemoteDoguDescriptorStep{},
 			&install.ValidationStep{},
@@ -191,6 +192,7 @@ func TestNewDoguInstallOrChangeUseCase(t *testing.T) {
 
 		wantTypes := []string{
 			"*install.InitializeConditionsStep",
+			"*install.ExperimentalHelmfileStep",
 			"*install.HealthCheckStep",
 			"*install.FetchRemoteDoguDescriptorStep",
 			"*install.ValidationStep",
