@@ -34,8 +34,38 @@ controllerManager:
     # imageConfigCacheSize is the maximum number of dogu image configs cached in memory
     # Set to 0 to disable caching.
     imageConfigCacheSize: 50
+  experimental:
     # WARNING: Helmfile support is only an experimental PoC and not for production use.
-    experimentalHelmfileSupport: false
+    helmfileSupport:
+      enabled: false
+      image:
+        registry: registry.cloudogu.com
+        repository: internal/helmfile
+        tag: 0.1.0
+      global:
+        helmfileBin: /helmfile_binaries/helmfile
+        helmBin: /helmfile_binaries/helm
+        helmPluginHome: /helmfile_binaries/helm_plugins
+        helmCacheHome: /helmfile_data/helm/cache
+        helmConfigHome: /helmfile_data/helm/config
+        helmDataHome: /helmfile_data/helm/data
+        helmfileUnpackDir: /helmfile_data/unpack
+      # Semi-hardcoded values for specific dogus.
+      # This requires domain knowledge of the operator and
+      # should be generalized and provided by the dogu in a proper implementation.
+      openDesk:
+        helmfileSource: https://gitlab.opencode.de/bmi/opendesk/deployment/opendesk/-/archive/v1.18.2/opendesk-v1.18.2.tar.gz
+        environment: prod
+        valuesFilePath: helmfile/environments/prod/values.yaml.gotmpl
+        extraValues: {}
+        extraEnvVars: {}
+        namespace: ecosystem
+        domainConfigMap:
+          name: opendesk-domain
+          key: domain
+        masterkey:
+          name: opendesk-masterkey
+          key: masterkey
   resourceLimits:
     memory: 105M
   resourceRequests:

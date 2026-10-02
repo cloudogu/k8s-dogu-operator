@@ -127,7 +127,13 @@ spec:
                   key: url
                   optional: true
             - name: EXPERIMENTAL_HELMFILE_SUPPORT
-              value: {{ quote .Values.controllerManager.env.experimentalHelmfileSupport | default false }}
+              value: {{ quote .Values.controllerManager.experimental.helmfileSupport.enabled | default false }}
+            {{- if .Values.controllerManager.experimental.helmfileSupport.enabled | default false }}
+            - name: HELMFILE_GLOBAL_CONFIG
+              value: {{ .Values.controllerManager.experimental.helmfileSupport.global | toJson | squote }}
+            - name: HELMFILE_OPENDESK_CONFIG
+              value: {{ .Values.controllerManager.experimental.helmfileSupport.openDesk | toJson | squote }}
+            {{- end }}
           image: "{{ .Values.controllerManager.image.registry }}/{{ .Values.controllerManager.image.repository }}:{{ .Values.controllerManager.image.tag }}"
           imagePullPolicy: {{ .Values.controllerManager.imagePullPolicy | default "IfNotPresent" }}
           livenessProbe:
@@ -168,6 +174,12 @@ spec:
               subPath: docker-registry-cert.pem
             - mountPath: /tmp/k8s-webhook-server/serving-certs
               name: webhook-cert
+            {{- if .Values.controllerManager.experimental.helmfileSupport.enabled | false }}
+            - name: helmfile-binaries
+              mountPath: /helmfile_binaries
+            - name: helmfile-data
+              mountPath: /helmfile_data
+            {{- end }}
       securityContext:
         runAsNonRoot: true
       serviceAccountName: {{ include "k8s-dogu-operator.name" . }}-controller-manager
@@ -192,3 +204,11 @@ spec:
           secret:
             secretName: k8s-dogu-operator-webhook-cert
             optional: false
+        {{- if .Values.controllerManager.experimental.helmfileSupport.enabled | false }}
+        - name: helmfile-binaries
+          image:
+            reference: "{{ .Values.controllerManager.experimental.helmfileSupport.image.registry }}/{{ .Values.controllerManager.experimental.helmfileSupport.image.repository }}:{{ .Values.controllerManager.experimental.helmfileSupport.image.tag }}"
+            pullPolicy: IfNotPresent
+        - name: helmfile-data
+          emptyDir: {}
+        {{- end }}
