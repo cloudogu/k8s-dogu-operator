@@ -63,7 +63,7 @@ controllerManager:
         domainConfigMap:
           name: opendesk-domain
           key: domain
-        masterkey:
+        masterkeySecret:
           name: opendesk-masterkey
           key: masterkey
   resourceLimits:
