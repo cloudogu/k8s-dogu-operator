@@ -9,7 +9,7 @@ The OCI/Helm registry is **not** mocked — the operator still pulls the actual
 Helm chart from `registry.cloudogu.com`. A chart for the referenced version
 already exists there (see [Keeping the mock in sync](#keeping-the-mock-in-sync)).
 
-All files live under [`dev/mock-dcc-v3/`](../../dev/mock-dcc-v3) and the entry
+All files live under `dev/mock-dcc-v3/` and the entry
 points are two Makefile targets: `mock-dcc-v3` and `mock-dcc-v3-clean`.
 
 ## Prerequisites
@@ -17,7 +17,7 @@ points are two Makefile targets: `mock-dcc-v3` and `mock-dcc-v3-clean`.
 This setup has been tested with:
 
 - A local **k3d** cluster.
-- The **k8s-dogu-operator** running in the cluster with the V3 feature flag enabled: `controllerManager.env.doguV3Enabled: true` [`k8s/helm/values.yaml`](../../k8s/helm/values.yaml).
+- The **k8s-dogu-operator** running in the cluster with the V3 feature flag enabled: `controllerManager.env.doguV3Enabled: true` `k8s/helm/values.yaml`.
 - **ecosystem-core** installed with `flux.enabled=true`. V3 dogus are installed as Helm charts via flux, so flux must be present in the cluster.
 
 The targets operate in the namespace given by `NAMESPACE` in your `.env` (`ecosystem` by default).
@@ -36,7 +36,7 @@ become the version path segments nginx serves.
 
 ## What gets deployed
 
-Files under [`dev/mock-dcc-v3/`](../../dev/mock-dcc-v3):
+Files under `dev/mock-dcc-v3/`:
 
 | File | Purpose |
 | --- | --- |
@@ -94,7 +94,7 @@ the mock must be adjusted to match. Keep the following in sync:
   `nexus-not-found.json`.
 - The `spec.version` in the corresponding `Dogu` CR(s).
 - The configmap keys in the `mock-dcc-v3` target in the
-  [`Makefile`](../../Makefile) (`--from-file=<version>=…`), which must equal the
+  `Makefile` (`--from-file=<version>=…`), which must equal the
   versions the `Dogu` CRs request.
 
 For the helm-404 case, point the descriptor at a version that is **not**

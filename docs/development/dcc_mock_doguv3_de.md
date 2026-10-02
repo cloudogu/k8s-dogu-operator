@@ -9,7 +9,7 @@ anhand einer vollständig lokalen, skriptgesteuerten Testumgebung getestet werde
 Die OCI-/Helm-Registry wird **nicht** simuliert – der Operator ruft weiterhin das tatsächliche Helm-Chart von `registry.cloudogu.com` ab. 
 Ein Chart für die referenzierte Version ist dort bereits vorhanden (siehe [Das Mock synchron halten](#das-mock-chart-synchron-halten)).
 
-Alle Dateien des Mocks befinden sich unter [`dev/mock-dcc-v3/`](../../dev/mock-dcc-v3) und die Entrypoints
+Alle Dateien des Mocks befinden sich unter `dev/mock-dcc-v3/` und die Entrypoints
 sind zwei Make-Targets: `mock-dcc-v3` und `mock-dcc-v3-clean`.
 
 ## Voraussetzungen
@@ -17,7 +17,7 @@ sind zwei Make-Targets: `mock-dcc-v3` und `mock-dcc-v3-clean`.
 Diese Konfiguration wurde getestet mit:
 
 - Einem lokalen **k3d**-Cluster.
-- Dem **k8s-dogu-operator**, der im Cluster läuft und bei dem das V3-Feature-Flag aktiviert ist: `controllerManager.env.doguV3Enabled: true` [`k8s/helm/values.yaml`](../../k8s/helm/values.yaml).
+- Dem **k8s-dogu-operator**, der im Cluster läuft und bei dem das V3-Feature-Flag aktiviert ist: `controllerManager.env.doguV3Enabled: true` `k8s/helm/values.yaml`.
 - **ecosystem-core** mit `flux.enabled=true` installiert. V3-Dogus werden über Flux als Helm-Charts installiert, daher muss Flux im Cluster vorhanden sein.
 
 Die Targets laufen in dem Namespace, der durch `NAMESPACE` in der `.env`-Datei angegeben ist (standardmäßig `ecosystem`).
@@ -36,7 +36,7 @@ zu den Versionspfadsegmenten werden, die Nginx bereitstellt.
 
 ## Was wird bereitgestellt?
 
-Dateien unter [`dev/mock-dcc-v3/`](../../dev/mock-dcc-v3):
+Dateien unter `dev/mock-dcc-v3/`:
 
 | Datei | Zweck |
 | --- | --- |
@@ -94,7 +94,7 @@ muss das Mock entsprechend angepasst werden. Haltet Folgendes synchron:
   `nexus-not-found.json`.
 - Die `spec.version` in den entsprechenden `Dogu`-CR(s).
 - Die Configmap-Schlüssel im Ziel `mock-dcc-v3` im
-  [`Makefile`](../../Makefile) (`--from-file=<version>=…`), die mit den
+  `Makefile` (`--from-file=<version>=…`), die mit den
   Versionen übereinstimmen müssen, die die `Dogu`-CRs anfordern.
 
 Im Fall von „helm-404“ richtet den Deskriptor auf eine Version aus, die **nicht**
