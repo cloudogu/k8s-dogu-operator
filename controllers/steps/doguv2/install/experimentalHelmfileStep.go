@@ -12,23 +12,29 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/cesregistry"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
 	steps "github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv2"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 type ExperimentalHelmfileStep struct {
-	operatorConfig       *config.OperatorConfig
+	isEnabled            bool
 	doguFetcher          resourceDoguFetcher
 	helmfileGlobalConfig config.HelmfileGlobalConfig
 	openDeskDoguConfig   config.HelmfileOpenDeskConfig
+	client               k8sClient
 }
 
 func NewExperimentalHelmfileStep(
 	config *config.OperatorConfig,
 	fetcher cesregistry.ResourceDoguFetcher,
+	client client.Client,
 ) *ExperimentalHelmfileStep {
 	return &ExperimentalHelmfileStep{
-		operatorConfig: config,
-		doguFetcher:    fetcher,
+		isEnabled:            config.ExperimentalHelmfileSupport,
+		doguFetcher:          fetcher,
+		helmfileGlobalConfig: config.HelmfileGlobalConfig,
+		openDeskDoguConfig:   config.HelmfileOpenDeskConfig,
+		client:               client,
 	}
 }
 
@@ -37,7 +43,7 @@ func (e *ExperimentalHelmfileStep) Run(ctx context.Context, resource *doguv2.Dog
 		WithName("experimentalHelmfileStep").
 		WithValues("dogu", resource.Name)
 
-	if !e.operatorConfig.ExperimentalHelmfileSupport {
+	if !e.isEnabled {
 		return steps.Continue()
 	}
 
@@ -78,12 +84,13 @@ func (e *ExperimentalHelmfileStep) Run(ctx context.Context, resource *doguv2.Dog
 
 func (e *ExperimentalHelmfileStep) extractAndConfigureHelmfile(ctx context.Context) (helmfileApplyOptions, error) {
 	// TODO
-	// download helmfile from source url
-	// extract tar.gz
+	// download helmfile from source url to unpackDir
+	// extract tar.gz to <unpackDir>/opendesk
 	// read domain from configmap
-	// set values
+	// write domain as YAML under key global.domain in <unpackDir>/opendesk/<valuesFilePath>
 	// generate masterpassword to secret if not exists, otherwise read from secret
 	// set MASTER_PASSWORD env
+	// write apply options
 	panic("not implemented")
 }
 
