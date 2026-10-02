@@ -28,11 +28,6 @@ const ReplicaCountStarted = 1
 const ReplicaCountStopped = 0
 
 const (
-	appLabelKey      = "app"
-	appLabelValueCes = "ces"
-)
-
-const (
 	doguHealthConfigMap = "k8s-dogu-operator-dogu-health"
 	doguHealth          = "dogu-health"
 )
@@ -525,7 +520,7 @@ func getStartupProbeTimeout() int32 {
 
 // GetAppLabel returns an app label which all CES resource may receive for general selection.
 func GetAppLabel() k8sv2.CesMatchingLabels {
-	return map[string]string{appLabelKey: appLabelValueCes}
+	return map[string]string{LabelKeyApp: LabelValueCes}
 }
 
 // CreateDoguService creates a new instance of a service with the given dogu custom resource and container image.
@@ -536,11 +531,9 @@ func (r *resourceGenerator) CreateDoguService(doguResource *k8sv2.Dogu, dogu *co
 	appDoguLabels := GetAppLabel().Add(doguResource.GetDoguNameLabel())
 
 	service := &corev1.Service{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      doguResource.Name,
-			Namespace: doguResource.Namespace,
-			Labels:    appDoguLabels,
-		},
+		Name:      doguResource.Name,
+		Namespace: doguResource.Namespace,
+		Labels:    appDoguLabels,
 		Spec: corev1.ServiceSpec{
 			Type:     corev1.ServiceTypeClusterIP,
 			Selector: doguResource.GetDoguNameLabel(),

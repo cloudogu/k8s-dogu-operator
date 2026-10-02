@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - [#331] The creation of the flux `OCIRepository` resource for dogu v3 installation.
+- [#338] Add the creation of the flux `HelmRelease` resource for dogu v3 installation and upgrade.
 
 ## [v3.29.1] - 2026-09-18
 ### Changed

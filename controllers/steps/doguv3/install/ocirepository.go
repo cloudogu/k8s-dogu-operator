@@ -8,6 +8,7 @@ import (
 	"github.com/cloudogu/dogu-lib/doguv3"
 	doguv3reg "github.com/cloudogu/dogu-lib/doguv3/doguregistry"
 	"github.com/cloudogu/k8s-dogu-lib/v3/api/v3beta1"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/resource"
 	stepsv3 "github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv3"
 	"github.com/fluxcd/pkg/apis/meta"
 	flux "github.com/fluxcd/source-controller/api/v1"
@@ -18,8 +19,7 @@ import (
 )
 
 const (
-	fluxShardingLabelKey   = "sharding.fluxcd.io/key"
-	fluxShardingLabelValue = "ces"
+	labelKeyFluxSharding = "sharding.fluxcd.io/key"
 )
 
 const (
@@ -50,7 +50,7 @@ func (eor *EnsureOCIRepositoryStep) Run(ctx context.Context, doguResource *v3bet
 	}
 	dogu, err := eor.doguRegistry.Get(ctx, identifier)
 	if err != nil {
-		err = fmt.Errorf("failed to get dogu descriptor for identifier %v: %w", identifier, err)
+		err = fmt.Errorf("failed to get dogu descriptor for identifier %s: %w", identifier, err)
 		if doguv3reg.IsGenericError(err) || doguv3reg.IsUnauthorizedError(err) || doguv3reg.IsForbiddenError(err) || doguv3reg.IsNotFoundError(err) {
 			return stepsv3.Abort(v3beta1.ReasonDownloadFailed, err.Error())
 		}
@@ -69,7 +69,7 @@ func (eor *EnsureOCIRepositoryStep) Run(ctx context.Context, doguResource *v3bet
 		if repository.Labels == nil {
 			repository.Labels = make(map[string]string)
 		}
-		repository.Labels[fluxShardingLabelKey] = fluxShardingLabelValue
+		repository.Labels[labelKeyFluxSharding] = resource.LabelValueCes
 		repository.Labels[v3beta1.DoguLabelName] = doguResource.Spec.Name
 		repository.Labels[v3beta1.DoguLabelVersion] = doguResource.Spec.Version
 		repository.Spec = flux.OCIRepositorySpec{

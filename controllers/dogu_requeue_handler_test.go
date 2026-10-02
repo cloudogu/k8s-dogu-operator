@@ -1,7 +1,7 @@
 package controllers
 
 import (
-	context "context"
+	"context"
 	"errors"
 	"fmt"
 	"testing"
@@ -21,10 +21,9 @@ import (
 
 const requeueTime = time.Second * 5
 
-var deletedDoguResource = &doguv2.Dogu{ObjectMeta: v1.ObjectMeta{
+var deletedDoguResource = &doguv2.Dogu{
 	Name:              testDoguName,
-	DeletionTimestamp: &v1.Time{Time: time.Date(2025, 10, 7, 8, 50, 59, 0, time.UTC)},
-}}
+	DeletionTimestamp: &v1.Time{Time: time.Date(2025, 10, 7, 8, 50, 59, 0, time.UTC)}}
 
 func TestNewDoguRequeueHandler(t *testing.T) {
 	t.Run("should fail to create DoguRequeueHandler", func(t *testing.T) {
@@ -65,10 +64,10 @@ func Test_doguRequeueHandler_Handle(t *testing.T) {
 			fields: fields{
 				recorderFn: func(t *testing.T) record.EventRecorder {
 					mck := newMockEventRecorder(t)
-					err := errors.New("Reconciliation failed")
+					err := errors.New("reconciliation failed")
 
 					mck.EXPECT().Eventf(
-						&doguv2.Dogu{ObjectMeta: v1.ObjectMeta{Name: testDoguName}},
+						&doguv2.Dogu{Name: testDoguName},
 						v2.EventTypeWarning,
 						ReasonReconcileFail,
 						"Trying again in %s because of: %s", requeueTime.String(), err.Error()).Return()
@@ -76,8 +75,8 @@ func Test_doguRequeueHandler_Handle(t *testing.T) {
 				},
 				doguInterfaceFn: func(t *testing.T) doguClientV2.DoguInterface {
 					mck := newMockDoguInterface(t)
-					getDogu := &doguv2.Dogu{ObjectMeta: v1.ObjectMeta{Name: testDoguName}}
-					updateDogu := &doguv2.Dogu{ObjectMeta: v1.ObjectMeta{Name: testDoguName}}
+					getDogu := &doguv2.Dogu{Name: testDoguName}
+					updateDogu := &doguv2.Dogu{Name: testDoguName}
 					mck.EXPECT().Get(testCtx, testDoguName, v1.GetOptions{}).Return(getDogu, nil)
 					mck.EXPECT().UpdateStatusWithRetry(testCtx, getDogu, mock.Anything, v1.UpdateOptions{}).Run(func(ctx context.Context, dogu *doguv2.Dogu, modifyStatusFn func(doguv2.DoguStatus) doguv2.DoguStatus, opts v1.UpdateOptions) {
 						status := modifyStatusFn(dogu.Status)
@@ -87,8 +86,8 @@ func Test_doguRequeueHandler_Handle(t *testing.T) {
 				},
 			},
 			args: args{
-				doguResource: &doguv2.Dogu{ObjectMeta: v1.ObjectMeta{Name: testDoguName}},
-				err:          errors.New("Reconciliation failed"),
+				doguResource: &doguv2.Dogu{Name: testDoguName},
+				err:          errors.New("reconciliation failed"),
 				reqTime:      time.Duration(0),
 			},
 			want:    controllerruntime.Result{RequeueAfter: requeueTime},
@@ -99,10 +98,10 @@ func Test_doguRequeueHandler_Handle(t *testing.T) {
 			fields: fields{
 				recorderFn: func(t *testing.T) record.EventRecorder {
 					mck := newMockEventRecorder(t)
-					err := errors.New("Reconciliation failed")
+					err := errors.New("reconciliation failed")
 
 					mck.EXPECT().Eventf(
-						&doguv2.Dogu{ObjectMeta: v1.ObjectMeta{Name: testDoguName}},
+						&doguv2.Dogu{Name: testDoguName},
 						v2.EventTypeWarning,
 						ReasonReconcileFail,
 						"Trying again in %s because of: %s", requeueTime.String(), err.Error()).Return()
@@ -110,15 +109,15 @@ func Test_doguRequeueHandler_Handle(t *testing.T) {
 				},
 				doguInterfaceFn: func(t *testing.T) doguClientV2.DoguInterface {
 					mck := newMockDoguInterface(t)
-					getDogu := &doguv2.Dogu{ObjectMeta: v1.ObjectMeta{Name: testDoguName}}
+					getDogu := &doguv2.Dogu{Name: testDoguName}
 					mck.EXPECT().Get(testCtx, testDoguName, v1.GetOptions{}).Return(getDogu, nil)
 					mck.EXPECT().UpdateStatusWithRetry(testCtx, getDogu, mock.Anything, v1.UpdateOptions{}).Return(nil, assert.AnError)
 					return mck
 				},
 			},
 			args: args{
-				doguResource: &doguv2.Dogu{ObjectMeta: v1.ObjectMeta{Name: testDoguName}},
-				err:          errors.New("Reconciliation failed"),
+				doguResource: &doguv2.Dogu{Name: testDoguName},
+				err:          errors.New("reconciliation failed"),
 				reqTime:      time.Duration(0),
 			},
 			want:    controllerruntime.Result{RequeueAfter: requeueTime},
@@ -129,10 +128,10 @@ func Test_doguRequeueHandler_Handle(t *testing.T) {
 			fields: fields{
 				recorderFn: func(t *testing.T) record.EventRecorder {
 					mck := newMockEventRecorder(t)
-					err := errors.New("Reconciliation failed")
+					err := errors.New("reconciliation failed")
 
 					mck.EXPECT().Eventf(
-						&doguv2.Dogu{ObjectMeta: v1.ObjectMeta{Name: testDoguName}},
+						&doguv2.Dogu{Name: testDoguName},
 						v2.EventTypeWarning,
 						ReasonReconcileFail,
 						"Trying again in %s because of: %s", requeueTime.String(), err.Error()).Return()
@@ -145,8 +144,8 @@ func Test_doguRequeueHandler_Handle(t *testing.T) {
 				},
 			},
 			args: args{
-				doguResource: &doguv2.Dogu{ObjectMeta: v1.ObjectMeta{Name: testDoguName}},
-				err:          errors.New("Reconciliation failed"),
+				doguResource: &doguv2.Dogu{Name: testDoguName},
+				err:          errors.New("reconciliation failed"),
 				reqTime:      time.Duration(0),
 			},
 			want:    controllerruntime.Result{RequeueAfter: requeueTime},
@@ -159,7 +158,7 @@ func Test_doguRequeueHandler_Handle(t *testing.T) {
 					mck := newMockEventRecorder(t)
 					reqTime := 15 * time.Second
 					mck.EXPECT().Eventf(
-						&doguv2.Dogu{ObjectMeta: v1.ObjectMeta{Name: testDoguName}},
+						&doguv2.Dogu{Name: testDoguName},
 						v2.EventTypeNormal,
 						RequeueEventReason,
 						"Trying again in %s.", reqTime.String(),
@@ -168,8 +167,8 @@ func Test_doguRequeueHandler_Handle(t *testing.T) {
 				},
 				doguInterfaceFn: func(t *testing.T) doguClientV2.DoguInterface {
 					mck := newMockDoguInterface(t)
-					getDogu := &doguv2.Dogu{ObjectMeta: v1.ObjectMeta{Name: testDoguName}}
-					updateDogu := &doguv2.Dogu{ObjectMeta: v1.ObjectMeta{Name: testDoguName}}
+					getDogu := &doguv2.Dogu{Name: testDoguName}
+					updateDogu := &doguv2.Dogu{Name: testDoguName}
 					updateDogu.Status.RequeueTime = 15 * time.Second
 					mck.EXPECT().Get(testCtx, testDoguName, v1.GetOptions{}).Return(getDogu, nil)
 					mck.EXPECT().UpdateStatusWithRetry(testCtx, getDogu, mock.Anything, v1.UpdateOptions{}).Run(func(ctx context.Context, dogu *doguv2.Dogu, modifyStatusFn func(doguv2.DoguStatus) doguv2.DoguStatus, opts v1.UpdateOptions) {
@@ -180,7 +179,7 @@ func Test_doguRequeueHandler_Handle(t *testing.T) {
 				},
 			},
 			args: args{
-				doguResource: &doguv2.Dogu{ObjectMeta: v1.ObjectMeta{Name: testDoguName}},
+				doguResource: &doguv2.Dogu{Name: testDoguName},
 				err:          nil,
 				reqTime:      15 * time.Second,
 			},
@@ -193,7 +192,7 @@ func Test_doguRequeueHandler_Handle(t *testing.T) {
 				recorderFn: func(t *testing.T) record.EventRecorder {
 					mck := newMockEventRecorder(t)
 					mck.EXPECT().Event(
-						&doguv2.Dogu{ObjectMeta: v1.ObjectMeta{Name: testDoguName}},
+						&doguv2.Dogu{Name: testDoguName},
 						v2.EventTypeNormal,
 						ReasonReconcileOK,
 						"resource synced").Return()
@@ -201,8 +200,8 @@ func Test_doguRequeueHandler_Handle(t *testing.T) {
 				},
 				doguInterfaceFn: func(t *testing.T) doguClientV2.DoguInterface {
 					mck := newMockDoguInterface(t)
-					getDogu := &doguv2.Dogu{ObjectMeta: v1.ObjectMeta{Name: testDoguName}}
-					updateDogu := &doguv2.Dogu{ObjectMeta: v1.ObjectMeta{Name: testDoguName}}
+					getDogu := &doguv2.Dogu{Name: testDoguName}
+					updateDogu := &doguv2.Dogu{Name: testDoguName}
 					updateDogu.Status.RequeueTime = 0
 					mck.EXPECT().Get(testCtx, testDoguName, v1.GetOptions{}).Return(getDogu, nil)
 					mck.EXPECT().UpdateStatusWithRetry(testCtx, getDogu, mock.Anything, v1.UpdateOptions{}).Run(func(ctx context.Context, dogu *doguv2.Dogu, modifyStatusFn func(doguv2.DoguStatus) doguv2.DoguStatus, opts v1.UpdateOptions) {
@@ -213,7 +212,7 @@ func Test_doguRequeueHandler_Handle(t *testing.T) {
 				},
 			},
 			args: args{
-				doguResource: &doguv2.Dogu{ObjectMeta: v1.ObjectMeta{Name: testDoguName}},
+				doguResource: &doguv2.Dogu{Name: testDoguName},
 				err:          nil,
 				reqTime:      time.Duration(0),
 			},
