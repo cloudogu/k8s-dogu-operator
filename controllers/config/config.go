@@ -449,7 +449,7 @@ type HelmfileGlobalConfig struct {
 }
 
 type HelmfileOpenDeskConfig struct {
-	Source          string            `json:"source"`
+	HelmfileSource  string            `json:"helmfileSource"`
 	Environment     string            `json:"environment"`
 	ValuesFilePath  string            `json:"valuesFilePath"`
 	ExtraValues     map[string]any    `json:"extraValues"`
