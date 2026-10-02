@@ -1,0 +1,46 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    run: test-dccv3
+  name: test-dccv3
+spec:
+  volumes:
+    - name: test-v3-dogus
+      configMap:
+        name: test-v3-dogus
+  containers:
+    - image: nginx
+      name: test-dccv3
+      volumeMounts:
+        - mountPath: /usr/share/nginx/html/api/v3/dogus/internal/nexus
+          name: test-v3-dogus
+      resources: {}
+  dnsPolicy: ClusterFirst
+  restartPolicy: Always
+status: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    run: test-dccv3
+  name: test-dccv3
+spec:
+  ports:
+    - port: 8080
+      protocol: TCP
+      targetPort: 80
+  selector:
+    run: test-dccv3
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: test-dccv3
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+  ingress:
+    - {}
