@@ -5,6 +5,7 @@ metadata:
     run: test-dccv3
   name: test-dccv3
 spec:
+  automountServiceAccountToken: false
   volumes:
     - name: test-v3-dogus
       configMap:
@@ -15,7 +16,11 @@ spec:
       volumeMounts:
         - mountPath: /usr/share/nginx/html/api/v3/dogus/internal/nexus
           name: test-v3-dogus
-      resources: {}
+      resources:
+        requests:
+          memory: 64Mi
+        limits:
+          memory: 64Mi
   dnsPolicy: ClusterFirst
   restartPolicy: Always
 status: {}

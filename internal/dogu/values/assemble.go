@@ -93,31 +93,38 @@ func getDoguMetaValues(cr *v3beta1.Dogu, patchTpl []byte, logger logr.Logger) (V
 	}
 
 	for k, v := range cr.Spec.MappedValues {
-		if _, ok := mappings.Metavalues[k]; !ok {
+		metaValue, ok := mappings.Metavalues[k]
+		if !ok {
 			continue
 		}
 
-		for _, key := range mappings.Metavalues[k].Keys {
-			var mappedValue string
-
-			if key.Mapping == nil {
-				mappedValue = v
-			} else {
-				val, ok := key.Mapping[v]
-				if !ok {
-					logger.Error(errors.New("missing mapping"), "no Mapping found in mapping meta data", "key", v)
-				}
-				mappedValue = val
-			}
-
-			strval := fmt.Sprintf("%s=%s", key.Path, mappedValue)
-			if pErr := strvals.ParseInto(strval, mappedValues); pErr != nil {
-				logger.Error(pErr, "error parsing key path from mapping meta data", "path", key.Path)
-			}
-		}
+		applyMappedValueKeys(metaValue.Keys, v, mappedValues, logger)
 	}
 
 	return mappedValues, nil
+}
+
+// applyMappedValueKeys resolves each mapped key for the given CR value and parses the resulting
+// "path=value" expressions into mappedValues. Parsing and lookup errors are logged, not returned.
+func applyMappedValueKeys(keys []Mapping, v string, mappedValues Values, logger logr.Logger) {
+	for _, key := range keys {
+		var mappedValue string
+
+		if key.Mapping == nil {
+			mappedValue = v
+		} else {
+			val, ok := key.Mapping[v]
+			if !ok {
+				logger.Error(errors.New("missing mapping"), "no Mapping found in mapping meta data", "key", v)
+			}
+			mappedValue = val
+		}
+
+		strval := fmt.Sprintf("%s=%s", key.Path, mappedValue)
+		if pErr := strvals.ParseInto(strval, mappedValues); pErr != nil {
+			logger.Error(pErr, "error parsing key path from mapping meta data", "path", key.Path)
+		}
+	}
 }
 
 func getGlobalConfigValues(ctx context.Context, cr *v3beta1.Dogu, s client.Client) (Values, error) {
