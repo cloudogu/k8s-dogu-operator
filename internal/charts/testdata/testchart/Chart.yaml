@@ -1,0 +1,5 @@
+apiVersion: v2
+name: testchart
+description: Minimal lookup-free chart used to unit-test chart rendering
+version: 0.1.0
+appVersion: "1.0.0"

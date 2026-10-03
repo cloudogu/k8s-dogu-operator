@@ -53,6 +53,33 @@ func TestChartProviderGetChart(t *testing.T) {
 	assert.True(t, body.closed)
 }
 
+func TestChartProviderArtifactDigest(t *testing.T) {
+	archive := createTestChartArchive(t)
+	repository := readyRepository(archive)
+	requests := 0
+	provider := newTestProvider(t, repository, roundTripFunc(func(*http.Request) (*http.Response, error) {
+		requests++
+		return nil, assert.AnError
+	}))
+
+	actual, err := provider.ArtifactDigest(context.Background(), testDoguResource())
+
+	require.NoError(t, err)
+	assert.Equal(t, repository.Status.Artifact.Digest, actual)
+	assert.Zero(t, requests, "ArtifactDigest must not download the artifact")
+}
+
+func TestChartProviderArtifactDigestRejectsUnavailableRepository(t *testing.T) {
+	provider := newTestProvider(t, nil, roundTripFunc(func(*http.Request) (*http.Response, error) {
+		return nil, assert.AnError
+	}))
+
+	actual, err := provider.ArtifactDigest(context.Background(), testDoguResource())
+
+	assert.Empty(t, actual)
+	require.Error(t, err)
+}
+
 func TestChartProviderRejectsUnavailableRepositoriesBeforeDownloading(t *testing.T) {
 	archive := createTestChartArchive(t)
 	tests := []struct {
