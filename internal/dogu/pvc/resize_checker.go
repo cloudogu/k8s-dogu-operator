@@ -76,9 +76,9 @@ func (c *resizeChecker) checkPVC(ctx context.Context, desired desiredClaim) (Res
 		return ResizeRequest{}, false, fmt.Errorf("failed to read live PVC %q: %w", desired.key, err)
 	}
 
-	current, found := livePVC.Spec.Resources.Requests[corev1.ResourceStorage]
-	if !found {
-		return ResizeRequest{}, false, fmt.Errorf("live PVC %q has no storage request", desired.key)
+	current, err := currentStorage(livePVC)
+	if err != nil {
+		return ResizeRequest{}, false, err
 	}
 
 	request := ResizeRequest{
@@ -108,6 +108,49 @@ func (c *resizeChecker) checkPVC(ctx context.Context, desired desiredClaim) (Res
 	}
 
 	return request, true, nil
+}
+
+func currentStorage(pvc *corev1.PersistentVolumeClaim) (resource.Quantity, error) {
+	key := client.ObjectKeyFromObject(pvc)
+	if pvc.Status.Phase != corev1.ClaimBound {
+		return resource.Quantity{}, fmt.Errorf("live PVC %q is not bound: phase %q", key, pvc.Status.Phase)
+	}
+
+	if resizeStatus := pvc.Status.AllocatedResourceStatuses[corev1.ResourceStorage]; resizeStatus != "" {
+		return resource.Quantity{}, fmt.Errorf("live PVC %q has storage resize status %q", key, resizeStatus)
+	}
+
+	for _, condition := range pvc.Status.Conditions {
+		if condition.Status == corev1.ConditionTrue && isResizeCondition(condition.Type) {
+			return resource.Quantity{}, fmt.Errorf("live PVC %q has active resize condition %q", key, condition.Type)
+		}
+	}
+
+	requested, found := pvc.Spec.Resources.Requests[corev1.ResourceStorage]
+	if !found {
+		return resource.Quantity{}, fmt.Errorf("live PVC %q has no storage request", key)
+	}
+	capacity, found := pvc.Status.Capacity[corev1.ResourceStorage]
+	if !found {
+		return resource.Quantity{}, fmt.Errorf("live PVC %q has no storage capacity", key)
+	}
+	if requested.Cmp(capacity) != 0 {
+		return resource.Quantity{}, fmt.Errorf("live PVC %q is not ready: storage request %s differs from capacity %s", key, requested.String(), capacity.String())
+	}
+
+	return capacity, nil
+}
+
+func isResizeCondition(conditionType corev1.PersistentVolumeClaimConditionType) bool {
+	switch conditionType {
+	case corev1.PersistentVolumeClaimResizing,
+		corev1.PersistentVolumeClaimFileSystemResizePending,
+		corev1.PersistentVolumeClaimControllerResizeError,
+		corev1.PersistentVolumeClaimNodeResizeError:
+		return true
+	default:
+		return false
+	}
 }
 
 func extractDesiredClaims(renderedObjects []*unstructured.Unstructured) ([]desiredClaim, error) {

@@ -56,7 +56,6 @@ func TestResizeChecker_CheckStandalonePVCs(t *testing.T) {
 
 	t.Run("returns only PVCs that require expansion", func(t *testing.T) {
 		liveA := newPVC("data-a", "1Gi", nil)
-		liveA.Status.Capacity = corev1.ResourceList{corev1.ResourceStorage: resource.MustParse("4Gi")}
 		liveB := newPVC("data-b", "2Gi", nil)
 		checker := NewResizeChecker(fake.NewClientBuilder().WithObjects(liveA, liveB).Build())
 
@@ -70,6 +69,17 @@ func TestResizeChecker_CheckStandalonePVCs(t *testing.T) {
 		assert.Equal(t, client.ObjectKey{Namespace: testNamespace, Name: "data-a"}, result.ResizeRequests[0].PVC)
 		assert.Equal(t, "2Gi", result.ResizeRequests[0].Desired.String())
 		assert.NoError(t, result.ResizeRequests[0].Err)
+	})
+
+	t.Run("rejects a live PVC whose request differs from its capacity", func(t *testing.T) {
+		live := newPVC("data", "20Gi", nil)
+		live.Status.Capacity[corev1.ResourceStorage] = resource.MustParse("10Gi")
+		checker := NewResizeChecker(fake.NewClientBuilder().WithObjects(live).Build())
+
+		result, err := checker.Check(ctx, renderedObjects(t, newPVC("data", "15Gi", nil)))
+
+		require.ErrorContains(t, err, "live PVC \"ecosystem/data\" is not ready: storage request 20Gi differs from capacity 10Gi")
+		assert.Empty(t, result.ResizeRequests)
 	})
 
 	t.Run("returns a typed shrink error on its PVC request", func(t *testing.T) {
@@ -228,6 +238,55 @@ func TestResizeChecker_CheckErrors(t *testing.T) {
 		require.ErrorContains(t, err, "live PVC \"ecosystem/data\" has no storage request")
 		assert.Empty(t, result.ResizeRequests)
 	})
+
+	t.Run("rejects a live PVC that is not bound", func(t *testing.T) {
+		live := newPVC("data", "1Gi", nil)
+		live.Status.Phase = corev1.ClaimPending
+		checker := NewResizeChecker(fake.NewClientBuilder().WithObjects(live).Build())
+
+		result, err := checker.Check(ctx, renderedObjects(t, newPVC("data", "2Gi", nil)))
+
+		require.ErrorContains(t, err, "live PVC \"ecosystem/data\" is not bound")
+		assert.Empty(t, result.ResizeRequests)
+	})
+
+	t.Run("rejects a live PVC with an active resize status", func(t *testing.T) {
+		live := newPVC("data", "1Gi", nil)
+		live.Status.AllocatedResourceStatuses = map[corev1.ResourceName]corev1.ClaimResourceStatus{
+			corev1.ResourceStorage: corev1.PersistentVolumeClaimControllerResizeInProgress,
+		}
+		checker := NewResizeChecker(fake.NewClientBuilder().WithObjects(live).Build())
+
+		result, err := checker.Check(ctx, renderedObjects(t, newPVC("data", "2Gi", nil)))
+
+		require.ErrorContains(t, err, "live PVC \"ecosystem/data\" has storage resize status \"ControllerResizeInProgress\"")
+		assert.Empty(t, result.ResizeRequests)
+	})
+
+	t.Run("rejects a live PVC with an active resize condition", func(t *testing.T) {
+		live := newPVC("data", "1Gi", nil)
+		live.Status.Conditions = []corev1.PersistentVolumeClaimCondition{{
+			Type:   corev1.PersistentVolumeClaimResizing,
+			Status: corev1.ConditionTrue,
+		}}
+		checker := NewResizeChecker(fake.NewClientBuilder().WithObjects(live).Build())
+
+		result, err := checker.Check(ctx, renderedObjects(t, newPVC("data", "2Gi", nil)))
+
+		require.ErrorContains(t, err, "live PVC \"ecosystem/data\" has active resize condition \"Resizing\"")
+		assert.Empty(t, result.ResizeRequests)
+	})
+
+	t.Run("rejects a live PVC without reported capacity", func(t *testing.T) {
+		live := newPVC("data", "1Gi", nil)
+		live.Status.Capacity = nil
+		checker := NewResizeChecker(fake.NewClientBuilder().WithObjects(live).Build())
+
+		result, err := checker.Check(ctx, renderedObjects(t, newPVC("data", "2Gi", nil)))
+
+		require.ErrorContains(t, err, "live PVC \"ecosystem/data\" has no storage capacity")
+		assert.Empty(t, result.ResizeRequests)
+	})
 }
 
 func TestExtractDesiredClaims(t *testing.T) {
@@ -304,14 +363,19 @@ func TestExtractDesiredClaims(t *testing.T) {
 }
 
 func newPVC(name, storage string, storageClass *string) *corev1.PersistentVolumeClaim {
+	storageQuantity := resource.MustParse(storage)
 	return &corev1.PersistentVolumeClaim{
 		TypeMeta:   metav1.TypeMeta{APIVersion: "v1", Kind: "PersistentVolumeClaim"},
 		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: testNamespace},
 		Spec: corev1.PersistentVolumeClaimSpec{
 			StorageClassName: storageClass,
 			Resources: corev1.VolumeResourceRequirements{
-				Requests: corev1.ResourceList{corev1.ResourceStorage: resource.MustParse(storage)},
+				Requests: corev1.ResourceList{corev1.ResourceStorage: storageQuantity.DeepCopy()},
 			},
+		},
+		Status: corev1.PersistentVolumeClaimStatus{
+			Phase:    corev1.ClaimBound,
+			Capacity: corev1.ResourceList{corev1.ResourceStorage: storageQuantity.DeepCopy()},
 		},
 	}
 }
