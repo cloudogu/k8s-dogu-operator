@@ -159,8 +159,8 @@ func extractDesiredClaims(renderedObjects []*unstructured.Unstructured) ([]desir
 	var extractionErr error
 
 	for _, unstructuredObject := range renderedObjects {
-		switch unstructuredObject.GetKind() {
-		case "PersistentVolumeClaim":
+		switch unstructuredObject.GroupVersionKind().GroupKind() {
+		case corev1.SchemeGroupVersion.WithKind("PersistentVolumeClaim").GroupKind():
 			pvc := &corev1.PersistentVolumeClaim{}
 			if err := runtime.DefaultUnstructuredConverter.FromUnstructured(unstructuredObject.Object, pvc); err != nil {
 				extractionErr = errors.Join(extractionErr, fmt.Errorf("failed to convert rendered %s %q: %w", unstructuredObject.GetKind(), client.ObjectKeyFromObject(unstructuredObject), err))
@@ -173,7 +173,7 @@ func extractDesiredClaims(renderedObjects []*unstructured.Unstructured) ([]desir
 				continue
 			}
 			claims = append(claims, claim)
-		case "StatefulSet":
+		case appsv1.SchemeGroupVersion.WithKind("StatefulSet").GroupKind():
 			statefulSet := &appsv1.StatefulSet{}
 			if err := runtime.DefaultUnstructuredConverter.FromUnstructured(unstructuredObject.Object, statefulSet); err != nil {
 				extractionErr = errors.Join(extractionErr, fmt.Errorf("failed to convert rendered %s %q: %w", unstructuredObject.GetKind(), client.ObjectKeyFromObject(unstructuredObject), err))

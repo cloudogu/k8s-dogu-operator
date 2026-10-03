@@ -344,16 +344,17 @@ func TestExtractDesiredClaims(t *testing.T) {
 	})
 
 	tests := []struct {
-		kind string
+		apiVersion string
+		kind       string
 	}{
-		{kind: "PersistentVolumeClaim"},
-		{kind: "StatefulSet"},
+		{apiVersion: "v1", kind: "PersistentVolumeClaim"},
+		{apiVersion: "apps/v1", kind: "StatefulSet"},
 	}
 
 	for _, tt := range tests {
 		t.Run("rejects malformed "+tt.kind, func(t *testing.T) {
 			object := &unstructured.Unstructured{Object: map[string]any{
-				"apiVersion": "v1",
+				"apiVersion": tt.apiVersion,
 				"kind":       tt.kind,
 				"metadata": map[string]any{
 					"name":      "broken",
@@ -368,6 +369,18 @@ func TestExtractDesiredClaims(t *testing.T) {
 			assert.Empty(t, claims)
 		})
 	}
+
+	t.Run("ignores recognized kinds from custom API groups", func(t *testing.T) {
+		objects := []*unstructured.Unstructured{
+			{Object: map[string]any{"apiVersion": "example.com/v1", "kind": "PersistentVolumeClaim"}},
+			{Object: map[string]any{"apiVersion": "example.com/v1", "kind": "StatefulSet"}},
+		}
+
+		claims, err := extractDesiredClaims(objects)
+
+		require.NoError(t, err)
+		assert.Empty(t, claims)
+	})
 
 	t.Run("returns all rendered object errors", func(t *testing.T) {
 		pvc := newPVC("data", "1Gi", nil)
