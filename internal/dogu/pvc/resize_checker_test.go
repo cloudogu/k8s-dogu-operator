@@ -102,7 +102,6 @@ func TestResizeChecker_CheckStorageClass(t *testing.T) {
 	ctx := context.Background()
 	fast := "fast"
 	slow := "slow"
-	empty := ""
 
 	tests := []struct {
 		name         string
@@ -115,7 +114,6 @@ func TestResizeChecker_CheckStorageClass(t *testing.T) {
 		{name: "same explicit class", desiredClass: &fast, currentClass: &fast},
 		{name: "different explicit class", desiredClass: &slow, currentClass: &fast, wantError: true},
 		{name: "explicit desired class and unset live class", desiredClass: &fast, currentClass: nil, wantError: true},
-		{name: "explicit empty desired class is not unset", desiredClass: &empty, currentClass: nil, wantError: true},
 	}
 
 	for _, tt := range tests {
@@ -139,6 +137,16 @@ func TestResizeChecker_CheckStorageClass(t *testing.T) {
 			assert.Equal(t, tt.desiredClass, storageClassError.Desired)
 		})
 	}
+
+	t.Run("rejects an empty desired storage class", func(t *testing.T) {
+		empty := ""
+		checker := NewResizeChecker(fake.NewClientBuilder().Build())
+
+		result, err := checker.Check(ctx, renderedObjects(t, newPVC("data", "1Gi", &empty)))
+
+		require.ErrorContains(t, err, "rendered PVC \"ecosystem/data\" uses unsupported static provisioning")
+		assert.Empty(t, result.ResizeRequests)
+	})
 }
 
 func TestResizeChecker_CheckStatefulSetClaims(t *testing.T) {
@@ -360,6 +368,19 @@ func TestExtractDesiredClaims(t *testing.T) {
 			assert.Empty(t, claims)
 		})
 	}
+
+	t.Run("returns all rendered object errors", func(t *testing.T) {
+		pvc := newPVC("data", "1Gi", nil)
+		pvc.Namespace = ""
+		statefulSet := newStatefulSet("postgres", ptr.To[int32](1), 0, newPVC("data", "1Gi", nil))
+		statefulSet.Namespace = ""
+
+		claims, err := extractDesiredClaims(renderedObjects(t, pvc, statefulSet))
+
+		require.ErrorContains(t, err, "rendered PVC \"data\" has no namespace")
+		require.ErrorContains(t, err, "rendered StatefulSet \"postgres\" has no namespace")
+		assert.Empty(t, claims)
+	})
 }
 
 func newPVC(name, storage string, storageClass *string) *corev1.PersistentVolumeClaim {

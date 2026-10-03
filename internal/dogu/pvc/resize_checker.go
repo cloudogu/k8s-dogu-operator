@@ -11,6 +11,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -86,7 +87,7 @@ func (c *resizeChecker) checkPVC(ctx context.Context, desired desiredClaim) (Res
 		Desired: desired.storage.DeepCopy(),
 	}
 
-	if desired.storageClass != nil && !equalStringPointers(desired.storageClass, livePVC.Spec.StorageClassName) {
+	if desired.storageClass != nil && !ptr.Equal(desired.storageClass, livePVC.Spec.StorageClassName) {
 		request.Err = &StorageClassImmutableError{
 			PVC:     desired.key,
 			Current: copyStringPointer(livePVC.Spec.StorageClassName),
@@ -155,35 +156,40 @@ func isResizeCondition(conditionType corev1.PersistentVolumeClaimConditionType) 
 
 func extractDesiredClaims(renderedObjects []*unstructured.Unstructured) ([]desiredClaim, error) {
 	var claims []desiredClaim
+	var extractionErr error
 
 	for _, unstructuredObject := range renderedObjects {
 		switch unstructuredObject.GetKind() {
 		case "PersistentVolumeClaim":
 			pvc := &corev1.PersistentVolumeClaim{}
 			if err := runtime.DefaultUnstructuredConverter.FromUnstructured(unstructuredObject.Object, pvc); err != nil {
-				return nil, fmt.Errorf("failed to convert rendered %s %q: %w", unstructuredObject.GetKind(), client.ObjectKeyFromObject(unstructuredObject), err)
+				extractionErr = errors.Join(extractionErr, fmt.Errorf("failed to convert rendered %s %q: %w", unstructuredObject.GetKind(), client.ObjectKeyFromObject(unstructuredObject), err))
+				continue
 			}
 
 			claim, err := desiredClaimFromPVC(pvc)
 			if err != nil {
-				return nil, err
+				extractionErr = errors.Join(extractionErr, err)
+				continue
 			}
 			claims = append(claims, claim)
 		case "StatefulSet":
 			statefulSet := &appsv1.StatefulSet{}
 			if err := runtime.DefaultUnstructuredConverter.FromUnstructured(unstructuredObject.Object, statefulSet); err != nil {
-				return nil, fmt.Errorf("failed to convert rendered %s %q: %w", unstructuredObject.GetKind(), client.ObjectKeyFromObject(unstructuredObject), err)
+				extractionErr = errors.Join(extractionErr, fmt.Errorf("failed to convert rendered %s %q: %w", unstructuredObject.GetKind(), client.ObjectKeyFromObject(unstructuredObject), err))
+				continue
 			}
 
 			statefulSetClaims, err := desiredClaimsFromStatefulSet(statefulSet)
 			if err != nil {
-				return nil, err
+				extractionErr = errors.Join(extractionErr, err)
+				continue
 			}
 			claims = append(claims, statefulSetClaims...)
 		}
 	}
 
-	return claims, nil
+	return claims, extractionErr
 }
 
 func desiredClaimsFromStatefulSet(statefulSet *appsv1.StatefulSet) ([]desiredClaim, error) {
@@ -226,6 +232,9 @@ func desiredClaimFromPVC(pvc *corev1.PersistentVolumeClaim) (desiredClaim, error
 	if pvc.Namespace == "" {
 		return desiredClaim{}, fmt.Errorf("rendered PVC %q has no namespace", pvc.Name)
 	}
+	if pvc.Spec.StorageClassName != nil && *pvc.Spec.StorageClassName == "" {
+		return desiredClaim{}, fmt.Errorf("rendered PVC %q uses unsupported static provisioning", client.ObjectKeyFromObject(pvc))
+	}
 
 	storage, found := pvc.Spec.Resources.Requests[corev1.ResourceStorage]
 	if !found {
@@ -239,19 +248,10 @@ func desiredClaimFromPVC(pvc *corev1.PersistentVolumeClaim) (desiredClaim, error
 	}, nil
 }
 
-func equalStringPointers(left, right *string) bool {
-	if left == nil || right == nil {
-		return left == right
-	}
-
-	return *left == *right
-}
-
 func copyStringPointer(value *string) *string {
 	if value == nil {
 		return nil
 	}
 
-	copy := *value
-	return &copy
+	return ptr.To(*value)
 }
