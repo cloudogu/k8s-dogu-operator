@@ -77,7 +77,7 @@ func (c *resizeChecker) checkPVC(ctx context.Context, desired desiredClaim) (Res
 		return ResizeRequest{}, false, fmt.Errorf("failed to read live PVC %q: %w", desired.key, err)
 	}
 
-	current, err := currentStorage(livePVC)
+	currentRequest, err := currentStorageRequest(livePVC)
 	if err != nil {
 		return ResizeRequest{}, false, err
 	}
@@ -95,23 +95,24 @@ func (c *resizeChecker) checkPVC(ctx context.Context, desired desiredClaim) (Res
 		}
 	}
 
-	switch desired.storage.Cmp(current) {
-	case -1:
+	if desired.storage.Cmp(currentRequest) < 0 {
 		request.Err = errors.Join(request.Err, &VolumeShrinkError{
 			PVC:     desired.key,
-			Current: current.DeepCopy(),
+			Current: currentRequest.DeepCopy(),
 			Desired: desired.storage.DeepCopy(),
 		})
-	case 0:
-		if request.Err == nil {
-			return ResizeRequest{}, false, nil
-		}
+	}
+	if desired.storage.Cmp(currentRequest) > 0 {
+		return request, true, nil
+	}
+	if request.Err == nil {
+		return ResizeRequest{}, false, nil
 	}
 
 	return request, true, nil
 }
 
-func currentStorage(pvc *corev1.PersistentVolumeClaim) (resource.Quantity, error) {
+func currentStorageRequest(pvc *corev1.PersistentVolumeClaim) (resource.Quantity, error) {
 	key := client.ObjectKeyFromObject(pvc)
 	if pvc.Status.Phase != corev1.ClaimBound {
 		return resource.Quantity{}, fmt.Errorf("live PVC %q is not bound: phase %q", key, pvc.Status.Phase)
@@ -135,11 +136,11 @@ func currentStorage(pvc *corev1.PersistentVolumeClaim) (resource.Quantity, error
 	if !found {
 		return resource.Quantity{}, fmt.Errorf("live PVC %q has no storage capacity", key)
 	}
-	if requested.Cmp(capacity) != 0 {
-		return resource.Quantity{}, fmt.Errorf("live PVC %q is not ready: storage request %s differs from capacity %s", key, requested.String(), capacity.String())
+	if requested.Cmp(capacity) > 0 {
+		return resource.Quantity{}, fmt.Errorf("live PVC %q is not ready: storage request %s exceeds capacity %s", key, requested.String(), capacity.String())
 	}
 
-	return capacity, nil
+	return requested, nil
 }
 
 func isResizeCondition(conditionType corev1.PersistentVolumeClaimConditionType) bool {

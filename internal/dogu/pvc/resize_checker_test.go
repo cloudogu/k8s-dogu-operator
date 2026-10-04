@@ -71,15 +71,55 @@ func TestResizeChecker_CheckStandalonePVCs(t *testing.T) {
 		assert.NoError(t, result.ResizeRequests[0].Err)
 	})
 
-	t.Run("rejects a live PVC whose request differs from its capacity", func(t *testing.T) {
+	t.Run("rejects a live PVC whose request exceeds its capacity", func(t *testing.T) {
 		live := newPVC("data", "20Gi", nil)
 		live.Status.Capacity[corev1.ResourceStorage] = resource.MustParse("10Gi")
 		checker := NewResizeChecker(fake.NewClientBuilder().WithObjects(live).Build())
 
 		result, err := checker.Check(ctx, renderedObjects(t, newPVC("data", "15Gi", nil)))
 
-		require.ErrorContains(t, err, "live PVC \"ecosystem/data\" is not ready: storage request 20Gi differs from capacity 10Gi")
+		require.ErrorContains(t, err, "live PVC \"ecosystem/data\" is not ready: storage request 20Gi exceeds capacity 10Gi")
 		assert.Empty(t, result.ResizeRequests)
+	})
+
+	t.Run("classifies an overprovisioned live PVC by request and capacity", func(t *testing.T) {
+		tests := []struct {
+			name          string
+			desired       string
+			wantRequest   bool
+			wantShrinkErr bool
+		}{
+			{name: "shrink below current request", desired: "5Gi", wantRequest: true, wantShrinkErr: true},
+			{name: "unchanged request", desired: "10Gi"},
+			{name: "larger request within current capacity", desired: "15Gi", wantRequest: true},
+			{name: "expansion beyond current capacity", desired: "25Gi", wantRequest: true},
+		}
+
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				live := newPVC("data", "10Gi", nil)
+				live.Status.Capacity[corev1.ResourceStorage] = resource.MustParse("20Gi")
+				checker := NewResizeChecker(fake.NewClientBuilder().WithObjects(live).Build())
+
+				result, err := checker.Check(ctx, renderedObjects(t, newPVC("data", tt.desired, nil)))
+
+				require.NoError(t, err)
+				if !tt.wantRequest {
+					assert.Empty(t, result.ResizeRequests)
+					return
+				}
+
+				require.Len(t, result.ResizeRequests, 1)
+				assert.Equal(t, tt.desired, result.ResizeRequests[0].Desired.String())
+				if tt.wantShrinkErr {
+					var shrinkError *VolumeShrinkError
+					require.ErrorAs(t, result.ResizeRequests[0].Err, &shrinkError)
+					assert.Equal(t, "10Gi", shrinkError.Current.String())
+				} else {
+					assert.NoError(t, result.ResizeRequests[0].Err)
+				}
+			})
+		}
 	})
 
 	t.Run("returns a typed shrink error on its PVC request", func(t *testing.T) {
