@@ -262,9 +262,13 @@ func TestEnsureHelmReleaseStep_Run(t *testing.T) {
 		{
 			name: "should retry on failing create or patch",
 			setupMocks: func(*testing.T) (K8sClient, DoguValuesMetadataService, EventRecorder) {
-				k8sClient := createFailingClient{
-					delegate: fake.NewClientBuilder().WithScheme(testScheme).WithObjects(&globalConfig).Build(),
-				}
+				fakeClient := fake.NewClientBuilder().WithScheme(testScheme).WithObjects(&globalConfig).Build()
+				k8sClient := NewMockK8sClient(t)
+				k8sClient.EXPECT().Scheme().Return(testScheme)
+				k8sClient.EXPECT().Get(mock.Anything, mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
+					return fakeClient.Get(ctx, key, obj)
+				})
+				k8sClient.EXPECT().Create(mock.Anything, mock.Anything, mock.Anything).Return(assert.AnError)
 
 				service := newMockDoguMetadataValueService(t)
 				service.EXPECT().DoguMetaValues(mock.Anything, doguResource).Return(nil, false, nil)
@@ -317,21 +321,4 @@ func TestEnsureHelmReleaseStep_Run(t *testing.T) {
 			assert.Equal(t, test.want, result)
 		})
 	}
-}
-
-type createFailingClient struct {
-	client.Client
-	delegate client.Client
-}
-
-func (c createFailingClient) Scheme() *runtime.Scheme {
-	return c.delegate.Scheme()
-}
-
-func (c createFailingClient) Create(context.Context, client.Object, ...client.CreateOption) error {
-	return assert.AnError
-}
-
-func (c createFailingClient) Get(ctx context.Context, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
-	return c.delegate.Get(ctx, key, obj, opts...)
 }
