@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 
-	v2 "github.com/cloudogu/k8s-dogu-lib/v3/api/v2"
-	"github.com/cloudogu/k8s-dogu-lib/v3/api/v3beta1"
+	doguv2 "github.com/cloudogu/k8s-dogu-lib/v3/api/v2"
+	doguv3 "github.com/cloudogu/k8s-dogu-lib/v3/api/v3beta1"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/resource"
 	stepsv3 "github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv3"
@@ -14,7 +14,7 @@ import (
 	flux "github.com/fluxcd/helm-controller/api/v2"
 	fluxoci "github.com/fluxcd/source-controller/api/v1"
 	core "k8s.io/api/core/v1"
-	"k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
+	apiext "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -39,11 +39,11 @@ func NewEnsureHelmReleaseStep(k8sClient K8sClient, operatorConfig *config.Operat
 	}
 }
 
-func (ehr *EnsureHelmReleaseStep) Run(ctx context.Context, doguResource *v3beta1.Dogu) stepsv3.StepResult {
+func (ehr *EnsureHelmReleaseStep) Run(ctx context.Context, doguResource *doguv3.Dogu) stepsv3.StepResult {
 	templateAsm := values3.NewAssembler(ehr.k8sClient)
 	combinedValues, err := combineValues(ctx, doguResource, ehr.doguMetadataValueSvc, templateAsm)
 	if err != nil {
-		return stepsv3.RequeueWithError(err, v3beta1.ReasonInstalling)
+		return stepsv3.RequeueWithError(err, doguv3.ReasonInstalling)
 	}
 
 	release := &flux.HelmRelease{
@@ -59,15 +59,15 @@ func (ehr *EnsureHelmReleaseStep) Run(ctx context.Context, doguResource *v3beta1
 	})
 
 	if err != nil {
-		return stepsv3.RequeueWithError(fmt.Errorf("failed to createOrPatch HelmRelease %q: %w", doguResource.Spec.Name, err), v3beta1.ReasonInstalling)
+		return stepsv3.RequeueWithError(fmt.Errorf("failed to createOrPatch HelmRelease %q: %w", doguResource.Spec.Name, err), doguv3.ReasonInstalling)
 	}
 
 	switch result {
 	case controllerutil.OperationResultCreated:
-		ehr.eventRecorder.Event(doguResource, core.EventTypeNormal, v3beta1.ConditionChartAvailable, "HelmRelease created")
+		ehr.eventRecorder.Event(doguResource, core.EventTypeNormal, doguv3.ConditionChartAvailable, "HelmRelease created")
 		log.FromContext(ctx).Info("created HelmRelease", "name", release.Name)
 	case controllerutil.OperationResultUpdated:
-		ehr.eventRecorder.Event(doguResource, core.EventTypeNormal, v3beta1.ConditionChartAvailable, "HelmRelease updated")
+		ehr.eventRecorder.Event(doguResource, core.EventTypeNormal, doguv3.ConditionChartAvailable, "HelmRelease updated")
 		log.FromContext(ctx).Info("updated HelmRelease", "name", release.Name)
 	case controllerutil.OperationResultNone:
 		// surprisingly, no change here, but idempotency is absolutely desired
@@ -78,13 +78,13 @@ func (ehr *EnsureHelmReleaseStep) Run(ctx context.Context, doguResource *v3beta1
 	return stepsv3.Continue()
 }
 
-func configureHelmRelease(release *flux.HelmRelease, doguResource *v3beta1.Dogu, values *v1.JSON, retryInterval *metav1.Duration, helmReconcileInterval *metav1.Duration) {
+func configureHelmRelease(release *flux.HelmRelease, doguResource *doguv3.Dogu, values *apiext.JSON, retryInterval *metav1.Duration, helmReconcileInterval *metav1.Duration) {
 	if release.Labels == nil {
 		release.Labels = make(map[string]string)
 	}
 	release.Labels[labelKeyFluxSharding] = resource.LabelValueCes
-	release.Labels[v3beta1.DoguLabelName] = doguResource.Spec.Name
-	release.Labels[v3beta1.DoguLabelVersion] = doguResource.Spec.Version
+	release.Labels[doguv3.DoguLabelName] = doguResource.Spec.Name
+	release.Labels[doguv3.DoguLabelVersion] = doguResource.Spec.Version
 	release.Spec = flux.HelmReleaseSpec{
 		ChartRef: &flux.CrossNamespaceSourceReference{
 			APIVersion: "v1",
@@ -115,8 +115,8 @@ func configureHelmRelease(release *flux.HelmRelease, doguResource *v3beta1.Dogu,
 			Labels: map[string]string{
 				resource.LabelKeyApp:                    resource.LabelValueCes,
 				resource.LabelKeyK8sCloudoguComApp:      resource.LabelValueCes,
-				v2.DoguLabelName:                        doguResource.Spec.Name,
-				v3beta1.DoguLabelName:                   doguResource.Spec.Name,
+				doguv2.DoguLabelName:                    doguResource.Spec.Name,
+				doguv3.DoguLabelName:                    doguResource.Spec.Name,
 				resource.LabelKeyAppKubernetesIoName:    doguResource.Spec.Name,
 				resource.LabelKeyAppKubernetesIoVersion: doguResource.Spec.Version,
 				resource.LabelKeyAppKubernetesIoPartOf:  resource.LabelValueCes,
@@ -125,7 +125,7 @@ func configureHelmRelease(release *flux.HelmRelease, doguResource *v3beta1.Dogu,
 	}
 }
 
-func combineValues(ctx context.Context, dogu *v3beta1.Dogu, doguMetadataValueSvc DoguValuesMetadataService, valueAssembler valueAssembler) (*v1.JSON, error) {
+func combineValues(ctx context.Context, dogu *doguv3.Dogu, doguMetadataValueSvc DoguValuesMetadataService, valueAssembler valueAssembler) (*apiext.JSON, error) {
 	metaValues, _, err := doguMetadataValueSvc.DoguMetaValues(ctx, dogu)
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve dogu metadata values: %w", err)
@@ -139,5 +139,5 @@ func combineValues(ctx context.Context, dogu *v3beta1.Dogu, doguMetadataValueSvc
 	// this case the error is probably unreachable because the assembler has already pushed the values object into a YAML parser.
 	bytes, _ := json.Marshal(values)
 
-	return &v1.JSON{Raw: bytes}, nil
+	return &apiext.JSON{Raw: bytes}, nil
 }

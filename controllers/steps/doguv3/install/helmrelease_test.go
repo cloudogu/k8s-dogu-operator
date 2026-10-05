@@ -8,10 +8,10 @@ import (
 	"time"
 
 	doguv2 "github.com/cloudogu/k8s-dogu-lib/v3/api/v2"
-	"github.com/cloudogu/k8s-dogu-lib/v3/api/v3beta1"
+	doguv3 "github.com/cloudogu/k8s-dogu-lib/v3/api/v3beta1"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/resource"
-	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv3"
+	v3steps "github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv3"
 	values3 "github.com/cloudogu/k8s-dogu-operator/v3/internal/dogu/values"
 	fluxhelm "github.com/fluxcd/helm-controller/api/v2"
 	"github.com/fluxcd/pkg/apis/kustomize"
@@ -29,7 +29,7 @@ import (
 func Test_combineValues(t *testing.T) {
 	t.Run("should combine values from without error", func(t *testing.T) {
 		// given
-		inputDogu := &v3beta1.Dogu{}
+		inputDogu := &doguv3.Dogu{}
 		assembledDoguValues := values3.Values{"foo": "bar", "fqdn": "example.invalid", "logging": "error"}
 		valueAsmMock := newMockDoguPatchAssembler(t)
 		var doguMetadataValues []byte
@@ -50,7 +50,7 @@ func Test_combineValues(t *testing.T) {
 
 	t.Run("should fail on dogu metadata value service retrieval", func(t *testing.T) {
 		// given
-		inputDogu := &v3beta1.Dogu{}
+		inputDogu := &doguv3.Dogu{}
 		valueAsmMock := newMockDoguPatchAssembler(t)
 		doguValuesMetadataSvcMock := newMockDoguMetadataValueService(t)
 		doguValuesMetadataSvcMock.EXPECT().DoguMetaValues(testCtx, inputDogu).Return(nil, false, assert.AnError)
@@ -65,7 +65,7 @@ func Test_combineValues(t *testing.T) {
 
 	t.Run("should fail on dogu value assembly", func(t *testing.T) {
 		// given
-		inputDogu := &v3beta1.Dogu{}
+		inputDogu := &doguv3.Dogu{}
 		var doguMetadataValues []byte
 		doguValuesMetadataSvcMock := newMockDoguMetadataValueService(t)
 		doguValuesMetadataSvcMock.EXPECT().DoguMetaValues(testCtx, inputDogu).Return(doguMetadataValues, true, nil)
@@ -87,10 +87,10 @@ func Test_configureHelmRelease(t *testing.T) {
 			Name:      "dogu-release",
 			Namespace: "namespace",
 		}
-		dogu := &v3beta1.Dogu{
+		dogu := &doguv3.Dogu{
 			Name:      "dogu",
 			Namespace: "namespace",
-			Spec: v3beta1.DoguSpec{
+			Spec: doguv3.DoguSpec{
 				Name:          "dogu",
 				DoguNamespace: "namespace",
 				Version:       "1.2.3",
@@ -140,10 +140,10 @@ func Test_configureHelmRelease(t *testing.T) {
 				CommonMetadata: nil,
 			},
 		}
-		dogu := &v3beta1.Dogu{
+		dogu := &doguv3.Dogu{
 			Name:      "dogu",
 			Namespace: "namespace",
-			Spec: v3beta1.DoguSpec{
+			Spec: doguv3.DoguSpec{
 				Name:          "dogu",
 				DoguNamespace: "namespace",
 				Version:       "1.2.3",
@@ -187,8 +187,8 @@ func checkExpectedValues(t *testing.T, release *fluxhelm.HelmRelease, retryInter
 	assert.Empty(t, release.Spec.DriftDetection.Ignore)
 
 	assert.Equal(t, "ces", release.Labels["sharding.fluxcd.io/key"])
-	assert.Equal(t, "dogu", release.Labels[v3beta1.DoguLabelName])
-	assert.Equal(t, "1.2.3", release.Labels[v3beta1.DoguLabelVersion])
+	assert.Equal(t, "dogu", release.Labels[doguv3.DoguLabelName])
+	assert.Equal(t, "1.2.3", release.Labels[doguv3.DoguLabelVersion])
 
 	assert.Equal(t, "ces", release.Spec.CommonMetadata.Labels[resource.LabelKeyApp])
 	assert.Equal(t, "dogu", release.Spec.CommonMetadata.Labels[doguv2.DoguLabelName])
@@ -221,12 +221,12 @@ func TestNewEnsureHelmReleaseStep(t *testing.T) {
 func TestEnsureHelmReleaseStep_Run(t *testing.T) {
 	testScheme := runtime.NewScheme()
 	_ = core.AddToScheme(testScheme)
-	_ = v3beta1.AddToScheme(testScheme)
+	_ = doguv3.AddToScheme(testScheme)
 	_ = fluxhelm.AddToScheme(testScheme)
-	doguResource := &v3beta1.Dogu{
+	doguResource := &doguv3.Dogu{
 		Name:      "dogu",
 		Namespace: "namespace",
-		Spec: v3beta1.DoguSpec{
+		Spec: doguv3.DoguSpec{
 			Name:          "dogu",
 			DoguNamespace: "namespace",
 			Version:       "1.2.3",
@@ -243,7 +243,7 @@ func TestEnsureHelmReleaseStep_Run(t *testing.T) {
 	tests := []struct {
 		name       string
 		setupMocks func(*testing.T) (K8sClient, DoguValuesMetadataService, EventRecorder)
-		want       doguv3.StepResult
+		want       v3steps.StepResult
 	}{
 		{
 			name: "should retry on failing value assembling",
@@ -252,7 +252,7 @@ func TestEnsureHelmReleaseStep_Run(t *testing.T) {
 				metaValueService.EXPECT().DoguMetaValues(mock.Anything, doguResource).Return(nil, false, assert.AnError)
 				return nil, metaValueService, nil
 			},
-			want: doguv3.StepResult{
+			want: v3steps.StepResult{
 				Err:          fmt.Errorf("failed to retrieve dogu metadata values: %w", assert.AnError),
 				ReadyReason:  "Installing",
 				ReadyMessage: "failed to retrieve dogu metadata values: assert.AnError general error for testing",
@@ -270,7 +270,7 @@ func TestEnsureHelmReleaseStep_Run(t *testing.T) {
 				service.EXPECT().DoguMetaValues(mock.Anything, doguResource).Return(nil, false, nil)
 				return k8sClient, service, nil
 			},
-			want: doguv3.StepResult{
+			want: v3steps.StepResult{
 				Err:          fmt.Errorf("failed to createOrPatch HelmRelease \"dogu\": %w", assert.AnError),
 				ReadyReason:  "Installing",
 				ReadyMessage: "failed to createOrPatch HelmRelease \"dogu\": assert.AnError general error for testing",
@@ -284,10 +284,10 @@ func TestEnsureHelmReleaseStep_Run(t *testing.T) {
 				service := newMockDoguMetadataValueService(t)
 				service.EXPECT().DoguMetaValues(mock.Anything, doguResource).Return(nil, false, nil)
 				recorder := NewMockEventRecorder(t)
-				recorder.EXPECT().Event(doguResource, core.EventTypeNormal, v3beta1.ConditionChartAvailable, "HelmRelease created")
+				recorder.EXPECT().Event(doguResource, core.EventTypeNormal, doguv3.ConditionChartAvailable, "HelmRelease created")
 				return k8sClient, service, recorder
 			},
-			want: doguv3.Continue(),
+			want: v3steps.Continue(),
 		},
 		{
 			name: "should continue on successful update of existing helm release",
@@ -300,10 +300,10 @@ func TestEnsureHelmReleaseStep_Run(t *testing.T) {
 				service := newMockDoguMetadataValueService(t)
 				service.EXPECT().DoguMetaValues(mock.Anything, doguResource).Return(nil, false, nil)
 				recorder := NewMockEventRecorder(t)
-				recorder.EXPECT().Event(doguResource, core.EventTypeNormal, v3beta1.ConditionChartAvailable, "HelmRelease updated")
+				recorder.EXPECT().Event(doguResource, core.EventTypeNormal, doguv3.ConditionChartAvailable, "HelmRelease updated")
 				return k8sClient, service, recorder
 			},
-			want: doguv3.Continue(),
+			want: v3steps.Continue(),
 		},
 	}
 
