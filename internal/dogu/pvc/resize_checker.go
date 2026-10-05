@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -47,14 +48,18 @@ type desiredClaim struct {
 	storageClass *string
 }
 
-func (c *resizeChecker) Check(ctx context.Context, renderedObjects []*unstructured.Unstructured) (CheckResult, error) {
-	desiredClaims, err := extractDesiredClaims(renderedObjects)
-	if err != nil {
-		return CheckResult{}, err
-	}
+type desiredClaimTemplate struct {
+	statefulSet  client.ObjectKey
+	name         string
+	storage      resource.Quantity
+	storageClass *string
+}
 
+func (c *resizeChecker) Check(ctx context.Context, renderedObjects []*unstructured.Unstructured) (CheckResult, error) {
+	desiredClaims, desiredTemplates, extractionErr := extractDesiredClaims(renderedObjects)
 	result := CheckResult{}
-	var checkErr error
+	checkErr := extractionErr
+
 	for _, desired := range desiredClaims {
 		request, include, err := c.checkPVC(ctx, desired)
 		if err != nil {
@@ -65,11 +70,58 @@ func (c *resizeChecker) Check(ctx context.Context, renderedObjects []*unstructur
 			result.ResizeRequests = append(result.ResizeRequests, request)
 		}
 	}
+
+	statefulSetRequests, err := c.checkStatefulSetClaims(ctx, desiredTemplates)
+	checkErr = errors.Join(checkErr, err)
+	result.ResizeRequests = append(result.ResizeRequests, statefulSetRequests...)
+
 	if checkErr != nil {
 		return CheckResult{}, checkErr
 	}
 
 	return result, nil
+}
+
+func (c *resizeChecker) checkStatefulSetClaims(ctx context.Context, desiredTemplates []desiredClaimTemplate) ([]ResizeRequest, error) {
+	templatesByNamespace := map[string][]desiredClaimTemplate{}
+	for _, template := range desiredTemplates {
+		templatesByNamespace[template.statefulSet.Namespace] = append(templatesByNamespace[template.statefulSet.Namespace], template)
+	}
+
+	var requests []ResizeRequest
+	var checkErr error
+	for namespace, templates := range templatesByNamespace {
+		livePVCs := &corev1.PersistentVolumeClaimList{}
+		if err := c.k8s.List(ctx, livePVCs, client.InNamespace(namespace)); err != nil {
+			checkErr = errors.Join(checkErr, fmt.Errorf("failed to list live PVCs in namespace %q: %w", namespace, err))
+			continue
+		}
+
+		for i := range livePVCs.Items {
+			livePVC := &livePVCs.Items[i]
+			for _, template := range templates {
+				if !matchesStatefulSetPVCName(livePVC.Name, template.name, template.statefulSet.Name) {
+					continue
+				}
+
+				desired := desiredClaim{
+					key:          client.ObjectKeyFromObject(livePVC),
+					storage:      template.storage.DeepCopy(),
+					storageClass: copyStringPointer(template.storageClass),
+				}
+				request, include, err := checkLivePVC(desired, livePVC)
+				if err != nil {
+					checkErr = errors.Join(checkErr, err)
+					continue
+				}
+				if include {
+					requests = append(requests, request)
+				}
+			}
+		}
+	}
+
+	return requests, checkErr
 }
 
 func (c *resizeChecker) checkPVC(ctx context.Context, desired desiredClaim) (ResizeRequest, bool, error) {
@@ -82,6 +134,10 @@ func (c *resizeChecker) checkPVC(ctx context.Context, desired desiredClaim) (Res
 		return ResizeRequest{}, false, fmt.Errorf("failed to read live PVC %q: %w", desired.key, err)
 	}
 
+	return checkLivePVC(desired, livePVC)
+}
+
+func checkLivePVC(desired desiredClaim, livePVC *corev1.PersistentVolumeClaim) (ResizeRequest, bool, error) {
 	request := ResizeRequest{
 		PVC:     desired.key,
 		Desired: desired.storage.DeepCopy(),
@@ -161,8 +217,9 @@ func isResizeCondition(conditionType corev1.PersistentVolumeClaimConditionType) 
 	}
 }
 
-func extractDesiredClaims(renderedObjects []*unstructured.Unstructured) ([]desiredClaim, error) {
+func extractDesiredClaims(renderedObjects []*unstructured.Unstructured) ([]desiredClaim, []desiredClaimTemplate, error) {
 	var claims []desiredClaim
+	var templates []desiredClaimTemplate
 	var extractionErr error
 
 	for _, unstructuredObject := range renderedObjects {
@@ -193,50 +250,53 @@ func extractDesiredClaims(renderedObjects []*unstructured.Unstructured) ([]desir
 				statefulSet.Namespace = corev1.NamespaceDefault
 			}
 
-			statefulSetClaims, err := desiredClaimsFromStatefulSet(statefulSet)
+			statefulSetTemplates, err := desiredClaimTemplatesFromStatefulSet(statefulSet)
 			if err != nil {
 				extractionErr = errors.Join(extractionErr, err)
-				continue
 			}
-			claims = append(claims, statefulSetClaims...)
+			templates = append(templates, statefulSetTemplates...)
 		}
 	}
 
-	return claims, extractionErr
+	return claims, templates, extractionErr
 }
 
-func desiredClaimsFromStatefulSet(statefulSet *appsv1.StatefulSet) ([]desiredClaim, error) {
-	replicas := int32(1)
-	if statefulSet.Spec.Replicas != nil {
-		replicas = *statefulSet.Spec.Replicas
-	}
-	if replicas < 0 {
-		return nil, fmt.Errorf("rendered StatefulSet %q has negative replicas", client.ObjectKeyFromObject(statefulSet))
-	}
-
-	startOrdinal := int32(0)
-	if statefulSet.Spec.Ordinals != nil {
-		startOrdinal = statefulSet.Spec.Ordinals.Start
-	}
-
-	claims := make([]desiredClaim, 0, len(statefulSet.Spec.VolumeClaimTemplates)*int(replicas))
+func desiredClaimTemplatesFromStatefulSet(statefulSet *appsv1.StatefulSet) ([]desiredClaimTemplate, error) {
+	templates := make([]desiredClaimTemplate, 0, len(statefulSet.Spec.VolumeClaimTemplates))
 	var extractionErr error
 	for _, template := range statefulSet.Spec.VolumeClaimTemplates {
-		for ordinal := startOrdinal; ordinal < startOrdinal+replicas; ordinal++ {
-			pvc := template.DeepCopy()
-			pvc.Name = fmt.Sprintf("%s-%s-%d", template.Name, statefulSet.Name, ordinal)
-			pvc.Namespace = statefulSet.Namespace
+		pvc := template.DeepCopy()
+		pvc.Namespace = statefulSet.Namespace
 
-			claim, err := desiredClaimFromPVC(pvc)
-			if err != nil {
-				extractionErr = errors.Join(extractionErr, err)
-				continue
-			}
-			claims = append(claims, claim)
+		claim, err := desiredClaimFromPVC(pvc)
+		if err != nil {
+			extractionErr = errors.Join(extractionErr, err)
+			continue
+		}
+		templates = append(templates, desiredClaimTemplate{
+			statefulSet:  client.ObjectKeyFromObject(statefulSet),
+			name:         template.Name,
+			storage:      claim.storage,
+			storageClass: claim.storageClass,
+		})
+	}
+
+	return templates, extractionErr
+}
+
+func matchesStatefulSetPVCName(pvcName, templateName, statefulSetName string) bool {
+	ordinal, found := strings.CutPrefix(pvcName, templateName+"-"+statefulSetName+"-")
+	if !found || ordinal == "" || ordinal[0] == '0' && len(ordinal) > 1 {
+		return false
+	}
+
+	for _, character := range ordinal {
+		if character < '0' || character > '9' {
+			return false
 		}
 	}
 
-	return claims, extractionErr
+	return true
 }
 
 func desiredClaimFromPVC(pvc *corev1.PersistentVolumeClaim) (desiredClaim, error) {
