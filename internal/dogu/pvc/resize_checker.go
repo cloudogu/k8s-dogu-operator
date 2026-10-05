@@ -213,6 +213,7 @@ func desiredClaimsFromStatefulSet(statefulSet *appsv1.StatefulSet) ([]desiredCla
 	}
 
 	claims := make([]desiredClaim, 0, len(statefulSet.Spec.VolumeClaimTemplates)*int(replicas))
+	var extractionErr error
 	for _, template := range statefulSet.Spec.VolumeClaimTemplates {
 		for ordinal := startOrdinal; ordinal < startOrdinal+replicas; ordinal++ {
 			pvc := template.DeepCopy()
@@ -221,13 +222,14 @@ func desiredClaimsFromStatefulSet(statefulSet *appsv1.StatefulSet) ([]desiredCla
 
 			claim, err := desiredClaimFromPVC(pvc)
 			if err != nil {
-				return nil, err
+				extractionErr = errors.Join(extractionErr, err)
+				continue
 			}
 			claims = append(claims, claim)
 		}
 	}
 
-	return claims, nil
+	return claims, extractionErr
 }
 
 func desiredClaimFromPVC(pvc *corev1.PersistentVolumeClaim) (desiredClaim, error) {

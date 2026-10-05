@@ -251,6 +251,21 @@ func TestResizeChecker_CheckStatefulSetClaims(t *testing.T) {
 		assert.Contains(t, requests, "data-postgres-4")
 	})
 
+	t.Run("returns all volume claim template errors", func(t *testing.T) {
+		missingStorage := newPVC("data", "1Gi", nil)
+		missingStorage.Spec.Resources.Requests = nil
+		emptyStorageClass := ""
+		staticProvisioning := newPVC("logs", "1Gi", &emptyStorageClass)
+		statefulSet := newStatefulSet("postgres", ptr.To[int32](1), 0, missingStorage, staticProvisioning)
+		checker := NewResizeChecker(fake.NewClientBuilder().Build())
+
+		result, err := checker.Check(ctx, renderedObjects(t, statefulSet))
+
+		require.ErrorContains(t, err, "rendered PVC \"ecosystem/data-postgres-0\" has no storage request")
+		require.ErrorContains(t, err, "rendered PVC \"ecosystem/logs-postgres-0\" uses unsupported static provisioning")
+		assert.Empty(t, result.ResizeRequests)
+	})
+
 	t.Run("rejects negative replicas in rendered output", func(t *testing.T) {
 		statefulSet := newStatefulSet("postgres", ptr.To[int32](-1), 0, newPVC("data", "2Gi", nil))
 		checker := NewResizeChecker(fake.NewClientBuilder().Build())
