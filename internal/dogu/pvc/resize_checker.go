@@ -11,6 +11,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -161,7 +162,7 @@ func extractDesiredClaims(renderedObjects []*unstructured.Unstructured) ([]desir
 
 	for _, unstructuredObject := range renderedObjects {
 		switch unstructuredObject.GroupVersionKind().GroupKind() {
-		case corev1.SchemeGroupVersion.WithKind("PersistentVolumeClaim").GroupKind():
+		case schema.GroupKind{Group: corev1.GroupName, Kind: "PersistentVolumeClaim"}:
 			pvc := &corev1.PersistentVolumeClaim{}
 			if err := runtime.DefaultUnstructuredConverter.FromUnstructured(unstructuredObject.Object, pvc); err != nil {
 				extractionErr = errors.Join(extractionErr, fmt.Errorf("failed to convert rendered %s %q: %w", unstructuredObject.GetKind(), client.ObjectKeyFromObject(unstructuredObject), err))
@@ -174,7 +175,7 @@ func extractDesiredClaims(renderedObjects []*unstructured.Unstructured) ([]desir
 				continue
 			}
 			claims = append(claims, claim)
-		case appsv1.SchemeGroupVersion.WithKind("StatefulSet").GroupKind():
+		case schema.GroupKind{Group: appsv1.GroupName, Kind: "StatefulSet"}:
 			statefulSet := &appsv1.StatefulSet{}
 			if err := runtime.DefaultUnstructuredConverter.FromUnstructured(unstructuredObject.Object, statefulSet); err != nil {
 				extractionErr = errors.Join(extractionErr, fmt.Errorf("failed to convert rendered %s %q: %w", unstructuredObject.GetKind(), client.ObjectKeyFromObject(unstructuredObject), err))
