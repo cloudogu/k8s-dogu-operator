@@ -68,7 +68,6 @@ func TestResizeChecker_CheckStandalonePVCs(t *testing.T) {
 		require.Len(t, result.ResizeRequests, 1)
 		assert.Equal(t, client.ObjectKey{Namespace: testNamespace, Name: "data-a"}, result.ResizeRequests[0].PVC)
 		assert.Equal(t, "2Gi", result.ResizeRequests[0].Desired.String())
-		assert.NoError(t, result.ResizeRequests[0].Err)
 	})
 
 	t.Run("rejects a live PVC whose request exceeds its capacity", func(t *testing.T) {
@@ -84,12 +83,12 @@ func TestResizeChecker_CheckStandalonePVCs(t *testing.T) {
 
 	t.Run("classifies an overprovisioned live PVC by request and capacity", func(t *testing.T) {
 		tests := []struct {
-			name          string
-			desired       string
-			wantRequest   bool
-			wantShrinkErr bool
+			name        string
+			desired     string
+			wantRequest bool
+			wantShrink  bool
 		}{
-			{name: "shrink below current request", desired: "5Gi", wantRequest: true, wantShrinkErr: true},
+			{name: "shrink below current request", desired: "5Gi", wantShrink: true},
 			{name: "unchanged request", desired: "10Gi"},
 			{name: "larger request within current capacity", desired: "15Gi", wantRequest: true},
 			{name: "expansion beyond current capacity", desired: "25Gi", wantRequest: true},
@@ -103,6 +102,14 @@ func TestResizeChecker_CheckStandalonePVCs(t *testing.T) {
 
 				result, err := checker.Check(ctx, renderedObjects(t, newPVC("data", tt.desired, nil)))
 
+				if tt.wantShrink {
+					var shrinkError *VolumeShrinkError
+					require.ErrorAs(t, err, &shrinkError)
+					assert.Equal(t, "10Gi", shrinkError.Current.String())
+					assert.Empty(t, result.ResizeRequests)
+					return
+				}
+
 				require.NoError(t, err)
 				if !tt.wantRequest {
 					assert.Empty(t, result.ResizeRequests)
@@ -111,30 +118,43 @@ func TestResizeChecker_CheckStandalonePVCs(t *testing.T) {
 
 				require.Len(t, result.ResizeRequests, 1)
 				assert.Equal(t, tt.desired, result.ResizeRequests[0].Desired.String())
-				if tt.wantShrinkErr {
-					var shrinkError *VolumeShrinkError
-					require.ErrorAs(t, result.ResizeRequests[0].Err, &shrinkError)
-					assert.Equal(t, "10Gi", shrinkError.Current.String())
-				} else {
-					assert.NoError(t, result.ResizeRequests[0].Err)
-				}
 			})
 		}
 	})
 
-	t.Run("returns a typed shrink error on its PVC request", func(t *testing.T) {
+	t.Run("returns a typed shrink error", func(t *testing.T) {
 		live := newPVC("data", "10Gi", nil)
 		checker := NewResizeChecker(fake.NewClientBuilder().WithObjects(live).Build())
 
 		result, err := checker.Check(ctx, renderedObjects(t, newPVC("data", "2Gi", nil)))
 
-		require.NoError(t, err)
-		require.Len(t, result.ResizeRequests, 1)
 		var shrinkError *VolumeShrinkError
-		require.ErrorAs(t, result.ResizeRequests[0].Err, &shrinkError)
+		require.ErrorAs(t, err, &shrinkError)
 		assert.Equal(t, client.ObjectKey{Namespace: testNamespace, Name: "data"}, shrinkError.PVC)
 		assert.Equal(t, "10Gi", shrinkError.Current.String())
 		assert.Equal(t, "2Gi", shrinkError.Desired.String())
+		assert.Empty(t, result.ResizeRequests)
+	})
+
+	t.Run("returns all validation errors without partial expansion requests", func(t *testing.T) {
+		fast := "fast"
+		slow := "slow"
+		liveExpand := newPVC("expand", "1Gi", nil)
+		liveShrink := newPVC("shrink", "10Gi", nil)
+		liveStorageClass := newPVC("storage-class", "1Gi", &fast)
+		checker := NewResizeChecker(fake.NewClientBuilder().WithObjects(liveExpand, liveShrink, liveStorageClass).Build())
+
+		result, err := checker.Check(ctx, renderedObjects(t,
+			newPVC("expand", "2Gi", nil),
+			newPVC("shrink", "2Gi", nil),
+			newPVC("storage-class", "1Gi", &slow),
+		))
+
+		var shrinkError *VolumeShrinkError
+		require.ErrorAs(t, err, &shrinkError)
+		var storageClassError *StorageClassImmutableError
+		require.ErrorAs(t, err, &storageClassError)
+		assert.Empty(t, result.ResizeRequests)
 	})
 }
 
@@ -163,18 +183,18 @@ func TestResizeChecker_CheckStorageClass(t *testing.T) {
 
 			result, err := checker.Check(ctx, renderedObjects(t, newPVC("data", "1Gi", tt.desiredClass)))
 
-			require.NoError(t, err)
 			if !tt.wantError {
+				require.NoError(t, err)
 				assert.Empty(t, result.ResizeRequests)
 				return
 			}
 
-			require.Len(t, result.ResizeRequests, 1)
 			var storageClassError *StorageClassImmutableError
-			require.ErrorAs(t, result.ResizeRequests[0].Err, &storageClassError)
+			require.ErrorAs(t, err, &storageClassError)
 			assert.Equal(t, client.ObjectKey{Namespace: testNamespace, Name: "data"}, storageClassError.PVC)
 			assert.Equal(t, tt.currentClass, storageClassError.Current)
 			assert.Equal(t, tt.desiredClass, storageClassError.Desired)
+			assert.Empty(t, result.ResizeRequests)
 		})
 	}
 
@@ -192,7 +212,7 @@ func TestResizeChecker_CheckStorageClass(t *testing.T) {
 func TestResizeChecker_CheckStatefulSetClaims(t *testing.T) {
 	ctx := context.Background()
 
-	t.Run("checks every volume claim template for every replica", func(t *testing.T) {
+	t.Run("returns no partial result when a volume claim template is invalid", func(t *testing.T) {
 		statefulSet := newStatefulSet("postgres", ptr.To[int32](2), 0,
 			newPVC("data", "2Gi", nil),
 			newPVC("logs", "1Gi", nil),
@@ -204,14 +224,10 @@ func TestResizeChecker_CheckStatefulSetClaims(t *testing.T) {
 
 		result, err := checker.Check(ctx, renderedObjects(t, statefulSet))
 
-		require.NoError(t, err)
-		require.Len(t, result.ResizeRequests, 2)
-		requests := resizeRequestsByName(result.ResizeRequests)
-		require.Contains(t, requests, "data-postgres-0")
-		assert.NoError(t, requests["data-postgres-0"].Err)
-		require.Contains(t, requests, "logs-postgres-0")
 		var shrinkError *VolumeShrinkError
-		require.ErrorAs(t, requests["logs-postgres-0"].Err, &shrinkError)
+		require.ErrorAs(t, err, &shrinkError)
+		assert.Equal(t, client.ObjectKey{Namespace: testNamespace, Name: "logs-postgres-0"}, shrinkError.PVC)
+		assert.Empty(t, result.ResizeRequests)
 	})
 
 	t.Run("defaults nil replicas to one", func(t *testing.T) {

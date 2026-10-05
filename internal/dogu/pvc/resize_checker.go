@@ -16,14 +16,13 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-// ResizeRequest describes either a required PVC expansion or a PVC-specific validation error.
+// ResizeRequest describes a required PVC expansion.
 type ResizeRequest struct {
 	PVC     client.ObjectKey
 	Desired resource.Quantity
-	Err     error
 }
 
-// CheckResult contains only PVCs that require an expansion or have a validation error.
+// CheckResult contains only PVCs that require an expansion.
 type CheckResult struct {
 	ResizeRequests []ResizeRequest
 }
@@ -55,14 +54,19 @@ func (c *resizeChecker) Check(ctx context.Context, renderedObjects []*unstructur
 	}
 
 	result := CheckResult{}
+	var checkErr error
 	for _, desired := range desiredClaims {
-		request, include, checkErr := c.checkPVC(ctx, desired)
-		if checkErr != nil {
-			return CheckResult{}, checkErr
+		request, include, err := c.checkPVC(ctx, desired)
+		if err != nil {
+			checkErr = errors.Join(checkErr, err)
+			continue
 		}
 		if include {
 			result.ResizeRequests = append(result.ResizeRequests, request)
 		}
+	}
+	if checkErr != nil {
+		return CheckResult{}, checkErr
 	}
 
 	return result, nil
@@ -78,39 +82,40 @@ func (c *resizeChecker) checkPVC(ctx context.Context, desired desiredClaim) (Res
 		return ResizeRequest{}, false, fmt.Errorf("failed to read live PVC %q: %w", desired.key, err)
 	}
 
-	currentRequest, err := currentStorageRequest(livePVC)
-	if err != nil {
-		return ResizeRequest{}, false, err
-	}
-
 	request := ResizeRequest{
 		PVC:     desired.key,
 		Desired: desired.storage.DeepCopy(),
 	}
 
+	var validationErr error
 	if desired.storageClass != nil && !ptr.Equal(desired.storageClass, livePVC.Spec.StorageClassName) {
-		request.Err = &StorageClassImmutableError{
+		validationErr = &StorageClassImmutableError{
 			PVC:     desired.key,
 			Current: copyStringPointer(livePVC.Spec.StorageClassName),
 			Desired: copyStringPointer(desired.storageClass),
 		}
 	}
 
+	currentRequest, err := currentStorageRequest(livePVC)
+	if err != nil {
+		return ResizeRequest{}, false, errors.Join(validationErr, err)
+	}
+
 	if desired.storage.Cmp(currentRequest) < 0 {
-		request.Err = errors.Join(request.Err, &VolumeShrinkError{
+		validationErr = errors.Join(validationErr, &VolumeShrinkError{
 			PVC:     desired.key,
 			Current: currentRequest.DeepCopy(),
 			Desired: desired.storage.DeepCopy(),
 		})
 	}
+	if validationErr != nil {
+		return ResizeRequest{}, false, validationErr
+	}
 	if desired.storage.Cmp(currentRequest) > 0 {
 		return request, true, nil
 	}
-	if request.Err == nil {
-		return ResizeRequest{}, false, nil
-	}
 
-	return request, true, nil
+	return ResizeRequest{}, false, nil
 }
 
 func currentStorageRequest(pvc *corev1.PersistentVolumeClaim) (resource.Quantity, error) {
