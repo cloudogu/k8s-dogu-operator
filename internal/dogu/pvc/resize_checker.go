@@ -173,6 +173,9 @@ func extractDesiredClaims(renderedObjects []*unstructured.Unstructured) ([]desir
 				extractionErr = errors.Join(extractionErr, fmt.Errorf("failed to convert rendered %s %q: %w", unstructuredObject.GetKind(), client.ObjectKeyFromObject(unstructuredObject), err))
 				continue
 			}
+			if pvc.Namespace == "" {
+				pvc.Namespace = corev1.NamespaceDefault
+			}
 
 			claim, err := desiredClaimFromPVC(pvc)
 			if err != nil {
@@ -185,6 +188,9 @@ func extractDesiredClaims(renderedObjects []*unstructured.Unstructured) ([]desir
 			if err := runtime.DefaultUnstructuredConverter.FromUnstructured(unstructuredObject.Object, statefulSet); err != nil {
 				extractionErr = errors.Join(extractionErr, fmt.Errorf("failed to convert rendered %s %q: %w", unstructuredObject.GetKind(), client.ObjectKeyFromObject(unstructuredObject), err))
 				continue
+			}
+			if statefulSet.Namespace == "" {
+				statefulSet.Namespace = corev1.NamespaceDefault
 			}
 
 			statefulSetClaims, err := desiredClaimsFromStatefulSet(statefulSet)
@@ -200,10 +206,6 @@ func extractDesiredClaims(renderedObjects []*unstructured.Unstructured) ([]desir
 }
 
 func desiredClaimsFromStatefulSet(statefulSet *appsv1.StatefulSet) ([]desiredClaim, error) {
-	if statefulSet.Namespace == "" {
-		return nil, fmt.Errorf("rendered StatefulSet %q has no namespace", statefulSet.Name)
-	}
-
 	replicas := int32(1)
 	if statefulSet.Spec.Replicas != nil {
 		replicas = *statefulSet.Spec.Replicas
@@ -238,9 +240,6 @@ func desiredClaimsFromStatefulSet(statefulSet *appsv1.StatefulSet) ([]desiredCla
 }
 
 func desiredClaimFromPVC(pvc *corev1.PersistentVolumeClaim) (desiredClaim, error) {
-	if pvc.Namespace == "" {
-		return desiredClaim{}, fmt.Errorf("rendered PVC %q has no namespace", pvc.Name)
-	}
 	if pvc.Spec.StorageClassName != nil && *pvc.Spec.StorageClassName == "" {
 		return desiredClaim{}, fmt.Errorf("rendered PVC %q uses unsupported static provisioning", client.ObjectKeyFromObject(pvc))
 	}

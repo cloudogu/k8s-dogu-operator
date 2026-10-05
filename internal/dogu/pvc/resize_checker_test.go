@@ -44,6 +44,20 @@ func TestResizeChecker_CheckStandalonePVCs(t *testing.T) {
 		assert.Empty(t, result.ResizeRequests)
 	})
 
+	t.Run("checks a PVC without a namespace in the default namespace", func(t *testing.T) {
+		rendered := newPVC("data", "2Gi", nil)
+		rendered.Namespace = ""
+		live := newPVC("data", "1Gi", nil)
+		live.Namespace = corev1.NamespaceDefault
+		checker := NewResizeChecker(fake.NewClientBuilder().WithObjects(live).Build())
+
+		result, err := checker.Check(ctx, renderedObjects(t, rendered))
+
+		require.NoError(t, err)
+		require.Len(t, result.ResizeRequests, 1)
+		assert.Equal(t, client.ObjectKey{Namespace: corev1.NamespaceDefault, Name: "data"}, result.ResizeRequests[0].PVC)
+	})
+
 	t.Run("treats equivalent quantities and a defaulted storage class as unchanged", func(t *testing.T) {
 		live := newPVC("data", "1024Mi", &fast)
 		checker := NewResizeChecker(fake.NewClientBuilder().WithObjects(live).Build())
@@ -384,24 +398,30 @@ func TestExtractDesiredClaims(t *testing.T) {
 		assert.Zero(t, claims[0].storage.Cmp(resource.MustParse("2Gi")))
 	})
 
-	t.Run("rejects a standalone PVC without a namespace", func(t *testing.T) {
+	t.Run("uses the default namespace for a standalone PVC without a namespace", func(t *testing.T) {
 		pvc := newPVC("data", "1Gi", nil)
 		pvc.Namespace = ""
+		objects := renderedObjects(t, pvc)
 
-		claims, err := extractDesiredClaims(renderedObjects(t, pvc))
+		claims, err := extractDesiredClaims(objects)
 
-		require.ErrorContains(t, err, "rendered PVC \"data\" has no namespace")
-		assert.Empty(t, claims)
+		require.NoError(t, err)
+		require.Len(t, claims, 1)
+		assert.Equal(t, client.ObjectKey{Namespace: corev1.NamespaceDefault, Name: "data"}, claims[0].key)
+		assert.Empty(t, objects[0].GetNamespace())
 	})
 
-	t.Run("rejects a StatefulSet without a namespace", func(t *testing.T) {
+	t.Run("uses the default namespace for a StatefulSet without a namespace", func(t *testing.T) {
 		statefulSet := newStatefulSet("postgres", ptr.To[int32](1), 0, newPVC("data", "1Gi", nil))
 		statefulSet.Namespace = ""
+		objects := renderedObjects(t, statefulSet)
 
-		claims, err := extractDesiredClaims(renderedObjects(t, statefulSet))
+		claims, err := extractDesiredClaims(objects)
 
-		require.ErrorContains(t, err, "rendered StatefulSet \"postgres\" has no namespace")
-		assert.Empty(t, claims)
+		require.NoError(t, err)
+		require.Len(t, claims, 1)
+		assert.Equal(t, client.ObjectKey{Namespace: corev1.NamespaceDefault, Name: "data-postgres-0"}, claims[0].key)
+		assert.Empty(t, objects[0].GetNamespace())
 	})
 
 	t.Run("rejects a rendered PVC without a storage request", func(t *testing.T) {
@@ -453,17 +473,18 @@ func TestExtractDesiredClaims(t *testing.T) {
 		assert.Empty(t, claims)
 	})
 
-	t.Run("returns all rendered object errors", func(t *testing.T) {
+	t.Run("preserves explicit object namespaces", func(t *testing.T) {
 		pvc := newPVC("data", "1Gi", nil)
-		pvc.Namespace = ""
+		pvc.Namespace = "other"
 		statefulSet := newStatefulSet("postgres", ptr.To[int32](1), 0, newPVC("data", "1Gi", nil))
-		statefulSet.Namespace = ""
+		statefulSet.Namespace = "other"
 
 		claims, err := extractDesiredClaims(renderedObjects(t, pvc, statefulSet))
 
-		require.ErrorContains(t, err, "rendered PVC \"data\" has no namespace")
-		require.ErrorContains(t, err, "rendered StatefulSet \"postgres\" has no namespace")
-		assert.Empty(t, claims)
+		require.NoError(t, err)
+		require.Len(t, claims, 2)
+		assert.Equal(t, "other", claims[0].key.Namespace)
+		assert.Equal(t, "other", claims[1].key.Namespace)
 	})
 }
 
