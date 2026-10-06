@@ -37,7 +37,7 @@ type MetadataMapping struct {
 	Metavalues map[string]MetaValue `yaml:"metavalues"`
 }
 
-type Values map[string]any
+type Values = map[string]any
 
 type Assembler struct {
 	k8s client.Client
