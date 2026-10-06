@@ -139,6 +139,7 @@ func k8sOptions() fx.Option {
 	)
 }
 
+// TODO remove this when feature/339-ValidateHelmChart is merged
 type dummyDoguValuesMetadataService struct{}
 
 func newDummyDoguValuesMetadataService() *dummyDoguValuesMetadataService {
@@ -146,7 +147,6 @@ func newDummyDoguValuesMetadataService() *dummyDoguValuesMetadataService {
 }
 
 func (d dummyDoguValuesMetadataService) DoguMetaValues(ctx context.Context, doguResource *beta1.Dogu) ([]byte, bool, error) {
-	// TODO remove me in favor of an actual doguValuesMetadataService implementation
 	return nil, false, nil
 }
 
@@ -228,8 +228,7 @@ func v2DependencyOptions() fx.Option {
 			controllers.NewDoguEventsIn,
 			controllers.NewDoguEventsOut,
 
-			// TODO initialize the doguValuesMetadataService for the helmReleaseStep otherwise the operator does not work
-			fx.Annotate(newDummyDoguValuesMetadataService, fx.As(new(installv3.DoguValuesMetadataService))),
+			// TODO remove this when feature/339-ValidateHelmChart is merged
 			fx.Annotate(newDummyDoguValuesMetadataService, fx.As(new(installv3.ChartService))),
 
 			// use-cases
