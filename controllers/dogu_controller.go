@@ -13,7 +13,8 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
 	expositionv1 "github.com/cloudogu/k8s-exposition-lib/api/v1"
 	warpmenuentryv1 "github.com/cloudogu/k8s-warp-menu-entry-lib/api/v1"
-	flux "github.com/fluxcd/source-controller/api/v1"
+	helmv2 "github.com/fluxcd/helm-controller/api/v2"
+	fluxsource "github.com/fluxcd/source-controller/api/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	coreV1 "k8s.io/api/core/v1"
 	netv1 "k8s.io/api/networking/v1"
@@ -245,7 +246,9 @@ func (r *DoguReconciler) setupWithManager(mgr ctrlManager) error {
 	}
 
 	if r.doguV3Enabled {
-		controllerBuilder = controllerBuilder.Owns(&flux.OCIRepository{})
+		controllerBuilder = controllerBuilder.
+			Owns(&fluxsource.OCIRepository{}).
+			Owns(&helmv2.HelmRelease{})
 	}
 
 	return controllerBuilder.Complete(r)
