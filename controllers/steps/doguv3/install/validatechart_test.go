@@ -39,19 +39,19 @@ func TestValidateChartStep_Run(t *testing.T) {
 	tests := []struct {
 		name     string
 		skip     bool
-		setup    func(t *testing.T) (*MockChartService, *MockAssembler, K8sClient, *v3beta1.Dogu)
+		setup    func(t *testing.T) (*MockChartService, *MockValueAssembler, K8sClient, *v3beta1.Dogu)
 		want     doguv3.StepResult
 		assertFn func(t *testing.T, doguResource *v3beta1.Dogu)
 	}{
 		{
 			name: "continue when schema is valid and the chart renders",
-			setup: func(t *testing.T) (*MockChartService, *MockAssembler, K8sClient, *v3beta1.Dogu) {
+			setup: func(t *testing.T) (*MockChartService, *MockValueAssembler, K8sClient, *v3beta1.Dogu) {
 				doguResource := testDoguResource.DeepCopy()
 				cs := NewMockChartService(t)
 				cs.EXPECT().DoguMetaValues(mock.Anything, doguResource).Return([]byte("meta"), true, nil)
 				cs.EXPECT().ValidateValues(mock.Anything, doguResource, map[string]any(assembledValues)).Return(nil)
 				cs.EXPECT().Render(mock.Anything, doguResource, map[string]any(assembledValues)).Return(nil, nil)
-				as := NewMockAssembler(t)
+				as := NewMockValueAssembler(t)
 				as.EXPECT().Assemble(mock.Anything, doguResource, []byte("meta")).Return(assembledValues, nil)
 				return cs, as, newValidationFakeClient(doguResource), doguResource
 			},
@@ -63,13 +63,13 @@ func TestValidateChartStep_Run(t *testing.T) {
 		},
 		{
 			name: "abort when the values violate the schema and do not render",
-			setup: func(t *testing.T) (*MockChartService, *MockAssembler, K8sClient, *v3beta1.Dogu) {
+			setup: func(t *testing.T) (*MockChartService, *MockValueAssembler, K8sClient, *v3beta1.Dogu) {
 				doguResource := testDoguResource.DeepCopy()
 				cs := NewMockChartService(t)
 				cs.EXPECT().DoguMetaValues(mock.Anything, doguResource).Return(nil, false, nil)
 				cs.EXPECT().ValidateValues(mock.Anything, doguResource, map[string]any(assembledValues)).Return(assert.AnError)
 				// Render must not be called once the schema check fails.
-				as := NewMockAssembler(t)
+				as := NewMockValueAssembler(t)
 				as.EXPECT().Assemble(mock.Anything, doguResource, []byte(nil)).Return(assembledValues, nil)
 				return cs, as, newValidationFakeClient(doguResource), doguResource
 			},
@@ -82,14 +82,14 @@ func TestValidateChartStep_Run(t *testing.T) {
 		{
 			name: "skip schema validation and continue when the chart renders",
 			skip: true,
-			setup: func(t *testing.T) (*MockChartService, *MockAssembler, K8sClient, *v3beta1.Dogu) {
+			setup: func(t *testing.T) (*MockChartService, *MockValueAssembler, K8sClient, *v3beta1.Dogu) {
 				doguResource := testDoguResource.DeepCopy()
 				doguResource.Spec.SkipSchemaValidation = true
 				cs := NewMockChartService(t)
 				cs.EXPECT().DoguMetaValues(mock.Anything, doguResource).Return([]byte("meta"), true, nil)
 				// ValidateValues must not be called when schema validation is skipped.
 				cs.EXPECT().Render(mock.Anything, doguResource, map[string]any(assembledValues)).Return(nil, nil)
-				as := NewMockAssembler(t)
+				as := NewMockValueAssembler(t)
 				as.EXPECT().Assemble(mock.Anything, doguResource, []byte("meta")).Return(assembledValues, nil)
 				return cs, as, newValidationFakeClient(doguResource), doguResource
 			},
@@ -102,13 +102,13 @@ func TestValidateChartStep_Run(t *testing.T) {
 		{
 			name: "abort with render failure even when schema validation is skipped",
 			skip: true,
-			setup: func(t *testing.T) (*MockChartService, *MockAssembler, K8sClient, *v3beta1.Dogu) {
+			setup: func(t *testing.T) (*MockChartService, *MockValueAssembler, K8sClient, *v3beta1.Dogu) {
 				doguResource := testDoguResource.DeepCopy()
 				doguResource.Spec.SkipSchemaValidation = true
 				cs := NewMockChartService(t)
 				cs.EXPECT().DoguMetaValues(mock.Anything, doguResource).Return([]byte("meta"), true, nil)
 				cs.EXPECT().Render(mock.Anything, doguResource, map[string]any(assembledValues)).Return(nil, assert.AnError)
-				as := NewMockAssembler(t)
+				as := NewMockValueAssembler(t)
 				as.EXPECT().Assemble(mock.Anything, doguResource, []byte("meta")).Return(assembledValues, nil)
 				return cs, as, newValidationFakeClient(doguResource), doguResource
 			},
@@ -120,13 +120,13 @@ func TestValidateChartStep_Run(t *testing.T) {
 		},
 		{
 			name: "abort with render failure after a valid schema",
-			setup: func(t *testing.T) (*MockChartService, *MockAssembler, K8sClient, *v3beta1.Dogu) {
+			setup: func(t *testing.T) (*MockChartService, *MockValueAssembler, K8sClient, *v3beta1.Dogu) {
 				doguResource := testDoguResource.DeepCopy()
 				cs := NewMockChartService(t)
 				cs.EXPECT().DoguMetaValues(mock.Anything, doguResource).Return([]byte("meta"), true, nil)
 				cs.EXPECT().ValidateValues(mock.Anything, doguResource, map[string]any(assembledValues)).Return(nil)
 				cs.EXPECT().Render(mock.Anything, doguResource, map[string]any(assembledValues)).Return(nil, assert.AnError)
-				as := NewMockAssembler(t)
+				as := NewMockValueAssembler(t)
 				as.EXPECT().Assemble(mock.Anything, doguResource, []byte("meta")).Return(assembledValues, nil)
 				return cs, as, newValidationFakeClient(doguResource), doguResource
 			},
@@ -137,12 +137,12 @@ func TestValidateChartStep_Run(t *testing.T) {
 		},
 		{
 			name: "requeue when the dogu meta values cannot be read",
-			setup: func(t *testing.T) (*MockChartService, *MockAssembler, K8sClient, *v3beta1.Dogu) {
+			setup: func(t *testing.T) (*MockChartService, *MockValueAssembler, K8sClient, *v3beta1.Dogu) {
 				doguResource := testDoguResource.DeepCopy()
 				cs := NewMockChartService(t)
 				cs.EXPECT().DoguMetaValues(mock.Anything, doguResource).Return(nil, false, assert.AnError)
 				// Neither assembly nor validation nor render must run.
-				as := NewMockAssembler(t)
+				as := NewMockValueAssembler(t)
 				return cs, as, newValidationFakeClient(doguResource), doguResource
 			},
 			want: doguv3.RequeueWithError(fmt.Errorf("failed to get dogu meta values: %w", assert.AnError), v3beta1.ReasonInstalling),
@@ -152,11 +152,11 @@ func TestValidateChartStep_Run(t *testing.T) {
 		},
 		{
 			name: "requeue when the values cannot be assembled",
-			setup: func(t *testing.T) (*MockChartService, *MockAssembler, K8sClient, *v3beta1.Dogu) {
+			setup: func(t *testing.T) (*MockChartService, *MockValueAssembler, K8sClient, *v3beta1.Dogu) {
 				doguResource := testDoguResource.DeepCopy()
 				cs := NewMockChartService(t)
 				cs.EXPECT().DoguMetaValues(mock.Anything, doguResource).Return([]byte("meta"), true, nil)
-				as := NewMockAssembler(t)
+				as := NewMockValueAssembler(t)
 				as.EXPECT().Assemble(mock.Anything, doguResource, []byte("meta")).Return(nil, assert.AnError)
 				return cs, as, newValidationFakeClient(doguResource), doguResource
 			},
@@ -186,7 +186,7 @@ func TestValidateChartStep_Run_requeuesWhenStatusUpdateFails(t *testing.T) {
 	cs.EXPECT().DoguMetaValues(mock.Anything, doguResource).Return([]byte("meta"), true, nil)
 	cs.EXPECT().ValidateValues(mock.Anything, doguResource, map[string]any(assembledValues)).Return(nil)
 	cs.EXPECT().Render(mock.Anything, doguResource, map[string]any(assembledValues)).Return(nil, nil)
-	as := NewMockAssembler(t)
+	as := NewMockValueAssembler(t)
 	as.EXPECT().Assemble(mock.Anything, doguResource, []byte("meta")).Return(assembledValues, nil)
 
 	k8sClient := fake.NewClientBuilder().

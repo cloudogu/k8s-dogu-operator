@@ -9,14 +9,32 @@ import (
 	"sync"
 
 	"github.com/cloudogu/k8s-dogu-lib/v3/api/v3beta1"
+	"github.com/cloudogu/k8s-dogu-operator/v3/internal/flux"
 )
 
-// Ensure that mockChartLoader does implement ChartProvider.
+// Ensure that MockChartProvider does implement ChartProvider.
 // If this is not the case, regenerate this file with mockery.
-var _ ChartProvider = &mockChartLoader{}
+var _ ChartProvider = &MockChartProvider{}
 
-// mockChartLoader is a mock implementation of ChartProvider.
-type mockChartLoader struct {
+// MockChartProvider is a mock implementation of ChartProvider.
+//
+//	func TestSomethingThatUsesChartProvider(t *testing.T) {
+//
+//		// make and configure a mocked ChartProvider
+//		mockedChartProvider := &MockChartProvider{
+//			ArtifactDigestFunc: func(ctx context.Context, doguResource *v3beta1.Dogu) (string, error) {
+//				panic("mock out the ArtifactDigest method")
+//			},
+//			GetChartArchiveFunc: func(ctx context.Context, doguResource *v3beta1.Dogu) ([]byte, error) {
+//				panic("mock out the GetChartArchive method")
+//			},
+//		}
+//
+//		// use mockedChartProvider in code that requires ChartProvider
+//		// and then make assertions.
+//
+//	}
+type MockChartProvider struct {
 	// ArtifactDigestFunc mocks the ArtifactDigest method.
 	ArtifactDigestFunc func(ctx context.Context, doguResource *v3beta1.Dogu) (string, error)
 
@@ -45,9 +63,9 @@ type mockChartLoader struct {
 }
 
 // ArtifactDigest calls ArtifactDigestFunc.
-func (mock *mockChartLoader) ArtifactDigest(ctx context.Context, doguResource *v3beta1.Dogu) (string, error) {
+func (mock *MockChartProvider) ArtifactDigest(ctx context.Context, doguResource *v3beta1.Dogu) (string, error) {
 	if mock.ArtifactDigestFunc == nil {
-		panic("mockChartLoader.ArtifactDigestFunc: method is nil but ChartProvider.ArtifactDigest was just called")
+		panic("MockChartProvider.ArtifactDigestFunc: method is nil but ChartProvider.ArtifactDigest was just called")
 	}
 	callInfo := struct {
 		Ctx          context.Context
@@ -63,7 +81,10 @@ func (mock *mockChartLoader) ArtifactDigest(ctx context.Context, doguResource *v
 }
 
 // ArtifactDigestCalls gets all the calls that were made to ArtifactDigest.
-func (mock *mockChartLoader) ArtifactDigestCalls() []struct {
+// Check the length with:
+//
+//	len(mockedChartProvider.ArtifactDigestCalls())
+func (mock *MockChartProvider) ArtifactDigestCalls() []struct {
 	Ctx          context.Context
 	DoguResource *v3beta1.Dogu
 } {
@@ -78,9 +99,9 @@ func (mock *mockChartLoader) ArtifactDigestCalls() []struct {
 }
 
 // GetChartArchive calls GetChartArchiveFunc.
-func (mock *mockChartLoader) GetChartArchive(ctx context.Context, doguResource *v3beta1.Dogu) ([]byte, error) {
+func (mock *MockChartProvider) GetChartArchive(ctx context.Context, doguResource *v3beta1.Dogu) ([]byte, error) {
 	if mock.GetChartArchiveFunc == nil {
-		panic("mockChartLoader.GetChartArchiveFunc: method is nil but ChartProvider.GetChartArchive was just called")
+		panic("MockChartProvider.GetChartArchiveFunc: method is nil but ChartProvider.GetChartArchive was just called")
 	}
 	callInfo := struct {
 		Ctx          context.Context
@@ -96,7 +117,10 @@ func (mock *mockChartLoader) GetChartArchive(ctx context.Context, doguResource *
 }
 
 // GetChartArchiveCalls gets all the calls that were made to GetChartArchive.
-func (mock *mockChartLoader) GetChartArchiveCalls() []struct {
+// Check the length with:
+//
+//	len(mockedChartProvider.GetChartArchiveCalls())
+func (mock *MockChartProvider) GetChartArchiveCalls() []struct {
 	Ctx          context.Context
 	DoguResource *v3beta1.Dogu
 } {
@@ -107,5 +131,83 @@ func (mock *mockChartLoader) GetChartArchiveCalls() []struct {
 	mock.lockGetChartArchive.RLock()
 	calls = mock.calls.GetChartArchive
 	mock.lockGetChartArchive.RUnlock()
+	return calls
+}
+
+// Ensure that mockReleaseResolver does implement releaseResolver.
+// If this is not the case, regenerate this file with mockery.
+var _ releaseResolver = &mockReleaseResolver{}
+
+// mockReleaseResolver is a mock implementation of releaseResolver.
+//
+//	func TestSomethingThatUsesreleaseResolver(t *testing.T) {
+//
+//		// make and configure a mocked releaseResolver
+//		mockedreleaseResolver := &mockReleaseResolver{
+//			ResolveOperationFunc: func(ctx context.Context, name string, namespace string) (flux.ReleaseOperation, error) {
+//				panic("mock out the ResolveOperation method")
+//			},
+//		}
+//
+//		// use mockedreleaseResolver in code that requires releaseResolver
+//		// and then make assertions.
+//
+//	}
+type mockReleaseResolver struct {
+	// ResolveOperationFunc mocks the ResolveOperation method.
+	ResolveOperationFunc func(ctx context.Context, name string, namespace string) (flux.ReleaseOperation, error)
+
+	// calls tracks calls to the methods.
+	calls struct {
+		// ResolveOperation holds details about calls to the ResolveOperation method.
+		ResolveOperation []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Name is the name argument value.
+			Name string
+			// Namespace is the namespace argument value.
+			Namespace string
+		}
+	}
+	lockResolveOperation sync.RWMutex
+}
+
+// ResolveOperation calls ResolveOperationFunc.
+func (mock *mockReleaseResolver) ResolveOperation(ctx context.Context, name string, namespace string) (flux.ReleaseOperation, error) {
+	if mock.ResolveOperationFunc == nil {
+		panic("mockReleaseResolver.ResolveOperationFunc: method is nil but releaseResolver.ResolveOperation was just called")
+	}
+	callInfo := struct {
+		Ctx       context.Context
+		Name      string
+		Namespace string
+	}{
+		Ctx:       ctx,
+		Name:      name,
+		Namespace: namespace,
+	}
+	mock.lockResolveOperation.Lock()
+	mock.calls.ResolveOperation = append(mock.calls.ResolveOperation, callInfo)
+	mock.lockResolveOperation.Unlock()
+	return mock.ResolveOperationFunc(ctx, name, namespace)
+}
+
+// ResolveOperationCalls gets all the calls that were made to ResolveOperation.
+// Check the length with:
+//
+//	len(mockedreleaseResolver.ResolveOperationCalls())
+func (mock *mockReleaseResolver) ResolveOperationCalls() []struct {
+	Ctx       context.Context
+	Name      string
+	Namespace string
+} {
+	var calls []struct {
+		Ctx       context.Context
+		Name      string
+		Namespace string
+	}
+	mock.lockResolveOperation.RLock()
+	calls = mock.calls.ResolveOperation
+	mock.lockResolveOperation.RUnlock()
 	return calls
 }

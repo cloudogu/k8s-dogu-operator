@@ -12,7 +12,7 @@ import (
 	"github.com/cloudogu/k8s-dogu-lib/v3/api/v2"
 	v21 "github.com/cloudogu/k8s-dogu-lib/v3/client/typed/api/v2"
 	"github.com/cloudogu/k8s-dogu-lib/v3/client/typed/api/v3beta1"
-	v124 "github.com/google/go-containerregistry/pkg/v1"
+	v125 "github.com/google/go-containerregistry/pkg/v1"
 	mock "github.com/stretchr/testify/mock"
 	v11 "k8s.io/api/apps/v1"
 	v13 "k8s.io/api/autoscaling/v1"
@@ -58,26 +58,28 @@ import (
 	v1beta19 "k8s.io/client-go/kubernetes/typed/flowcontrol/v1beta1"
 	v1beta20 "k8s.io/client-go/kubernetes/typed/flowcontrol/v1beta2"
 	"k8s.io/client-go/kubernetes/typed/flowcontrol/v1beta3"
+	v1alpha13 "k8s.io/client-go/kubernetes/typed/lifecycle/v1alpha1"
 	v117 "k8s.io/client-go/kubernetes/typed/networking/v1"
 	v1beta110 "k8s.io/client-go/kubernetes/typed/networking/v1beta1"
 	v118 "k8s.io/client-go/kubernetes/typed/node/v1"
-	v1alpha13 "k8s.io/client-go/kubernetes/typed/node/v1alpha1"
+	v1alpha14 "k8s.io/client-go/kubernetes/typed/node/v1alpha1"
 	v1beta111 "k8s.io/client-go/kubernetes/typed/node/v1beta1"
 	v119 "k8s.io/client-go/kubernetes/typed/policy/v1"
 	v1beta112 "k8s.io/client-go/kubernetes/typed/policy/v1beta1"
 	v120 "k8s.io/client-go/kubernetes/typed/rbac/v1"
-	v1alpha14 "k8s.io/client-go/kubernetes/typed/rbac/v1alpha1"
+	v1alpha15 "k8s.io/client-go/kubernetes/typed/rbac/v1alpha1"
 	v1beta113 "k8s.io/client-go/kubernetes/typed/rbac/v1beta1"
 	v121 "k8s.io/client-go/kubernetes/typed/resource/v1"
 	"k8s.io/client-go/kubernetes/typed/resource/v1alpha3"
 	v1beta114 "k8s.io/client-go/kubernetes/typed/resource/v1beta1"
 	v1beta21 "k8s.io/client-go/kubernetes/typed/resource/v1beta2"
 	v122 "k8s.io/client-go/kubernetes/typed/scheduling/v1"
-	v1alpha20 "k8s.io/client-go/kubernetes/typed/scheduling/v1alpha2"
+	v1alpha30 "k8s.io/client-go/kubernetes/typed/scheduling/v1alpha3"
 	v1beta115 "k8s.io/client-go/kubernetes/typed/scheduling/v1beta1"
 	v123 "k8s.io/client-go/kubernetes/typed/storage/v1"
-	v1alpha15 "k8s.io/client-go/kubernetes/typed/storage/v1alpha1"
+	v1alpha16 "k8s.io/client-go/kubernetes/typed/storage/v1alpha1"
 	v1beta116 "k8s.io/client-go/kubernetes/typed/storage/v1beta1"
+	v124 "k8s.io/client-go/kubernetes/typed/storagemigration/v1"
 	v1beta117 "k8s.io/client-go/kubernetes/typed/storagemigration/v1beta1"
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -5090,19 +5092,19 @@ func (_c *mockClientSet_CoreV1_Call) RunAndReturn(run func() v113.CoreV1Interfac
 }
 
 // Discovery provides a mock function for the type mockClientSet
-func (_mock *mockClientSet) Discovery() discovery.DiscoveryInterface {
+func (_mock *mockClientSet) Discovery() discovery.DiscoveryInterfaces {
 	ret := _mock.Called()
 
 	if len(ret) == 0 {
 		panic("no return value specified for Discovery")
 	}
 
-	var r0 discovery.DiscoveryInterface
-	if returnFunc, ok := ret.Get(0).(func() discovery.DiscoveryInterface); ok {
+	var r0 discovery.DiscoveryInterfaces
+	if returnFunc, ok := ret.Get(0).(func() discovery.DiscoveryInterfaces); ok {
 		r0 = returnFunc()
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(discovery.DiscoveryInterface)
+			r0 = ret.Get(0).(discovery.DiscoveryInterfaces)
 		}
 	}
 	return r0
@@ -5125,12 +5127,12 @@ func (_c *mockClientSet_Discovery_Call) Run(run func()) *mockClientSet_Discovery
 	return _c
 }
 
-func (_c *mockClientSet_Discovery_Call) Return(discoveryInterface discovery.DiscoveryInterface) *mockClientSet_Discovery_Call {
-	_c.Call.Return(discoveryInterface)
+func (_c *mockClientSet_Discovery_Call) Return(discoveryInterfaces discovery.DiscoveryInterfaces) *mockClientSet_Discovery_Call {
+	_c.Call.Return(discoveryInterfaces)
 	return _c
 }
 
-func (_c *mockClientSet_Discovery_Call) RunAndReturn(run func() discovery.DiscoveryInterface) *mockClientSet_Discovery_Call {
+func (_c *mockClientSet_Discovery_Call) RunAndReturn(run func() discovery.DiscoveryInterfaces) *mockClientSet_Discovery_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -5595,6 +5597,52 @@ func (_c *mockClientSet_InternalV1alpha1_Call) RunAndReturn(run func() v1alpha12
 	return _c
 }
 
+// LifecycleV1alpha1 provides a mock function for the type mockClientSet
+func (_mock *mockClientSet) LifecycleV1alpha1() v1alpha13.LifecycleV1alpha1Interface {
+	ret := _mock.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for LifecycleV1alpha1")
+	}
+
+	var r0 v1alpha13.LifecycleV1alpha1Interface
+	if returnFunc, ok := ret.Get(0).(func() v1alpha13.LifecycleV1alpha1Interface); ok {
+		r0 = returnFunc()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(v1alpha13.LifecycleV1alpha1Interface)
+		}
+	}
+	return r0
+}
+
+// mockClientSet_LifecycleV1alpha1_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'LifecycleV1alpha1'
+type mockClientSet_LifecycleV1alpha1_Call struct {
+	*mock.Call
+}
+
+// LifecycleV1alpha1 is a helper method to define mock.On call
+func (_e *mockClientSet_Expecter) LifecycleV1alpha1() *mockClientSet_LifecycleV1alpha1_Call {
+	return &mockClientSet_LifecycleV1alpha1_Call{Call: _e.mock.On("LifecycleV1alpha1")}
+}
+
+func (_c *mockClientSet_LifecycleV1alpha1_Call) Run(run func()) *mockClientSet_LifecycleV1alpha1_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *mockClientSet_LifecycleV1alpha1_Call) Return(lifecycleV1alpha1Interface v1alpha13.LifecycleV1alpha1Interface) *mockClientSet_LifecycleV1alpha1_Call {
+	_c.Call.Return(lifecycleV1alpha1Interface)
+	return _c
+}
+
+func (_c *mockClientSet_LifecycleV1alpha1_Call) RunAndReturn(run func() v1alpha13.LifecycleV1alpha1Interface) *mockClientSet_LifecycleV1alpha1_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // NetworkingV1 provides a mock function for the type mockClientSet
 func (_mock *mockClientSet) NetworkingV1() v117.NetworkingV1Interface {
 	ret := _mock.Called()
@@ -5734,19 +5782,19 @@ func (_c *mockClientSet_NodeV1_Call) RunAndReturn(run func() v118.NodeV1Interfac
 }
 
 // NodeV1alpha1 provides a mock function for the type mockClientSet
-func (_mock *mockClientSet) NodeV1alpha1() v1alpha13.NodeV1alpha1Interface {
+func (_mock *mockClientSet) NodeV1alpha1() v1alpha14.NodeV1alpha1Interface {
 	ret := _mock.Called()
 
 	if len(ret) == 0 {
 		panic("no return value specified for NodeV1alpha1")
 	}
 
-	var r0 v1alpha13.NodeV1alpha1Interface
-	if returnFunc, ok := ret.Get(0).(func() v1alpha13.NodeV1alpha1Interface); ok {
+	var r0 v1alpha14.NodeV1alpha1Interface
+	if returnFunc, ok := ret.Get(0).(func() v1alpha14.NodeV1alpha1Interface); ok {
 		r0 = returnFunc()
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(v1alpha13.NodeV1alpha1Interface)
+			r0 = ret.Get(0).(v1alpha14.NodeV1alpha1Interface)
 		}
 	}
 	return r0
@@ -5769,12 +5817,12 @@ func (_c *mockClientSet_NodeV1alpha1_Call) Run(run func()) *mockClientSet_NodeV1
 	return _c
 }
 
-func (_c *mockClientSet_NodeV1alpha1_Call) Return(nodeV1alpha1Interface v1alpha13.NodeV1alpha1Interface) *mockClientSet_NodeV1alpha1_Call {
+func (_c *mockClientSet_NodeV1alpha1_Call) Return(nodeV1alpha1Interface v1alpha14.NodeV1alpha1Interface) *mockClientSet_NodeV1alpha1_Call {
 	_c.Call.Return(nodeV1alpha1Interface)
 	return _c
 }
 
-func (_c *mockClientSet_NodeV1alpha1_Call) RunAndReturn(run func() v1alpha13.NodeV1alpha1Interface) *mockClientSet_NodeV1alpha1_Call {
+func (_c *mockClientSet_NodeV1alpha1_Call) RunAndReturn(run func() v1alpha14.NodeV1alpha1Interface) *mockClientSet_NodeV1alpha1_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -5964,19 +6012,19 @@ func (_c *mockClientSet_RbacV1_Call) RunAndReturn(run func() v120.RbacV1Interfac
 }
 
 // RbacV1alpha1 provides a mock function for the type mockClientSet
-func (_mock *mockClientSet) RbacV1alpha1() v1alpha14.RbacV1alpha1Interface {
+func (_mock *mockClientSet) RbacV1alpha1() v1alpha15.RbacV1alpha1Interface {
 	ret := _mock.Called()
 
 	if len(ret) == 0 {
 		panic("no return value specified for RbacV1alpha1")
 	}
 
-	var r0 v1alpha14.RbacV1alpha1Interface
-	if returnFunc, ok := ret.Get(0).(func() v1alpha14.RbacV1alpha1Interface); ok {
+	var r0 v1alpha15.RbacV1alpha1Interface
+	if returnFunc, ok := ret.Get(0).(func() v1alpha15.RbacV1alpha1Interface); ok {
 		r0 = returnFunc()
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(v1alpha14.RbacV1alpha1Interface)
+			r0 = ret.Get(0).(v1alpha15.RbacV1alpha1Interface)
 		}
 	}
 	return r0
@@ -5999,12 +6047,12 @@ func (_c *mockClientSet_RbacV1alpha1_Call) Run(run func()) *mockClientSet_RbacV1
 	return _c
 }
 
-func (_c *mockClientSet_RbacV1alpha1_Call) Return(rbacV1alpha1Interface v1alpha14.RbacV1alpha1Interface) *mockClientSet_RbacV1alpha1_Call {
+func (_c *mockClientSet_RbacV1alpha1_Call) Return(rbacV1alpha1Interface v1alpha15.RbacV1alpha1Interface) *mockClientSet_RbacV1alpha1_Call {
 	_c.Call.Return(rbacV1alpha1Interface)
 	return _c
 }
 
-func (_c *mockClientSet_RbacV1alpha1_Call) RunAndReturn(run func() v1alpha14.RbacV1alpha1Interface) *mockClientSet_RbacV1alpha1_Call {
+func (_c *mockClientSet_RbacV1alpha1_Call) RunAndReturn(run func() v1alpha15.RbacV1alpha1Interface) *mockClientSet_RbacV1alpha1_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -6285,48 +6333,48 @@ func (_c *mockClientSet_SchedulingV1_Call) RunAndReturn(run func() v122.Scheduli
 	return _c
 }
 
-// SchedulingV1alpha2 provides a mock function for the type mockClientSet
-func (_mock *mockClientSet) SchedulingV1alpha2() v1alpha20.SchedulingV1alpha2Interface {
+// SchedulingV1alpha3 provides a mock function for the type mockClientSet
+func (_mock *mockClientSet) SchedulingV1alpha3() v1alpha30.SchedulingV1alpha3Interface {
 	ret := _mock.Called()
 
 	if len(ret) == 0 {
-		panic("no return value specified for SchedulingV1alpha2")
+		panic("no return value specified for SchedulingV1alpha3")
 	}
 
-	var r0 v1alpha20.SchedulingV1alpha2Interface
-	if returnFunc, ok := ret.Get(0).(func() v1alpha20.SchedulingV1alpha2Interface); ok {
+	var r0 v1alpha30.SchedulingV1alpha3Interface
+	if returnFunc, ok := ret.Get(0).(func() v1alpha30.SchedulingV1alpha3Interface); ok {
 		r0 = returnFunc()
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(v1alpha20.SchedulingV1alpha2Interface)
+			r0 = ret.Get(0).(v1alpha30.SchedulingV1alpha3Interface)
 		}
 	}
 	return r0
 }
 
-// mockClientSet_SchedulingV1alpha2_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SchedulingV1alpha2'
-type mockClientSet_SchedulingV1alpha2_Call struct {
+// mockClientSet_SchedulingV1alpha3_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SchedulingV1alpha3'
+type mockClientSet_SchedulingV1alpha3_Call struct {
 	*mock.Call
 }
 
-// SchedulingV1alpha2 is a helper method to define mock.On call
-func (_e *mockClientSet_Expecter) SchedulingV1alpha2() *mockClientSet_SchedulingV1alpha2_Call {
-	return &mockClientSet_SchedulingV1alpha2_Call{Call: _e.mock.On("SchedulingV1alpha2")}
+// SchedulingV1alpha3 is a helper method to define mock.On call
+func (_e *mockClientSet_Expecter) SchedulingV1alpha3() *mockClientSet_SchedulingV1alpha3_Call {
+	return &mockClientSet_SchedulingV1alpha3_Call{Call: _e.mock.On("SchedulingV1alpha3")}
 }
 
-func (_c *mockClientSet_SchedulingV1alpha2_Call) Run(run func()) *mockClientSet_SchedulingV1alpha2_Call {
+func (_c *mockClientSet_SchedulingV1alpha3_Call) Run(run func()) *mockClientSet_SchedulingV1alpha3_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		run()
 	})
 	return _c
 }
 
-func (_c *mockClientSet_SchedulingV1alpha2_Call) Return(schedulingV1alpha2Interface v1alpha20.SchedulingV1alpha2Interface) *mockClientSet_SchedulingV1alpha2_Call {
-	_c.Call.Return(schedulingV1alpha2Interface)
+func (_c *mockClientSet_SchedulingV1alpha3_Call) Return(schedulingV1alpha3Interface v1alpha30.SchedulingV1alpha3Interface) *mockClientSet_SchedulingV1alpha3_Call {
+	_c.Call.Return(schedulingV1alpha3Interface)
 	return _c
 }
 
-func (_c *mockClientSet_SchedulingV1alpha2_Call) RunAndReturn(run func() v1alpha20.SchedulingV1alpha2Interface) *mockClientSet_SchedulingV1alpha2_Call {
+func (_c *mockClientSet_SchedulingV1alpha3_Call) RunAndReturn(run func() v1alpha30.SchedulingV1alpha3Interface) *mockClientSet_SchedulingV1alpha3_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -6424,19 +6472,19 @@ func (_c *mockClientSet_StorageV1_Call) RunAndReturn(run func() v123.StorageV1In
 }
 
 // StorageV1alpha1 provides a mock function for the type mockClientSet
-func (_mock *mockClientSet) StorageV1alpha1() v1alpha15.StorageV1alpha1Interface {
+func (_mock *mockClientSet) StorageV1alpha1() v1alpha16.StorageV1alpha1Interface {
 	ret := _mock.Called()
 
 	if len(ret) == 0 {
 		panic("no return value specified for StorageV1alpha1")
 	}
 
-	var r0 v1alpha15.StorageV1alpha1Interface
-	if returnFunc, ok := ret.Get(0).(func() v1alpha15.StorageV1alpha1Interface); ok {
+	var r0 v1alpha16.StorageV1alpha1Interface
+	if returnFunc, ok := ret.Get(0).(func() v1alpha16.StorageV1alpha1Interface); ok {
 		r0 = returnFunc()
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(v1alpha15.StorageV1alpha1Interface)
+			r0 = ret.Get(0).(v1alpha16.StorageV1alpha1Interface)
 		}
 	}
 	return r0
@@ -6459,12 +6507,12 @@ func (_c *mockClientSet_StorageV1alpha1_Call) Run(run func()) *mockClientSet_Sto
 	return _c
 }
 
-func (_c *mockClientSet_StorageV1alpha1_Call) Return(storageV1alpha1Interface v1alpha15.StorageV1alpha1Interface) *mockClientSet_StorageV1alpha1_Call {
+func (_c *mockClientSet_StorageV1alpha1_Call) Return(storageV1alpha1Interface v1alpha16.StorageV1alpha1Interface) *mockClientSet_StorageV1alpha1_Call {
 	_c.Call.Return(storageV1alpha1Interface)
 	return _c
 }
 
-func (_c *mockClientSet_StorageV1alpha1_Call) RunAndReturn(run func() v1alpha15.StorageV1alpha1Interface) *mockClientSet_StorageV1alpha1_Call {
+func (_c *mockClientSet_StorageV1alpha1_Call) RunAndReturn(run func() v1alpha16.StorageV1alpha1Interface) *mockClientSet_StorageV1alpha1_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -6511,6 +6559,52 @@ func (_c *mockClientSet_StorageV1beta1_Call) Return(storageV1beta1Interface v1be
 }
 
 func (_c *mockClientSet_StorageV1beta1_Call) RunAndReturn(run func() v1beta116.StorageV1beta1Interface) *mockClientSet_StorageV1beta1_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// StoragemigrationV1 provides a mock function for the type mockClientSet
+func (_mock *mockClientSet) StoragemigrationV1() v124.StoragemigrationV1Interface {
+	ret := _mock.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for StoragemigrationV1")
+	}
+
+	var r0 v124.StoragemigrationV1Interface
+	if returnFunc, ok := ret.Get(0).(func() v124.StoragemigrationV1Interface); ok {
+		r0 = returnFunc()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(v124.StoragemigrationV1Interface)
+		}
+	}
+	return r0
+}
+
+// mockClientSet_StoragemigrationV1_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'StoragemigrationV1'
+type mockClientSet_StoragemigrationV1_Call struct {
+	*mock.Call
+}
+
+// StoragemigrationV1 is a helper method to define mock.On call
+func (_e *mockClientSet_Expecter) StoragemigrationV1() *mockClientSet_StoragemigrationV1_Call {
+	return &mockClientSet_StoragemigrationV1_Call{Call: _e.mock.On("StoragemigrationV1")}
+}
+
+func (_c *mockClientSet_StoragemigrationV1_Call) Run(run func()) *mockClientSet_StoragemigrationV1_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *mockClientSet_StoragemigrationV1_Call) Return(storagemigrationV1Interface v124.StoragemigrationV1Interface) *mockClientSet_StoragemigrationV1_Call {
+	_c.Call.Return(storagemigrationV1Interface)
+	return _c
+}
+
+func (_c *mockClientSet_StoragemigrationV1_Call) RunAndReturn(run func() v124.StoragemigrationV1Interface) *mockClientSet_StoragemigrationV1_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -8135,7 +8229,7 @@ func (_c *mockResourceUpserter_UpsertDoguPVCs_Call) RunAndReturn(run func(ctx co
 }
 
 // UpsertDoguService provides a mock function for the type mockResourceUpserter
-func (_mock *mockResourceUpserter) UpsertDoguService(ctx context.Context, doguResource *v2.Dogu, dogu1 *core.Dogu, image *v124.ConfigFile) (*v14.Service, error) {
+func (_mock *mockResourceUpserter) UpsertDoguService(ctx context.Context, doguResource *v2.Dogu, dogu1 *core.Dogu, image *v125.ConfigFile) (*v14.Service, error) {
 	ret := _mock.Called(ctx, doguResource, dogu1, image)
 
 	if len(ret) == 0 {
@@ -8144,17 +8238,17 @@ func (_mock *mockResourceUpserter) UpsertDoguService(ctx context.Context, doguRe
 
 	var r0 *v14.Service
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, *v2.Dogu, *core.Dogu, *v124.ConfigFile) (*v14.Service, error)); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *v2.Dogu, *core.Dogu, *v125.ConfigFile) (*v14.Service, error)); ok {
 		return returnFunc(ctx, doguResource, dogu1, image)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, *v2.Dogu, *core.Dogu, *v124.ConfigFile) *v14.Service); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *v2.Dogu, *core.Dogu, *v125.ConfigFile) *v14.Service); ok {
 		r0 = returnFunc(ctx, doguResource, dogu1, image)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*v14.Service)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, *v2.Dogu, *core.Dogu, *v124.ConfigFile) error); ok {
+	if returnFunc, ok := ret.Get(1).(func(context.Context, *v2.Dogu, *core.Dogu, *v125.ConfigFile) error); ok {
 		r1 = returnFunc(ctx, doguResource, dogu1, image)
 	} else {
 		r1 = ret.Error(1)
@@ -8171,12 +8265,12 @@ type mockResourceUpserter_UpsertDoguService_Call struct {
 //   - ctx context.Context
 //   - doguResource *v2.Dogu
 //   - dogu1 *core.Dogu
-//   - image *v124.ConfigFile
+//   - image *v125.ConfigFile
 func (_e *mockResourceUpserter_Expecter) UpsertDoguService(ctx any, doguResource any, dogu1 any, image any) *mockResourceUpserter_UpsertDoguService_Call {
 	return &mockResourceUpserter_UpsertDoguService_Call{Call: _e.mock.On("UpsertDoguService", ctx, doguResource, dogu1, image)}
 }
 
-func (_c *mockResourceUpserter_UpsertDoguService_Call) Run(run func(ctx context.Context, doguResource *v2.Dogu, dogu1 *core.Dogu, image *v124.ConfigFile)) *mockResourceUpserter_UpsertDoguService_Call {
+func (_c *mockResourceUpserter_UpsertDoguService_Call) Run(run func(ctx context.Context, doguResource *v2.Dogu, dogu1 *core.Dogu, image *v125.ConfigFile)) *mockResourceUpserter_UpsertDoguService_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -8190,9 +8284,9 @@ func (_c *mockResourceUpserter_UpsertDoguService_Call) Run(run func(ctx context.
 		if args[2] != nil {
 			arg2 = args[2].(*core.Dogu)
 		}
-		var arg3 *v124.ConfigFile
+		var arg3 *v125.ConfigFile
 		if args[3] != nil {
-			arg3 = args[3].(*v124.ConfigFile)
+			arg3 = args[3].(*v125.ConfigFile)
 		}
 		run(
 			arg0,
@@ -8209,7 +8303,7 @@ func (_c *mockResourceUpserter_UpsertDoguService_Call) Return(service *v14.Servi
 	return _c
 }
 
-func (_c *mockResourceUpserter_UpsertDoguService_Call) RunAndReturn(run func(ctx context.Context, doguResource *v2.Dogu, dogu1 *core.Dogu, image *v124.ConfigFile) (*v14.Service, error)) *mockResourceUpserter_UpsertDoguService_Call {
+func (_c *mockResourceUpserter_UpsertDoguService_Call) RunAndReturn(run func(ctx context.Context, doguResource *v2.Dogu, dogu1 *core.Dogu, image *v125.ConfigFile) (*v14.Service, error)) *mockResourceUpserter_UpsertDoguService_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -8473,7 +8567,7 @@ func (_c *mockDoguResourceGenerator_CreateDoguPVC_Call) RunAndReturn(run func(do
 }
 
 // CreateDoguService provides a mock function for the type mockDoguResourceGenerator
-func (_mock *mockDoguResourceGenerator) CreateDoguService(doguResource *v2.Dogu, dogu1 *core.Dogu, imageConfig *v124.ConfigFile) (*v14.Service, error) {
+func (_mock *mockDoguResourceGenerator) CreateDoguService(doguResource *v2.Dogu, dogu1 *core.Dogu, imageConfig *v125.ConfigFile) (*v14.Service, error) {
 	ret := _mock.Called(doguResource, dogu1, imageConfig)
 
 	if len(ret) == 0 {
@@ -8482,17 +8576,17 @@ func (_mock *mockDoguResourceGenerator) CreateDoguService(doguResource *v2.Dogu,
 
 	var r0 *v14.Service
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(*v2.Dogu, *core.Dogu, *v124.ConfigFile) (*v14.Service, error)); ok {
+	if returnFunc, ok := ret.Get(0).(func(*v2.Dogu, *core.Dogu, *v125.ConfigFile) (*v14.Service, error)); ok {
 		return returnFunc(doguResource, dogu1, imageConfig)
 	}
-	if returnFunc, ok := ret.Get(0).(func(*v2.Dogu, *core.Dogu, *v124.ConfigFile) *v14.Service); ok {
+	if returnFunc, ok := ret.Get(0).(func(*v2.Dogu, *core.Dogu, *v125.ConfigFile) *v14.Service); ok {
 		r0 = returnFunc(doguResource, dogu1, imageConfig)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*v14.Service)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(*v2.Dogu, *core.Dogu, *v124.ConfigFile) error); ok {
+	if returnFunc, ok := ret.Get(1).(func(*v2.Dogu, *core.Dogu, *v125.ConfigFile) error); ok {
 		r1 = returnFunc(doguResource, dogu1, imageConfig)
 	} else {
 		r1 = ret.Error(1)
@@ -8508,12 +8602,12 @@ type mockDoguResourceGenerator_CreateDoguService_Call struct {
 // CreateDoguService is a helper method to define mock.On call
 //   - doguResource *v2.Dogu
 //   - dogu1 *core.Dogu
-//   - imageConfig *v124.ConfigFile
+//   - imageConfig *v125.ConfigFile
 func (_e *mockDoguResourceGenerator_Expecter) CreateDoguService(doguResource any, dogu1 any, imageConfig any) *mockDoguResourceGenerator_CreateDoguService_Call {
 	return &mockDoguResourceGenerator_CreateDoguService_Call{Call: _e.mock.On("CreateDoguService", doguResource, dogu1, imageConfig)}
 }
 
-func (_c *mockDoguResourceGenerator_CreateDoguService_Call) Run(run func(doguResource *v2.Dogu, dogu1 *core.Dogu, imageConfig *v124.ConfigFile)) *mockDoguResourceGenerator_CreateDoguService_Call {
+func (_c *mockDoguResourceGenerator_CreateDoguService_Call) Run(run func(doguResource *v2.Dogu, dogu1 *core.Dogu, imageConfig *v125.ConfigFile)) *mockDoguResourceGenerator_CreateDoguService_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 *v2.Dogu
 		if args[0] != nil {
@@ -8523,9 +8617,9 @@ func (_c *mockDoguResourceGenerator_CreateDoguService_Call) Run(run func(doguRes
 		if args[1] != nil {
 			arg1 = args[1].(*core.Dogu)
 		}
-		var arg2 *v124.ConfigFile
+		var arg2 *v125.ConfigFile
 		if args[2] != nil {
-			arg2 = args[2].(*v124.ConfigFile)
+			arg2 = args[2].(*v125.ConfigFile)
 		}
 		run(
 			arg0,
@@ -8541,7 +8635,7 @@ func (_c *mockDoguResourceGenerator_CreateDoguService_Call) Return(service *v14.
 	return _c
 }
 
-func (_c *mockDoguResourceGenerator_CreateDoguService_Call) RunAndReturn(run func(doguResource *v2.Dogu, dogu1 *core.Dogu, imageConfig *v124.ConfigFile) (*v14.Service, error)) *mockDoguResourceGenerator_CreateDoguService_Call {
+func (_c *mockDoguResourceGenerator_CreateDoguService_Call) RunAndReturn(run func(doguResource *v2.Dogu, dogu1 *core.Dogu, imageConfig *v125.ConfigFile) (*v14.Service, error)) *mockDoguResourceGenerator_CreateDoguService_Call {
 	_c.Call.Return(run)
 	return _c
 }

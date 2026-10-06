@@ -16,10 +16,10 @@ import (
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// staticLoader builds a mockChartLoader that always returns the given digest and chart archive with
+// staticLoader builds a MockChartProvider that always returns the given digest and chart archive with
 // no errors. Tests that need errors or a changing sequence of returns configure the mock inline.
-func staticLoader(digest string, archive []byte) *mockChartLoader {
-	return &mockChartLoader{
+func staticLoader(digest string, archive []byte) *MockChartProvider {
+	return &MockChartProvider{
 		ArtifactDigestFunc: func(context.Context, *v3beta1.Dogu) (string, error) {
 			return digest, nil
 		},
@@ -118,7 +118,7 @@ func Test_Service_chartFor(t *testing.T) {
 		digests := []string{"sha256:aaa", "sha256:bbb"}
 		archives := [][]byte{testChartArchive(t, "cas"), testChartArchive(t, "cas-v2")}
 		var digestIdx, archiveIdx int
-		loader := &mockChartLoader{
+		loader := &MockChartProvider{
 			ArtifactDigestFunc: func(context.Context, *v3beta1.Dogu) (string, error) {
 				d := digests[digestIdx]
 				digestIdx++
@@ -158,7 +158,7 @@ func Test_Service_chartFor(t *testing.T) {
 
 	t.Run("propagates digest error without loading", func(t *testing.T) {
 		// GetChartArchiveFunc is intentionally unset: GetChartArchive must never be reached.
-		loader := &mockChartLoader{
+		loader := &MockChartProvider{
 			ArtifactDigestFunc: func(context.Context, *v3beta1.Dogu) (string, error) {
 				return "", errors.New("boom")
 			},
@@ -173,7 +173,7 @@ func Test_Service_chartFor(t *testing.T) {
 	})
 
 	t.Run("propagates load error", func(t *testing.T) {
-		loader := &mockChartLoader{
+		loader := &MockChartProvider{
 			ArtifactDigestFunc: func(context.Context, *v3beta1.Dogu) (string, error) {
 				return "sha256:aaa", nil
 			},
@@ -246,7 +246,7 @@ func Test_Service_ChartPatchTemplate(t *testing.T) {
 	})
 
 	t.Run("propagates loader error", func(t *testing.T) {
-		loader := &mockChartLoader{
+		loader := &MockChartProvider{
 			ArtifactDigestFunc: func(context.Context, *v3beta1.Dogu) (string, error) {
 				return "", errors.New("boom")
 			},
@@ -304,7 +304,7 @@ func Test_Service_Render(t *testing.T) {
 	})
 
 	t.Run("propagates chartFor error", func(t *testing.T) {
-		loader := &mockChartLoader{
+		loader := &MockChartProvider{
 			ArtifactDigestFunc: func(context.Context, *v3beta1.Dogu) (string, error) {
 				return "", errors.New("boom")
 			},
@@ -344,7 +344,7 @@ func Test_Service_ValidateValues(t *testing.T) {
 	})
 
 	t.Run("propagates chartFor error", func(t *testing.T) {
-		loader := &mockChartLoader{
+		loader := &MockChartProvider{
 			ArtifactDigestFunc: func(context.Context, *v3beta1.Dogu) (string, error) {
 				return "", errors.New("boom")
 			},
