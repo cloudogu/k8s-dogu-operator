@@ -1,4 +1,4 @@
-# Install v3 Dogus
+# Configuration for Installation of v3 Dogus
 
 ## Flux Dependencies
 

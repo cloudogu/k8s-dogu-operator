@@ -1,4 +1,4 @@
-# v3-Dogus installieren
+# Konfiguration für die Installation von v3-Dogus
 
 ## Flux-Abhängigkeiten
 
