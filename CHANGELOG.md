@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [v3.31.1] - 2026-10-06
 ### Added
 - [#340] Add a pre-flight checker for PVC expansions, shrink attempts, and storage class changes in rendered Dogu v3 charts.
 - [#338] Add the creation of the flux `HelmRelease` resource for dogu v3 installation and upgrade.
