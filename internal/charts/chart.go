@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/cloudogu/k8s-dogu-operator/v3/internal/flux"
 	helmChart "helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chartutil"
 	"helm.sh/helm/v3/pkg/engine"
@@ -18,7 +19,7 @@ import (
 
 const (
 	patchTemplateFileName  = "chart-patch-tpl.yaml"
-	doguValuesMetaFileName = "dogu-values-meta.yaml"
+	doguValuesMetaFileName = "dogu-values-metadata.yaml"
 )
 
 type ReleaseRef struct {
@@ -27,14 +28,38 @@ type ReleaseRef struct {
 }
 
 type chart struct {
-	raw    *helmChart.Chart
-	ref    ReleaseRef
-	caps   *chartutil.Capabilities
-	digest string
+	raw  *helmChart.Chart
+	ref  ReleaseRef
+	caps *chartutil.Capabilities
 }
 
-func (c *chart) render(values map[string]any, restConfig *rest.Config) ([]*unstructured.Unstructured, error) {
-	rv, err := chartutil.ToRenderValuesWithSchemaValidation(c.raw, values, chartutil.ReleaseOptions{Name: c.ref.Name, Namespace: c.ref.Namespace}, c.caps, true)
+// processDependencies applies Helm's dependency resolution to the chart in place: it evaluates
+// subchart conditions/tags, prunes disabled dependencies, and merges import-values into values.
+// This mirrors what Helm does during installation, so validation and rendering only consider what
+// is actually applied. It mutates the chart (and the values map), so callers must operate on a chart
+// that is not shared — the Service parses a fresh chart per use.
+func (c *chart) processDependencies(values map[string]any) error {
+	if err := chartutil.ProcessDependenciesWithMerge(c.raw, values); err != nil {
+		return fmt.Errorf("failed to process chart dependencies: %w", err)
+	}
+
+	return nil
+}
+
+func (c *chart) render(values map[string]any, restConfig *rest.Config, op flux.ReleaseOperation) ([]*unstructured.Unstructured, error) {
+	if err := c.processDependencies(values); err != nil {
+		return nil, fmt.Errorf("failed to process dependencies: %w", err)
+	}
+
+	releaseOptions := chartutil.ReleaseOptions{
+		Name:      c.ref.Name,
+		Namespace: c.ref.Namespace,
+		IsInstall: op.IsInstall,
+		IsUpgrade: op.IsUpgrade,
+		Revision:  op.Revision,
+	}
+
+	rv, err := chartutil.ToRenderValuesWithSchemaValidation(c.raw, values, releaseOptions, c.caps, true)
 	if err != nil {
 		return nil, fmt.Errorf("failed to render values for chart: %w", err)
 	}
@@ -53,6 +78,10 @@ func (c *chart) render(values map[string]any, restConfig *rest.Config) ([]*unstr
 }
 
 func (c *chart) validateValues(values map[string]any) error {
+	if err := c.processDependencies(values); err != nil {
+		return fmt.Errorf("failed to process dependencies: %w", err)
+	}
+
 	coalescedValues, err := chartutil.CoalesceValues(c.raw, values)
 	if err != nil {
 		return fmt.Errorf("failed coalescing values: %w", err)

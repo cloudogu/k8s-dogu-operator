@@ -3,6 +3,7 @@ package charts
 import (
 	"testing"
 
+	"github.com/cloudogu/k8s-dogu-operator/v3/internal/flux"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"helm.sh/helm/v3/pkg/chart/loader"
@@ -24,10 +25,50 @@ func loadTestChart(t *testing.T) *chart {
 	}
 }
 
+// installOperation is the default release operation used by render tests that don't exercise the
+// install/upgrade distinction themselves.
+func installOperation() flux.ReleaseOperation {
+	return flux.ReleaseOperation{IsInstall: true, Revision: 1}
+}
+
+func Test_chart_render_setsReleaseOperation(t *testing.T) {
+	load := func(t *testing.T) *chart {
+		t.Helper()
+		raw, err := loader.LoadDir("testdata/releasechart")
+		require.NoError(t, err)
+		return &chart{raw: raw, ref: ReleaseRef{Name: "cas", Namespace: "ecosystem"}, caps: chartutil.DefaultCapabilities}
+	}
+
+	releaseInfo := func(t *testing.T, objs []*unstructured.Unstructured) map[string]string {
+		t.Helper()
+		for _, o := range objs {
+			if o.GetName() == "release-info" {
+				data, _, err := unstructured.NestedStringMap(o.Object, "data")
+				require.NoError(t, err)
+				return data
+			}
+		}
+		t.Fatal("release-info ConfigMap not rendered")
+		return nil
+	}
+
+	t.Run("install operation is rendered into .Release.*", func(t *testing.T) {
+		objs, err := load(t).render(map[string]any{}, nil, flux.ReleaseOperation{IsInstall: true, Revision: 1})
+		require.NoError(t, err)
+		assert.Equal(t, map[string]string{"isInstall": "true", "isUpgrade": "false", "revision": "1"}, releaseInfo(t, objs))
+	})
+
+	t.Run("upgrade operation is rendered into .Release.*", func(t *testing.T) {
+		objs, err := load(t).render(map[string]any{}, nil, flux.ReleaseOperation{IsUpgrade: true, Revision: 5})
+		require.NoError(t, err)
+		assert.Equal(t, map[string]string{"isInstall": "false", "isUpgrade": "true", "revision": "5"}, releaseInfo(t, objs))
+	})
+}
+
 func Test_chart_render(t *testing.T) {
 	c := loadTestChart(t)
 
-	objs, err := c.render(map[string]any{"replicaCount": 3, "image": "nginx:2.0.0"}, nil)
+	objs, err := c.render(map[string]any{"replicaCount": 3, "image": "nginx:2.0.0"}, nil, installOperation())
 
 	require.NoError(t, err)
 
@@ -58,7 +99,7 @@ func Test_chart_render_usesDefaultsWhenValueOmitted(t *testing.T) {
 	c := loadTestChart(t)
 
 	// No overrides: values.yaml defaults must be coalesced in (replicaCount: 1).
-	objs, err := c.render(map[string]any{}, nil)
+	objs, err := c.render(map[string]any{}, nil, installOperation())
 
 	require.NoError(t, err)
 	require.Len(t, objs, 2)
@@ -107,6 +148,47 @@ func Test_chart_validateValues(t *testing.T) {
 			require.NoError(t, err)
 		})
 	}
+}
+
+// loadDepChart loads the fixture chart that declares a conditional `subchart` dependency.
+func loadDepChart(t *testing.T) *chart {
+	t.Helper()
+	raw, err := loader.LoadDir("testdata/depchart")
+	require.NoError(t, err)
+	return &chart{
+		raw:  raw,
+		ref:  ReleaseRef{Name: "cas", Namespace: "ecosystem"},
+		caps: chartutil.DefaultCapabilities,
+	}
+}
+
+func Test_chart_render_processesDependencies(t *testing.T) {
+	renderedNames := func(t *testing.T, enabled bool) map[string]struct{} {
+		t.Helper()
+		c := loadDepChart(t)
+
+		objs, err := c.render(map[string]any{"subchart": map[string]any{"enabled": enabled}}, nil, installOperation())
+		require.NoError(t, err)
+
+		names := make(map[string]struct{}, len(objs))
+		for _, o := range objs {
+			names[o.GetName()] = struct{}{}
+		}
+
+		return names
+	}
+
+	t.Run("disabled subchart is pruned and not rendered", func(t *testing.T) {
+		names := renderedNames(t, false)
+		assert.Contains(t, names, "parent-cm")
+		assert.NotContains(t, names, "subchart-cm", "disabled subchart must not be rendered")
+	})
+
+	t.Run("enabled subchart is rendered", func(t *testing.T) {
+		names := renderedNames(t, true)
+		assert.Contains(t, names, "parent-cm")
+		assert.Contains(t, names, "subchart-cm")
+	})
 }
 
 func Test_parseRenderedFilesToObjects(t *testing.T) {
