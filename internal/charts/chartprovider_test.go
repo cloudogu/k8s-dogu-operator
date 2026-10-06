@@ -17,6 +17,7 @@ import (
 	digest "github.com/opencontainers/go-digest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"helm.sh/helm/v3/pkg/chart/loader"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -41,14 +42,16 @@ func TestChartProviderGetChart(t *testing.T) {
 		return response(http.StatusOK, body), nil
 	}))
 
-	actual, err := provider.GetChart(context.Background(), doguResource)
+	actual, err := provider.GetChartArchive(context.Background(), doguResource)
 
 	require.NoError(t, err)
-	require.NotNil(t, actual)
-	assert.Equal(t, "test-chart", actual.Name())
-	assert.Equal(t, "bar", actual.Values["foo"])
-	require.Len(t, actual.Templates, 1)
-	assert.Equal(t, "templates/configmap.yaml", actual.Templates[0].Name)
+	require.NotEmpty(t, actual)
+	parsed, err := loader.LoadArchive(bytes.NewReader(actual))
+	require.NoError(t, err)
+	assert.Equal(t, "test-chart", parsed.Name())
+	assert.Equal(t, "bar", parsed.Values["foo"])
+	require.Len(t, parsed.Templates, 1)
+	assert.Equal(t, "templates/configmap.yaml", parsed.Templates[0].Name)
 	assert.Equal(t, 1, requests)
 	assert.True(t, body.closed)
 }
@@ -122,7 +125,7 @@ func TestChartProviderRejectsUnavailableRepositoriesBeforeDownloading(t *testing
 				return nil, assert.AnError
 			}))
 
-			actual, err := provider.GetChart(context.Background(), testDoguResource())
+			actual, err := provider.GetChartArchive(context.Background(), testDoguResource())
 
 			assert.Nil(t, actual)
 			require.Error(t, err)
@@ -154,7 +157,7 @@ func TestChartProviderRejectsInvalidMetadataBeforeDownloading(t *testing.T) {
 				return nil, assert.AnError
 			}))
 
-			actual, err := provider.GetChart(context.Background(), testDoguResource())
+			actual, err := provider.GetChartArchive(context.Background(), testDoguResource())
 
 			assert.Nil(t, actual)
 			require.True(t, isInvalidChartArtifactError(err))
@@ -169,7 +172,7 @@ func TestChartProviderRejectsDigestMismatch(t *testing.T) {
 	repository.Status.Artifact.Digest = digest.SHA256.FromString("different").String()
 	provider := newTestProvider(t, repository, responseTransport(http.StatusOK, archive))
 
-	actual, err := provider.GetChart(context.Background(), testDoguResource())
+	actual, err := provider.GetChartArchive(context.Background(), testDoguResource())
 
 	assert.Nil(t, actual)
 	require.True(t, isInvalidChartArtifactError(err))
@@ -181,10 +184,12 @@ func TestChartProviderIncludesTrailingBytesInDigest(t *testing.T) {
 	repository := readyRepository(archive)
 	provider := newTestProvider(t, repository, responseTransport(http.StatusOK, archive))
 
-	actual, err := provider.GetChart(context.Background(), testDoguResource())
+	actual, err := provider.GetChartArchive(context.Background(), testDoguResource())
 
 	require.NoError(t, err)
-	assert.Equal(t, "test-chart", actual.Name())
+	parsed, err := loader.LoadArchive(bytes.NewReader(actual))
+	require.NoError(t, err)
+	assert.Equal(t, "test-chart", parsed.Name())
 }
 
 func TestChartProviderRejectsInvalidArchive(t *testing.T) {
@@ -192,7 +197,7 @@ func TestChartProviderRejectsInvalidArchive(t *testing.T) {
 	repository := readyRepository(archive)
 	provider := newTestProvider(t, repository, responseTransport(http.StatusOK, archive))
 
-	actual, err := provider.GetChart(context.Background(), testDoguResource())
+	actual, err := provider.GetChartArchive(context.Background(), testDoguResource())
 
 	assert.Nil(t, actual)
 	require.True(t, isInvalidChartArtifactError(err))
@@ -202,7 +207,7 @@ func TestChartProviderRejectsNonOKHTTPStatus(t *testing.T) {
 	archive := createTestChartArchive(t)
 	provider := newTestProvider(t, readyRepository(archive), responseTransport(http.StatusBadRequest, nil))
 
-	actual, err := provider.GetChart(context.Background(), testDoguResource())
+	actual, err := provider.GetChartArchive(context.Background(), testDoguResource())
 
 	assert.Nil(t, actual)
 	require.ErrorContains(t, err, "400 Bad Request")
@@ -216,7 +221,7 @@ func TestChartProviderReturnsTransportAndReadErrors(t *testing.T) {
 			return nil, assert.AnError
 		}))
 
-		actual, err := provider.GetChart(context.Background(), testDoguResource())
+		actual, err := provider.GetChartArchive(context.Background(), testDoguResource())
 
 		assert.Nil(t, actual)
 		assert.ErrorIs(t, err, assert.AnError)
@@ -230,7 +235,7 @@ func TestChartProviderReturnsTransportAndReadErrors(t *testing.T) {
 			return response(http.StatusOK, body), nil
 		}))
 
-		actual, err := provider.GetChart(context.Background(), testDoguResource())
+		actual, err := provider.GetChartArchive(context.Background(), testDoguResource())
 
 		assert.Nil(t, actual)
 		assert.ErrorIs(t, err, readErr)
@@ -246,11 +251,38 @@ func TestChartProviderUsesHelmArchiveSizeLimit(t *testing.T) {
 	})
 	provider := newTestProvider(t, readyRepository(archive), responseTransport(http.StatusOK, archive))
 
-	actual, err := provider.GetChart(context.Background(), testDoguResource())
+	actual, err := provider.GetChartArchive(context.Background(), testDoguResource())
 
 	assert.Nil(t, actual)
 	require.True(t, isInvalidChartArtifactError(err))
 	assert.ErrorContains(t, err, "larger than the maximum file size")
+}
+
+func TestChartProviderRejectsArtifactLargerThanDeclaredSize(t *testing.T) {
+	archive := createTestChartArchive(t)
+	repository := readyRepository(archive)
+	declared := int64(len(archive) - 1) // server returns more bytes than it declared
+	repository.Status.Artifact.Size = &declared
+	provider := newTestProvider(t, repository, responseTransport(http.StatusOK, archive))
+
+	actual, err := provider.GetChartArchive(context.Background(), testDoguResource())
+
+	assert.Nil(t, actual)
+	require.True(t, isInvalidChartArtifactError(err))
+	assert.ErrorContains(t, err, "exceeds maximum size")
+}
+
+func TestChartProviderAcceptsArtifactMatchingDeclaredSize(t *testing.T) {
+	archive := createTestChartArchive(t)
+	repository := readyRepository(archive)
+	declared := int64(len(archive))
+	repository.Status.Artifact.Size = &declared
+	provider := newTestProvider(t, repository, responseTransport(http.StatusOK, archive))
+
+	actual, err := provider.GetChartArchive(context.Background(), testDoguResource())
+
+	require.NoError(t, err)
+	assert.Len(t, actual, len(archive))
 }
 
 func isInvalidChartArtifactError(err error) bool {
@@ -271,14 +303,14 @@ func newTestProvider(t *testing.T, repository *flux.OCIRepository, transport htt
 
 func testDoguResource() *v3beta1.Dogu {
 	return &v3beta1.Dogu{
-		ObjectMeta: metav1.ObjectMeta{Name: "resource-name-differs", Namespace: testNamespace},
-		Spec:       v3beta1.DoguSpec{Name: testDoguName},
+		Name: "resource-name-differs", Namespace: testNamespace,
+		Spec: v3beta1.DoguSpec{Name: testDoguName},
 	}
 }
 
 func readyRepository(archive []byte) *flux.OCIRepository {
 	return &flux.OCIRepository{
-		ObjectMeta: metav1.ObjectMeta{Name: testDoguName, Namespace: testNamespace, Generation: 2},
+		Name: testDoguName, Namespace: testNamespace, Generation: 2,
 		Status: flux.OCIRepositoryStatus{
 			ObservedGeneration: 2,
 			Conditions: []metav1.Condition{{

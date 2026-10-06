@@ -9,37 +9,19 @@ import (
 	"sync"
 
 	"github.com/cloudogu/k8s-dogu-lib/v3/api/v3beta1"
-	chart0 "helm.sh/helm/v3/pkg/chart"
 )
 
-// Ensure that mockChartLoader does implement chartLoader.
+// Ensure that mockChartLoader does implement ChartProvider.
 // If this is not the case, regenerate this file with mockery.
 var _ ChartProvider = &mockChartLoader{}
 
-// mockChartLoader is a mock implementation of chartLoader.
-//
-//	func TestSomethingThatUseschartLoader(t *testing.T) {
-//
-//		// make and configure a mocked chartLoader
-//		mockedchartLoader := &mockChartLoader{
-//			ArtifactDigestFunc: func(ctx context.Context, doguResource *v3beta1.Dogu) (string, error) {
-//				panic("mock out the ArtifactDigest method")
-//			},
-//			GetChartFunc: func(ctx context.Context, doguResource *v3beta1.Dogu) (*chart0.Chart, error) {
-//				panic("mock out the GetChart method")
-//			},
-//		}
-//
-//		// use mockedchartLoader in code that requires chartLoader
-//		// and then make assertions.
-//
-//	}
+// mockChartLoader is a mock implementation of ChartProvider.
 type mockChartLoader struct {
 	// ArtifactDigestFunc mocks the ArtifactDigest method.
 	ArtifactDigestFunc func(ctx context.Context, doguResource *v3beta1.Dogu) (string, error)
 
-	// GetChartFunc mocks the GetChart method.
-	GetChartFunc func(ctx context.Context, doguResource *v3beta1.Dogu) (*chart0.Chart, error)
+	// GetChartArchiveFunc mocks the GetChartArchive method.
+	GetChartArchiveFunc func(ctx context.Context, doguResource *v3beta1.Dogu) ([]byte, error)
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -50,22 +32,22 @@ type mockChartLoader struct {
 			// DoguResource is the doguResource argument value.
 			DoguResource *v3beta1.Dogu
 		}
-		// GetChart holds details about calls to the GetChart method.
-		GetChart []struct {
+		// GetChartArchive holds details about calls to the GetChartArchive method.
+		GetChartArchive []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 			// DoguResource is the doguResource argument value.
 			DoguResource *v3beta1.Dogu
 		}
 	}
-	lockArtifactDigest sync.RWMutex
-	lockGetChart       sync.RWMutex
+	lockArtifactDigest  sync.RWMutex
+	lockGetChartArchive sync.RWMutex
 }
 
 // ArtifactDigest calls ArtifactDigestFunc.
 func (mock *mockChartLoader) ArtifactDigest(ctx context.Context, doguResource *v3beta1.Dogu) (string, error) {
 	if mock.ArtifactDigestFunc == nil {
-		panic("mockChartLoader.ArtifactDigestFunc: method is nil but chartLoader.ArtifactDigest was just called")
+		panic("mockChartLoader.ArtifactDigestFunc: method is nil but ChartProvider.ArtifactDigest was just called")
 	}
 	callInfo := struct {
 		Ctx          context.Context
@@ -81,9 +63,6 @@ func (mock *mockChartLoader) ArtifactDigest(ctx context.Context, doguResource *v
 }
 
 // ArtifactDigestCalls gets all the calls that were made to ArtifactDigest.
-// Check the length with:
-//
-//	len(mockedchartLoader.ArtifactDigestCalls())
 func (mock *mockChartLoader) ArtifactDigestCalls() []struct {
 	Ctx          context.Context
 	DoguResource *v3beta1.Dogu
@@ -98,10 +77,10 @@ func (mock *mockChartLoader) ArtifactDigestCalls() []struct {
 	return calls
 }
 
-// GetChart calls GetChartFunc.
-func (mock *mockChartLoader) GetChart(ctx context.Context, doguResource *v3beta1.Dogu) (*chart0.Chart, error) {
-	if mock.GetChartFunc == nil {
-		panic("mockChartLoader.GetChartFunc: method is nil but chartLoader.GetChart was just called")
+// GetChartArchive calls GetChartArchiveFunc.
+func (mock *mockChartLoader) GetChartArchive(ctx context.Context, doguResource *v3beta1.Dogu) ([]byte, error) {
+	if mock.GetChartArchiveFunc == nil {
+		panic("mockChartLoader.GetChartArchiveFunc: method is nil but ChartProvider.GetChartArchive was just called")
 	}
 	callInfo := struct {
 		Ctx          context.Context
@@ -110,17 +89,14 @@ func (mock *mockChartLoader) GetChart(ctx context.Context, doguResource *v3beta1
 		Ctx:          ctx,
 		DoguResource: doguResource,
 	}
-	mock.lockGetChart.Lock()
-	mock.calls.GetChart = append(mock.calls.GetChart, callInfo)
-	mock.lockGetChart.Unlock()
-	return mock.GetChartFunc(ctx, doguResource)
+	mock.lockGetChartArchive.Lock()
+	mock.calls.GetChartArchive = append(mock.calls.GetChartArchive, callInfo)
+	mock.lockGetChartArchive.Unlock()
+	return mock.GetChartArchiveFunc(ctx, doguResource)
 }
 
-// GetChartCalls gets all the calls that were made to GetChart.
-// Check the length with:
-//
-//	len(mockedchartLoader.GetChartCalls())
-func (mock *mockChartLoader) GetChartCalls() []struct {
+// GetChartArchiveCalls gets all the calls that were made to GetChartArchive.
+func (mock *mockChartLoader) GetChartArchiveCalls() []struct {
 	Ctx          context.Context
 	DoguResource *v3beta1.Dogu
 } {
@@ -128,8 +104,8 @@ func (mock *mockChartLoader) GetChartCalls() []struct {
 		Ctx          context.Context
 		DoguResource *v3beta1.Dogu
 	}
-	mock.lockGetChart.RLock()
-	calls = mock.calls.GetChart
-	mock.lockGetChart.RUnlock()
+	mock.lockGetChartArchive.RLock()
+	calls = mock.calls.GetChartArchive
+	mock.lockGetChartArchive.RUnlock()
 	return calls
 }
