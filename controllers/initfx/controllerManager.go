@@ -12,8 +12,8 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/health"
 	expositionv1 "github.com/cloudogu/k8s-exposition-lib/api/v1"
 	warpmenuentryv1 "github.com/cloudogu/k8s-warp-menu-entry-lib/api/v1"
-	helmv2 "github.com/fluxcd/helm-controller/api/v2"
-	flux "github.com/fluxcd/source-controller/api/v1"
+	fluxhelm "github.com/fluxcd/helm-controller/api/v2"
+	fluxoci "github.com/fluxcd/source-controller/api/v1"
 
 	"github.com/go-logr/logr"
 	"github.com/google/uuid"
@@ -47,8 +47,8 @@ func init() {
 	utilruntime.Must(authRegApiV1.AddToScheme(scheme))
 	utilruntime.Must(expositionv1.AddToScheme(scheme))
 	utilruntime.Must(warpmenuentryv1.AddToScheme(scheme))
-	utilruntime.Must(flux.AddToScheme(scheme))
-	utilruntime.Must(helmv2.AddToScheme(scheme))
+	utilruntime.Must(fluxoci.AddToScheme(scheme))
+	utilruntime.Must(fluxhelm.AddToScheme(scheme))
 }
 
 func NewControllerManager(

@@ -10,6 +10,7 @@ import (
 	dogulibv3 "github.com/cloudogu/dogu-lib/doguv3"
 	"github.com/cloudogu/dogu-lib/doguv3/doguregistry"
 	"github.com/cloudogu/k8s-dogu-lib/v3/api/v3beta1"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/resource"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv3"
 	flux "github.com/fluxcd/source-controller/api/v1"
 	"github.com/stretchr/testify/assert"
@@ -92,7 +93,7 @@ func TestEnsureOCIRepositoryStep_Run(t *testing.T) {
 
 				require.NoError(t, err)
 				require.NotNil(t, repo.Labels)
-				assert.Equal(t, fluxShardingLabelValue, repo.Labels[fluxShardingLabelKey])
+				assert.Equal(t, resource.LabelValueCes, repo.Labels[labelKeyFluxSharding])
 				assert.Equal(t, testDoguName, repo.Labels[v3beta1.DoguLabelName])
 				assert.Equal(t, testVersion, repo.Labels[v3beta1.DoguLabelVersion])
 				assert.Equal(t, testDoguName, repo.Name)
@@ -139,7 +140,7 @@ func TestEnsureOCIRepositoryStep_Run(t *testing.T) {
 
 				require.NoError(t, err)
 				require.NotNil(t, repo.Labels)
-				assert.Equal(t, fluxShardingLabelValue, repo.Labels[fluxShardingLabelKey])
+				assert.Equal(t, resource.LabelValueCes, repo.Labels[labelKeyFluxSharding])
 				assert.Equal(t, testDoguName, repo.Labels[v3beta1.DoguLabelName])
 				assert.Equal(t, testVersion, repo.Labels[v3beta1.DoguLabelVersion])
 				assert.Equal(t, testDoguName, repo.Name)

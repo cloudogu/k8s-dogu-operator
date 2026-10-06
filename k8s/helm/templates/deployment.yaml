@@ -128,6 +128,10 @@ spec:
                   name: ces-proxy
                   key: url
                   optional: true
+            - name: DOGU_HELM_RECONCILIATION_INTERVAL
+              value: {{ quote .Values.controllerManager.env.doguHelmReconciliationInterval | default "30s" }}
+            - name: DOGU_HELM_RETRY_INTERVAL
+              value: {{ quote .Values.controllerManager.env.doguHelmRetryInterval | default "5m" }}
           image: "{{ .Values.controllerManager.image.registry }}/{{ .Values.controllerManager.image.repository }}:{{ .Values.controllerManager.image.tag }}"
           imagePullPolicy: {{ .Values.controllerManager.imagePullPolicy | default "IfNotPresent" }}
           livenessProbe:

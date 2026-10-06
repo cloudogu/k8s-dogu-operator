@@ -6,8 +6,6 @@ recursive: true
 # moq-style mocks with a func field per method (no testify dependency), see
 # https://vektra.github.io/mockery/v3.8/template/matryer/
 template: testify
-template-data:
-  unroll-variadic: true
 
 dir: "{{.InterfaceDir}}"
 filename: "mocks_test.go"
@@ -19,10 +17,7 @@ exclude-subpkg-regex:
 
 # 'make mocks-init' adds one entry per module (several in a go workspace).
 packages:
-  github.com/cloudogu/k8s-dogu-operator/v3:
-    config: {}
-  main:
-    config: { }
+@PACKAGES@
 
 # Alternative to 'all: true': maintain mocks deliberately per interface, so that only
 # mocks a test actually needs are generated. Set 'all: false' and list the interfaces:
