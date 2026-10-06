@@ -15,7 +15,7 @@ The secret `dogu-registry-v3` has to contain the URL and credentials for the v3 
 (see [Configuring the Dogu V3 Registry](configuring_the_dogu_registry_en.md)). 
 
 In addition there are some configuration options to configure how the Helm installation is handled: 
- - `DOGU_HELM_RETRY_INTERVAL` controls how long to wait with a retry, if the Helm install or upgrade fails. 
+ - `DOGU_HELM_RETRY_INTERVAL` controls how long to wait until attempting a retry, if the Helm install or upgrade fails. 
  - `DOGU_HELM_RECONCILIATION_INTERVAL` defines the interval in which to check for any drift from the state requested
     by Helm, which is then automatically corrected.
 
