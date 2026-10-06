@@ -74,7 +74,7 @@ func Test_addChecks(t *testing.T) {
 		managerMock.EXPECT().AddHealthzCheck("healthz", mock.AnythingOfType("healthz.Checker")).Return(nil)
 		managerMock.EXPECT().AddReadyzCheck("readyz", mock.AnythingOfType("healthz.Checker")).Return(nil)
 		managerMock.EXPECT().AddReadyzCheck("webhook-server", mock.AnythingOfType("healthz.Checker")).Return(assert.AnError)
-		webhookServerMock := NewMockWebhookServer(t)
+		webhookServerMock := newMockWebhookServer(t)
 		webhookServerMock.EXPECT().StartedChecker().Return(func(req *http.Request) error {
 			return nil
 		})
@@ -93,7 +93,7 @@ func Test_addChecks(t *testing.T) {
 		managerMock.EXPECT().AddHealthzCheck("healthz", mock.AnythingOfType("healthz.Checker")).Return(nil)
 		managerMock.EXPECT().AddReadyzCheck("readyz", mock.AnythingOfType("healthz.Checker")).Return(nil)
 		managerMock.EXPECT().AddReadyzCheck("webhook-server", mock.AnythingOfType("healthz.Checker")).Return(nil)
-		webhookServerMock := NewMockWebhookServer(t)
+		webhookServerMock := newMockWebhookServer(t)
 		webhookServerMock.EXPECT().StartedChecker().Return(func(req *http.Request) error {
 			return nil
 		})
