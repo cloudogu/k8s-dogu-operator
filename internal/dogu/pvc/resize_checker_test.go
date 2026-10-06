@@ -26,10 +26,19 @@ func TestResizeChecker_CheckStandalonePVCs(t *testing.T) {
 	ctx := context.Background()
 	fast := "fast"
 
+	t.Run("rejects an empty target namespace", func(t *testing.T) {
+		checker := NewResizeChecker(fake.NewClientBuilder().Build())
+
+		result, err := checker.Check(ctx, "", nil)
+
+		require.EqualError(t, err, "target namespace must not be empty")
+		assert.Empty(t, result.ResizeRequests)
+	})
+
 	t.Run("returns an empty result when there are no rendered PVCs", func(t *testing.T) {
 		checker := NewResizeChecker(fake.NewClientBuilder().Build())
 
-		result, err := checker.Check(ctx, nil)
+		result, err := checker.Check(ctx, testNamespace, nil)
 
 		require.NoError(t, err)
 		assert.Empty(t, result.ResizeRequests)
@@ -38,31 +47,31 @@ func TestResizeChecker_CheckStandalonePVCs(t *testing.T) {
 	t.Run("ignores a rendered PVC that does not exist yet", func(t *testing.T) {
 		checker := NewResizeChecker(fake.NewClientBuilder().Build())
 
-		result, err := checker.Check(ctx, renderedObjects(t, newPVC("data", "2Gi", nil)))
+		result, err := checker.Check(ctx, testNamespace, renderedObjects(t, newPVC("data", "2Gi", nil)))
 
 		require.NoError(t, err)
 		assert.Empty(t, result.ResizeRequests)
 	})
 
-	t.Run("checks a PVC without a namespace in the default namespace", func(t *testing.T) {
+	t.Run("checks a PVC without a namespace in the target namespace", func(t *testing.T) {
 		rendered := newPVC("data", "2Gi", nil)
 		rendered.Namespace = ""
 		live := newPVC("data", "1Gi", nil)
-		live.Namespace = "default"
+		live.Namespace = "target"
 		checker := NewResizeChecker(fake.NewClientBuilder().WithObjects(live).Build())
 
-		result, err := checker.Check(ctx, renderedObjects(t, rendered))
+		result, err := checker.Check(ctx, "target", renderedObjects(t, rendered))
 
 		require.NoError(t, err)
 		require.Len(t, result.ResizeRequests, 1)
-		assert.Equal(t, client.ObjectKey{Namespace: "default", Name: "data"}, result.ResizeRequests[0].PVC)
+		assert.Equal(t, client.ObjectKey{Namespace: "target", Name: "data"}, result.ResizeRequests[0].PVC)
 	})
 
 	t.Run("treats equivalent quantities and a defaulted storage class as unchanged", func(t *testing.T) {
 		live := newPVC("data", "1024Mi", &fast)
 		checker := NewResizeChecker(fake.NewClientBuilder().WithObjects(live).Build())
 
-		result, err := checker.Check(ctx, renderedObjects(t, newPVC("data", "1Gi", nil)))
+		result, err := checker.Check(ctx, testNamespace, renderedObjects(t, newPVC("data", "1Gi", nil)))
 
 		require.NoError(t, err)
 		assert.Empty(t, result.ResizeRequests)
@@ -73,7 +82,7 @@ func TestResizeChecker_CheckStandalonePVCs(t *testing.T) {
 		liveB := newPVC("data-b", "2Gi", nil)
 		checker := NewResizeChecker(fake.NewClientBuilder().WithObjects(liveA, liveB).Build())
 
-		result, err := checker.Check(ctx, renderedObjects(t,
+		result, err := checker.Check(ctx, testNamespace, renderedObjects(t,
 			newPVC("data-b", "2Gi", nil),
 			newPVC("data-a", "2Gi", nil),
 		))
@@ -89,7 +98,7 @@ func TestResizeChecker_CheckStandalonePVCs(t *testing.T) {
 		live.Status.Capacity[corev1.ResourceStorage] = resource.MustParse("10Gi")
 		checker := NewResizeChecker(fake.NewClientBuilder().WithObjects(live).Build())
 
-		result, err := checker.Check(ctx, renderedObjects(t, newPVC("data", "15Gi", nil)))
+		result, err := checker.Check(ctx, testNamespace, renderedObjects(t, newPVC("data", "15Gi", nil)))
 
 		require.ErrorContains(t, err, "live PVC \"ecosystem/data\" is not ready: storage request 20Gi exceeds capacity 10Gi")
 		assert.Empty(t, result.ResizeRequests)
@@ -114,7 +123,7 @@ func TestResizeChecker_CheckStandalonePVCs(t *testing.T) {
 				live.Status.Capacity[corev1.ResourceStorage] = resource.MustParse("20Gi")
 				checker := NewResizeChecker(fake.NewClientBuilder().WithObjects(live).Build())
 
-				result, err := checker.Check(ctx, renderedObjects(t, newPVC("data", tt.desired, nil)))
+				result, err := checker.Check(ctx, testNamespace, renderedObjects(t, newPVC("data", tt.desired, nil)))
 
 				if tt.wantShrink {
 					var shrinkError *VolumeShrinkError
@@ -140,7 +149,7 @@ func TestResizeChecker_CheckStandalonePVCs(t *testing.T) {
 		live := newPVC("data", "10Gi", nil)
 		checker := NewResizeChecker(fake.NewClientBuilder().WithObjects(live).Build())
 
-		result, err := checker.Check(ctx, renderedObjects(t, newPVC("data", "2Gi", nil)))
+		result, err := checker.Check(ctx, testNamespace, renderedObjects(t, newPVC("data", "2Gi", nil)))
 
 		var shrinkError *VolumeShrinkError
 		require.ErrorAs(t, err, &shrinkError)
@@ -158,7 +167,7 @@ func TestResizeChecker_CheckStandalonePVCs(t *testing.T) {
 		liveStorageClass := newPVC("storage-class", "1Gi", &fast)
 		checker := NewResizeChecker(fake.NewClientBuilder().WithObjects(liveExpand, liveShrink, liveStorageClass).Build())
 
-		result, err := checker.Check(ctx, renderedObjects(t,
+		result, err := checker.Check(ctx, testNamespace, renderedObjects(t,
 			newPVC("expand", "2Gi", nil),
 			newPVC("shrink", "2Gi", nil),
 			newPVC("storage-class", "1Gi", &slow),
@@ -195,7 +204,7 @@ func TestResizeChecker_CheckStorageClass(t *testing.T) {
 			live := newPVC("data", "1Gi", tt.currentClass)
 			checker := NewResizeChecker(fake.NewClientBuilder().WithObjects(live).Build())
 
-			result, err := checker.Check(ctx, renderedObjects(t, newPVC("data", "1Gi", tt.desiredClass)))
+			result, err := checker.Check(ctx, testNamespace, renderedObjects(t, newPVC("data", "1Gi", tt.desiredClass)))
 
 			if !tt.wantError {
 				require.NoError(t, err)
@@ -216,7 +225,7 @@ func TestResizeChecker_CheckStorageClass(t *testing.T) {
 		empty := ""
 		checker := NewResizeChecker(fake.NewClientBuilder().Build())
 
-		result, err := checker.Check(ctx, renderedObjects(t, newPVC("data", "1Gi", &empty)))
+		result, err := checker.Check(ctx, testNamespace, renderedObjects(t, newPVC("data", "1Gi", &empty)))
 
 		require.ErrorContains(t, err, "rendered PVC \"ecosystem/data\" uses unsupported static provisioning")
 		assert.Empty(t, result.ResizeRequests)
@@ -225,6 +234,20 @@ func TestResizeChecker_CheckStorageClass(t *testing.T) {
 
 func TestResizeChecker_CheckStatefulSetClaims(t *testing.T) {
 	ctx := context.Background()
+
+	t.Run("checks StatefulSet PVCs without a namespace in the target namespace", func(t *testing.T) {
+		statefulSet := newStatefulSet("postgres", ptr.To[int32](0), 0, newPVC("data", "2Gi", nil))
+		statefulSet.Namespace = ""
+		live := newPVC("data-postgres-0", "1Gi", nil)
+		live.Namespace = "target"
+		checker := NewResizeChecker(fake.NewClientBuilder().WithObjects(live).Build())
+
+		result, err := checker.Check(ctx, "target", renderedObjects(t, statefulSet))
+
+		require.NoError(t, err)
+		require.Len(t, result.ResizeRequests, 1)
+		assert.Equal(t, client.ObjectKey{Namespace: "target", Name: "data-postgres-0"}, result.ResizeRequests[0].PVC)
+	})
 
 	t.Run("returns no partial result when a volume claim template is invalid", func(t *testing.T) {
 		statefulSet := newStatefulSet("postgres", ptr.To[int32](2), 0,
@@ -236,7 +259,7 @@ func TestResizeChecker_CheckStatefulSetClaims(t *testing.T) {
 		liveLogs0 := newPVC("logs-postgres-0", "2Gi", nil)
 		checker := NewResizeChecker(fake.NewClientBuilder().WithObjects(liveData0, liveData1, liveLogs0).Build())
 
-		result, err := checker.Check(ctx, renderedObjects(t, statefulSet))
+		result, err := checker.Check(ctx, testNamespace, renderedObjects(t, statefulSet))
 
 		var shrinkError *VolumeShrinkError
 		require.ErrorAs(t, err, &shrinkError)
@@ -262,7 +285,7 @@ func TestResizeChecker_CheckStatefulSetClaims(t *testing.T) {
 				live2 := newPVC("data-postgres-2", "1Gi", nil)
 				checker := NewResizeChecker(fake.NewClientBuilder().WithObjects(live0, live1, live2).Build())
 
-				result, err := checker.Check(ctx, renderedObjects(t, statefulSet))
+				result, err := checker.Check(ctx, testNamespace, renderedObjects(t, statefulSet))
 
 				require.NoError(t, err)
 				require.Len(t, result.ResizeRequests, 3)
@@ -281,7 +304,7 @@ func TestResizeChecker_CheckStatefulSetClaims(t *testing.T) {
 		live4 := newPVC("data-postgres-4", "1Gi", nil)
 		checker := NewResizeChecker(fake.NewClientBuilder().WithObjects(live0, live3, live4).Build())
 
-		result, err := checker.Check(ctx, renderedObjects(t, statefulSet))
+		result, err := checker.Check(ctx, testNamespace, renderedObjects(t, statefulSet))
 
 		require.NoError(t, err)
 		require.Len(t, result.ResizeRequests, 3)
@@ -300,7 +323,7 @@ func TestResizeChecker_CheckStatefulSetClaims(t *testing.T) {
 		extraText := newPVC("user-data-my-postgres-ha-0", "1Gi", nil)
 		checker := NewResizeChecker(fake.NewClientBuilder().WithObjects(matching0, matching7, leadingZero, negative, extraText).Build())
 
-		result, err := checker.Check(ctx, renderedObjects(t, statefulSet))
+		result, err := checker.Check(ctx, testNamespace, renderedObjects(t, statefulSet))
 
 		require.NoError(t, err)
 		require.Len(t, result.ResizeRequests, 2)
@@ -317,7 +340,7 @@ func TestResizeChecker_CheckStatefulSetClaims(t *testing.T) {
 		statefulSet := newStatefulSet("postgres", ptr.To[int32](0), 0, missingStorage, staticProvisioning)
 		checker := NewResizeChecker(fake.NewClientBuilder().Build())
 
-		result, err := checker.Check(ctx, renderedObjects(t, statefulSet))
+		result, err := checker.Check(ctx, testNamespace, renderedObjects(t, statefulSet))
 
 		require.ErrorContains(t, err, "rendered PVC \"ecosystem/data\" has no storage request")
 		require.ErrorContains(t, err, "rendered PVC \"ecosystem/logs\" uses unsupported static provisioning")
@@ -333,7 +356,7 @@ func TestResizeChecker_CheckErrors(t *testing.T) {
 		readError := apierrors.NewForbidden(schema.GroupResource{Resource: "persistentvolumeclaims"}, "data", errors.New("denied"))
 		checker := NewResizeChecker(errorReader{err: readError})
 
-		result, err := checker.Check(ctx, renderedObjects(t, newPVC("data", "2Gi", nil)))
+		result, err := checker.Check(ctx, testNamespace, renderedObjects(t, newPVC("data", "2Gi", nil)))
 
 		require.ErrorIs(t, err, readError)
 		assert.ErrorContains(t, err, "failed to read live PVC \"ecosystem/data\"")
@@ -345,7 +368,7 @@ func TestResizeChecker_CheckErrors(t *testing.T) {
 		checker := NewResizeChecker(errorReader{err: readError})
 		statefulSet := newStatefulSet("postgres", ptr.To[int32](0), 0, newPVC("data", "2Gi", nil))
 
-		result, err := checker.Check(ctx, renderedObjects(t, statefulSet))
+		result, err := checker.Check(ctx, testNamespace, renderedObjects(t, statefulSet))
 
 		require.ErrorIs(t, err, readError)
 		assert.ErrorContains(t, err, "failed to list live PVCs in namespace \"ecosystem\"")
@@ -357,7 +380,7 @@ func TestResizeChecker_CheckErrors(t *testing.T) {
 		live.Spec.Resources.Requests = nil
 		checker := NewResizeChecker(fake.NewClientBuilder().WithObjects(live).Build())
 
-		result, err := checker.Check(ctx, renderedObjects(t, newPVC("data", "2Gi", nil)))
+		result, err := checker.Check(ctx, testNamespace, renderedObjects(t, newPVC("data", "2Gi", nil)))
 
 		require.ErrorContains(t, err, "live PVC \"ecosystem/data\" has no storage request")
 		assert.Empty(t, result.ResizeRequests)
@@ -368,7 +391,7 @@ func TestResizeChecker_CheckErrors(t *testing.T) {
 		live.Status.Phase = corev1.ClaimPending
 		checker := NewResizeChecker(fake.NewClientBuilder().WithObjects(live).Build())
 
-		result, err := checker.Check(ctx, renderedObjects(t, newPVC("data", "2Gi", nil)))
+		result, err := checker.Check(ctx, testNamespace, renderedObjects(t, newPVC("data", "2Gi", nil)))
 
 		require.ErrorContains(t, err, "live PVC \"ecosystem/data\" is not bound")
 		assert.Empty(t, result.ResizeRequests)
@@ -381,7 +404,7 @@ func TestResizeChecker_CheckErrors(t *testing.T) {
 		}
 		checker := NewResizeChecker(fake.NewClientBuilder().WithObjects(live).Build())
 
-		result, err := checker.Check(ctx, renderedObjects(t, newPVC("data", "2Gi", nil)))
+		result, err := checker.Check(ctx, testNamespace, renderedObjects(t, newPVC("data", "2Gi", nil)))
 
 		require.ErrorContains(t, err, "live PVC \"ecosystem/data\" has storage resize status \"ControllerResizeInProgress\"")
 		assert.Empty(t, result.ResizeRequests)
@@ -395,7 +418,7 @@ func TestResizeChecker_CheckErrors(t *testing.T) {
 		}}
 		checker := NewResizeChecker(fake.NewClientBuilder().WithObjects(live).Build())
 
-		result, err := checker.Check(ctx, renderedObjects(t, newPVC("data", "2Gi", nil)))
+		result, err := checker.Check(ctx, testNamespace, renderedObjects(t, newPVC("data", "2Gi", nil)))
 
 		require.ErrorContains(t, err, "live PVC \"ecosystem/data\" has active resize condition \"Resizing\"")
 		assert.Empty(t, result.ResizeRequests)
@@ -406,7 +429,7 @@ func TestResizeChecker_CheckErrors(t *testing.T) {
 		live.Status.Capacity = nil
 		checker := NewResizeChecker(fake.NewClientBuilder().WithObjects(live).Build())
 
-		result, err := checker.Check(ctx, renderedObjects(t, newPVC("data", "2Gi", nil)))
+		result, err := checker.Check(ctx, testNamespace, renderedObjects(t, newPVC("data", "2Gi", nil)))
 
 		require.ErrorContains(t, err, "live PVC \"ecosystem/data\" has no storage capacity")
 		assert.Empty(t, result.ResizeRequests)
@@ -421,7 +444,7 @@ func TestExtractDesiredClaims(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{Name: "config", Namespace: testNamespace},
 		}
 
-		claims, templates, err := extractDesiredClaims(renderedObjects(t, configMap, pvc))
+		claims, templates, err := extractDesiredClaims(renderedObjects(t, configMap, pvc), testNamespace)
 
 		require.NoError(t, err)
 		require.Len(t, claims, 1)
@@ -430,31 +453,31 @@ func TestExtractDesiredClaims(t *testing.T) {
 		assert.Zero(t, claims[0].storage.Cmp(resource.MustParse("2Gi")))
 	})
 
-	t.Run("uses the default namespace for a standalone PVC without a namespace", func(t *testing.T) {
+	t.Run("uses the target namespace for a standalone PVC without a namespace", func(t *testing.T) {
 		pvc := newPVC("data", "1Gi", nil)
 		pvc.Namespace = ""
 		objects := renderedObjects(t, pvc)
 
-		claims, templates, err := extractDesiredClaims(objects)
+		claims, templates, err := extractDesiredClaims(objects, "target")
 
 		require.NoError(t, err)
 		require.Len(t, claims, 1)
 		assert.Empty(t, templates)
-		assert.Equal(t, client.ObjectKey{Namespace: corev1.NamespaceDefault, Name: "data"}, claims[0].key)
+		assert.Equal(t, client.ObjectKey{Namespace: "target", Name: "data"}, claims[0].key)
 		assert.Empty(t, objects[0].GetNamespace())
 	})
 
-	t.Run("uses the default namespace for a StatefulSet without a namespace", func(t *testing.T) {
+	t.Run("uses the target namespace for a StatefulSet without a namespace", func(t *testing.T) {
 		statefulSet := newStatefulSet("postgres", ptr.To[int32](1), 0, newPVC("data", "1Gi", nil))
 		statefulSet.Namespace = ""
 		objects := renderedObjects(t, statefulSet)
 
-		claims, templates, err := extractDesiredClaims(objects)
+		claims, templates, err := extractDesiredClaims(objects, "target")
 
 		require.NoError(t, err)
 		assert.Empty(t, claims)
 		require.Len(t, templates, 1)
-		assert.Equal(t, client.ObjectKey{Namespace: corev1.NamespaceDefault, Name: "postgres"}, templates[0].statefulSet)
+		assert.Equal(t, client.ObjectKey{Namespace: "target", Name: "postgres"}, templates[0].statefulSet)
 		assert.Equal(t, "data", templates[0].name)
 		assert.Empty(t, objects[0].GetNamespace())
 	})
@@ -463,7 +486,7 @@ func TestExtractDesiredClaims(t *testing.T) {
 		pvc := newPVC("data", "1Gi", nil)
 		pvc.Spec.Resources.Requests = nil
 
-		claims, templates, err := extractDesiredClaims(renderedObjects(t, pvc))
+		claims, templates, err := extractDesiredClaims(renderedObjects(t, pvc), testNamespace)
 
 		require.ErrorContains(t, err, "rendered PVC \"ecosystem/data\" has no storage request")
 		assert.Empty(t, claims)
@@ -490,7 +513,7 @@ func TestExtractDesiredClaims(t *testing.T) {
 				"spec": "invalid",
 			}}
 
-			claims, templates, err := extractDesiredClaims([]*unstructured.Unstructured{object})
+			claims, templates, err := extractDesiredClaims([]*unstructured.Unstructured{object}, testNamespace)
 
 			require.ErrorContains(t, err, "failed to convert rendered "+tt.kind)
 			assert.Empty(t, claims)
@@ -504,7 +527,7 @@ func TestExtractDesiredClaims(t *testing.T) {
 			{Object: map[string]any{"apiVersion": "example.com/v1", "kind": "StatefulSet"}},
 		}
 
-		claims, templates, err := extractDesiredClaims(objects)
+		claims, templates, err := extractDesiredClaims(objects, testNamespace)
 
 		require.NoError(t, err)
 		assert.Empty(t, claims)
@@ -517,7 +540,7 @@ func TestExtractDesiredClaims(t *testing.T) {
 		statefulSet := newStatefulSet("postgres", ptr.To[int32](1), 0, newPVC("data", "1Gi", nil))
 		statefulSet.Namespace = "other"
 
-		claims, templates, err := extractDesiredClaims(renderedObjects(t, pvc, statefulSet))
+		claims, templates, err := extractDesiredClaims(renderedObjects(t, pvc, statefulSet), testNamespace)
 
 		require.NoError(t, err)
 		require.Len(t, claims, 1)

@@ -30,7 +30,7 @@ type CheckResult struct {
 
 // ResizeChecker checks rendered Kubernetes objects against live PVCs without changing cluster resources.
 type ResizeChecker interface {
-	Check(ctx context.Context, renderedObjects []*unstructured.Unstructured) (CheckResult, error)
+	Check(ctx context.Context, targetNamespace string, renderedObjects []*unstructured.Unstructured) (CheckResult, error)
 }
 
 type resizeChecker struct {
@@ -55,8 +55,12 @@ type desiredClaimTemplate struct {
 	storageClass *string
 }
 
-func (c *resizeChecker) Check(ctx context.Context, renderedObjects []*unstructured.Unstructured) (CheckResult, error) {
-	desiredClaims, desiredTemplates, extractionErr := extractDesiredClaims(renderedObjects)
+func (c *resizeChecker) Check(ctx context.Context, targetNamespace string, renderedObjects []*unstructured.Unstructured) (CheckResult, error) {
+	if targetNamespace == "" {
+		return CheckResult{}, errors.New("target namespace must not be empty")
+	}
+
+	desiredClaims, desiredTemplates, extractionErr := extractDesiredClaims(renderedObjects, targetNamespace)
 	result := CheckResult{}
 	checkErr := extractionErr
 
@@ -217,7 +221,7 @@ func isResizeCondition(conditionType corev1.PersistentVolumeClaimConditionType) 
 	}
 }
 
-func extractDesiredClaims(renderedObjects []*unstructured.Unstructured) ([]desiredClaim, []desiredClaimTemplate, error) {
+func extractDesiredClaims(renderedObjects []*unstructured.Unstructured, targetNamespace string) ([]desiredClaim, []desiredClaimTemplate, error) {
 	var claims []desiredClaim
 	var templates []desiredClaimTemplate
 	var extractionErr error
@@ -231,7 +235,7 @@ func extractDesiredClaims(renderedObjects []*unstructured.Unstructured) ([]desir
 				continue
 			}
 			if pvc.Namespace == "" {
-				pvc.Namespace = corev1.NamespaceDefault
+				pvc.Namespace = targetNamespace
 			}
 
 			claim, err := desiredClaimFromPVC(pvc)
@@ -247,7 +251,7 @@ func extractDesiredClaims(renderedObjects []*unstructured.Unstructured) ([]desir
 				continue
 			}
 			if statefulSet.Namespace == "" {
-				statefulSet.Namespace = corev1.NamespaceDefault
+				statefulSet.Namespace = targetNamespace
 			}
 
 			statefulSetTemplates, err := desiredClaimTemplatesFromStatefulSet(statefulSet)

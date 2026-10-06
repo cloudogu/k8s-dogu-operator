@@ -22,9 +22,9 @@ func (_m *MockResizeChecker) EXPECT() *MockResizeChecker_Expecter {
 	return &MockResizeChecker_Expecter{mock: &_m.Mock}
 }
 
-// Check provides a mock function with given fields: ctx, renderedObjects
-func (_m *MockResizeChecker) Check(ctx context.Context, renderedObjects []*unstructured.Unstructured) (CheckResult, error) {
-	ret := _m.Called(ctx, renderedObjects)
+// Check provides a mock function with given fields: ctx, targetNamespace, renderedObjects
+func (_m *MockResizeChecker) Check(ctx context.Context, targetNamespace string, renderedObjects []*unstructured.Unstructured) (CheckResult, error) {
+	ret := _m.Called(ctx, targetNamespace, renderedObjects)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Check")
@@ -32,17 +32,17 @@ func (_m *MockResizeChecker) Check(ctx context.Context, renderedObjects []*unstr
 
 	var r0 CheckResult
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, []*unstructured.Unstructured) (CheckResult, error)); ok {
-		return rf(ctx, renderedObjects)
+	if rf, ok := ret.Get(0).(func(context.Context, string, []*unstructured.Unstructured) (CheckResult, error)); ok {
+		return rf(ctx, targetNamespace, renderedObjects)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, []*unstructured.Unstructured) CheckResult); ok {
-		r0 = rf(ctx, renderedObjects)
+	if rf, ok := ret.Get(0).(func(context.Context, string, []*unstructured.Unstructured) CheckResult); ok {
+		r0 = rf(ctx, targetNamespace, renderedObjects)
 	} else {
 		r0 = ret.Get(0).(CheckResult)
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, []*unstructured.Unstructured) error); ok {
-		r1 = rf(ctx, renderedObjects)
+	if rf, ok := ret.Get(1).(func(context.Context, string, []*unstructured.Unstructured) error); ok {
+		r1 = rf(ctx, targetNamespace, renderedObjects)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -57,14 +57,15 @@ type MockResizeChecker_Check_Call struct {
 
 // Check is a helper method to define mock.On call
 //   - ctx context.Context
+//   - targetNamespace string
 //   - renderedObjects []*unstructured.Unstructured
-func (_e *MockResizeChecker_Expecter) Check(ctx interface{}, renderedObjects interface{}) *MockResizeChecker_Check_Call {
-	return &MockResizeChecker_Check_Call{Call: _e.mock.On("Check", ctx, renderedObjects)}
+func (_e *MockResizeChecker_Expecter) Check(ctx interface{}, targetNamespace interface{}, renderedObjects interface{}) *MockResizeChecker_Check_Call {
+	return &MockResizeChecker_Check_Call{Call: _e.mock.On("Check", ctx, targetNamespace, renderedObjects)}
 }
 
-func (_c *MockResizeChecker_Check_Call) Run(run func(ctx context.Context, renderedObjects []*unstructured.Unstructured)) *MockResizeChecker_Check_Call {
+func (_c *MockResizeChecker_Check_Call) Run(run func(ctx context.Context, targetNamespace string, renderedObjects []*unstructured.Unstructured)) *MockResizeChecker_Check_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].([]*unstructured.Unstructured))
+		run(args[0].(context.Context), args[1].(string), args[2].([]*unstructured.Unstructured))
 	})
 	return _c
 }
@@ -74,7 +75,7 @@ func (_c *MockResizeChecker_Check_Call) Return(_a0 CheckResult, _a1 error) *Mock
 	return _c
 }
 
-func (_c *MockResizeChecker_Check_Call) RunAndReturn(run func(context.Context, []*unstructured.Unstructured) (CheckResult, error)) *MockResizeChecker_Check_Call {
+func (_c *MockResizeChecker_Check_Call) RunAndReturn(run func(context.Context, string, []*unstructured.Unstructured) (CheckResult, error)) *MockResizeChecker_Check_Call {
 	_c.Call.Return(run)
 	return _c
 }
