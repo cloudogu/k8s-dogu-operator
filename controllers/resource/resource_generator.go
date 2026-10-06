@@ -520,7 +520,7 @@ func getStartupProbeTimeout() int32 {
 
 // GetAppLabel returns an app label which all CES resource may receive for general selection.
 func GetAppLabel() k8sv2.CesMatchingLabels {
-	return map[string]string{LabelKeyApp: LabelValueCes}
+	return map[string]string{LegacyLabelKeyApp: LabelValueCes}
 }
 
 // CreateDoguService creates a new instance of a service with the given dogu custom resource and container image.

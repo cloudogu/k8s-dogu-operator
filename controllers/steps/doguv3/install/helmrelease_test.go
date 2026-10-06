@@ -190,13 +190,13 @@ func checkExpectedValues(t *testing.T, release *fluxhelm.HelmRelease, retryInter
 	assert.Equal(t, "dogu", release.Labels[doguv3.DoguLabelName])
 	assert.Equal(t, "1.2.3", release.Labels[doguv3.DoguLabelVersion])
 
-	assert.Equal(t, "ces", release.Spec.CommonMetadata.Labels[resource.LabelKeyApp])
+	assert.Equal(t, "ces", release.Spec.CommonMetadata.Labels[resource.LegacyLabelKeyApp])
 	assert.Equal(t, "dogu", release.Spec.CommonMetadata.Labels[doguv2.DoguLabelName])
 
-	assert.Equal(t, "dogu", release.Spec.CommonMetadata.Labels[resource.LabelKeyAppKubernetesIoName])
-	assert.Equal(t, "1.2.3", release.Spec.CommonMetadata.Labels[resource.LabelKeyAppKubernetesIoVersion])
-	assert.Equal(t, "ces", release.Spec.CommonMetadata.Labels[resource.LabelKeyAppKubernetesIoPartOf])
-	assert.Equal(t, "ces", release.Spec.CommonMetadata.Labels[resource.LabelKeyK8sCloudoguComApp])
+	assert.Equal(t, "dogu", release.Spec.CommonMetadata.Labels[resource.CommonLabelKeyName])
+	assert.Equal(t, "1.2.3", release.Spec.CommonMetadata.Labels[resource.CommonLabelKeyVersion])
+	assert.Equal(t, "ces", release.Spec.CommonMetadata.Labels[resource.CommonLabelKeyPartOf])
+	assert.Equal(t, "ces", release.Spec.CommonMetadata.Labels[resource.CloudoguLabelKeyApp])
 }
 
 func TestNewEnsureHelmReleaseStep(t *testing.T) {
