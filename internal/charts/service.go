@@ -1,49 +1,68 @@
 package charts
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"sync"
 
 	"github.com/cloudogu/k8s-dogu-lib/v3/api/v3beta1"
+	"github.com/cloudogu/k8s-dogu-operator/v3/internal/flux"
+	"helm.sh/helm/v3/pkg/chart/loader"
 	"helm.sh/helm/v3/pkg/chartutil"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-// Service is the dogu-keyed facade over chart rendering/validation. It is the seam both the
-// validation step and the PVC-resize step depend on. It owns a per-dogu load cache (keyed by the
-// dogu's NamespacedName, invalidated when the artifact digest changes)
+// cachedArtifact holds a downloaded chart archive and the artifact digest it was fetched for.
+type cachedArtifact struct {
+	data   []byte
+	digest string
+}
+
+type releaseResolver interface {
+	ResolveOperation(ctx context.Context, name, namespace string) (flux.ReleaseOperation, error)
+}
+
+// Service is the dogu-keyed facade over the dogu chart. It owns a per-dogu cache of the downloaded
+// chart archive bytes (keyed by the dogu's NamespacedName, invalidated when the artifact digest
+// changes). Each access parses a fresh chart from the cached bytes so that dependency processing,
+// which mutates the chart in place, never corrupts a shared instance.
 type Service struct {
 	loader     ChartProvider
 	restConfig *rest.Config
 	caps       *chartutil.Capabilities
+	resolver   releaseResolver
 
-	mu     sync.Mutex
-	charts map[client.ObjectKey]*chart
+	mu        sync.Mutex
+	artifacts map[client.ObjectKey]cachedArtifact
 }
 
-// NewService creates a Service. caps should be discovered once from the cluster (KubeVersion +
-// API versions) so local renders gate API versions the same way Flux will.
-func NewService(loader ChartProvider, restConfig *rest.Config, caps *chartutil.Capabilities) *Service {
+// NewService creates a Service.
+func NewService(loader ChartProvider, restConfig *rest.Config, caps *chartutil.Capabilities, resolver releaseResolver) *Service {
 	return &Service{
 		loader:     loader,
 		restConfig: restConfig,
 		caps:       caps,
-		charts:     make(map[client.ObjectKey]*chart),
+		resolver:   resolver,
+		artifacts:  make(map[client.ObjectKey]cachedArtifact),
 	}
 }
 
-// Render renders the dogu's chart server-side against the cluster and returns the uninterpreted
-// objects. The result is shared and MUST be treated read-only by callers.
+// Render renders the dogu's chart server-side against the cluster and returns the uninterpreted objects.
 func (s *Service) Render(ctx context.Context, doguResource *v3beta1.Dogu, values map[string]any) ([]*unstructured.Unstructured, error) {
+	op, err := s.resolver.ResolveOperation(ctx, doguResource.Spec.Name, doguResource.Namespace)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve release operation: %w", err)
+	}
+
 	c, err := s.chartFor(ctx, doguResource)
 	if err != nil {
 		return nil, err
 	}
 
-	return c.render(values, s.restConfig)
+	return c.render(values, s.restConfig, op)
 }
 
 // ValidateValues validates the values against the chart's values.schema.json only. It performs no
@@ -89,11 +108,13 @@ func (s *Service) Evict(doguResource *v3beta1.Dogu) {
 	key := client.ObjectKeyFromObject(doguResource)
 
 	s.mu.Lock()
-	delete(s.charts, key)
+	delete(s.artifacts, key)
 	s.mu.Unlock()
 }
 
-// chartFor returns the cached chart for the dogu, reloading it when the artifact digest has changed.
+// chartFor returns a freshly parsed chart for the dogu. The underlying archive bytes are cached and
+// only re-downloaded when the artifact digest changes, but the chart is parsed new on every call so
+// callers receive an independently mutable instance (dependency processing mutates it in place).
 func (s *Service) chartFor(ctx context.Context, doguResource *v3beta1.Dogu) (*chart, error) {
 	key := client.ObjectKeyFromObject(doguResource)
 
@@ -102,33 +123,46 @@ func (s *Service) chartFor(ctx context.Context, doguResource *v3beta1.Dogu) (*ch
 		return nil, fmt.Errorf("failed to get chart artifact digest: %w", err)
 	}
 
+	data, err := s.artifactBytes(ctx, doguResource, key, digest)
+	if err != nil {
+		return nil, err
+	}
+
+	raw, err := loader.LoadArchive(bytes.NewReader(data))
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse chart archive: %w", err)
+	}
+
+	return &chart{
+		raw:  raw,
+		ref:  releaseRefFor(doguResource),
+		caps: s.caps,
+	}, nil
+}
+
+// artifactBytes returns the cached chart archive bytes for the dogu, downloading and caching them
+// when the cache is empty or the artifact digest has changed.
+func (s *Service) artifactBytes(ctx context.Context, doguResource *v3beta1.Dogu, key client.ObjectKey, digest string) ([]byte, error) {
 	s.mu.Lock()
-	if cached, ok := s.charts[key]; ok && cached.digest == digest {
+	if cached, ok := s.artifacts[key]; ok && cached.digest == digest {
 		s.mu.Unlock()
 
-		return cached, nil
+		return cached.data, nil
 	}
 
-	// unlock until the chart is loaded
+	// Unlock while downloading chart
 	s.mu.Unlock()
 
-	raw, err := s.loader.GetChart(ctx, doguResource)
+	data, err := s.loader.GetChartArchive(ctx, doguResource)
 	if err != nil {
-		return nil, fmt.Errorf("failed to load chart: %w", err)
-	}
-
-	c := &chart{
-		raw:    raw,
-		ref:    releaseRefFor(doguResource),
-		caps:   s.caps,
-		digest: digest,
+		return nil, fmt.Errorf("failed to get chart archive: %w", err)
 	}
 
 	s.mu.Lock()
-	s.charts[key] = c
+	s.artifacts[key] = cachedArtifact{data: data, digest: digest}
 	s.mu.Unlock()
 
-	return c, nil
+	return data, nil
 }
 
 // releaseRefFor derives the Helm release identity for a dogu.
