@@ -26,22 +26,22 @@ type EnsureHelmReleaseStep struct {
 	eventRecorder         EventRecorder
 	helmReconcileInterval metav1.Duration
 	retryInterval         metav1.Duration
-	doguMetadataValueSvc  DoguValuesMetadataService
+	chartService          ChartService
 }
 
-func NewEnsureHelmReleaseStep(k8sClient K8sClient, operatorConfig *config.OperatorConfig, doguMetadataValueSvc DoguValuesMetadataService, recorder EventRecorder) *EnsureHelmReleaseStep {
+func NewEnsureHelmReleaseStep(k8sClient K8sClient, operatorConfig *config.OperatorConfig, chartService ChartService, recorder EventRecorder) *EnsureHelmReleaseStep {
 	return &EnsureHelmReleaseStep{
 		k8sClient:             k8sClient,
 		eventRecorder:         recorder,
 		helmReconcileInterval: metav1.Duration{Duration: operatorConfig.DoguHelmReconciliationInterval},
 		retryInterval:         metav1.Duration{Duration: operatorConfig.DoguHelmRetryInterval},
-		doguMetadataValueSvc:  doguMetadataValueSvc,
+		chartService:          chartService,
 	}
 }
 
 func (ehr *EnsureHelmReleaseStep) Run(ctx context.Context, doguResource *doguv3.Dogu) stepsv3.StepResult {
 	templateAsm := values3.NewAssembler(ehr.k8sClient)
-	combinedValues, err := combineValues(ctx, doguResource, ehr.doguMetadataValueSvc, templateAsm)
+	combinedValues, err := combineValues(ctx, doguResource, ehr.chartService, templateAsm)
 	if err != nil {
 		return stepsv3.RequeueWithError(err, doguv3.ReasonInstalling)
 	}
@@ -126,7 +126,7 @@ func configureHelmRelease(release *flux.HelmRelease, doguResource *doguv3.Dogu, 
 	}
 }
 
-func combineValues(ctx context.Context, dogu *doguv3.Dogu, doguMetadataValueSvc DoguValuesMetadataService, valueAssembler valueAssembler) (*apiext.JSON, error) {
+func combineValues(ctx context.Context, dogu *doguv3.Dogu, doguMetadataValueSvc ChartService, valueAssembler ValueAssembler) (*apiext.JSON, error) {
 	metaValues, _, err := doguMetadataValueSvc.DoguMetaValues(ctx, dogu)
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve dogu metadata values: %w", err)

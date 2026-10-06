@@ -31,9 +31,9 @@ func Test_combineValues(t *testing.T) {
 		// given
 		inputDogu := &doguv3.Dogu{}
 		assembledDoguValues := values3.Values{"foo": "bar", "fqdn": "example.invalid", "logging": "error"}
-		valueAsmMock := newMockDoguPatchAssembler(t)
+		valueAsmMock := NewMockValueAssembler(t)
 		var doguMetadataValues []byte
-		doguValuesMetadataSvcMock := newMockDoguMetadataValueService(t)
+		doguValuesMetadataSvcMock := NewMockChartService(t)
 		doguValuesMetadataSvcMock.EXPECT().DoguMetaValues(testCtx, inputDogu).Return(doguMetadataValues, true, nil)
 		valueAsmMock.EXPECT().Assemble(testCtx, inputDogu, doguMetadataValues).Return(assembledDoguValues, nil)
 
@@ -51,8 +51,8 @@ func Test_combineValues(t *testing.T) {
 	t.Run("should fail on dogu metadata value service retrieval", func(t *testing.T) {
 		// given
 		inputDogu := &doguv3.Dogu{}
-		valueAsmMock := newMockDoguPatchAssembler(t)
-		doguValuesMetadataSvcMock := newMockDoguMetadataValueService(t)
+		valueAsmMock := NewMockValueAssembler(t)
+		doguValuesMetadataSvcMock := NewMockChartService(t)
 		doguValuesMetadataSvcMock.EXPECT().DoguMetaValues(testCtx, inputDogu).Return(nil, false, assert.AnError)
 
 		// when
@@ -67,9 +67,9 @@ func Test_combineValues(t *testing.T) {
 		// given
 		inputDogu := &doguv3.Dogu{}
 		var doguMetadataValues []byte
-		doguValuesMetadataSvcMock := newMockDoguMetadataValueService(t)
+		doguValuesMetadataSvcMock := NewMockChartService(t)
 		doguValuesMetadataSvcMock.EXPECT().DoguMetaValues(testCtx, inputDogu).Return(doguMetadataValues, true, nil)
-		valueAsmMock := newMockDoguPatchAssembler(t)
+		valueAsmMock := NewMockValueAssembler(t)
 		valueAsmMock.EXPECT().Assemble(testCtx, inputDogu, doguMetadataValues).Return(nil, assert.AnError)
 
 		// when
@@ -205,14 +205,14 @@ func TestNewEnsureHelmReleaseStep(t *testing.T) {
 		DoguHelmRetryInterval:          1 * time.Second,
 		DoguHelmReconciliationInterval: 2 * time.Minute,
 	}
-	valueService := newMockDoguMetadataValueService(t)
+	valueService := NewMockChartService(t)
 	recorder := NewMockEventRecorder(t)
 
 	step := NewEnsureHelmReleaseStep(k8sClient, operatorConfig, valueService, recorder)
 
 	assert.NotNil(t, step)
 	assert.Equal(t, k8sClient, step.k8sClient)
-	assert.Equal(t, valueService, step.doguMetadataValueSvc)
+	assert.Equal(t, valueService, step.chartService)
 	assert.Equal(t, recorder, step.eventRecorder)
 	assert.Equal(t, metav1.Duration{Duration: 1 * time.Second}, step.retryInterval)
 	assert.Equal(t, metav1.Duration{Duration: 2 * time.Minute}, step.helmReconcileInterval)
@@ -242,13 +242,13 @@ func TestEnsureHelmReleaseStep_Run(t *testing.T) {
 
 	tests := []struct {
 		name       string
-		setupMocks func(*testing.T) (K8sClient, DoguValuesMetadataService, EventRecorder)
+		setupMocks func(*testing.T) (K8sClient, ChartService, EventRecorder)
 		want       v3steps.StepResult
 	}{
 		{
 			name: "should retry on failing value assembling",
-			setupMocks: func(*testing.T) (K8sClient, DoguValuesMetadataService, EventRecorder) {
-				metaValueService := newMockDoguMetadataValueService(t)
+			setupMocks: func(*testing.T) (K8sClient, ChartService, EventRecorder) {
+				metaValueService := NewMockChartService(t)
 				metaValueService.EXPECT().DoguMetaValues(mock.Anything, doguResource).Return(nil, false, assert.AnError)
 				return nil, metaValueService, nil
 			},
@@ -261,7 +261,7 @@ func TestEnsureHelmReleaseStep_Run(t *testing.T) {
 		},
 		{
 			name: "should retry on failing create or patch",
-			setupMocks: func(*testing.T) (K8sClient, DoguValuesMetadataService, EventRecorder) {
+			setupMocks: func(*testing.T) (K8sClient, ChartService, EventRecorder) {
 				fakeClient := fake.NewClientBuilder().WithScheme(testScheme).WithObjects(&globalConfig).Build()
 				k8sClient := NewMockK8sClient(t)
 				k8sClient.EXPECT().Scheme().Return(testScheme)
@@ -270,7 +270,7 @@ func TestEnsureHelmReleaseStep_Run(t *testing.T) {
 				})
 				k8sClient.EXPECT().Create(mock.Anything, mock.Anything, mock.Anything).Return(assert.AnError)
 
-				service := newMockDoguMetadataValueService(t)
+				service := NewMockChartService(t)
 				service.EXPECT().DoguMetaValues(mock.Anything, doguResource).Return(nil, false, nil)
 				return k8sClient, service, nil
 			},
@@ -283,9 +283,9 @@ func TestEnsureHelmReleaseStep_Run(t *testing.T) {
 		},
 		{
 			name: "should continue on successful creation of helm release",
-			setupMocks: func(t *testing.T) (K8sClient, DoguValuesMetadataService, EventRecorder) {
+			setupMocks: func(t *testing.T) (K8sClient, ChartService, EventRecorder) {
 				k8sClient := fake.NewClientBuilder().WithScheme(testScheme).WithObjects(&globalConfig).Build()
-				service := newMockDoguMetadataValueService(t)
+				service := NewMockChartService(t)
 				service.EXPECT().DoguMetaValues(mock.Anything, doguResource).Return(nil, false, nil)
 				recorder := NewMockEventRecorder(t)
 				recorder.EXPECT().Event(doguResource, core.EventTypeNormal, doguv3.ConditionChartAvailable, "HelmRelease created")
@@ -295,13 +295,13 @@ func TestEnsureHelmReleaseStep_Run(t *testing.T) {
 		},
 		{
 			name: "should continue on successful update of existing helm release",
-			setupMocks: func(t *testing.T) (K8sClient, DoguValuesMetadataService, EventRecorder) {
+			setupMocks: func(t *testing.T) (K8sClient, ChartService, EventRecorder) {
 				release := fluxhelm.HelmRelease{
 					Name:      "dogu",
 					Namespace: "namespace",
 				}
 				k8sClient := fake.NewClientBuilder().WithScheme(testScheme).WithObjects(&globalConfig, &release).Build()
-				service := newMockDoguMetadataValueService(t)
+				service := NewMockChartService(t)
 				service.EXPECT().DoguMetaValues(mock.Anything, doguResource).Return(nil, false, nil)
 				recorder := NewMockEventRecorder(t)
 				recorder.EXPECT().Event(doguResource, core.EventTypeNormal, doguv3.ConditionChartAvailable, "HelmRelease updated")
@@ -314,7 +314,7 @@ func TestEnsureHelmReleaseStep_Run(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			k8sClient, metaValueService, recorder := test.setupMocks(t)
-			step := &EnsureHelmReleaseStep{k8sClient: k8sClient, doguMetadataValueSvc: metaValueService, eventRecorder: recorder}
+			step := &EnsureHelmReleaseStep{k8sClient: k8sClient, chartService: metaValueService, eventRecorder: recorder}
 
 			result := step.Run(t.Context(), doguResource)
 

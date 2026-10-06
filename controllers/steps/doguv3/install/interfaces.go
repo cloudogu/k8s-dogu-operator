@@ -27,12 +27,11 @@ type Step interface {
 	doguv3steps.Step
 }
 
-type valueAssembler interface {
-	Assemble(ctx context.Context, cr *v3beta1.Dogu, patchTpl []byte) (values3.Values, error)
-}
-
-// only exported for temporary fx DI usage. Please unexport when a real DoguMetaDataValueService was implemented
-type DoguValuesMetadataService interface {
+type ChartService interface {
 	// DoguMetaValues provides the bytes from the Dogu's dogu-values-metadata.yaml.
 	DoguMetaValues(ctx context.Context, doguResource *v3beta1.Dogu) ([]byte, bool, error)
+}
+
+type ValueAssembler interface {
+	Assemble(ctx context.Context, cr *v3beta1.Dogu, patchTpl []byte) (values3.Values, error)
 }

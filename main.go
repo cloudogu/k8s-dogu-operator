@@ -230,6 +230,7 @@ func v2DependencyOptions() fx.Option {
 
 			// TODO initialize the doguValuesMetadataService for the helmReleaseStep otherwise the operator does not work
 			fx.Annotate(newDummyDoguValuesMetadataService, fx.As(new(installv3.DoguValuesMetadataService))),
+			fx.Annotate(newDummyDoguValuesMetadataService, fx.As(new(installv3.ChartService))),
 
 			// use-cases
 			fx.Annotate(
