@@ -63,10 +63,14 @@ func (a Assembler) Assemble(ctx context.Context, cr *v3beta1.Dogu, valuesMeta []
 
 	globalConfigValues, err := getGlobalConfigValues(ctx, cr, a.k8s)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get values from global config:%w", err)
+		return nil, fmt.Errorf("failed to get values from global config: %w", err)
 	}
 
-	finalValues := mergeValues(crValues, globalConfigValues, doguMetaValues)
+	// Place global config under global.cesConfig.
+	nestedGlobalConfig := Values{"global": Values{"cesConfig": globalConfigValues}}
+
+	// Merge order sets (later wins): global config < dogu CR values < mapped meta values.
+	finalValues := mergeValues(nestedGlobalConfig, crValues, doguMetaValues)
 
 	return finalValues, nil
 }

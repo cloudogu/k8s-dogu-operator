@@ -398,7 +398,17 @@ metavalues:
           debug: trace
 `)
 
-	t.Run("happy path merges all sources with meta > global > cr precedence", func(t *testing.T) {
+	// cesConfig extracts the global.cesConfig subtree the global config is nested under.
+	cesConfig := func(t *testing.T, got Values) map[string]any {
+		t.Helper()
+		global, ok := got["global"].(map[string]any)
+		require.True(t, ok, "global key must be a map")
+		ces, ok := global["cesConfig"].(map[string]any)
+		require.True(t, ok, "global.cesConfig must be a map")
+		return ces
+	}
+
+	t.Run("global config is nested under global.cesConfig and does not override top-level dogu values", func(t *testing.T) {
 		cr := newTestDogu(testNamespace,
 			[]byte("shared: fromCR\ncrOnly: crValue\n"),
 			map[string]string{"mainLogLevel": "debug"},
@@ -411,22 +421,26 @@ metavalues:
 		got, err := a.Assemble(context.Background(), cr, patchTpl)
 
 		require.NoError(t, err)
-		assert.Equal(t, "trace", got["shared"], "meta values must override global and CR values")
+		// Top level: meta overrides cr; global lives in its own subtree and does not touch it.
+		assert.Equal(t, "trace", got["shared"], "meta values must override CR values")
 		assert.Equal(t, "crValue", got["crOnly"])
-		assert.Equal(t, "globalValue", got["globalOnly"])
+		// Global config is namespaced under global.cesConfig.
+		assert.Equal(t, "fromGlobal", cesConfig(t, got)["shared"])
+		assert.Equal(t, "globalValue", cesConfig(t, got)["globalOnly"])
 	})
 
-	t.Run("global config values win over cr values", func(t *testing.T) {
-		cr := newTestDogu(testNamespace, []byte("shared: fromCR\n"), nil)
+	t.Run("cr values win over global config on a shared path", func(t *testing.T) {
+		// Both set global.cesConfig.key; cr is merged after global, so cr wins.
+		cr := newTestDogu(testNamespace, []byte("global:\n  cesConfig:\n    key: fromCR\n"), nil)
 		k8s := newFakeClientWithGlobalConfig(testNamespace, map[string]string{
-			globalConfigFileName: "shared: fromGlobal\n",
+			globalConfigFileName: "key: fromGlobal\n",
 		})
 		a := Assembler{k8s: k8s}
 
 		got, err := a.Assemble(context.Background(), cr, patchTpl)
 
 		require.NoError(t, err)
-		assert.Equal(t, "fromGlobal", got["shared"])
+		assert.Equal(t, "fromCR", cesConfig(t, got)["key"])
 	})
 
 	t.Run("minimal cr with only global config", func(t *testing.T) {
@@ -439,7 +453,7 @@ metavalues:
 		got, err := a.Assemble(context.Background(), cr, patchTpl)
 
 		require.NoError(t, err)
-		assert.Equal(t, Values{"onlyGlobal": "value"}, got)
+		assert.Equal(t, Values{"global": map[string]any{"cesConfig": Values{"onlyGlobal": "value"}}}, got)
 	})
 
 	t.Run("invalid cr values returns error", func(t *testing.T) {
