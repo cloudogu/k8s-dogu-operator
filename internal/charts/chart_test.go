@@ -252,6 +252,11 @@ func Test_parseRenderedFilesToObjects(t *testing.T) {
 			files:   map[string]string{"templates/a.yaml": "key:\n\t- tab-indented"},
 			wantErr: true,
 		},
+		{
+			name:    "duplicate keys rejected",
+			files:   map[string]string{"templates/a.yaml": "kind: ConfigMap\nmetadata:\n  labels:\n    app: a\n    app: b\n"},
+			wantErr: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

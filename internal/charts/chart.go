@@ -1,7 +1,7 @@
 package charts
 
 import (
-	"bytes"
+	"bufio"
 	"errors"
 	"fmt"
 	"io"
@@ -123,26 +123,29 @@ func parseRenderedFilesToObjects(renderedFiles map[string]string) ([]*unstructur
 			continue
 		}
 
-		// bufferSize is set to defaultBufferSize of the bufio package from go
-		// NewYAMLOrJSONDecoder natively supports multi-docs ("---")
-		decoder := yaml.NewYAMLOrJSONDecoder(bytes.NewBufferString(content), 4096)
-
+		// NewYAMLReader splits multi-doc files on "---". Each document is decoded with UnmarshalStrict,
+		// which rejects malformed YAML and duplicate keys
+		reader := yaml.NewYAMLReader(bufio.NewReader(strings.NewReader(content)))
 		for {
-			u := &unstructured.Unstructured{}
-
-			if err := decoder.Decode(u); err != nil {
+			doc, err := reader.Read()
+			if err != nil {
 				if errors.Is(err, io.EOF) {
 					break
 				}
 
-				return nil, fmt.Errorf("failed to decode manifest in %s: %w", fileName, err)
+				return nil, fmt.Errorf("failed to read manifest in %s: %w", fileName, err)
 			}
 
-			if len(u.Object) == 0 {
+			object := map[string]any{}
+			if uErr := yaml.UnmarshalStrict(doc, &object); uErr != nil {
+				return nil, fmt.Errorf("failed to decode manifest in %s: %w", fileName, uErr)
+			}
+
+			if len(object) == 0 {
 				continue
 			}
 
-			objects = append(objects, u)
+			objects = append(objects, &unstructured.Unstructured{Object: object})
 		}
 	}
 
