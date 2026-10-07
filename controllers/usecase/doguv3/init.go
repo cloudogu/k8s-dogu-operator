@@ -42,8 +42,9 @@ func NewDoguV3UseCases(
 	ociStep := install.NewEnsureOCIRepositoryStep(k8sClient, registryReader, recorder)
 	waitStep := install.NewWaitForOCIRepositoryReadyStep(k8sClient, recorder)
 	validateStep := install.NewValidateChartStep(chartService, assembler, k8sClient)
+	helmReleaseStep := install.NewEnsureHelmReleaseStep(k8sClient, operatorConfig, chartService, recorder)
 
-	installUseCase := NewDoguInstallOrChangeUseCase(ociStep, waitStep, validateStep, k8sClient, recorder)
+	installUseCase := NewDoguInstallOrChangeUseCase(ociStep, waitStep, validateStep, helmReleaseStep, k8sClient, recorder)
 	deleteUseCase := NewDoguDeleteUseCase(k8sClient)
 
 	return installUseCase, deleteUseCase, nil
