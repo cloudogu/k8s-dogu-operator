@@ -8,7 +8,7 @@ WORKDIR /workspace
 ARG GOBIN=/workspace
 ARG HELM_PLUGINS=/helm_plugins
 
-# openDesk needs Helm >= v3.17.3 and < v4.x1 but not v3.18.02 or v3.20.13
+# openDesk needs Helm >= v3.17.3 and < v4.x but not v3.18.02 or v3.20.13
 ARG HELM_VERSION=v3.22.0
 ARG HELM_DIFF_VERSION=v3.15.15
 
@@ -18,7 +18,9 @@ RUN mkdir "${HELM_PLUGINS}" && \
 
 FROM scratch
 
-COPY --from=helmfile /usr/local/bin/helmfile /
-COPY --from=builder /workspace /
-COPY --from=builder /helm_plugins/helm-diff/bin /helm_plugins/bin
-COPY --from=builder /helm_plugins/helm-diff/plugin.yaml /helm_plugins/
+USER 65532:65532
+
+COPY --from=helmfile --chown=65532:65532 /usr/local/bin/helmfile /
+COPY --from=builder --chown=65532:65532 /workspace /
+COPY --from=builder --chown=65532:65532 /helm_plugins/helm-diff/bin /helm_plugins/bin
+COPY --from=builder --chown=65532:65532 /helm_plugins/helm-diff/plugin.yaml /helm_plugins/
