@@ -16,6 +16,11 @@ const (
 	// It is defined here (and not in k8s-dogu-lib) because the lib only ships ReasonDeleting for the
 	// in-progress case.
 	ReasonDeletionFailed = "DeletionFailed"
+
+	// ReasonDeletionStalled is the condition reason and event reason used when the flux resource being
+	// deleted reports that its own reconciliation has stalled (e.g. a failing helm uninstall). Deletion
+	// keeps retrying - this reason only escalates visibility so an operator can intervene.
+	ReasonDeletionStalled = "DeletionStalled"
 )
 
 // Step defines a single aspect in a dogu lifecycle phase which usually ends up in changed side-effects.
