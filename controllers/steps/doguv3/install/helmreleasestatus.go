@@ -15,15 +15,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-const (
-	// ReasonInstallFailed is the reason for the Ready condition if the installation of the dogu's release failed.
-	// TODO replace with the constant from k8s-dogu-lib once it is available there.
-	ReasonInstallFailed = "InstallFailed"
-	// ReasonUpgradeFailed is the reason for the Ready condition if the upgrade of the dogu's release failed.
-	// TODO replace with the constant from k8s-dogu-lib once it is available there.
-	ReasonUpgradeFailed = "UpgradeFailed"
-)
-
 type healthChecker interface {
 	Check(ctx context.Context, dogu *v3beta1.Dogu) (health.State, error)
 }
@@ -76,9 +67,9 @@ func (hrs *HelmReleaseStatusStep) stepResultForRelease(ctx context.Context, stat
 	case fluxstate.PhaseUpgrading:
 		return stepsv3.RequeueAfter(defaultRequeueAfter, v3beta1.ReasonUpgrading, state.Message)
 	case fluxstate.PhaseInstallFailed:
-		return stepsv3.Abort(ReasonInstallFailed, state.Message)
+		return stepsv3.Abort(v3beta1.ReasonInstallFailed, state.Message)
 	case fluxstate.PhaseUpgradeFailed:
-		return stepsv3.Abort(ReasonUpgradeFailed, state.Message)
+		return stepsv3.Abort(v3beta1.ReasonUpgradeFailed, state.Message)
 	case fluxstate.PhaseDeployed:
 		healthy, err := hrs.checkHealthy(ctx, doguResource)
 		if err != nil {

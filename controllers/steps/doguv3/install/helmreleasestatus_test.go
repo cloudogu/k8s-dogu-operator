@@ -136,8 +136,8 @@ func TestHelmReleaseStatusStep_stepResultForRelease(t *testing.T) {
 		{name: "chart unavailable", state: fluxstate.ReleaseState{Phase: fluxstate.PhaseChartUnavailable, Message: "msg"}, want: stepsv3.Abort(v3beta1.ReasonDownloadFailed, "msg")},
 		{name: "installing", state: fluxstate.ReleaseState{Phase: fluxstate.PhaseInstalling, Message: "msg"}, want: stepsv3.RequeueAfter(defaultRequeueAfter, v3beta1.ReasonInstalling, "msg")},
 		{name: "upgrading", state: fluxstate.ReleaseState{Phase: fluxstate.PhaseUpgrading, Message: "msg", EverDeployed: true}, want: stepsv3.RequeueAfter(defaultRequeueAfter, v3beta1.ReasonUpgrading, "msg")},
-		{name: "install failed", state: fluxstate.ReleaseState{Phase: fluxstate.PhaseInstallFailed, Message: "msg"}, want: stepsv3.Abort(ReasonInstallFailed, "msg")},
-		{name: "upgrade failed", state: fluxstate.ReleaseState{Phase: fluxstate.PhaseUpgradeFailed, Message: "msg", EverDeployed: true}, want: stepsv3.Abort(ReasonUpgradeFailed, "msg")},
+		{name: "install failed", state: fluxstate.ReleaseState{Phase: fluxstate.PhaseInstallFailed, Message: "msg"}, want: stepsv3.Abort(v3beta1.ReasonInstallFailed, "msg")},
+		{name: "upgrade failed", state: fluxstate.ReleaseState{Phase: fluxstate.PhaseUpgradeFailed, Message: "msg", EverDeployed: true}, want: stepsv3.Abort(v3beta1.ReasonUpgradeFailed, "msg")},
 	}
 
 	for _, tt := range tests {
