@@ -29,6 +29,16 @@ include build/make/k8s-controller.mk
 include build/make/mocks.mk
 include build/make/vulnerability-scan.mk
 
+HELMFILE_IMAGE_VERSION=0.1.0
+
+.PHONY: build-helmfile-image
+build-helmfile-image:
+	@docker build -f helmfile.Dockerfile . -t "registry.cloudogu.com/internal/helmfile:${HELMFILE_IMAGE_VERSION}"
+
+.PHONY: push-helmfile-image
+push-helmfile-image: build-helmfile-image
+	@docker push "registry.cloudogu.com/internal/helmfile:${HELMFILE_IMAGE_VERSION}"
+
 .PHONY: mocks
 mocks: ${MOCKERY_BIN} ${MOCKERY_YAML} ## target is used to generate mocks for all interfaces in a project.
 	${MOCKERY_BIN}
