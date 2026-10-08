@@ -38,6 +38,8 @@ type ReleaseState struct {
 	Phase ReleasePhase
 	// Message describes the state
 	Message string
+	// EverDeployed indicates whether the dogu has ever been deployed.
+	EverDeployed bool
 }
 
 // DesiredRelease describes the release state the operator expects the helm-controller to apply for a dogu.
@@ -63,7 +65,7 @@ func EvaluateRelease(release *helmflux.HelmRelease, desired DesiredRelease) Rele
 	everDeployed := hasEverBeenDeployed(release.Status.History)
 
 	if len(release.Status.History) == 0 && hasReason(ready, metav1.ConditionFalse, helmflux.ArtifactFailedReason) {
-		return ReleaseState{Phase: PhaseChartUnavailable, Message: ready.Message}
+		return ReleaseState{Phase: PhaseChartUnavailable, Message: ready.Message, EverDeployed: everDeployed}
 	}
 
 	if release.Status.ObservedGeneration < desired.Generation {
@@ -80,7 +82,7 @@ func EvaluateRelease(release *helmflux.HelmRelease, desired DesiredRelease) Rele
 		deployedVersion := trimBuildMetadata(latest.ChartVersion)
 		if deployedVersion == desired.ChartVersion {
 			msg := fmt.Sprintf("release revision %d with chart version %s is deployed", latest.Version, deployedVersion)
-			return ReleaseState{Phase: PhaseDeployed, Message: msg}
+			return ReleaseState{Phase: PhaseDeployed, Message: msg, EverDeployed: everDeployed}
 		}
 	}
 
@@ -90,16 +92,16 @@ func EvaluateRelease(release *helmflux.HelmRelease, desired DesiredRelease) Rele
 
 func inProgress(everDeployed bool, msg string) ReleaseState {
 	if everDeployed {
-		return ReleaseState{Phase: PhaseUpgrading, Message: msg}
+		return ReleaseState{Phase: PhaseUpgrading, Message: msg, EverDeployed: everDeployed}
 	}
-	return ReleaseState{Phase: PhaseInstalling, Message: msg}
+	return ReleaseState{Phase: PhaseInstalling, Message: msg, EverDeployed: everDeployed}
 }
 
 func failed(everDeployed bool, msg string) ReleaseState {
 	if everDeployed {
-		return ReleaseState{Phase: PhaseUpgradeFailed, Message: msg}
+		return ReleaseState{Phase: PhaseUpgradeFailed, Message: msg, EverDeployed: everDeployed}
 	}
-	return ReleaseState{Phase: PhaseInstallFailed, Message: msg}
+	return ReleaseState{Phase: PhaseInstallFailed, Message: msg, EverDeployed: everDeployed}
 }
 
 func hasEverBeenDeployed(history helmflux.Snapshots) bool {

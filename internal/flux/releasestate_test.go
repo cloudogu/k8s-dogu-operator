@@ -140,6 +140,35 @@ func TestEvaluateRelease(t *testing.T) {
 	}
 }
 
+func TestEvaluateRelease_EverDeployed(t *testing.T) {
+	t.Run("should be false if no revision was ever deployed", func(t *testing.T) {
+		hr := release(1, 1, readyCondition(metav1.ConditionFalse, helmflux.UpgradeFailedReason, ""),
+			snapshot(2, "failed", testChartVersionBuild), snapshot(1, "failed", testChartVersionBuild))
+
+		got := EvaluateRelease(hr, DesiredRelease{ChartVersion: testChartVersion, Generation: 1})
+
+		assert.False(t, got.EverDeployed)
+	})
+
+	t.Run("should be true if a revision was deployed before", func(t *testing.T) {
+		hr := release(2, 1, nil, snapshot(1, statusSuperseded, testOldChartVersion))
+
+		got := EvaluateRelease(hr, DesiredRelease{ChartVersion: testChartVersion, Generation: 2})
+
+		assert.True(t, got.EverDeployed)
+	})
+
+	t.Run("should be true for a deployed release", func(t *testing.T) {
+		hr := release(1, 1, readyCondition(metav1.ConditionTrue, helmflux.InstallSucceededReason, ""),
+			snapshot(1, statusDeployed, testChartVersionBuild))
+
+		got := EvaluateRelease(hr, DesiredRelease{ChartVersion: testChartVersion, Generation: 1})
+
+		assert.Equal(t, PhaseDeployed, got.Phase)
+		assert.True(t, got.EverDeployed)
+	})
+}
+
 func TestTrimBuildMetadata(t *testing.T) {
 	assert.Equal(t, "3.86.2-7-dev.1791444074", trimBuildMetadata("3.86.2-7-dev.1791444074+ebb48ffcdce3"))
 	assert.Equal(t, "3.86.2-7", trimBuildMetadata("3.86.2-7"))
