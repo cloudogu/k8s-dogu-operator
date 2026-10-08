@@ -47,6 +47,7 @@ func NewDoguInstallOrChangeUseCase(
 	ociStep *install.EnsureOCIRepositoryStep,
 	waitOCIStep *install.WaitForOCIRepositoryReadyStep,
 	validateChartStep *install.ValidateChartStep,
+	suspendHelmReleaseStep *install.SuspendHelmReleaseStep,
 	helmReleaseStep *install.EnsureHelmReleaseStep,
 	client K8sClient, recorder EventRecorder) *DoguUseCase {
 	return &DoguUseCase{
@@ -54,6 +55,7 @@ func NewDoguInstallOrChangeUseCase(
 			ociStep,
 			waitOCIStep,
 			validateChartStep,
+			suspendHelmReleaseStep,
 			helmReleaseStep,
 		},
 		k8sClient:     client,

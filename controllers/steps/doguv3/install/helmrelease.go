@@ -15,7 +15,9 @@ import (
 	fluxoci "github.com/fluxcd/source-controller/api/v1"
 	core "k8s.io/api/core/v1"
 	apiext "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
@@ -40,6 +42,16 @@ func NewEnsureHelmReleaseStep(k8sClient K8sClient, operatorConfig *config.Operat
 }
 
 func (ehr *EnsureHelmReleaseStep) Run(ctx context.Context, doguResource *doguv3.Dogu) stepsv3.StepResult {
+
+	helmRelease, hrErr := ehr.existingHelmRelease(ctx, doguResource)
+	if hrErr != nil {
+		return stepsv3.RequeueWithError(hrErr, doguv3.ReasonInstalling)
+	}
+	//If helm release should be suspended, then abort
+	if helmRelease != nil && helmRelease.Spec.Suspend == true {
+		return stepsv3.Abort(ReasonReconciliationPaused, messageReconciliationPaused)
+	}
+
 	templateAsm := values3.NewAssembler(ehr.k8sClient)
 	combinedValues, err := combineValues(ctx, doguResource, ehr.chartService, templateAsm)
 	if err != nil {
@@ -50,6 +62,8 @@ func (ehr *EnsureHelmReleaseStep) Run(ctx context.Context, doguResource *doguv3.
 		Namespace: doguResource.Namespace,
 		Name:      doguResource.Spec.Name,
 	}
+
+	//TODO: if  helm release is present and release.Spec.Suspend is set to true, then return
 
 	// Use patch because the repository resource will be updated by the helm-controller.
 	// CreateOrUpdate would produce conflict errors and increase the number of reconciles.
@@ -77,6 +91,18 @@ func (ehr *EnsureHelmReleaseStep) Run(ctx context.Context, doguResource *doguv3.
 	}
 
 	return stepsv3.Continue()
+}
+
+func (ehr *EnsureHelmReleaseStep) existingHelmRelease(ctx context.Context, doguResource *doguv3.Dogu) (*flux.HelmRelease, error) {
+	release := &flux.HelmRelease{}
+	err := ehr.k8sClient.Get(ctx, client.ObjectKey{Namespace: doguResource.Namespace, Name: doguResource.Spec.Name}, release)
+	if apierrors.IsNotFound(err) {
+		return nil, nil
+	}
+	if err != nil {
+		return release, fmt.Errorf("failed to get HelmRelease %q : %w", doguResource.Spec.Name, err)
+	}
+	return release, nil
 }
 
 func configureHelmRelease(release *flux.HelmRelease, doguResource *doguv3.Dogu, values *apiext.JSON, retryInterval *metav1.Duration, helmReconcileInterval *metav1.Duration) {

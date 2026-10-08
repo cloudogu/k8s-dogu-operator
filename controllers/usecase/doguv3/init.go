@@ -7,6 +7,7 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv3/install"
 	"github.com/cloudogu/k8s-dogu-operator/v3/internal/charts"
+	"github.com/cloudogu/k8s-dogu-operator/v3/internal/dogu/pvc"
 	"github.com/cloudogu/k8s-dogu-operator/v3/internal/dogu/values"
 	"github.com/cloudogu/k8s-dogu-operator/v3/internal/flux"
 	"github.com/cloudogu/k8s-dogu-operator/v3/internal/registry"
@@ -39,12 +40,15 @@ func NewDoguV3UseCases(
 	chartService := charts.NewService(charts.NewChartProvider(k8sClient, charts.NewHTTPClient()), restConfig, capabilities, flux.NewHelmReleaseReader(k8sClient))
 	assembler := values.NewAssembler(k8sClient)
 
+	resizeChecker := pvc.NewResizeChecker(k8sClient)
+
 	ociStep := install.NewEnsureOCIRepositoryStep(k8sClient, registryReader, recorder)
 	waitStep := install.NewWaitForOCIRepositoryReadyStep(k8sClient, recorder)
 	validateStep := install.NewValidateChartStep(chartService, assembler, k8sClient)
+	suspendStep := install.NewSuspendHelmReleaseStep(k8sClient, chartService, resizeChecker, recorder)
 	helmReleaseStep := install.NewEnsureHelmReleaseStep(k8sClient, operatorConfig, chartService, recorder)
 
-	installUseCase := NewDoguInstallOrChangeUseCase(ociStep, waitStep, validateStep, helmReleaseStep, k8sClient, recorder)
+	installUseCase := NewDoguInstallOrChangeUseCase(ociStep, waitStep, validateStep, suspendStep, helmReleaseStep, k8sClient, recorder)
 	deleteUseCase := NewDoguDeleteUseCase(k8sClient)
 
 	return installUseCase, deleteUseCase, nil
