@@ -10,6 +10,7 @@ import (
 
 	"github.com/cloudogu/k8s-dogu-lib/v3/api/v3beta1"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv3"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv3/deletion"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv3/install"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -32,10 +33,8 @@ const (
 var (
 	testCtx          = context.Background()
 	testDoguResource = &v3beta1.Dogu{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      testDoguName,
-			Namespace: testNamespace,
-		},
+		Name:      testDoguName,
+		Namespace: testNamespace,
 		Spec: v3beta1.DoguSpec{
 			Name:          testDoguName,
 			DoguNamespace: testDoguNamespace,
@@ -53,12 +52,14 @@ var (
 func TestNewDoguInstallOrChangeUseCase(t *testing.T) {
 	clientMock := NewMockK8sClient(t)
 	recorderMock := NewMockEventRecorder(t)
+	finalizerStep := &install.CreateFinalizerStep{}
 	ensureOCIStep := &install.EnsureOCIRepositoryStep{}
 	waitOCIStep := &install.WaitForOCIRepositoryReadyStep{}
 	validateChartStep := &install.ValidateChartStep{}
 	helmReleaseStep := &install.EnsureHelmReleaseStep{}
 
 	got := NewDoguInstallOrChangeUseCase(
+		finalizerStep,
 		ensureOCIStep,
 		waitOCIStep,
 		validateChartStep,
@@ -68,6 +69,7 @@ func TestNewDoguInstallOrChangeUseCase(t *testing.T) {
 	)
 
 	wantTypes := []string{
+		"*install.CreateFinalizerStep",
 		"*install.EnsureOCIRepositoryStep",
 		"*install.WaitForOCIRepositoryReadyStep",
 		"*install.ValidateChartStep",
@@ -86,13 +88,31 @@ func TestNewDoguInstallOrChangeUseCase(t *testing.T) {
 
 func TestNewDoguDeleteUseCase(t *testing.T) {
 	clientMock := NewMockK8sClient(t)
+	recorderMock := NewMockEventRecorder(t)
+	unsuspendStep := &deletion.UnsuspendHelmReleaseStep{}
+	deleteHelmReleaseStep := &deletion.DeleteHelmReleaseStep{}
+	deleteOCIRepositoryStep := &deletion.DeleteOCIRepositoryStep{}
+	removeFinalizerStep := &deletion.RemoveFinalizerStep{}
 
-	got := NewDoguDeleteUseCase(clientMock)
+	got := NewDoguDeleteUseCase(
+		unsuspendStep,
+		deleteHelmReleaseStep,
+		deleteOCIRepositoryStep,
+		removeFinalizerStep,
+		clientMock,
+		recorderMock,
+	)
 
-	wantTypes := []string{}
+	wantTypes := []string{
+		"*deletion.UnsuspendHelmReleaseStep",
+		"*deletion.DeleteHelmReleaseStep",
+		"*deletion.DeleteOCIRepositoryStep",
+		"*deletion.RemoveFinalizerStep",
+	}
 
 	assert.NotNil(t, got)
 	assert.Equal(t, clientMock, got.k8sClient)
+	assert.Equal(t, recorderMock, got.eventRecorder)
 	require.True(t,
 		slices.Equal(typesOf(got.steps), wantTypes),
 		"order mismatch: got=%v want=%v",
@@ -142,6 +162,31 @@ func TestDoguUseCase_HandleUntilApplied(t *testing.T) {
 				assert.Equal(t, metav1.ConditionTrue, conditions[0].Status)
 				assert.Equal(t, v3beta1.ReasonSucceeded, conditions[0].Reason)
 				assert.Equal(t, "Dogu reconciliation completed successfully", conditions[0].Message)
+			},
+		},
+		{
+			name: "should finish without success condition or event when the dogu is being deleted",
+			setup: func(t *testing.T) (K8sClient, EventRecorder, *v3beta1.Dogu, []Step) {
+				successStepResult := doguv3.StepResult{Continue: true}
+				doguResource := testDoguResource.DeepCopy()
+				now := metav1.Now()
+				doguResource.DeletionTimestamp = &now
+				// The fake client only accepts an object carrying a deletion timestamp if it has a finalizer.
+				doguResource.Finalizers = []string{doguv3.FinalizerName}
+				stepMock1 := NewMockStep(t)
+				stepMock1.EXPECT().Run(testCtx, doguResource).Return(successStepResult)
+
+				// No event must be emitted during deletion success; the mock fails on any unexpected call.
+				eventRecorderMock := NewMockEventRecorder(t)
+
+				clientMock := fake.NewClientBuilder().WithScheme(testScheme).WithObjects(doguResource).WithStatusSubresource(&v3beta1.Dogu{}).Build()
+
+				return clientMock, eventRecorderMock, doguResource, []Step{stepMock1}
+			},
+			want:    0,
+			wantErr: assert.NoError,
+			assertFn: func(t *testing.T, doguResource *v3beta1.Dogu) {
+				assert.Empty(t, doguResource.Status.Conditions)
 			},
 		},
 		{
