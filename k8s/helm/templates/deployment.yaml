@@ -174,7 +174,7 @@ spec:
               subPath: docker-registry-cert.pem
             - mountPath: /tmp/k8s-webhook-server/serving-certs
               name: webhook-cert
-            {{- if .Values.controllerManager.experimental.helmfileSupport.enabled | false }}
+            {{- if .Values.controllerManager.experimental.helmfileSupport.enabled }}
             - name: helmfile-binaries
               mountPath: /helmfile_binaries
             - name: helmfile-data
@@ -204,7 +204,7 @@ spec:
           secret:
             secretName: k8s-dogu-operator-webhook-cert
             optional: false
-        {{- if .Values.controllerManager.experimental.helmfileSupport.enabled | false }}
+        {{- if .Values.controllerManager.experimental.helmfileSupport.enabled }}
         - name: helmfile-binaries
           image:
             reference: "{{ .Values.controllerManager.experimental.helmfileSupport.image.registry }}/{{ .Values.controllerManager.experimental.helmfileSupport.image.repository }}:{{ .Values.controllerManager.experimental.helmfileSupport.image.tag }}"
