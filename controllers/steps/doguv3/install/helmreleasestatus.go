@@ -42,27 +42,12 @@ func (hrs *HelmReleaseStatusStep) Run(ctx context.Context, doguResource *v3beta1
 
 	desired := fluxstate.NewDesiredRelease(doguResource.Spec.Version, release)
 
-	// TODO remove once the release is evaluated in the next steps
-	logValues := []any{"name", release.Name,
-		"desiredChartVersion", desired.ChartVersion, "desiredGeneration", desired.Generation,
-		"observedGeneration", release.Status.ObservedGeneration,
-		"lastAttemptedGeneration", release.Status.LastAttemptedGeneration,
-		"lastAttemptedRevision", release.Status.LastAttemptedRevision,
-		"lastAttemptedConfigDigest", release.Status.LastAttemptedConfigDigest}
-	if latest := release.Status.History.Latest(); latest != nil {
-		logValues = append(logValues,
-			"latestVersion", latest.Version, "latestStatus", latest.Status,
-			"latestChartVersion", latest.ChartVersion, "latestConfigDigest", latest.ConfigDigest)
-	}
-	logger.Info("found HelmRelease", logValues...)
+	state := fluxstate.EvaluateRelease(release, desired)
 
-	// 3. Evaluate the release phase from the desired release, status.observedGeneration, status.history and the
-	//  Flux Ready condition (pure function in internal/flux):
-	//  ChartUnavailable, Installing, Upgrading, InstallFailed, UpgradeFailed or Deployed.
-	//  observedGeneration < generation means Flux has not finished the current spec yet; only then are history and
-	//  the Flux Ready condition up to date. Compare the chart version without the build metadata Flux appends ("+<digest>").
-	//  Distinguish install from upgrade by whether any revision was ever deployed,
-	//  because with RetryOnFailure Flux retries a failed install as an upgrade.
+	// TODO remove once the result is used in the next steps
+	logger.Info("evaluated HelmRelease", "name", release.Name, "phase", state.Phase, "message", state.Message,
+		"desiredChartVersion", desired.ChartVersion, "desiredGeneration", desired.Generation,
+		"observedGeneration", release.Status.ObservedGeneration)
 
 	// 4. Check the health of the dogu's workloads (StatefulSets and Deployments with label k8s.cloudogu.com/dogu.name):
 	//  stopped dogu => Healthy=False/Stopped, missing or not ready workloads => Healthy=False/WorkloadsNotReady,
