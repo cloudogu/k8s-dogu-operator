@@ -128,7 +128,7 @@ spec:
                   optional: true
             - name: EXPERIMENTAL_HELMFILE_SUPPORT
               value: {{ quote .Values.controllerManager.experimental.helmfileSupport.enabled | default false }}
-            {{- if .Values.controllerManager.experimental.helmfileSupport.enabled | default false }}
+            {{- if .Values.controllerManager.experimental.helmfileSupport.enabled }}
             - name: HELMFILE_GLOBAL_CONFIG
               value: {{ .Values.controllerManager.experimental.helmfileSupport.global | toJson | squote }}
             - name: HELMFILE_OPENDESK_CONFIG
