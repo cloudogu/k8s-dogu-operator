@@ -43,11 +43,18 @@ func NewDoguDeleteUseCase(client client.Client) *DoguUseCase {
 // Unfortunately, this is the only way to provide the steps in the correct order.
 // Uber fx provides value groups to use variadic parameters like NewDoguInstallOrChangeUseCase(steps ...doguv3.Step),
 // but these are unordered.
-func NewDoguInstallOrChangeUseCase(ociStep *install.EnsureOCIRepositoryStep, waitOCIStep *install.WaitForOCIRepositoryReadyStep, client K8sClient, recorder EventRecorder) *DoguUseCase {
+func NewDoguInstallOrChangeUseCase(
+	ociStep *install.EnsureOCIRepositoryStep,
+	waitOCIStep *install.WaitForOCIRepositoryReadyStep,
+	validateChartStep *install.ValidateChartStep,
+	helmReleaseStep *install.EnsureHelmReleaseStep,
+	client K8sClient, recorder EventRecorder) *DoguUseCase {
 	return &DoguUseCase{
 		steps: []Step{
 			ociStep,
 			waitOCIStep,
+			validateChartStep,
+			helmReleaseStep,
 		},
 		k8sClient:     client,
 		eventRecorder: recorder,

@@ -1,3 +1,4 @@
+{{- if .Values.controllerManager.env.doguV3Enabled }}
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
@@ -5,11 +6,10 @@ metadata:
   labels:
     {{- include "k8s-dogu-operator.labels" . | nindent 4 }}
 rules:
-  # dogu v3: create and delete flux resources analogous to the dogu CR
+  # dogu v3: manage the OCIRepository (source-controller) that mirrors a dogu's chart artifact
   - apiGroups:
       - "source.toolkit.fluxcd.io"
     resources:
-      - helmreleases
       - ocirepositories
     verbs:
       - create
@@ -20,7 +20,34 @@ rules:
   - apiGroups:
       - "source.toolkit.fluxcd.io"
     resources:
-      - helmreleases/status
       - ocirepositories/status
     verbs:
       - get
+  # dogu v3: manage the HelmRelease (helm-controller) that installs a dogu's chart.
+  - apiGroups:
+      - "helm.toolkit.fluxcd.io"
+    resources:
+      - helmreleases
+    verbs:
+      - create
+      - list
+      - get
+      - watch
+      - patch
+  - apiGroups:
+      - "helm.toolkit.fluxcd.io"
+    resources:
+      - helmreleases/status
+    verbs:
+      - get
+  # dogu v3: read-only access so Helm `lookup` resolves during the chart validation render.
+  # Namespaced on purpose: dogu charts may only `lookup` resources in their own (release)
+  # namespace; cluster-scoped or cross-namespace lookups are unsupported and will fail validation.
+  - apiGroups:
+      - "*"
+    resources:
+      - "*"
+    verbs:
+      - get
+      - list
+{{- end }}

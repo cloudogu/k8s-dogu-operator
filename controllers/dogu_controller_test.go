@@ -83,6 +83,7 @@ func TestDoguReconciler_Reconcile(t *testing.T) {
 		doguInterfaceFn       func(t *testing.T) doguInterface
 		requeueHandlerV2Fn    func(t *testing.T) RequeueHandlerV2
 		eventRecorderFn       func(t *testing.T) eventRecorder
+		doguV3Enabled         bool
 	}
 	tests := []struct {
 		name    string
@@ -110,8 +111,28 @@ func TestDoguReconciler_Reconcile(t *testing.T) {
 			wantErr: assert.NoError,
 		},
 		{
+			name: "should not reconcile dogu api version v3 if not enabled",
+			fields: fields{
+				clientFn: func(t *testing.T) client.Client {
+					mck := NewMockK8sClient(t)
+					dogu := &v2.Dogu{}
+					mck.EXPECT().Get(testCtx, types.NamespacedName{Name: testCasDoguName, Namespace: testNamespace}, dogu).Return(nil).Run(func(ctx context.Context, key client.ObjectKey, obj client.Object, opts ...client.GetOption) {
+						*obj.(*v2.Dogu) = v2.Dogu{
+							Name: testCasDoguName, Namespace: testNamespace, Annotations: map[string]string{"k8s.cloudogu.com/v3beta1-doguApiVersion": "v3"},
+							Spec: v2.DoguSpec{Name: "official/" + testCasDoguName},
+						}
+					})
+					return mck
+				},
+			},
+			req:     testRequest,
+			want:    controllerruntime.Result{},
+			wantErr: assert.NoError,
+		},
+		{
 			name: "should reconcile new change dogu api version v3",
 			fields: fields{
+				doguV3Enabled: true,
 				clientFn: func(t *testing.T) client.Client {
 					mck := NewMockK8sClient(t)
 					dogu := &v2.Dogu{}
@@ -144,6 +165,7 @@ func TestDoguReconciler_Reconcile(t *testing.T) {
 		{
 			name: "should reconcile new delete dogu api version v3",
 			fields: fields{
+				doguV3Enabled: true,
 				clientFn: func(t *testing.T) client.Client {
 					mck := NewMockK8sClient(t)
 					dogu := &v2.Dogu{}
@@ -427,6 +449,7 @@ func TestDoguReconciler_Reconcile(t *testing.T) {
 				doguInterface:       doguClientInterface,
 				requeueHandlerV2:    requeueHandlerV2,
 				eventRecorder:       eventRecoder,
+				doguV3Enabled:       tt.fields.doguV3Enabled,
 			}
 			got, err := r.Reconcile(testCtx, tt.req)
 			if !tt.wantErr(t, err, fmt.Sprintf("Reconcile(%v, %v)", testCtx, tt.req)) {

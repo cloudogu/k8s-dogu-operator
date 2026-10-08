@@ -21,7 +21,9 @@ const (
 	StageEnvironmentVariable = "STAGE"
 )
 
-const defaultRequeueTime = time.Second * 5
+const (
+	defaultRequeueTime = time.Second * 5
+)
 
 const cacheDir = "/tmp/dogu-registry-cache"
 
@@ -58,9 +60,12 @@ const (
 	envVarAuthRegistrationEnabled                 = "AUTH_REGISTRATION_ENABLED"
 	envVarExpositionEnabled                       = "EXPOSITION_ENABLED"
 	envVarWarpMenuEntryEnabled                    = "WARP_MENU_ENTRY_ENABLED"
+	envVarDoguV3Enabled                           = "DOGU_V3_ENABLED"
 	envVarDisablePostfixDependencyCheck           = "DISABLE_POSTFIX_DEPENDENCY_CHECK"
 	envVarRequeueTimeForDoguResourceInNanoseconds = "REQUEUE_TIME_FOR_DOGU_RESOURCE_IN_NANOSECONDS"
 	envVarImageConfigCacheSize                    = "IMAGE_CONFIG_CACHE_SIZE"
+	envVarDoguHelmReconciliationInterval          = "DOGU_HELM_RECONCILIATION_INTERVAL"
+	envVarDoguHelmRetryInterval                   = "DOGU_HELM_RETRY_INTERVAL"
 	errMsgFailedToParseEnvVarValue                = "failed to parse value of environment variable %s: %w"
 )
 
@@ -94,6 +99,8 @@ type OperatorConfig struct {
 	AuthRegistrationEnabled bool `json:"auth_registration_enabled"`
 	// ExpositionEnabled defines whether the operator should manage Exposition CRs for v2 dogus.
 	ExpositionEnabled bool `json:"exposition_enabled"`
+	// DoguV3Enabled defines whether the operator should allow v3 dogus.
+	DoguV3Enabled bool `json:"dogu_v3_enabled"`
 	// WarpMenuEntryEnabled defines whether the operator should manage WarpMenuEntry CRs for v2 dogus.
 	WarpMenuEntryEnabled bool `json:"warpmenuentry_enabled"`
 	// DisablePostfixDependencyCheck defines whether the operator should validate dependencies on postfix.
@@ -110,18 +117,17 @@ type OperatorConfig struct {
 	ExperimentalHelmfileSupport bool                   `json:"experimental_helmfile_support"`
 	HelmfileGlobalConfig        HelmfileGlobalConfig   `json:"helmfile_global_config"`
 	HelmfileOpenDeskConfig      HelmfileOpenDeskConfig `json:"helmfile_opendesk_config"`
+	// DoguHelmReconciliationInterval defines the interval in which dogu Helm releases should be reconciled by helm-controller
+	DoguHelmReconciliationInterval time.Duration `json:"dogu_helm_reconciliation_interval"`
+	// DoguHelmRetryInterval defines the interval in which Helm installs or upgrade for a dogu should be retried on error
+	DoguHelmRetryInterval time.Duration `json:"dogu_helm_retry_interval"`
 }
 
 type Version string
 
 // NewOperatorConfig creates a new operator config by reading values from the environment variables
 func NewOperatorConfig(version Version) (*OperatorConfig, error) {
-	stage, err := getRequiredEnvVar(StageEnvironmentVariable)
-	if err != nil {
-		log.Error(err, "Error reading stage environment variable. Use Stage production")
-	}
-	Stage = stage
-
+	Stage = getEnvVarWithDefault(StageEnvironmentVariable, Stage)
 	if Stage == StageDevelopment {
 		log.Info("Starting in development mode! This is not recommended for production!")
 	}
@@ -150,28 +156,43 @@ func NewOperatorConfig(version Version) (*OperatorConfig, error) {
 	}
 	log.Info(fmt.Sprintf("Found stored dogu reconciler requeue time! Using requeue time %s", doguReconcilerRequeueTime.String()))
 
+	doguHelmReconciliationInterval, err := readDuration(envVarDoguHelmReconciliationInterval)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read helm reconciliation interval: %w", err)
+	}
+	log.Info(fmt.Sprintf("Found stored helm reconciliation interval! Using interval %s", doguHelmReconciliationInterval))
+
+	doguHelmRetryInterval, err := readDuration(envVarDoguHelmRetryInterval)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read helm retry interval: %w", err)
+	}
+	log.Info(fmt.Sprintf("Found stored helm retry interval! Using interval %s", doguHelmRetryInterval))
+
 	return &OperatorConfig{
-		Namespace:                     namespace,
-		DoguRegistry:                  doguRegistryData,
-		Version:                       &parsedVersion,
-		NetworkPoliciesEnabled:        getNetworkPoliciesEnabled(),
-		AuthRegistrationEnabled:       getAuthRegistrationEnabled(),
-		ExpositionEnabled:             getExpositionEnabled(),
-		WarpMenuEntryEnabled:          getWarpMenuEntryEnabled(),
-		DisablePostfixDependencyCheck: getDisablePostfixDependencyCheck(),
-		RequeueTimeForDoguReconciler:  doguReconcilerRequeueTime,
-		ImageConfigCacheSize:          getImageConfigCacheSize(),
-		DoguV3Registry:                readDoguV3RegistryData(),
-		ExperimentalHelmfileSupport:   getExperimentalHelmfileSupport(),
-		HelmfileGlobalConfig:          getHelmfileGlobalConfig(),
-		HelmfileOpenDeskConfig:        getHelmfileOpenDeskConfig(),
+		Namespace:                     	namespace,
+		DoguRegistry:                  	doguRegistryData,
+		Version:                       	&parsedVersion,
+		NetworkPoliciesEnabled:        	getNetworkPoliciesEnabled(),
+		AuthRegistrationEnabled:       	getAuthRegistrationEnabled(),
+		ExpositionEnabled:             	getExpositionEnabled(),
+		WarpMenuEntryEnabled:          	getWarpMenuEntryEnabled(),
+		DoguV3Enabled:                 	getDoguV3Enabled(),
+		DisablePostfixDependencyCheck: 	getDisablePostfixDependencyCheck(),
+		RequeueTimeForDoguReconciler:  	doguReconcilerRequeueTime,
+		ImageConfigCacheSize:          	getImageConfigCacheSize(),
+		DoguV3Registry:                	readDoguV3RegistryData(),
+		DoguHelmReconciliationInterval: doguHelmReconciliationInterval,
+		DoguHelmRetryInterval:          doguHelmRetryInterval,
+		ExperimentalHelmfileSupport:    getExperimentalHelmfileSupport(),
+		HelmfileGlobalConfig:          	getHelmfileGlobalConfig(),
+		HelmfileOpenDeskConfig:         getHelmfileOpenDeskConfig(),
 	}, nil
 }
 
 func readNamespace() (string, error) {
 	namespace, err := getRequiredEnvVar(envVarNamespace)
 	if err != nil {
-		return "", newEnvVarError(envVarNamespace, err)
+		return "", err
 	}
 
 	return namespace, nil
@@ -180,7 +201,7 @@ func readNamespace() (string, error) {
 func readDoguReconcilerRequeueTime() (time.Duration, error) {
 	requeueTimeString, err := getRequiredEnvVar(envVarRequeueTimeForDoguResourceInNanoseconds)
 	if err != nil {
-		return defaultRequeueTime, newEnvVarError(envVarNamespace, err)
+		return defaultRequeueTime, err
 	}
 	requeueTime, err := strconv.ParseFloat(requeueTimeString, 64)
 	if err != nil {
@@ -225,26 +246,22 @@ func readDoguV3RegistryData() DoguRegistryData {
 func readDoguRegistryData() (DoguRegistryData, error) {
 	endpoint, err := getRequiredEnvVar(envVarDoguRegistryEndpoint)
 	if err != nil {
-		return DoguRegistryData{}, newEnvVarError(envVarDoguRegistryEndpoint, err)
+		return DoguRegistryData{}, err
 	}
 	// remove tailing slash
 	endpoint = strings.TrimSuffix(endpoint, "/")
 
 	username, err := getRequiredEnvVar(envVarDoguRegistryUsername)
 	if err != nil {
-		return DoguRegistryData{}, newEnvVarError(envVarDoguRegistryUsername, err)
+		return DoguRegistryData{}, err
 	}
 
 	password, err := getRequiredEnvVar(envVarDoguRegistryPassword)
 	if err != nil {
-		return DoguRegistryData{}, newEnvVarError(envVarDoguRegistryPassword, err)
+		return DoguRegistryData{}, err
 	}
 
-	urlschema, err := getRequiredEnvVar(envVarDoguRegistryURLSchema)
-	if err != nil {
-		log.Info(envVarDoguRegistryURLSchema + " not set, using default")
-		urlschema = "default"
-	}
+	urlschema := getEnvVarWithDefault(envVarDoguRegistryURLSchema, "default")
 
 	return DoguRegistryData{
 		Endpoint:  endpoint,
@@ -254,10 +271,20 @@ func readDoguRegistryData() (DoguRegistryData, error) {
 	}, nil
 }
 
+func getEnvVarWithDefault(name string, defaultValue string) string {
+	value, found := os.LookupEnv(name)
+	if !found {
+		log.Info("environment variable not set, using default.", "variable", name, "default", defaultValue)
+		return defaultValue
+	}
+	return value
+
+}
+
 func getRequiredEnvVar(name string) (string, error) {
 	ns, found := os.LookupEnv(name)
 	if !found {
-		return "", fmt.Errorf("environment variable %s must be set", name)
+		return "", fmt.Errorf("failed to get env var [%s]: environment variable %s must be set", name, name)
 	}
 	return ns, nil
 }
@@ -384,8 +411,20 @@ func (o *OperatorConfig) GetRemoteCredentials() *core.Credentials {
 	}
 }
 
-func newEnvVarError(envVar string, err error) error {
-	return fmt.Errorf("failed to get env var [%s]: %w", envVar, err)
+func getDoguV3Enabled() bool {
+	doguV3EnabledStr, found := os.LookupEnv(envVarDoguV3Enabled)
+	if !found {
+		log.Info(fmt.Sprintf("Environment variable %s not set. Disable dogu v3 by default", envVarDoguV3Enabled))
+		return false
+	}
+
+	doguV3Enabled, err := strconv.ParseBool(doguV3EnabledStr)
+	if err != nil {
+		log.Error(fmt.Errorf(errMsgFailedToParseEnvVarValue, envVarDoguV3Enabled, err), "Disable dogu v3 by default")
+		return false
+	}
+
+	return doguV3Enabled
 }
 
 func getExperimentalHelmfileSupport() bool {
@@ -561,6 +600,18 @@ func getImageConfigCacheSize() int {
 	}
 
 	return size
+}
+
+func readDuration(envVar string) (time.Duration, error) {
+	timeString, err := getRequiredEnvVar(envVar)
+	if err != nil {
+		return 0, err
+	}
+	duration, err := time.ParseDuration(timeString)
+	if err != nil {
+		return 0, fmt.Errorf("value of env var [%s] is no valid duration: %w", envVar, err)
+	}
+	return duration, nil
 }
 
 func GetStage() (string, error) {

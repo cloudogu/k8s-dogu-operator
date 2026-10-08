@@ -13,7 +13,8 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
 	expositionv1 "github.com/cloudogu/k8s-exposition-lib/api/v1"
 	warpmenuentryv1 "github.com/cloudogu/k8s-warp-menu-entry-lib/api/v1"
-	flux "github.com/fluxcd/source-controller/api/v1"
+	helmv2 "github.com/fluxcd/helm-controller/api/v2"
+	fluxsource "github.com/fluxcd/source-controller/api/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	coreV1 "k8s.io/api/core/v1"
 	netv1 "k8s.io/api/networking/v1"
@@ -70,6 +71,7 @@ type DoguReconciler struct {
 	authRegistrationEnabled bool
 	expositionEnabled       bool
 	warpMenuEntryEnabled    bool
+	doguV3Enabled           bool
 }
 
 func NewDoguEvents() chan event.TypedGenericEvent[*doguv2.Dogu] {
@@ -111,6 +113,7 @@ func NewDoguReconciler(
 		authRegistrationEnabled: config.AuthRegistrationEnabled,
 		expositionEnabled:       config.ExpositionEnabled,
 		warpMenuEntryEnabled:    config.WarpMenuEntryEnabled,
+		doguV3Enabled:           config.DoguV3Enabled,
 	}
 	err := r.setupWithManager(manager)
 	if err != nil {
@@ -177,10 +180,16 @@ func (r *DoguReconciler) handleDoguV2(ctx context.Context, req ctrl.Request, dog
 }
 
 func (r *DoguReconciler) handleDoguV3(ctx context.Context, _ ctrl.Request, doguResource *doguv2.Dogu) (ctrl.Result, error) {
+	logger := log.FromContext(ctx)
+	if !r.doguV3Enabled {
+		logger.Info("dogu v3 feature flag is disabled, skipping reconciliation")
+		return ctrl.Result{}, nil
+	}
+
 	v3Dogu := &v3beta1.Dogu{}
 	err := doguResource.ConvertTo(v3Dogu)
 	if err != nil {
-		log.FromContext(ctx).Error(err, "failed to convert v2 dogu to v3 dogu", "dogu", doguResource.Spec.Name)
+		logger.Error(err, "failed to convert v2 dogu to v3 dogu", "dogu", doguResource.Spec.Name)
 		// do not reconcile, end here and have your admin look into the problem
 		return ctrl.Result{}, nil
 	}
@@ -224,8 +233,8 @@ func (r *DoguReconciler) setupWithManager(mgr ctrlManager) error {
 		Owns(&coreV1.PersistentVolumeClaim{}).
 		Owns(&netv1.NetworkPolicy{}).
 		Owns(&coreV1.Pod{}).
-		Owns(&flux.OCIRepository{}).
 		WatchesRawSource(source.Channel(r.externalEvents, &handler.TypedEnqueueRequestForObject[*doguv2.Dogu]{}))
+
 	if r.authRegistrationEnabled {
 		controllerBuilder = controllerBuilder.Owns(&authRegApiV1.AuthRegistration{})
 	}
@@ -235,6 +244,13 @@ func (r *DoguReconciler) setupWithManager(mgr ctrlManager) error {
 	if r.warpMenuEntryEnabled {
 		controllerBuilder = controllerBuilder.Owns(&warpmenuentryv1.WarpMenuEntry{})
 	}
+
+	if r.doguV3Enabled {
+		controllerBuilder = controllerBuilder.
+			Owns(&fluxsource.OCIRepository{}).
+			Owns(&helmv2.HelmRelease{})
+	}
+
 	return controllerBuilder.Complete(r)
 }
 

@@ -55,10 +55,14 @@ func TestNewDoguInstallOrChangeUseCase(t *testing.T) {
 	recorderMock := NewMockEventRecorder(t)
 	ensureOCIStep := &install.EnsureOCIRepositoryStep{}
 	waitOCIStep := &install.WaitForOCIRepositoryReadyStep{}
+	validateChartStep := &install.ValidateChartStep{}
+	helmReleaseStep := &install.EnsureHelmReleaseStep{}
 
 	got := NewDoguInstallOrChangeUseCase(
 		ensureOCIStep,
 		waitOCIStep,
+		validateChartStep,
+		helmReleaseStep,
 		clientMock,
 		recorderMock,
 	)
@@ -66,6 +70,8 @@ func TestNewDoguInstallOrChangeUseCase(t *testing.T) {
 	wantTypes := []string{
 		"*install.EnsureOCIRepositoryStep",
 		"*install.WaitForOCIRepositoryReadyStep",
+		"*install.ValidateChartStep",
+		"*install.EnsureHelmReleaseStep",
 	}
 
 	assert.NotNil(t, got)

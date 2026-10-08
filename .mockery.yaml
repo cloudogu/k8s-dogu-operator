@@ -1,15 +1,46 @@
-with-expecter: true
+# Configuration for mockery v3 (https://vektra.github.io/mockery/v3/configuration/).
+# This file belongs to the repository and may be adapted freely;
 all: true
-exclude: ["vendor"]
 recursive: true
-inpackage: true
-include-auto-generated: false
-resolve-type-alias: false
-mockname: "{{.Mock}}{{.InterfaceName | camelcase }}"
-filename: "mock_{{.InterfaceName}}_test.go"
-dir: "{{.InterfaceDir}}"
+# "testify" generates mocks with EXPECT() expectations. Alternatively, "matryer" generates
+# moq-style mocks with a func field per method (no testify dependency), see
+# https://vektra.github.io/mockery/v3.8/template/matryer/
+template: testify
 
+dir: "{{.InterfaceDir}}"
+filename: "mocks_test.go"
+pkgname: "{{.SrcPackageName}}"
+structname: "{{.Mock}}{{.InterfaceName | firstUpper }}"
+
+exclude-subpkg-regex:
+  - "vendor"
+
+# 'make mocks-init' adds one entry per module (several in a go workspace).
 packages:
+  github.com/cloudogu/k8s-dogu-operator/v3/internal/charts:
+    config:
+      # matryer: moq-style func-field mocks. unroll-variadic must NOT reach this package (matryer's
+      # schema rejects that testify-only option); it lives on the v3 entry below, which excludes
+      # internal/charts from its subtree.
+      template: "matryer"
   github.com/cloudogu/k8s-dogu-operator/v3:
     config:
-      recursive: True
+      # unroll-variadic lives here (not at root) so every testify package gets it, while the matryer
+      # internal/charts package is excluded from this entry's recursive subtree and so does not.
+      template-data:
+        unroll-variadic: true
+      exclude-subpkg-regex:
+        - "vendor"
+        - "internal/charts"
+  main:
+    config: {}
+
+# Alternative to 'all: true': maintain mocks deliberately per interface, so that only
+# mocks a test actually needs are generated. Set 'all: false' and list the interfaces:
+#
+# all: false
+# packages:
+#   github.com/cloudogu/my-module/core:
+#     interfaces:
+#       CacheManager:
+#       FileReader:

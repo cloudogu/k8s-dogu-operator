@@ -15,7 +15,7 @@ controllerManager:
   image:
     registry: docker.io
     repository: cloudogu/k8s-dogu-operator
-    tag: 3.30.0
+    tag: 3.31.1
   imagePullPolicy: IfNotPresent
   env:
     logLevel: debug
@@ -23,6 +23,7 @@ controllerManager:
     authRegistrationEnabled: false
     expositionEnabled: false
     warpMenuEntryEnabled: false
+    doguV3Enabled: false
     disablePostfixDependencyCheck: false
     doguStartupProbeTimeout: 1
     doguRestartSuccessfulHistoryLimit: 3
@@ -31,6 +32,12 @@ controllerManager:
     doguDescriptorMaxRetries: 20
     getServiceAccountPodMaxRetries: 5
     requeueTimeForDoguResourceInNanoseconds: 5000000000
+    # doguHelmReconciliationInterval defines the interval in which dogu Helm releases should be reconciled by helm-controller.
+    # Values are suffixed by duration units f.i. 30s.
+    doguHelmReconciliationInterval: 30s
+    # doguHelmRetryInterval defines the interval in which Helm installs or upgrade for a dogu should be retried on error.
+    # Values are suffixed by duration units f.i. 5m.
+    doguHelmRetryInterval: 5m
     # imageConfigCacheSize is the maximum number of dogu image configs cached in memory
     # Set to 0 to disable caching.
     imageConfigCacheSize: 50
