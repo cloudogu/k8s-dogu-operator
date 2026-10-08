@@ -103,8 +103,8 @@ mock-dcc-v3: ## Deploys a mock Dogu V3 DCC (nginx) for 'testing/nexus' and point
 	fi
 	@echo "Creating/updating configmap test-v3-dogus..."
 	@kubectl -n ${NAMESPACE} create configmap test-v3-dogus \
-		--from-file=3.86.2-6=$(MOCK_DCC_DIR)/nexus.json \
-		--from-file=3.86.2-7=$(MOCK_DCC_DIR)/nexus-not-found.json \
+		--from-file=3.86.2-8=$(MOCK_DCC_DIR)/nexus.json \
+		--from-file=3.86.2-9=$(MOCK_DCC_DIR)/nexus-not-found.json \
 		--dry-run=client -o yaml | kubectl -n ${NAMESPACE} apply -f -
 	@echo "Deploying mock DCC (pod/service/networkpolicy)..."
 	@echo "  recreating pod so it picks up the current descriptors (mounted configmaps resync lazily)"

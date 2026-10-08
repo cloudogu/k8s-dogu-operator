@@ -6,4 +6,4 @@ spec:
   doguApiVersion: v3
   doguNamespace: internal
   name: nexus
-  version: 3.86.2-6
+  version: 3.86.2-8
