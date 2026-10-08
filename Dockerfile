@@ -13,6 +13,7 @@ RUN go mod download
 
 # Copy the go source
 COPY main.go main.go
+COPY interfaces.go interfaces.go
 COPY controllers/ controllers/
 COPY internal/ internal/
 

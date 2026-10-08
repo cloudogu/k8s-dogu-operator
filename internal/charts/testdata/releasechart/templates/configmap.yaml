@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: release-info
+data:
+  isInstall: "{{ .Release.IsInstall }}"
+  isUpgrade: "{{ .Release.IsUpgrade }}"
+  revision: "{{ .Release.Revision }}"

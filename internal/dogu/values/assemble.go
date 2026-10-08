@@ -37,20 +37,17 @@ type MetadataMapping struct {
 	Metavalues map[string]MetaValue `yaml:"metavalues"`
 }
 
-type Values map[string]any
+type Values = map[string]any
 
-// Assembler allows to patch a dogu Helm values with dogu-values-metadata and global config values from the cluster.
 type Assembler struct {
 	k8s client.Client
 }
 
-// NewAssembler creates a new dogu Helm values assembler.
+// NewAssembler creates an Assembler that reads the global config from the cluster via the given client.
 func NewAssembler(k8s client.Client) *Assembler {
 	return &Assembler{k8s: k8s}
 }
 
-// Assemble merges the given Helm values from dogu CR YAML along with the dogu-values-metadata.yaml, as well global
-// config values and returns them.
 func (a Assembler) Assemble(ctx context.Context, cr *v3beta1.Dogu, valuesMeta []byte) (Values, error) {
 	logger := log.FromContext(ctx)
 
@@ -69,7 +66,11 @@ func (a Assembler) Assemble(ctx context.Context, cr *v3beta1.Dogu, valuesMeta []
 		return nil, fmt.Errorf("failed to get values from global config: %w", err)
 	}
 
-	finalValues := mergeValues(crValues, globalConfigValues, doguMetaValues)
+	// Place global config under global.cesConfig.
+	nestedGlobalConfig := Values{"global": Values{"cesConfig": globalConfigValues}}
+
+	// Merge order sets (later wins): global config < dogu CR values < mapped meta values.
+	finalValues := mergeValues(nestedGlobalConfig, crValues, doguMetaValues)
 
 	return finalValues, nil
 }
@@ -96,36 +97,43 @@ func getDoguMetaValues(cr *v3beta1.Dogu, patchTpl []byte, logger logr.Logger) (V
 	}
 
 	for k, v := range cr.Spec.MappedValues {
-		if _, ok := mappings.Metavalues[k]; !ok {
+		metaValue, ok := mappings.Metavalues[k]
+		if !ok {
 			continue
 		}
 
-		for _, key := range mappings.Metavalues[k].Keys {
-			var mappedValue string
-
-			if key.Mapping == nil {
-				mappedValue = v
-			} else {
-				val, ok := key.Mapping[v]
-				if !ok {
-					logger.Error(errors.New("missing mapping"), "no Mapping found in mapping meta data", "key", v)
-				}
-				mappedValue = val
-			}
-
-			strval := fmt.Sprintf("%s=%s", key.Path, mappedValue)
-			if pErr := strvals.ParseInto(strval, mappedValues); pErr != nil {
-				logger.Error(pErr, "error parsing key path from mapping meta data", "path", key.Path)
-			}
-		}
+		applyMappedValueKeys(metaValue.Keys, v, mappedValues, logger)
 	}
 
 	return mappedValues, nil
 }
 
-func getGlobalConfigValues(ctx context.Context, cr *v3beta1.Dogu, cl client.Client) (Values, error) {
+// applyMappedValueKeys resolves each mapped key for the given CR value and parses the resulting
+// "path=value" expressions into mappedValues. Parsing and lookup errors are logged, not returned.
+func applyMappedValueKeys(keys []Mapping, v string, mappedValues Values, logger logr.Logger) {
+	for _, key := range keys {
+		var mappedValue string
+
+		if key.Mapping == nil {
+			mappedValue = v
+		} else {
+			val, ok := key.Mapping[v]
+			if !ok {
+				logger.Error(errors.New("missing mapping"), "no Mapping found in mapping meta data", "key", v)
+			}
+			mappedValue = val
+		}
+
+		strval := fmt.Sprintf("%s=%s", key.Path, mappedValue)
+		if pErr := strvals.ParseInto(strval, mappedValues); pErr != nil {
+			logger.Error(pErr, "error parsing key path from mapping meta data", "path", key.Path)
+		}
+	}
+}
+
+func getGlobalConfigValues(ctx context.Context, cr *v3beta1.Dogu, s client.Client) (Values, error) {
 	gcm := &coreV1.ConfigMap{}
-	if gErr := cl.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: globalConfigName}, gcm); gErr != nil {
+	if gErr := s.Get(ctx, types.NamespacedName{Namespace: cr.Namespace, Name: globalConfigName}, gcm); gErr != nil {
 		return nil, fmt.Errorf("failed to get global config: %w", gErr)
 	}
 
