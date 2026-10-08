@@ -1,0 +1,7 @@
+controller:
+  config:
+    config-global: |
+      tune.bufsize 65536
+      tune.http.maxhdr 256
+  ingressClassResource:
+    enabled: true
