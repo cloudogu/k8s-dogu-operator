@@ -13,6 +13,15 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
+const (
+	// ReasonInstallFailed is the reason for the Ready condition if the installation of the dogu's release failed.
+	// TODO replace with the constant from k8s-dogu-lib once it is available there.
+	ReasonInstallFailed = "InstallFailed"
+	// ReasonUpgradeFailed is the reason for the Ready condition if the upgrade of the dogu's release failed.
+	// TODO replace with the constant from k8s-dogu-lib once it is available there.
+	ReasonUpgradeFailed = "UpgradeFailed"
+)
+
 // HelmReleaseStatusStep translates the state of the dogu's HelmRelease and its workloads into the conditions of the dogu resource.
 type HelmReleaseStatusStep struct {
 	k8sClient     K8sClient
@@ -57,12 +66,25 @@ func (hrs *HelmReleaseStatusStep) Run(ctx context.Context, doguResource *v3beta1
 	//  Persist the status only if a condition changed; a conflict results in a requeue.
 	//  Never touch conditions owned by other steps.
 
-	// 6. Return the StepResult depending on the release phase (the use-case derives the Ready condition from it):
-	//  ChartUnavailable                => Abort(ChartAvailable reason, msg)
-	//  Installing / Upgrading          => RequeueAfter(fallback, ReasonInstalling / ReasonUpgrading, msg)
-	//  InstallFailed / UpgradeFailed   => Abort(InstallFailed / UpgradeFailed, msg)
-	//  Deployed, workloads not healthy => RequeueAfter(fallback, ReasonWorkloadsNotReady / ReasonStopped, msg)
-	//  Deployed, workloads healthy     => Continue()
+	return stepResultForRelease(state)
+}
 
-	return stepsv3.Continue()
+func stepResultForRelease(state fluxstate.ReleaseState) stepsv3.StepResult {
+	switch state.Phase {
+	case fluxstate.PhaseChartUnavailable:
+		return stepsv3.Abort(v3beta1.ReasonDownloadFailed, state.Message)
+	case fluxstate.PhaseInstalling:
+		return stepsv3.RequeueAfter(defaultRequeueAfter, v3beta1.ReasonInstalling, state.Message)
+	case fluxstate.PhaseUpgrading:
+		return stepsv3.RequeueAfter(defaultRequeueAfter, v3beta1.ReasonUpgrading, state.Message)
+	case fluxstate.PhaseInstallFailed:
+		return stepsv3.Abort(ReasonInstallFailed, state.Message)
+	case fluxstate.PhaseUpgradeFailed:
+		return stepsv3.Abort(ReasonUpgradeFailed, state.Message)
+	case fluxstate.PhaseDeployed:
+		// TODO requeue with ReasonWorkloadsNotReady / ReasonStopped once the health check is implemented
+		return stepsv3.Continue()
+	default:
+		return stepsv3.RequeueWithError(fmt.Errorf("unknown release phase %q", state.Phase), v3beta1.ReasonInstalling)
+	}
 }
