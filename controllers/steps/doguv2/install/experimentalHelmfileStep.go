@@ -50,6 +50,11 @@ func NewExperimentalHelmfileStep(
 	}
 }
 
+// TODO
+// - finalizer
+// - delete
+// - conditions
+
 func (e *ExperimentalHelmfileStep) Run(ctx context.Context, resource *doguv2.Dogu) steps.StepResult {
 	logger := log.FromContext(ctx).
 		WithName("experimentalHelmfileStep").
@@ -285,7 +290,7 @@ func extractHelmfileArchive(ctx context.Context, source io.Reader, destination s
 			if err := os.MkdirAll(target, 0755); err != nil {
 				return err
 			}
-		case tar.TypeReg, tar.TypeRegA:
+		case tar.TypeReg:
 			if len(parts) < 2 {
 				return fmt.Errorf("archive must contain a root directory")
 			}
