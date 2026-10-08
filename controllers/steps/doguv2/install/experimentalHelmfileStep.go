@@ -266,6 +266,11 @@ func extractHelmfileArchive(ctx context.Context, source io.Reader, destination s
 			return err
 		}
 
+		if header.Typeflag == tar.TypeXGlobalHeader {
+			// Global PAX metadata is not an extracted filesystem entry.
+			continue
+		}
+
 		name := strings.TrimPrefix(header.Name, "./")
 		parts := strings.Split(strings.TrimSuffix(name, "/"), "/")
 		if !filepath.IsLocal(name) || strings.Contains(name, "\\") {

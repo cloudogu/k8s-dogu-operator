@@ -33,7 +33,9 @@ func helmfileArchive(t *testing.T, headers []tar.Header, contents []string) []by
 	tw := tar.NewWriter(gz)
 	for i, header := range headers {
 		header.Size = int64(len(contents[i]))
-		header.Mode = 0644
+		if header.Typeflag != tar.TypeXGlobalHeader {
+			header.Mode = 0644
+		}
 		require.NoError(t, tw.WriteHeader(&header))
 		_, err := tw.Write([]byte(contents[i]))
 		require.NoError(t, err)
@@ -116,6 +118,39 @@ func TestExperimentalHelmfilePreparation(t *testing.T) {
 }
 
 func TestExtractHelmfileArchive(t *testing.T) {
+	for _, position := range []int{0, 1} {
+		name := "global PAX header before files"
+		if position == 1 {
+			name = "global PAX header between files"
+		}
+		t.Run(name, func(t *testing.T) {
+			globalHeader := tar.Header{
+				Name: "pax_global_header", Typeflag: tar.TypeXGlobalHeader,
+				Format: tar.FormatPAX, PAXRecords: map[string]string{"comment": "source revision"},
+			}
+			headers := []tar.Header{
+				{Name: "root/helmfile.yaml", Typeflag: tar.TypeReg},
+				{Name: "root/values.yaml", Typeflag: tar.TypeReg},
+			}
+			contents := []string{"releases: []", "global: {}"}
+			if position == 0 {
+				headers = append([]tar.Header{globalHeader}, headers...)
+				contents = append([]string{""}, contents...)
+			} else {
+				headers = []tar.Header{headers[0], globalHeader, headers[1]}
+				contents = []string{contents[0], "", contents[1]}
+			}
+			destination := t.TempDir()
+			require.NoError(t, extractHelmfileArchive(context.Background(), bytes.NewReader(helmfileArchive(t, headers, contents)), destination))
+			for path, expected := range map[string]string{"helmfile.yaml": "releases: []", "values.yaml": "global: {}"} {
+				actual, err := os.ReadFile(filepath.Join(destination, path))
+				require.NoError(t, err)
+				assert.Equal(t, expected, string(actual))
+			}
+			_, err := os.Stat(filepath.Join(destination, "pax_global_header"))
+			assert.ErrorIs(t, err, os.ErrNotExist)
+		})
+	}
 	for _, tc := range []struct {
 		name     string
 		headers  []tar.Header
