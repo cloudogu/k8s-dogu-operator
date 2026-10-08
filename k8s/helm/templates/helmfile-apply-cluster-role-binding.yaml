@@ -1,0 +1,16 @@
+{{- if .Values.controllerManager.experimental.helmfileSupport.enabled }}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: '{{ include "k8s-dogu-operator.name" . }}-helmfile-apply-cluster-role-binding'
+  labels:
+    {{- include "k8s-dogu-operator.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: '{{ include "k8s-dogu-operator.name" . }}-helmfile-apply-cluster-role'
+subjects:
+- kind: ServiceAccount
+  name: '{{ include "k8s-dogu-operator.name" . }}-controller-manager'
+  namespace: '{{ .Release.Namespace }}'
+{{- end }}
