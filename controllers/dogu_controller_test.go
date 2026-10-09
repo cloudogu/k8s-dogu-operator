@@ -104,12 +104,12 @@ func TestDoguReconciler_Reconcile(t *testing.T) {
 				},
 				requeueHandlerV2Fn: func(t *testing.T) RequeueHandlerV2 {
 					mck := NewMockRequeueHandlerV2(t)
-					mck.EXPECT().Handle(testCtx, &v2.Dogu{}, assert.AnError, time.Duration(0)).Return(controllerruntime.Result{Requeue: true, RequeueAfter: requeueTime}, nil)
+					mck.EXPECT().Handle(testCtx, &v2.Dogu{}, assert.AnError, time.Duration(0)).Return(controllerruntime.Result{RequeueAfter: requeueTime}, nil)
 					return mck
 				},
 			},
 			req:     controllerruntime.Request{},
-			want:    controllerruntime.Result{Requeue: true, RequeueAfter: requeueTime},
+			want:    controllerruntime.Result{RequeueAfter: requeueTime},
 			wantErr: assert.NoError,
 		},
 		{
@@ -268,12 +268,12 @@ func TestDoguReconciler_Reconcile(t *testing.T) {
 				},
 				requeueHandlerV2Fn: func(t *testing.T) RequeueHandlerV2 {
 					mck := NewMockRequeueHandlerV2(t)
-					mck.EXPECT().Handle(testCtx, mock.AnythingOfType("*v2.Dogu"), errors.Join(assert.AnError), time.Duration(0)).Return(controllerruntime.Result{Requeue: true, RequeueAfter: requeueTime}, nil)
+					mck.EXPECT().Handle(testCtx, mock.AnythingOfType("*v2.Dogu"), errors.Join(assert.AnError), time.Duration(0)).Return(controllerruntime.Result{RequeueAfter: requeueTime}, nil)
 					return mck
 				},
 			},
 			req:     controllerruntime.Request{NamespacedName: types.NamespacedName{Name: testDoguName}},
-			want:    controllerruntime.Result{Requeue: true, RequeueAfter: requeueTime},
+			want:    controllerruntime.Result{RequeueAfter: requeueTime},
 			wantErr: assert.NoError,
 		},
 		{
@@ -311,12 +311,12 @@ func TestDoguReconciler_Reconcile(t *testing.T) {
 				},
 				requeueHandlerV2Fn: func(t *testing.T) RequeueHandlerV2 {
 					mck := NewMockRequeueHandlerV2(t)
-					mck.EXPECT().Handle(testCtx, mock.AnythingOfType("*v2.Dogu"), errors.Join(assert.AnError), time.Duration(0)).Return(controllerruntime.Result{Requeue: true, RequeueAfter: requeueTime}, nil)
+					mck.EXPECT().Handle(testCtx, mock.AnythingOfType("*v2.Dogu"), errors.Join(assert.AnError), time.Duration(0)).Return(controllerruntime.Result{RequeueAfter: requeueTime}, nil)
 					return mck
 				},
 			},
 			req:     controllerruntime.Request{NamespacedName: types.NamespacedName{Name: testDoguName}},
-			want:    controllerruntime.Result{Requeue: true, RequeueAfter: 5 * time.Second},
+			want:    controllerruntime.Result{RequeueAfter: 5 * time.Second},
 			wantErr: assert.NoError,
 		},
 		{
@@ -354,7 +354,7 @@ func TestDoguReconciler_Reconcile(t *testing.T) {
 				},
 				requeueHandlerV2Fn: func(t *testing.T) RequeueHandlerV2 {
 					mck := NewMockRequeueHandlerV2(t)
-					mck.EXPECT().Handle(testCtx, mock.AnythingOfType("*v2.Dogu"), nil, time.Duration(0)).Return(controllerruntime.Result{Requeue: false, RequeueAfter: 0}, nil)
+					mck.EXPECT().Handle(testCtx, mock.AnythingOfType("*v2.Dogu"), nil, time.Duration(0)).Return(controllerruntime.Result{RequeueAfter: 0}, nil)
 					return mck
 				},
 			},
@@ -397,7 +397,7 @@ func TestDoguReconciler_Reconcile(t *testing.T) {
 				},
 				requeueHandlerV2Fn: func(t *testing.T) RequeueHandlerV2 {
 					mck := NewMockRequeueHandlerV2(t)
-					mck.EXPECT().Handle(testCtx, mock.AnythingOfType("*v2.Dogu"), nil, time.Duration(0)).Return(controllerruntime.Result{Requeue: false, RequeueAfter: 0}, nil)
+					mck.EXPECT().Handle(testCtx, mock.AnythingOfType("*v2.Dogu"), nil, time.Duration(0)).Return(controllerruntime.Result{RequeueAfter: 0}, nil)
 					return mck
 				},
 			},
