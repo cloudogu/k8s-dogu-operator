@@ -5,19 +5,24 @@ import (
 	"testing"
 
 	"github.com/cloudogu/k8s-dogu-lib/v3/api/v3beta1"
+	opConfig "github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
 	"github.com/cloudogu/k8s-dogu-operator/v3/internal/dogu/health"
+	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
+	"sigs.k8s.io/controller-runtime/pkg/config"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
@@ -66,10 +71,58 @@ func persistedHealthy(t *testing.T, c client.Client) *metav1.Condition {
 	return meta.FindStatusCondition(persisted.Status.Conditions, v3beta1.ConditionHealthy)
 }
 
+func TestNewDoguHealthReconciler(t *testing.T) {
+	t.Run("should register the controller with the manager if dogu v3 is enabled", func(t *testing.T) {
+		scheme := healthTestScheme()
+		require.NoError(t, appsv1.AddToScheme(scheme))
+		managerMock := newMockCtrlManager(t)
+		managerMock.EXPECT().GetClient().Return(nil)
+		// controller names are validated process-wide, so registering in several tests would fail
+		managerMock.EXPECT().GetControllerOptions().Return(config.Controller{SkipNameValidation: ptr.To(true)})
+		managerMock.EXPECT().GetScheme().Return(scheme)
+		managerMock.EXPECT().GetLogger().Return(logr.Logger{})
+		managerMock.EXPECT().Add(mock.Anything).Return(nil)
+		managerMock.EXPECT().GetCache().Return(nil)
+		managerMock.EXPECT().GetRESTMapper().Return(nil).Maybe()
+
+		sut, err := NewDoguHealthReconciler(nil, nil, managerMock, &opConfig.OperatorConfig{DoguV3Enabled: true})
+
+		require.NoError(t, err)
+		assert.NotNil(t, sut)
+	})
+
+	t.Run("should not register the controller with the manager if dogu v3 is disabled", func(t *testing.T) {
+		// the manager mock fails the test on any call
+		sut, err := NewDoguHealthReconciler(nil, nil, newMockCtrlManager(t), &opConfig.OperatorConfig{DoguV3Enabled: false})
+
+		require.NoError(t, err)
+		assert.NotNil(t, sut)
+	})
+
+	t.Run("should return error if the controller cannot be registered", func(t *testing.T) {
+		scheme := healthTestScheme()
+		require.NoError(t, appsv1.AddToScheme(scheme))
+		managerMock := newMockCtrlManager(t)
+		managerMock.EXPECT().GetClient().Return(nil)
+		// controller names are validated process-wide, so registering in several tests would fail
+		managerMock.EXPECT().GetControllerOptions().Return(config.Controller{SkipNameValidation: ptr.To(true)})
+		managerMock.EXPECT().GetScheme().Return(scheme)
+		managerMock.EXPECT().GetLogger().Return(logr.Logger{})
+		managerMock.EXPECT().Add(mock.Anything).Return(assert.AnError)
+		managerMock.EXPECT().GetCache().Return(nil).Maybe()
+		managerMock.EXPECT().GetRESTMapper().Return(nil).Maybe()
+
+		_, err := NewDoguHealthReconciler(nil, nil, managerMock, &opConfig.OperatorConfig{DoguV3Enabled: true})
+
+		require.ErrorIs(t, err, assert.AnError)
+		assert.ErrorContains(t, err, "failed to setup dogu-v3-health controller")
+	})
+}
+
 func TestDoguHealthReconciler_Reconcile(t *testing.T) {
 	t.Run("should do nothing if the dogu does not exist", func(t *testing.T) {
 		c := newFakeClient(interceptor.Funcs{})
-		sut := NewDoguHealthReconciler(c, newMockHealthChecker(t), newMockEventRecorder(t))
+		sut := newDoguHealthReconciler(c, newMockHealthChecker(t), newMockEventRecorder(t))
 
 		result, err := sut.Reconcile(context.Background(), healthTestRequest)
 
@@ -83,7 +136,7 @@ func TestDoguHealthReconciler_Reconcile(t *testing.T) {
 				return assert.AnError
 			},
 		})
-		sut := NewDoguHealthReconciler(c, newMockHealthChecker(t), newMockEventRecorder(t))
+		sut := newDoguHealthReconciler(c, newMockHealthChecker(t), newMockEventRecorder(t))
 
 		_, err := sut.Reconcile(context.Background(), healthTestRequest)
 
@@ -93,7 +146,7 @@ func TestDoguHealthReconciler_Reconcile(t *testing.T) {
 
 	t.Run("should skip v2 dogus", func(t *testing.T) {
 		c := newFakeClient(interceptor.Funcs{}, healthTestDogu(v3beta1.DoguApiVersionV2))
-		sut := NewDoguHealthReconciler(c, newMockHealthChecker(t), newMockEventRecorder(t))
+		sut := newDoguHealthReconciler(c, newMockHealthChecker(t), newMockEventRecorder(t))
 
 		result, err := sut.Reconcile(context.Background(), healthTestRequest)
 
@@ -106,7 +159,7 @@ func TestDoguHealthReconciler_Reconcile(t *testing.T) {
 		c := newFakeClient(interceptor.Funcs{}, healthTestDogu(v3beta1.DoguApiVersionV3))
 		checker := newMockHealthChecker(t)
 		checker.EXPECT().Check(mock.Anything, mock.Anything).Return(health.State{}, assert.AnError)
-		sut := NewDoguHealthReconciler(c, checker, newMockEventRecorder(t))
+		sut := newDoguHealthReconciler(c, checker, newMockEventRecorder(t))
 
 		_, err := sut.Reconcile(context.Background(), healthTestRequest)
 
@@ -121,7 +174,7 @@ func TestDoguHealthReconciler_Reconcile(t *testing.T) {
 		checker.EXPECT().Check(mock.Anything, mock.Anything).Return(healthyState, nil)
 		recorder := newMockEventRecorder(t)
 		recorder.EXPECT().Event(mock.Anything, corev1.EventTypeNormal, v3beta1.ReasonSucceeded, "all workloads are ready").Return()
-		sut := NewDoguHealthReconciler(c, checker, recorder)
+		sut := newDoguHealthReconciler(c, checker, recorder)
 
 		result, err := sut.Reconcile(context.Background(), healthTestRequest)
 
@@ -139,7 +192,7 @@ func TestDoguHealthReconciler_Reconcile(t *testing.T) {
 		c := newFakeClient(interceptor.Funcs{}, healthTestDogu(v3beta1.DoguApiVersionV3))
 		checker := newMockHealthChecker(t)
 		checker.EXPECT().Check(mock.Anything, mock.Anything).Return(unhealthyState, nil)
-		sut := NewDoguHealthReconciler(c, checker, newMockEventRecorder(t))
+		sut := newDoguHealthReconciler(c, checker, newMockEventRecorder(t))
 
 		_, err := sut.Reconcile(context.Background(), healthTestRequest)
 
@@ -157,7 +210,7 @@ func TestDoguHealthReconciler_Reconcile(t *testing.T) {
 		checker.EXPECT().Check(mock.Anything, mock.Anything).Return(unhealthyState, nil)
 		recorder := newMockEventRecorder(t)
 		recorder.EXPECT().Event(mock.Anything, corev1.EventTypeWarning, v3beta1.ReasonWorkloadsNotReady, "workloads not ready").Return()
-		sut := NewDoguHealthReconciler(c, checker, recorder)
+		sut := newDoguHealthReconciler(c, checker, recorder)
 
 		_, err := sut.Reconcile(context.Background(), healthTestRequest)
 
@@ -173,7 +226,7 @@ func TestDoguHealthReconciler_Reconcile(t *testing.T) {
 		c := newFakeClient(interceptor.Funcs{}, dogu)
 		checker := newMockHealthChecker(t)
 		checker.EXPECT().Check(mock.Anything, mock.Anything).Return(unhealthyState, nil)
-		sut := NewDoguHealthReconciler(c, checker, newMockEventRecorder(t))
+		sut := newDoguHealthReconciler(c, checker, newMockEventRecorder(t))
 
 		_, err := sut.Reconcile(context.Background(), healthTestRequest)
 
@@ -193,7 +246,7 @@ func TestDoguHealthReconciler_Reconcile(t *testing.T) {
 		}, dogu)
 		checker := newMockHealthChecker(t)
 		checker.EXPECT().Check(mock.Anything, mock.Anything).Return(healthyState, nil)
-		sut := NewDoguHealthReconciler(c, checker, newMockEventRecorder(t))
+		sut := newDoguHealthReconciler(c, checker, newMockEventRecorder(t))
 
 		_, err := sut.Reconcile(context.Background(), healthTestRequest)
 
@@ -216,7 +269,7 @@ func TestDoguHealthReconciler_Reconcile(t *testing.T) {
 		checker.EXPECT().Check(mock.Anything, mock.Anything).Return(healthyState, nil).Times(2)
 		recorder := newMockEventRecorder(t)
 		recorder.EXPECT().Event(mock.Anything, corev1.EventTypeNormal, v3beta1.ReasonSucceeded, "all workloads are ready").Return().Once()
-		sut := NewDoguHealthReconciler(c, checker, recorder)
+		sut := newDoguHealthReconciler(c, checker, recorder)
 
 		_, err := sut.Reconcile(context.Background(), healthTestRequest)
 
@@ -235,11 +288,111 @@ func TestDoguHealthReconciler_Reconcile(t *testing.T) {
 		}, healthTestDogu(v3beta1.DoguApiVersionV3))
 		checker := newMockHealthChecker(t)
 		checker.EXPECT().Check(mock.Anything, mock.Anything).Return(healthyState, nil)
-		sut := NewDoguHealthReconciler(c, checker, newMockEventRecorder(t))
+		sut := newDoguHealthReconciler(c, checker, newMockEventRecorder(t))
 
 		_, err := sut.Reconcile(context.Background(), healthTestRequest)
 
 		require.ErrorIs(t, err, assert.AnError)
 		assert.ErrorContains(t, err, "failed to update Healthy condition")
+	})
+}
+
+func mappingTestDogu(name, namespace, specName string, apiVersion v3beta1.DoguApiVersion) *v3beta1.Dogu {
+	return &v3beta1.Dogu{
+		ObjectMeta: objectMeta(name, namespace, ""),
+		Spec:       v3beta1.DoguSpec{Name: specName, DoguApiVersion: apiVersion},
+	}
+}
+
+func newMappingClient(t *testing.T, funcs interceptor.Funcs, dogus ...client.Object) client.Client {
+	t.Helper()
+	scheme := healthTestScheme()
+	require.NoError(t, v3beta1.AddToScheme(scheme))
+	return fake.NewClientBuilder().WithScheme(scheme).WithObjects(dogus...).WithInterceptorFuncs(funcs).Build()
+}
+
+func request(name string) reconcile.Request {
+	return reconcile.Request{Namespace: testNamespace, Name: name}
+}
+
+func objectMeta(name, namespace, doguName string) metav1.ObjectMeta {
+	objMeta := metav1.ObjectMeta{Name: name, Namespace: namespace}
+	if doguName != "" {
+		objMeta.Labels = map[string]string{v3beta1.DoguLabelName: doguName}
+	}
+	return objMeta
+}
+
+func TestNewDoguRequestMapper(t *testing.T) {
+	workload := &appsv1.Deployment{ObjectMeta: objectMeta("nexus-web", testNamespace, testDoguName)}
+
+	t.Run("should map the workload to the v3 dogu with the matching spec name", func(t *testing.T) {
+		// the resource name deliberately differs from the spec name, the mapping must use the spec name
+		c := newMappingClient(t, interceptor.Funcs{},
+			mappingTestDogu("my-nexus", testNamespace, testDoguName, v3beta1.DoguApiVersionV3),
+		)
+
+		requests := newDoguRequestMapper(c)(context.Background(), workload)
+
+		assert.Equal(t, []reconcile.Request{request("my-nexus")}, requests)
+	})
+
+	t.Run("should map only the matching dogu if there are multiple dogus", func(t *testing.T) {
+		c := newMappingClient(t, interceptor.Funcs{},
+			mappingTestDogu("ldap", testNamespace, "ldap", v3beta1.DoguApiVersionV3),
+			mappingTestDogu(testDoguName, testNamespace, testDoguName, v3beta1.DoguApiVersionV3),
+			mappingTestDogu("redmine", testNamespace, "redmine", v3beta1.DoguApiVersionV3),
+			mappingTestDogu(testDoguName, "other-namespace", testDoguName, v3beta1.DoguApiVersionV3),
+		)
+
+		requests := newDoguRequestMapper(c)(context.Background(), workload)
+
+		assert.Equal(t, []reconcile.Request{request(testDoguName)}, requests)
+	})
+
+	t.Run("should map nothing if no dogu matches the label", func(t *testing.T) {
+		c := newMappingClient(t, interceptor.Funcs{},
+			mappingTestDogu("ldap", testNamespace, "ldap", v3beta1.DoguApiVersionV3),
+		)
+
+		requests := newDoguRequestMapper(c)(context.Background(), workload)
+
+		assert.Empty(t, requests)
+	})
+
+	t.Run("should map nothing if only a v2 dogu matches the label", func(t *testing.T) {
+		c := newMappingClient(t, interceptor.Funcs{},
+			mappingTestDogu(testDoguName, testNamespace, testDoguName, v3beta1.DoguApiVersionV2),
+		)
+
+		requests := newDoguRequestMapper(c)(context.Background(), workload)
+
+		assert.Empty(t, requests)
+	})
+
+	t.Run("should map nothing and not list dogus if the workload has no dogu label", func(t *testing.T) {
+		c := newMappingClient(t, interceptor.Funcs{
+			List: func(context.Context, client.WithWatch, client.ObjectList, ...client.ListOption) error {
+				t.Fatal("dogus must not be listed for a workload without dogu label")
+				return nil
+			},
+		})
+		unlabeled := &appsv1.StatefulSet{ObjectMeta: objectMeta("postgres", testNamespace, "")}
+
+		requests := newDoguRequestMapper(c)(context.Background(), unlabeled)
+
+		assert.Empty(t, requests)
+	})
+
+	t.Run("should map nothing if the dogus cannot be listed", func(t *testing.T) {
+		c := newMappingClient(t, interceptor.Funcs{
+			List: func(context.Context, client.WithWatch, client.ObjectList, ...client.ListOption) error {
+				return assert.AnError
+			},
+		})
+
+		requests := newDoguRequestMapper(c)(context.Background(), workload)
+
+		assert.Empty(t, requests)
 	})
 }
