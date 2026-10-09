@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [#339] Add step to validate values and template of a dogu helm chart
 - [#339] Add mock for dcc v3
 
+
+### Changed
+- Update go to 1.27.2
+
+### Security
+- Fix GO-CVEs: GO-2026-6603, GO-2026-6610, GO-2026-6611, GO-2026-6612, GO-2026-6617
+
 ## [v3.31.1] - 2026-10-06
 ### Added
 - [#340] Add a pre-flight checker for PVC expansions, shrink attempts, and storage class changes in rendered Dogu v3 charts.
