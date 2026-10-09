@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"os"
 	"testing"
 	"time"
@@ -15,6 +16,7 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/v3/internal/flux"
 	helmflux "github.com/fluxcd/helm-controller/api/v2"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	helmchart "helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chartutil"
@@ -160,6 +162,93 @@ data:
 			}
 		}
 	}
+}
+
+func TestRuntimePatchesValidationFailures(t *testing.T) {
+	for _, tt := range []struct {
+		name, template, errorContains string
+		renderFailure                 bool
+	}{
+		{name: "template", errorContains: "mandatory value missing", template: `apiVersion: v1
+runtimePatches:
+  values.yaml:
+    host: {{ fail "mandatory value missing" }}
+`},
+		{name: "render", renderFailure: true},
+	} {
+		for _, skip := range []bool{false, true} {
+			t.Run(tt.name+"/skipSchema="+fmt.Sprint(skip), func(t *testing.T) {
+				cl, dogu := runtimeFailureFixture(t, "fqdn: new.example")
+				dogu.Spec.SkipSchemaValidation = skip
+				service := NewMockChartService(t)
+				service.EXPECT().DoguMetaValues(mock.Anything, dogu).Return(nil, false, nil).Once()
+				service.EXPECT().ChartPatchTemplate(mock.Anything, dogu).Return([]byte(tt.template), tt.template != "", nil).Once()
+				if tt.renderFailure {
+					if !skip {
+						service.EXPECT().ValidateValues(mock.Anything, dogu, mock.Anything).Return(nil).Once()
+					}
+					service.EXPECT().Render(mock.Anything, dogu, mock.Anything).Return(nil, assert.AnError).Once()
+				}
+				step := NewValidateChartStep(service, values.NewAssembler(cl), cl)
+				result := step.Run(t.Context(), dogu)
+				assert.False(t, result.Continue)
+				if tt.renderFailure {
+					assertCondition(t, dogu, v3beta1.ConditionValid, metav1.ConditionFalse, ReasonRenderFailed)
+				} else {
+					require.ErrorContains(t, result.Err, tt.errorContains)
+				}
+			})
+		}
+	}
+}
+
+func TestRuntimePatchesWriteFailuresPreserveHelmRelease(t *testing.T) {
+	for _, tt := range []struct {
+		name, config, template, errorContains string
+	}{
+		{name: "template", config: "fqdn: new.example", errorContains: "mandatory value missing", template: `apiVersion: v1
+runtimePatches:
+  values.yaml:
+    host: {{ fail "mandatory value missing" }}
+`},
+		{name: "serialization", config: "invalid: .nan", errorContains: "unsupported value: NaN"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			cl, dogu := runtimeFailureFixture(t, tt.config)
+			release := &helmflux.HelmRelease{ObjectMeta: metav1.ObjectMeta{Name: dogu.Name, Namespace: dogu.Namespace},
+				Spec: helmflux.HelmReleaseSpec{
+					ReleaseName: "last-valid-release", Suspend: true, Interval: metav1.Duration{Duration: 7 * time.Minute},
+					ChartRef: &helmflux.CrossNamespaceSourceReference{Kind: "OCIRepository", Name: "last-valid-chart"},
+					Values:   &apiext.JSON{Raw: []byte(`{"host":"last-valid.example"}`)},
+				}}
+			require.NoError(t, cl.Create(t.Context(), release))
+			require.NoError(t, cl.Get(t.Context(), client.ObjectKeyFromObject(release), release))
+			before := release.DeepCopy()
+			service := NewMockChartService(t)
+			service.EXPECT().DoguMetaValues(mock.Anything, dogu).Return(nil, false, nil).Once()
+			service.EXPECT().ChartPatchTemplate(mock.Anything, dogu).Return([]byte(tt.template), tt.template != "", nil).Once()
+			step := NewEnsureHelmReleaseStep(cl, &config.OperatorConfig{}, service, record.NewFakeRecorder(10))
+			result := step.Run(t.Context(), dogu)
+			assert.False(t, result.Continue)
+			require.ErrorContains(t, result.Err, tt.errorContains)
+			require.NoError(t, cl.Get(t.Context(), client.ObjectKeyFromObject(release), release))
+			assert.Equal(t, before, release, "failure must not change any part of the last valid release")
+		})
+	}
+}
+
+func runtimeFailureFixture(t *testing.T, configYAML string) (client.Client, *v3beta1.Dogu) {
+	t.Helper()
+	scheme := runtime.NewScheme()
+	require.NoError(t, corev1.AddToScheme(scheme))
+	require.NoError(t, v3beta1.AddToScheme(scheme))
+	require.NoError(t, helmflux.AddToScheme(scheme))
+	dogu := &v3beta1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "fixture", Namespace: "ecosystem"},
+		Spec: v3beta1.DoguSpec{Name: "fixture"}}
+	global := &corev1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Name: "global-config", Namespace: dogu.Namespace},
+		Data: map[string]string{"config.yaml": configYAML}}
+	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(dogu, global).WithStatusSubresource(dogu).Build()
+	return cl, dogu
 }
 
 func TestHelmNumberFidelity(t *testing.T) {
