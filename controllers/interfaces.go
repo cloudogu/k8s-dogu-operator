@@ -7,6 +7,7 @@ import (
 	"github.com/cloudogu/k8s-dogu-lib/v3/api/v2"
 	"github.com/cloudogu/k8s-dogu-lib/v3/api/v3beta1"
 	doguv2 "github.com/cloudogu/k8s-dogu-lib/v3/client/typed/api/v2"
+	"github.com/cloudogu/k8s-dogu-operator/v3/internal/dogu/health"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/record"
@@ -39,6 +40,10 @@ type doguInterface interface {
 
 type eventRecorder interface {
 	record.EventRecorder
+}
+
+type healthChecker interface {
+	Check(ctx context.Context, dogu *v3beta1.Dogu) (health.State, error)
 }
 
 type GenericReconciler interface {

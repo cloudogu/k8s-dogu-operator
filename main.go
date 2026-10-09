@@ -320,6 +320,7 @@ func generalOptions() fx.Option {
 			fx.Annotate(controllers.NewDoguReconciler, fx.ParamTags("", `name:"doguInstallOrChangeUseCase"`, `name:"doguDeleteUseCase"`, `name:"doguV3InstallOrChangeUseCase"`, `name:"doguV3DeleteUseCase"`, "", "", "", "", "", "")),
 			controllers.NewGlobalConfigReconciler,
 			controllers.NewDoguRestartReconciler,
+			controllers.NewDoguHealthReconciler,
 
 			// runners
 			health.NewStartupHandler,
@@ -336,6 +337,9 @@ func generalOptions() fx.Option {
 			},
 			func(*controllers.GlobalConfigReconciler) {
 				// creates a fx dependency on the GlobalConfigReconciler
+			},
+			func(*controllers.DoguHealthReconciler) {
+				// creates a fx dependency on the DoguHealthReconciler
 			},
 
 			func(*health.StartupHandler) {

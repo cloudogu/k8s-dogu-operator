@@ -13,6 +13,7 @@ import (
 	appsv1client "k8s.io/client-go/kubernetes/typed/apps/v1"
 	v1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/tools/record"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 )
 
@@ -101,5 +102,5 @@ type deploymentInterface interface {
 // HealthShutdownHandler is responsible for setting health states to unknown on shutdown of the operator.
 type HealthShutdownHandler interface {
 	// Handle waits for the context to be cancelled and then sets health states to unknown.
-	Handle(ctx context.Context) error
+	Handle(ctx context.Context, k8sClient client.Client) error
 }
