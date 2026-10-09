@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - [#339] Add step to validate values and template of a dogu helm chart
 - [#339] Add mock for dcc v3
+- [#349] Add steps to dogu v3 deletion
 
 
 ### Changed

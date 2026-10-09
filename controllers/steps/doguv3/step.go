@@ -7,6 +7,22 @@ import (
 	"github.com/cloudogu/k8s-dogu-lib/v3/api/v3beta1"
 )
 
+const (
+	// FinalizerName is the finalizer set on a dogu cr so the operator can clean up the resources it
+	// applied (OCIRepository, HelmRelease) before the dogu cr is removed.
+	FinalizerName = "k8s.cloudogu.com/dogu-cleanup"
+
+	// ReasonDeletionFailed is the condition reason and event reason used when a deletion step fails.
+	// It is defined here (and not in k8s-dogu-lib) because the lib only ships ReasonDeleting for the
+	// in-progress case.
+	ReasonDeletionFailed = "DeletionFailed"
+
+	// ReasonDeletionStalled is the condition reason and event reason used when the flux resource being
+	// deleted reports that its own reconciliation has stalled (e.g. a failing helm uninstall). Deletion
+	// keeps retrying - this reason only escalates visibility so an operator can intervene.
+	ReasonDeletionStalled = "DeletionStalled"
+)
+
 // Step defines a single aspect in a dogu lifecycle phase which usually ends up in changed side-effects.
 //
 // The sequence of which step is ran by the reconciler is fixed. Anyhow, they are supposed to work in an idempotent fashion,

@@ -8,12 +8,12 @@ import (
 
 	"github.com/cloudogu/k8s-dogu-lib/v3/api/v3beta1"
 	v3 "github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv3"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv3/deletion"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv3/install"
 	coreV1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
@@ -30,10 +30,24 @@ type DoguUseCase struct {
 	eventRecorder EventRecorder
 }
 
-func NewDoguDeleteUseCase(client client.Client) *DoguUseCase {
+func NewDoguDeleteUseCase(
+	unsuspendStep *deletion.UnsuspendHelmReleaseStep,
+	deleteHelmReleaseStep *deletion.DeleteHelmReleaseStep,
+	deleteOCIRepositoryStep *deletion.DeleteOCIRepositoryStep,
+	removeFinalizerStep *deletion.RemoveFinalizerStep,
+	client K8sClient, recorder EventRecorder) *DoguUseCase {
 	return &DoguUseCase{
-		steps:     []Step{},
-		k8sClient: client,
+		steps: []Step{
+			// Unsuspend first so a suspended HelmRelease is actually processed (and thus uninstalled)
+			// by flux once we delete it. Then delete the HelmRelease and wait for flux to finish the
+			// uninstall, delete the chart source, and finally drop the finalizer so the dogu cr is removed.
+			unsuspendStep,
+			deleteHelmReleaseStep,
+			deleteOCIRepositoryStep,
+			removeFinalizerStep,
+		},
+		k8sClient:     client,
+		eventRecorder: recorder,
 	}
 }
 
@@ -44,6 +58,7 @@ func NewDoguDeleteUseCase(client client.Client) *DoguUseCase {
 // Uber fx provides value groups to use variadic parameters like NewDoguInstallOrChangeUseCase(steps ...doguv3.Step),
 // but these are unordered.
 func NewDoguInstallOrChangeUseCase(
+	finalizerStep *install.CreateFinalizerStep,
 	ociStep *install.EnsureOCIRepositoryStep,
 	waitOCIStep *install.WaitForOCIRepositoryReadyStep,
 	validateChartStep *install.ValidateChartStep,
@@ -51,6 +66,11 @@ func NewDoguInstallOrChangeUseCase(
 	client K8sClient, recorder EventRecorder) *DoguUseCase {
 	return &DoguUseCase{
 		steps: []Step{
+			// CreateFinalizerStep MUST run before any owned resource (OCIRepository, HelmRelease) is
+			// created, so a delete racing an install can never orphan those resources. (In v2 the
+			// finalizer is added after its read-only gate steps, but likewise before resource creation;
+			// v3 has no such gate steps, so "first" is the equivalent placement.)
+			finalizerStep,
 			ociStep,
 			waitOCIStep,
 			validateChartStep,
@@ -75,6 +95,13 @@ func (duc *DoguUseCase) HandleUntilApplied(ctx context.Context, doguResource *v3
 		if !result.Continue {
 			return duc.stopStepExecution(ctx, doguResource, result)
 		}
+	}
+
+	// During deletion the final step removes the finalizer, after which the dogu cr is gone. There is
+	// no Ready condition to set (the resource is disappearing) and a Status().Update would race the
+	// object's removal and fail with NotFound. So once all deletion steps completed, we are simply done.
+	if !doguResource.GetDeletionTimestamp().IsZero() {
+		return 0, nil
 	}
 
 	// success
