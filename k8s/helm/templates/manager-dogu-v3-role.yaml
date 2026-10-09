@@ -34,6 +34,7 @@ rules:
       - get
       - watch
       - patch
+      - update
   - apiGroups:
       - "helm.toolkit.fluxcd.io"
     resources:

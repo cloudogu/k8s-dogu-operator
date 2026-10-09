@@ -49,7 +49,7 @@ func (ehr *EnsureHelmReleaseStep) Run(ctx context.Context, doguResource *doguv3.
 	}
 	//If helm release should be suspended, then abort
 	if helmRelease != nil && helmRelease.Spec.Suspend == true {
-		return stepsv3.Abort(ReasonReconciliationPaused, messageReconciliationPaused)
+		return stepsv3.Abort(ReasonReconciliationPaused, messageSuspended)
 	}
 
 	templateAsm := values3.NewAssembler(ehr.k8sClient)
@@ -62,8 +62,6 @@ func (ehr *EnsureHelmReleaseStep) Run(ctx context.Context, doguResource *doguv3.
 		Namespace: doguResource.Namespace,
 		Name:      doguResource.Spec.Name,
 	}
-
-	//TODO: if  helm release is present and release.Spec.Suspend is set to true, then return
 
 	// Use patch because the repository resource will be updated by the helm-controller.
 	// CreateOrUpdate would produce conflict errors and increase the number of reconciles.

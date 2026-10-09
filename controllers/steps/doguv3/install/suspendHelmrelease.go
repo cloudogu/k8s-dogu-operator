@@ -28,6 +28,7 @@ const (
 	messagePVCResizeInProgress  = "HelmRelease reconciliation is suspended while a PVC resize is in progress"
 	messageDoguStopped          = "HelmRelease reconciliation is suspended because the Dogu is stopped"
 	messageReconciliationPaused = "HelmRelease reconciliation is suspended because spec.pauseReconciliation is set"
+	messageSuspended            = "HelmRelease reconciliation is suspended"
 )
 
 // SuspendHelmReleaseStep ensures the HelmRelease is suspended under certain conditions.
@@ -48,7 +49,6 @@ func NewSuspendHelmReleaseStep(k8sClient K8sClient, chartService ChartService, r
 }
 
 func (shr *SuspendHelmReleaseStep) Run(ctx context.Context, doguResource *doguv3.Dogu) stepsv3.StepResult {
-
 	//Get Helm release if it exists
 	helmRelease, hrErr := shr.existingHelmRelease(ctx, doguResource)
 	if hrErr != nil {
@@ -102,58 +102,6 @@ func (shr *SuspendHelmReleaseStep) Run(ctx context.Context, doguResource *doguv3
 	return stepsv3.Continue()
 }
 
-func (shr *SuspendHelmReleaseStep) shouldSuspendResult(ctx context.Context, doguResource *doguv3.Dogu) (bool, string, string, error) {
-	suspendHelmRelease := false
-	var reason, message string
-	if doguResource.Spec.PauseReconciliation {
-		suspendHelmRelease = true
-		reason, message = ReasonReconciliationPaused, messageReconciliationPaused
-	} else if doguResource.Spec.Stopped {
-		suspendHelmRelease = true
-		reason, message = ReasonDoguStopped, messageDoguStopped
-	} else {
-		resize, err := shr.resizeInProgress(ctx, doguResource)
-		if err != nil {
-			return false, "", "", err
-		}
-		if resize {
-			suspendHelmRelease = true
-			reason, message = ReasonPVCResizeInProgress, messagePVCResizeInProgress
-		}
-	}
-	return suspendHelmRelease, reason, message, nil
-}
-
-func (shr *SuspendHelmReleaseStep) resizeInProgress(ctx context.Context, doguResource *doguv3.Dogu) (bool, error) {
-
-	//TODO: return correct value
-	return false, nil
-
-	chartValues := map[string]any{}
-
-	templateAsm := values3.NewAssembler(shr.k8sClient)
-	values, err := combineValues(ctx, doguResource, shr.chartService, templateAsm)
-	if err != nil {
-		return false, err
-	}
-
-	if err := json.Unmarshal(values.Raw, &chartValues); err != nil {
-		return false, fmt.Errorf("failed to decode assembled chart values for PVC resize check: %w", err)
-	}
-	renderedObjects, err := shr.chartService.Render(ctx, doguResource, chartValues)
-	if err != nil {
-		return false, fmt.Errorf("failed to render chart for PVC resize check: %w", err)
-	}
-	checkResult, err := shr.resizeChecker.Check(ctx, doguResource.Spec.DoguNamespace, renderedObjects)
-	if err != nil {
-		return false, fmt.Errorf("failed to check PVC resize requirements: %w", err)
-	}
-	if len(checkResult.ResizeRequests) > 0 {
-		return true, nil
-	}
-	return false, nil
-}
-
 func (shr *SuspendHelmReleaseStep) existingHelmRelease(ctx context.Context, doguResource *doguv3.Dogu) (*flux.HelmRelease, error) {
 	release := &flux.HelmRelease{}
 	err := shr.k8sClient.Get(ctx, client.ObjectKey{Namespace: doguResource.Namespace, Name: doguResource.Spec.Name}, release)
@@ -167,8 +115,9 @@ func (shr *SuspendHelmReleaseStep) existingHelmRelease(ctx context.Context, dogu
 }
 
 func (shr *SuspendHelmReleaseStep) ChangeSuspendValueOfHelmRelease(ctx context.Context, release *flux.HelmRelease, suspend bool) error {
-	release.Spec.Suspend = suspend
-	if err := shr.k8sClient.Update(ctx, release); err != nil {
+	releaseCR := release.DeepCopy()
+	releaseCR.Spec.Suspend = suspend
+	if err := shr.k8sClient.Patch(ctx, releaseCR, client.MergeFrom(release)); err != nil {
 		return fmt.Errorf("failed to suspend HelmRelease %q: %w", release.Name, err)
 	}
 	return nil
@@ -190,6 +139,7 @@ func (shr *SuspendHelmReleaseStep) suspensionReason(ctx context.Context, doguRes
 	if err != nil {
 		return "", "", fmt.Errorf("failed to render chart for PVC resize check: %w", err)
 	}
+
 	checkResult, err := shr.resizeChecker.Check(ctx, doguResource.Spec.DoguNamespace, renderedObjects)
 	if err != nil {
 		return "", "", fmt.Errorf("failed to check PVC resize requirements: %w", err)
@@ -216,6 +166,7 @@ func (shr *SuspendHelmReleaseStep) setSuspendedConditionOnDoguCR(ctx context.Con
 	if !apimeta.SetStatusCondition(&doguResource.Status.Conditions, condition) {
 		return nil
 	}
+
 	if err := shr.k8sClient.Status().Update(ctx, doguResource); err != nil {
 		return fmt.Errorf("failed to update Dogu suspended condition: %w", err)
 	}
