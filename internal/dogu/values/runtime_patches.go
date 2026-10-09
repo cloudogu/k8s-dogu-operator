@@ -8,12 +8,35 @@ import (
 	"regexp"
 	"slices"
 	"strings"
+	"text/template"
 
+	"github.com/Masterminds/sprig/v3"
+	"github.com/mitchellh/copystructure"
 	"gopkg.in/yaml.v3"
+	syaml "sigs.k8s.io/yaml"
 )
 
 var runtimeRootKey = regexp.MustCompile(`^([A-Za-z_][A-Za-z0-9_.-]*):(?:[ \t]*(.*))?$`)
 var runtimeDocumentStart = regexp.MustCompile(`^---(?:[ \t]+(?:#.*)?)?$`)
+
+func renderRuntimePatches(source []byte, global Values) (Values, error) {
+	if source == nil {
+		return nil, nil
+	}
+	section, err := runtimePatchSection(source)
+	if err != nil || section == nil {
+		return nil, err
+	}
+	tpl, err := template.New("runtimePatches").Option("missingkey=error").Funcs(runtimePatchFunctions(global)).Parse(string(section))
+	if err != nil {
+		return nil, fmt.Errorf("parse runtimePatches template: %w", err)
+	}
+	var output bytes.Buffer
+	if err = tpl.Execute(&output, nil); err != nil {
+		return nil, fmt.Errorf("execute runtimePatches template: %w", err)
+	}
+	return decodeRuntimePatches(output.Bytes())
+}
 
 // runtimePatchSection isolates only the literal runtimePatches section. The
 // envelope deliberately supports block-style, unquoted root keys only; template
@@ -75,6 +98,38 @@ func runtimePatchSection(source []byte) ([]byte, error) {
 		return nil, fmt.Errorf("runtimePatches requires apiVersion v1")
 	}
 	return []byte(strings.Join(lines[start:end], "")), nil
+}
+
+func runtimePatchFunctions(global Values) template.FuncMap {
+	funcs := sprig.TxtFuncMap()
+	for _, name := range []string{"env", "expandenv", "getHostByName"} {
+		delete(funcs, name)
+	}
+	funcs["globalConfig"] = func(path string) (any, error) {
+		var value any = global
+		segments := strings.Split(path, "/")
+		for _, segment := range segments {
+			if segment == "" {
+				return nil, fmt.Errorf("globalConfig path contains an empty segment")
+			}
+		}
+		for _, segment := range segments {
+			mapping, ok := value.(map[string]any)
+			if !ok {
+				return nil, nil
+			}
+			value = mapping[segment]
+		}
+		if value == nil {
+			return nil, nil
+		}
+		return copystructure.Copy(value)
+	}
+	funcs["toYaml"] = func(value any) (string, error) {
+		data, err := syaml.Marshal(value)
+		return strings.TrimSuffix(string(data), "\n"), err
+	}
+	return funcs
 }
 
 func decodeRuntimePatches(output []byte) (Values, error) {
