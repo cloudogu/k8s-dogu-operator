@@ -22,5 +22,5 @@ USER 65532:65532
 
 COPY --from=helmfile --chown=65532:65532 /usr/local/bin/helmfile /
 COPY --from=builder --chown=65532:65532 /workspace /
-COPY --from=builder --chown=65532:65532 /helm_plugins/helm-diff/bin /helm_plugins/bin
-COPY --from=builder --chown=65532:65532 /helm_plugins/helm-diff/plugin.yaml /helm_plugins/
+COPY --from=builder --chown=65532:65532 /helm_plugins/helm-diff/bin /helm_plugins/helm-diff/bin
+COPY --from=builder --chown=65532:65532 /helm_plugins/helm-diff/plugin.yaml /helm_plugins/helm-diff/
