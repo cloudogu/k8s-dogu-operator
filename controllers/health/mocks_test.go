@@ -8108,16 +8108,16 @@ func (_m *MockHealthShutdownHandler) EXPECT() *MockHealthShutdownHandler_Expecte
 }
 
 // Handle provides a mock function for the type MockHealthShutdownHandler
-func (_mock *MockHealthShutdownHandler) Handle(ctx context.Context) error {
-	ret := _mock.Called(ctx)
+func (_mock *MockHealthShutdownHandler) Handle(ctx context.Context, k8sClient client.Client) error {
+	ret := _mock.Called(ctx, k8sClient)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Handle")
 	}
 
 	var r0 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context) error); ok {
-		r0 = returnFunc(ctx)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, client.Client) error); ok {
+		r0 = returnFunc(ctx, k8sClient)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -8131,18 +8131,24 @@ type MockHealthShutdownHandler_Handle_Call struct {
 
 // Handle is a helper method to define mock.On call
 //   - ctx context.Context
-func (_e *MockHealthShutdownHandler_Expecter) Handle(ctx any) *MockHealthShutdownHandler_Handle_Call {
-	return &MockHealthShutdownHandler_Handle_Call{Call: _e.mock.On("Handle", ctx)}
+//   - k8sClient client.Client
+func (_e *MockHealthShutdownHandler_Expecter) Handle(ctx any, k8sClient any) *MockHealthShutdownHandler_Handle_Call {
+	return &MockHealthShutdownHandler_Handle_Call{Call: _e.mock.On("Handle", ctx, k8sClient)}
 }
 
-func (_c *MockHealthShutdownHandler_Handle_Call) Run(run func(ctx context.Context)) *MockHealthShutdownHandler_Handle_Call {
+func (_c *MockHealthShutdownHandler_Handle_Call) Run(run func(ctx context.Context, k8sClient client.Client)) *MockHealthShutdownHandler_Handle_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
 			arg0 = args[0].(context.Context)
 		}
+		var arg1 client.Client
+		if args[1] != nil {
+			arg1 = args[1].(client.Client)
+		}
 		run(
 			arg0,
+			arg1,
 		)
 	})
 	return _c
@@ -8153,7 +8159,7 @@ func (_c *MockHealthShutdownHandler_Handle_Call) Return(err error) *MockHealthSh
 	return _c
 }
 
-func (_c *MockHealthShutdownHandler_Handle_Call) RunAndReturn(run func(ctx context.Context) error) *MockHealthShutdownHandler_Handle_Call {
+func (_c *MockHealthShutdownHandler_Handle_Call) RunAndReturn(run func(ctx context.Context, k8sClient client.Client) error) *MockHealthShutdownHandler_Handle_Call {
 	_c.Call.Return(run)
 	return _c
 }

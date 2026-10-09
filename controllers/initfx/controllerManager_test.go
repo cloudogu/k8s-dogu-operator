@@ -181,7 +181,7 @@ func TestNewControllerManager(t *testing.T) {
 					return managerOptions
 				},
 				shutdownHandlerFn: func(t *testing.T) health.HealthShutdownHandler {
-					return health.NewShutdownHandler(newMockDoguInterface(t))
+					return health.NewShutdownHandler(&config.OperatorConfig{})
 				},
 			},
 			wantManagerNotNil: false,
