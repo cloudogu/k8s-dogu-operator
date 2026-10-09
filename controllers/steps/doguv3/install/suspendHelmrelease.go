@@ -50,6 +50,7 @@ func NewSuspendHelmReleaseStep(k8sClient K8sClient, chartService ChartService, r
 
 func (shr *SuspendHelmReleaseStep) Run(ctx context.Context, doguResource *doguv3.Dogu) stepsv3.StepResult {
 	//Get Helm release if it exists
+
 	helmRelease, hrErr := shr.existingHelmRelease(ctx, doguResource)
 	if hrErr != nil {
 		return stepsv3.RequeueWithError(hrErr, doguv3.ReasonInstalling)
@@ -140,7 +141,7 @@ func (shr *SuspendHelmReleaseStep) suspensionReason(ctx context.Context, doguRes
 		return "", "", fmt.Errorf("failed to render chart for PVC resize check: %w", err)
 	}
 
-	checkResult, err := shr.resizeChecker.Check(ctx, doguResource.Spec.DoguNamespace, renderedObjects)
+	checkResult, err := shr.resizeChecker.Check(ctx, doguResource.GetNamespace(), renderedObjects)
 	if err != nil {
 		return "", "", fmt.Errorf("failed to check PVC resize requirements: %w", err)
 	}
