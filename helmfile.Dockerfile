@@ -12,7 +12,7 @@ ARG HELM_PLUGINS=/helm_plugins
 ARG HELM_VERSION=v3.22.0
 ARG HELM_DIFF_VERSION=v3.15.15
 
-RUN go install "helm.sh/helm/v3/cmd/helm@${HELM_VERSION}"
+RUN CGO_ENABLED=0 go install "helm.sh/helm/v3/cmd/helm@${HELM_VERSION}"
 RUN mkdir "${HELM_PLUGINS}" && \
     /workspace/helm plugin install https://github.com/databus23/helm-diff --version "${HELM_DIFF_VERSION}"
 
