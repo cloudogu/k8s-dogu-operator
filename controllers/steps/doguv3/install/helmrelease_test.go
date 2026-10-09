@@ -325,6 +325,23 @@ func TestEnsureHelmReleaseStep_Run(t *testing.T) {
 			},
 			want: v3steps.Continue(),
 		},
+		{
+			name: "should abort when existing helm release is suspended",
+			setupMocks: func(t *testing.T) (K8sClient, ChartService, EventRecorder) {
+				release := fluxhelm.HelmRelease{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "dogu",
+						Namespace: "namespace",
+					},
+					Spec: fluxhelm.HelmReleaseSpec{
+						Suspend: true,
+					},
+				}
+				k8sClient := fake.NewClientBuilder().WithScheme(testScheme).WithObjects(&globalConfig, &release).Build()
+				return k8sClient, NewMockChartService(t), nil
+			},
+			want: v3steps.Abort(ReasonReconciliationPaused, messageSuspended),
+		},
 	}
 
 	for _, test := range tests {
