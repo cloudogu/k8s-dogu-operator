@@ -18,6 +18,7 @@ type DoguRegistryReader interface {
 
 type ChartService interface {
 	DoguMetaValues(ctx context.Context, doguResource *v3beta1.Dogu) ([]byte, bool, error)
+	ChartPatchTemplate(ctx context.Context, doguResource *v3beta1.Dogu) ([]byte, bool, error)
 	ValidateValues(ctx context.Context, doguResource *v3beta1.Dogu, values map[string]any) error
 	Render(ctx context.Context, doguResource *v3beta1.Dogu, values map[string]any) ([]*unstructured.Unstructured, error)
 }

@@ -159,6 +159,80 @@ func (_m *MockChartService) EXPECT() *MockChartService_Expecter {
 	return &MockChartService_Expecter{mock: &_m.Mock}
 }
 
+// ChartPatchTemplate provides a mock function for the type MockChartService
+func (_mock *MockChartService) ChartPatchTemplate(ctx context.Context, doguResource *v3beta1.Dogu) ([]byte, bool, error) {
+	ret := _mock.Called(ctx, doguResource)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ChartPatchTemplate")
+	}
+
+	var r0 []byte
+	var r1 bool
+	var r2 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *v3beta1.Dogu) ([]byte, bool, error)); ok {
+		return returnFunc(ctx, doguResource)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *v3beta1.Dogu) []byte); ok {
+		r0 = returnFunc(ctx, doguResource)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]byte)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, *v3beta1.Dogu) bool); ok {
+		r1 = returnFunc(ctx, doguResource)
+	} else {
+		r1 = ret.Get(1).(bool)
+	}
+	if returnFunc, ok := ret.Get(2).(func(context.Context, *v3beta1.Dogu) error); ok {
+		r2 = returnFunc(ctx, doguResource)
+	} else {
+		r2 = ret.Error(2)
+	}
+	return r0, r1, r2
+}
+
+// MockChartService_ChartPatchTemplate_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ChartPatchTemplate'
+type MockChartService_ChartPatchTemplate_Call struct {
+	*mock.Call
+}
+
+// ChartPatchTemplate is a helper method to define mock.On call
+//   - ctx context.Context
+//   - doguResource *v3beta1.Dogu
+func (_e *MockChartService_Expecter) ChartPatchTemplate(ctx any, doguResource any) *MockChartService_ChartPatchTemplate_Call {
+	return &MockChartService_ChartPatchTemplate_Call{Call: _e.mock.On("ChartPatchTemplate", ctx, doguResource)}
+}
+
+func (_c *MockChartService_ChartPatchTemplate_Call) Run(run func(ctx context.Context, doguResource *v3beta1.Dogu)) *MockChartService_ChartPatchTemplate_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 *v3beta1.Dogu
+		if args[1] != nil {
+			arg1 = args[1].(*v3beta1.Dogu)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockChartService_ChartPatchTemplate_Call) Return(bytes []byte, b bool, err error) *MockChartService_ChartPatchTemplate_Call {
+	_c.Call.Return(bytes, b, err)
+	return _c
+}
+
+func (_c *MockChartService_ChartPatchTemplate_Call) RunAndReturn(run func(ctx context.Context, doguResource *v3beta1.Dogu) ([]byte, bool, error)) *MockChartService_ChartPatchTemplate_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // DoguMetaValues provides a mock function for the type MockChartService
 func (_mock *MockChartService) DoguMetaValues(ctx context.Context, doguResource *v3beta1.Dogu) ([]byte, bool, error) {
 	ret := _mock.Called(ctx, doguResource)

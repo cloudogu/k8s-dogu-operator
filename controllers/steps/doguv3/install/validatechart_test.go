@@ -49,10 +49,11 @@ func TestValidateChartStep_Run(t *testing.T) {
 				doguResource := testDoguResource.DeepCopy()
 				cs := NewMockChartService(t)
 				cs.EXPECT().DoguMetaValues(mock.Anything, doguResource).Return([]byte("meta"), true, nil)
+				cs.EXPECT().ChartPatchTemplate(mock.Anything, doguResource).Return([]byte("runtime"), true, nil)
 				cs.EXPECT().ValidateValues(mock.Anything, doguResource, map[string]any(assembledValues)).Return(nil)
 				cs.EXPECT().Render(mock.Anything, doguResource, map[string]any(assembledValues)).Return(nil, nil)
 				as := NewMockValueAssembler(t)
-				as.EXPECT().Assemble(mock.Anything, doguResource, []byte("meta"), []byte(nil)).Return(assembledValues, nil)
+				as.EXPECT().Assemble(mock.Anything, doguResource, []byte("meta"), []byte("runtime")).Return(assembledValues, nil)
 				return cs, as, newValidationFakeClient(doguResource), doguResource
 			},
 			want: doguv3.Continue(),
@@ -67,6 +68,7 @@ func TestValidateChartStep_Run(t *testing.T) {
 				doguResource := testDoguResource.DeepCopy()
 				cs := NewMockChartService(t)
 				cs.EXPECT().DoguMetaValues(mock.Anything, doguResource).Return(nil, false, nil)
+				cs.EXPECT().ChartPatchTemplate(mock.Anything, doguResource).Return(nil, false, nil)
 				cs.EXPECT().ValidateValues(mock.Anything, doguResource, map[string]any(assembledValues)).Return(assert.AnError)
 				// Render must not be called once the schema check fails.
 				as := NewMockValueAssembler(t)
@@ -87,6 +89,7 @@ func TestValidateChartStep_Run(t *testing.T) {
 				doguResource.Spec.SkipSchemaValidation = true
 				cs := NewMockChartService(t)
 				cs.EXPECT().DoguMetaValues(mock.Anything, doguResource).Return([]byte("meta"), true, nil)
+				cs.EXPECT().ChartPatchTemplate(mock.Anything, doguResource).Return(nil, false, nil)
 				// ValidateValues must not be called when schema validation is skipped.
 				cs.EXPECT().Render(mock.Anything, doguResource, map[string]any(assembledValues)).Return(nil, nil)
 				as := NewMockValueAssembler(t)
@@ -107,6 +110,7 @@ func TestValidateChartStep_Run(t *testing.T) {
 				doguResource.Spec.SkipSchemaValidation = true
 				cs := NewMockChartService(t)
 				cs.EXPECT().DoguMetaValues(mock.Anything, doguResource).Return([]byte("meta"), true, nil)
+				cs.EXPECT().ChartPatchTemplate(mock.Anything, doguResource).Return(nil, false, nil)
 				cs.EXPECT().Render(mock.Anything, doguResource, map[string]any(assembledValues)).Return(nil, assert.AnError)
 				as := NewMockValueAssembler(t)
 				as.EXPECT().Assemble(mock.Anything, doguResource, []byte("meta"), []byte(nil)).Return(assembledValues, nil)
@@ -124,6 +128,7 @@ func TestValidateChartStep_Run(t *testing.T) {
 				doguResource := testDoguResource.DeepCopy()
 				cs := NewMockChartService(t)
 				cs.EXPECT().DoguMetaValues(mock.Anything, doguResource).Return([]byte("meta"), true, nil)
+				cs.EXPECT().ChartPatchTemplate(mock.Anything, doguResource).Return(nil, false, nil)
 				cs.EXPECT().ValidateValues(mock.Anything, doguResource, map[string]any(assembledValues)).Return(nil)
 				cs.EXPECT().Render(mock.Anything, doguResource, map[string]any(assembledValues)).Return(nil, assert.AnError)
 				as := NewMockValueAssembler(t)
@@ -156,6 +161,7 @@ func TestValidateChartStep_Run(t *testing.T) {
 				doguResource := testDoguResource.DeepCopy()
 				cs := NewMockChartService(t)
 				cs.EXPECT().DoguMetaValues(mock.Anything, doguResource).Return([]byte("meta"), true, nil)
+				cs.EXPECT().ChartPatchTemplate(mock.Anything, doguResource).Return(nil, false, nil)
 				as := NewMockValueAssembler(t)
 				as.EXPECT().Assemble(mock.Anything, doguResource, []byte("meta"), []byte(nil)).Return(nil, assert.AnError)
 				return cs, as, newValidationFakeClient(doguResource), doguResource
@@ -184,6 +190,7 @@ func TestValidateChartStep_Run_requeuesWhenStatusUpdateFails(t *testing.T) {
 	doguResource := testDoguResource.DeepCopy()
 	cs := NewMockChartService(t)
 	cs.EXPECT().DoguMetaValues(mock.Anything, doguResource).Return([]byte("meta"), true, nil)
+	cs.EXPECT().ChartPatchTemplate(mock.Anything, doguResource).Return(nil, false, nil)
 	cs.EXPECT().ValidateValues(mock.Anything, doguResource, map[string]any(assembledValues)).Return(nil)
 	cs.EXPECT().Render(mock.Anything, doguResource, map[string]any(assembledValues)).Return(nil, nil)
 	as := NewMockValueAssembler(t)
