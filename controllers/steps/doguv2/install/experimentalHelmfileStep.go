@@ -85,15 +85,9 @@ func (e *ExperimentalHelmfileStep) Run(ctx context.Context, resource *doguv2.Dog
 		return steps.RequeueWithError(fmt.Errorf("failed to extract and configure helmfile: %w", err))
 	}
 
-	err = applyOptions.command(ctx).Run()
+	output, err := applyOptions.command(ctx).CombinedOutput()
 	if err != nil {
-		var stdErr string
-		var exitError *exec.ExitError
-		isExitErr := errors.As(err, &exitError)
-		if isExitErr {
-			stdErr = string(exitError.Stderr)
-		}
-		return steps.RequeueWithError(fmt.Errorf("failed to apply helmfile of %s: %w: stderr: %s", resource.Name, err, stdErr))
+		return steps.RequeueWithError(fmt.Errorf("failed to apply helmfile of %s: %w: output: %s", resource.Name, err, output))
 	}
 
 	return steps.Abort()
@@ -384,6 +378,7 @@ func (h helmfileApplyOptions) command(ctx context.Context) *exec.Cmd {
 		"--helm-binary", h.HelmBin,
 		"--quiet", "--no-color")
 	envWithHelmDirs := append(h.envVars,
+		fmt.Sprintf("PWD=%s", helmfilePath),
 		fmt.Sprintf("HELM_PLUGINS=%s", h.HelmPluginHome),
 		fmt.Sprintf("HELM_CACHE_HOME=%s", h.HelmCacheHome),
 		fmt.Sprintf("HELM_CONFIG_HOME=%s", h.HelmConfigHome),

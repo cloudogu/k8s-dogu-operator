@@ -9,10 +9,13 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/cloudogu/cesapp-lib/core"
+	doguv2 "github.com/cloudogu/k8s-dogu-lib/v3/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -64,6 +67,42 @@ func helmfileTestStep(t *testing.T) *ExperimentalHelmfileStep {
 			Data: map[string]string{"domain": "office.example.org"},
 		}).Build(),
 	}
+}
+
+func TestExperimentalHelmfileRunCapturesFailureOutput(t *testing.T) {
+	ctx := context.Background()
+	step := helmfileTestStep(t)
+	step.isEnabled = true
+	resource := &doguv2.Dogu{Name: "opendesk"}
+	fetcher := newMockResourceDoguFetcher(t)
+	fetcher.EXPECT().FetchWithResource(ctx, resource).Return(&core.Dogu{
+		Properties: map[string]string{"kind": "Helmfile"},
+	}, nil, nil)
+	step.doguFetcher = fetcher
+
+	archive := helmfileArchive(t, []tar.Header{
+		{Name: "opendesk/helmfile.yaml", Typeflag: tar.TypeReg},
+	}, []string{"releases: []"})
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, err := w.Write(archive)
+		assert.NoError(t, err)
+	}))
+	defer server.Close()
+	step.openDeskDoguConfig.HelmfileSource = server.URL
+	step.helmfileGlobalConfig.HelmfileBin = filepath.Join(t.TempDir(), "helmfile")
+	require.NoError(t, os.WriteFile(step.helmfileGlobalConfig.HelmfileBin, []byte(
+		"#!/bin/sh\nprintf 'stdout diagnostic\\n'\nprintf 'stderr diagnostic\\n' >&2\nexit 1\n",
+	), 0755))
+
+	result := step.Run(ctx, resource)
+	require.Error(t, result.Err)
+	assert.False(t, result.Continue)
+	assert.ErrorContains(t, result.Err, "failed to apply helmfile of opendesk")
+	assert.ErrorContains(t, result.Err, "stdout diagnostic")
+	assert.ErrorContains(t, result.Err, "stderr diagnostic")
+	var exitError *exec.ExitError
+	require.ErrorAs(t, result.Err, &exitError)
+	assert.Equal(t, 1, exitError.ExitCode())
 }
 
 func TestExperimentalHelmfilePreparation(t *testing.T) {
