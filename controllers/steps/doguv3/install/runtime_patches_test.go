@@ -49,7 +49,7 @@ func TestRuntimePatchesHelmRelease(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{Name: "fixture", Namespace: "ecosystem", UID: "fixture-uid"},
 		Spec: v3beta1.DoguSpec{
 			Name: "fixture", Version: "1.0.0", DoguApiVersion: "v3",
-			Values:       apiext.JSON{Raw: []byte(`{"explicit":"user","signed":-9223372036854775808}`)},
+			Values:       apiext.JSON{Raw: []byte(`{"explicit":"user"}`)},
 			MappedValues: map[string]string{"setting": "selected"},
 		},
 	}
@@ -62,7 +62,7 @@ func TestRuntimePatchesHelmRelease(t *testing.T) {
 		Metadata: &helmchart.Metadata{APIVersion: helmchart.APIVersionV2, Name: "fixture", Version: "1.0.0"},
 		Values:   map[string]any{"host": "chart-default", "untouched": "chart-only"},
 		Raw:      []*helmchart.File{{Name: "values.yaml", Data: []byte("host: chart-default\nuntouched: chart-only\n")}},
-		Schema:   []byte(`{"type":"object","required":["host"],"properties":{"host":{"type":"string","minLength":1},"integer":{"enum":[9007199254740993]},"signed":{"enum":[-9223372036854775808]}}}`),
+		Schema:   []byte(`{"type":"object","required":["host"],"properties":{"host":{"type":"string","minLength":1},"integer":{"enum":[9007199254740993]}}}`),
 		Files: []*helmchart.File{
 			{Name: "chart-patch-tpl.yaml", Data: []byte(`---
 apiVersion: v1
@@ -95,7 +95,6 @@ data:
   host: {{ .Values.host | quote }}
   untouched: {{ .Values.untouched | quote }}
   integer: {{ .Values.integer | quote }}
-  signed: {{ .Values.signed | quote }}
 `)}},
 	}
 	chart.AddDependency(&helmchart.Chart{
@@ -146,7 +145,6 @@ data:
 		assert.Equal(t, "user", persisted["explicit"])
 		assert.Equal(t, "mapped-wins", persisted["mapped"])
 		assert.Equal(t, json.Number("9007199254740993"), persisted["integer"])
-		assert.Equal(t, json.Number("-9223372036854775808"), persisted["signed"])
 		assert.NotContains(t, persisted, "untouched", "Helm chart defaults must not be persisted as overrides")
 		objects, err := service.Render(ctx, dogu, persisted)
 		require.NoError(t, err)
@@ -158,9 +156,41 @@ data:
 				assert.Equal(t, "rendered", object.GetName())
 				assert.Equal(t, map[string]any{
 					"host": host, "untouched": "chart-only", "integer": "9007199254740993",
-					"signed": "-9223372036854775808",
 				}, object.Object["data"])
 			}
 		}
 	}
+}
+
+func TestHelmNumberFidelity(t *testing.T) {
+	scheme := runtime.NewScheme()
+	require.NoError(t, helmflux.AddToScheme(scheme))
+	cl := fake.NewClientBuilder().WithScheme(scheme).Build()
+	dogu := &v3beta1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "fixture", Namespace: "ecosystem"}, Spec: v3beta1.DoguSpec{Name: "fixture"}}
+	chart := &helmchart.Chart{
+		Metadata: &helmchart.Metadata{APIVersion: helmchart.APIVersionV2, Name: "fixture", Version: "1.0.0"},
+		Schema:   []byte(`{"type":"object","properties":{"integer":{"enum":[9007199254740993,-9223372036854775808,18446744073709551615]}}}`),
+		Templates: []*helmchart.File{{Name: "templates/configmap.yaml", Data: []byte(`apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: rendered
+data:
+  integer: {{ .Values.integer | quote }}
+`)}},
+	}
+	path, err := chartutil.Save(chart, t.TempDir())
+	require.NoError(t, err)
+	archive, err := os.ReadFile(path)
+	require.NoError(t, err)
+	service := charts.NewService(runtimeChartArchive(archive), &rest.Config{}, chartutil.DefaultCapabilities, flux.NewHelmReleaseReader(cl))
+	// Pass values directly: the fake Kubernetes client's storage round-trips unsigned integers through float64.
+	for _, integer := range []string{"9007199254740993", "-9223372036854775808", "18446744073709551615"} {
+		values := map[string]any{"integer": json.Number(integer)}
+		require.NoError(t, service.ValidateValues(t.Context(), dogu, values))
+		objects, renderErr := service.Render(t.Context(), dogu, values)
+		require.NoError(t, renderErr)
+		require.Len(t, objects, 1)
+		assert.Equal(t, map[string]any{"integer": integer}, objects[0].Object["data"])
+	}
+	assert.Error(t, service.ValidateValues(t.Context(), dogu, map[string]any{"integer": json.Number("9007199254740992")}))
 }
