@@ -10,6 +10,7 @@ import (
 	fluxstate "github.com/cloudogu/k8s-dogu-operator/v3/internal/flux"
 	fluxhelm "github.com/fluxcd/helm-controller/api/v2"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -19,15 +20,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 )
-
-type stubHealthChecker struct {
-	state health.State
-	err   error
-}
-
-func (s stubHealthChecker) Check(_ context.Context, _ *v3beta1.Dogu) (health.State, error) {
-	return s.state, s.err
-}
 
 var (
 	healthyState   = health.State{Healthy: true, Reason: v3beta1.ReasonSucceeded, Message: "all workloads are ready"}
@@ -44,7 +36,7 @@ func helmStatusScheme() *runtime.Scheme {
 func TestNewHelmReleaseStatusStep(t *testing.T) {
 	k8sClient := NewMockK8sClient(t)
 	recorder := NewMockEventRecorder(t)
-	checker := stubHealthChecker{}
+	checker := newMockHealthChecker(t)
 
 	step := NewHelmReleaseStatusStep(k8sClient, recorder, checker)
 
@@ -64,7 +56,7 @@ func TestHelmReleaseStatusStep_Run(t *testing.T) {
 
 	t.Run("should requeue if HelmRelease is not found", func(t *testing.T) {
 		c := fake.NewClientBuilder().WithScheme(helmScheme).Build()
-		step := NewHelmReleaseStatusStep(c, NewMockEventRecorder(t), stubHealthChecker{})
+		step := NewHelmReleaseStatusStep(c, NewMockEventRecorder(t), newMockHealthChecker(t))
 
 		result := step.Run(context.Background(), testDoguResource.DeepCopy())
 
@@ -81,7 +73,7 @@ func TestHelmReleaseStatusStep_Run(t *testing.T) {
 				return assert.AnError
 			},
 		}).Build()
-		step := NewHelmReleaseStatusStep(c, NewMockEventRecorder(t), stubHealthChecker{})
+		step := NewHelmReleaseStatusStep(c, NewMockEventRecorder(t), newMockHealthChecker(t))
 
 		result := step.Run(context.Background(), testDoguResource.DeepCopy())
 
@@ -94,7 +86,7 @@ func TestHelmReleaseStatusStep_Run(t *testing.T) {
 
 	t.Run("should requeue while the release is installing", func(t *testing.T) {
 		c := fake.NewClientBuilder().WithScheme(helmScheme).WithObjects(release.DeepCopy()).Build()
-		step := NewHelmReleaseStatusStep(c, NewMockEventRecorder(t), stubHealthChecker{})
+		step := NewHelmReleaseStatusStep(c, NewMockEventRecorder(t), newMockHealthChecker(t))
 
 		result := step.Run(context.Background(), testDoguResource.DeepCopy())
 
@@ -113,7 +105,9 @@ func TestHelmReleaseStatusStep_Run(t *testing.T) {
 		c := fake.NewClientBuilder().WithScheme(helmScheme).
 			WithObjects(deployed, doguResource).
 			WithStatusSubresource(&v3beta1.Dogu{}).Build()
-		step := NewHelmReleaseStatusStep(c, NewMockEventRecorder(t), stubHealthChecker{state: healthyState})
+		checker := newMockHealthChecker(t)
+		checker.EXPECT().Check(mock.Anything, doguResource).Return(healthyState, nil)
+		step := NewHelmReleaseStatusStep(c, NewMockEventRecorder(t), checker)
 
 		result := step.Run(context.Background(), doguResource)
 
@@ -142,7 +136,7 @@ func TestHelmReleaseStatusStep_stepResultForRelease(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			step := NewHelmReleaseStatusStep(NewMockK8sClient(t), NewMockEventRecorder(t), stubHealthChecker{err: assert.AnError})
+			step := NewHelmReleaseStatusStep(NewMockK8sClient(t), NewMockEventRecorder(t), newMockHealthChecker(t))
 
 			got := step.stepResultForRelease(context.Background(), tt.state, testDoguResource.DeepCopy())
 
@@ -153,19 +147,19 @@ func TestHelmReleaseStatusStep_stepResultForRelease(t *testing.T) {
 	deployedTests := []struct {
 		name         string
 		everDeployed bool
-		checker      stubHealthChecker
+		healthState  health.State
 		want         stepsv3.StepResult
 	}{
-		{name: "deployed and healthy", checker: stubHealthChecker{state: healthyState}, want: stepsv3.Continue()},
+		{name: "deployed and healthy", healthState: healthyState, want: stepsv3.Continue()},
 		{
-			name:    "first install deployed but not healthy",
-			checker: stubHealthChecker{state: unhealthyState},
-			want:    stepsv3.RequeueAfter(defaultRequeueAfter, v3beta1.ReasonInstalling, "Dogu is not healthy"),
+			name:        "first install deployed but not healthy",
+			healthState: unhealthyState,
+			want:        stepsv3.RequeueAfter(defaultRequeueAfter, v3beta1.ReasonInstalling, "Dogu is not healthy"),
 		},
 		{
 			name:         "upgrade deployed but not healthy",
 			everDeployed: true,
-			checker:      stubHealthChecker{state: unhealthyState},
+			healthState:  unhealthyState,
 			want:         stepsv3.RequeueAfter(defaultRequeueAfter, v3beta1.ReasonUpgrading, "Dogu is not healthy"),
 		},
 	}
@@ -176,7 +170,9 @@ func TestHelmReleaseStatusStep_stepResultForRelease(t *testing.T) {
 			c := fake.NewClientBuilder().WithScheme(helmStatusScheme()).
 				WithObjects(doguResource).
 				WithStatusSubresource(&v3beta1.Dogu{}).Build()
-			step := NewHelmReleaseStatusStep(c, NewMockEventRecorder(t), tt.checker)
+			checker := newMockHealthChecker(t)
+			checker.EXPECT().Check(mock.Anything, doguResource).Return(tt.healthState, nil)
+			step := NewHelmReleaseStatusStep(c, NewMockEventRecorder(t), checker)
 			state := fluxstate.ReleaseState{Phase: fluxstate.PhaseDeployed, EverDeployed: tt.everDeployed}
 
 			got := step.stepResultForRelease(context.Background(), state, doguResource)
@@ -186,10 +182,13 @@ func TestHelmReleaseStatusStep_stepResultForRelease(t *testing.T) {
 	}
 
 	t.Run("deployed but health check fails", func(t *testing.T) {
-		step := NewHelmReleaseStatusStep(NewMockK8sClient(t), NewMockEventRecorder(t), stubHealthChecker{err: assert.AnError})
+		doguResource := testDoguResource.DeepCopy()
+		checker := newMockHealthChecker(t)
+		checker.EXPECT().Check(mock.Anything, doguResource).Return(health.State{}, assert.AnError)
+		step := NewHelmReleaseStatusStep(NewMockK8sClient(t), NewMockEventRecorder(t), checker)
 		state := fluxstate.ReleaseState{Phase: fluxstate.PhaseDeployed, EverDeployed: true}
 
-		got := step.stepResultForRelease(context.Background(), state, testDoguResource.DeepCopy())
+		got := step.stepResultForRelease(context.Background(), state, doguResource)
 
 		assert.ErrorIs(t, got.Err, assert.AnError)
 		assert.ErrorContains(t, got.Err, "error checking dogu health")
@@ -207,7 +206,9 @@ func TestHelmReleaseStatusStep_stepResultForRelease(t *testing.T) {
 					return apierrors.NewConflict(v3beta1.GroupVersion.WithResource("dogus").GroupResource(), testDoguName, assert.AnError)
 				},
 			}).Build()
-		step := NewHelmReleaseStatusStep(c, NewMockEventRecorder(t), stubHealthChecker{state: healthyState})
+		checker := newMockHealthChecker(t)
+		checker.EXPECT().Check(mock.Anything, doguResource).Return(healthyState, nil)
+		step := NewHelmReleaseStatusStep(c, NewMockEventRecorder(t), checker)
 		state := fluxstate.ReleaseState{Phase: fluxstate.PhaseDeployed, EverDeployed: true}
 
 		got := step.stepResultForRelease(context.Background(), state, doguResource)
@@ -219,7 +220,7 @@ func TestHelmReleaseStatusStep_stepResultForRelease(t *testing.T) {
 	})
 
 	t.Run("unknown phase", func(t *testing.T) {
-		step := NewHelmReleaseStatusStep(NewMockK8sClient(t), NewMockEventRecorder(t), stubHealthChecker{})
+		step := NewHelmReleaseStatusStep(NewMockK8sClient(t), NewMockEventRecorder(t), newMockHealthChecker(t))
 
 		got := step.stepResultForRelease(context.Background(), fluxstate.ReleaseState{Phase: "Unknown"}, testDoguResource.DeepCopy())
 
@@ -235,7 +236,9 @@ func TestHelmReleaseStatusStep_checkHealthy(t *testing.T) {
 		c := fake.NewClientBuilder().WithScheme(helmStatusScheme()).
 			WithObjects(doguResource).
 			WithStatusSubresource(&v3beta1.Dogu{}).Build()
-		step := NewHelmReleaseStatusStep(c, NewMockEventRecorder(t), stubHealthChecker{state: unhealthyState})
+		checker := newMockHealthChecker(t)
+		checker.EXPECT().Check(mock.Anything, doguResource).Return(unhealthyState, nil)
+		step := NewHelmReleaseStatusStep(c, NewMockEventRecorder(t), checker)
 
 		healthy, err := step.checkHealthy(context.Background(), doguResource)
 
@@ -256,7 +259,9 @@ func TestHelmReleaseStatusStep_checkHealthy(t *testing.T) {
 			Type: v3beta1.ConditionHealthy, Status: metav1.ConditionTrue, Reason: healthyState.Reason, Message: healthyState.Message,
 		}}
 		// the mock fails on any unexpected call, e.g. a status update
-		step := NewHelmReleaseStatusStep(NewMockK8sClient(t), NewMockEventRecorder(t), stubHealthChecker{state: healthyState})
+		checker := newMockHealthChecker(t)
+		checker.EXPECT().Check(mock.Anything, doguResource).Return(healthyState, nil)
+		step := NewHelmReleaseStatusStep(NewMockK8sClient(t), NewMockEventRecorder(t), checker)
 
 		healthy, err := step.checkHealthy(context.Background(), doguResource)
 
@@ -274,7 +279,9 @@ func TestHelmReleaseStatusStep_checkHealthy(t *testing.T) {
 					return assert.AnError
 				},
 			}).Build()
-		step := NewHelmReleaseStatusStep(c, NewMockEventRecorder(t), stubHealthChecker{state: healthyState})
+		checker := newMockHealthChecker(t)
+		checker.EXPECT().Check(mock.Anything, doguResource).Return(healthyState, nil)
+		step := NewHelmReleaseStatusStep(c, NewMockEventRecorder(t), checker)
 
 		_, err := step.checkHealthy(context.Background(), doguResource)
 

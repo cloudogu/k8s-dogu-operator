@@ -12,14 +12,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-type stubDiscovery struct {
-	workloads workloads.Workloads
-	err       error
-}
-
-func (s stubDiscovery) Workloads(_ context.Context, _, _ string) (workloads.Workloads, error) {
-	return s.workloads, s.err
-}
+var testCtx = context.Background()
 
 var testDogu = &v3beta1.Dogu{
 	ObjectMeta: metav1.ObjectMeta{Name: "nexus", Namespace: "ecosystem"},
@@ -154,9 +147,13 @@ func TestChecker_Check(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			checker := NewChecker(stubDiscovery{workloads: tt.workloads})
+			discovery := newMockWorkloadDiscovery(t)
+			if !tt.dogu.Spec.Stopped {
+				discovery.EXPECT().Workloads(testCtx, tt.dogu.Namespace, tt.dogu.Spec.Name).Return(tt.workloads, nil)
+			}
+			checker := NewChecker(discovery)
 
-			got, err := checker.Check(context.Background(), tt.dogu)
+			got, err := checker.Check(testCtx, tt.dogu)
 
 			require.NoError(t, err)
 			assert.Equal(t, tt.wantHealthy, got.Healthy)
@@ -168,9 +165,11 @@ func TestChecker_Check(t *testing.T) {
 	}
 
 	t.Run("should return error if the workloads cannot be discovered", func(t *testing.T) {
-		checker := NewChecker(stubDiscovery{err: assert.AnError})
+		discovery := newMockWorkloadDiscovery(t)
+		discovery.EXPECT().Workloads(testCtx, "ecosystem", "nexus").Return(workloads.Workloads{}, assert.AnError)
+		checker := NewChecker(discovery)
 
-		_, err := checker.Check(context.Background(), testDogu)
+		_, err := checker.Check(testCtx, testDogu)
 
 		assert.ErrorIs(t, err, assert.AnError)
 		assert.ErrorContains(t, err, `failed to get workloads of dogu "nexus"`)
