@@ -52,6 +52,8 @@ func (ehr *EnsureHelmReleaseStep) Run(ctx context.Context, doguResource *doguv3.
 		return stepsv3.Abort(ReasonReconciliationPaused, messageSuspended)
 	}
 
+	//TODO: do all the tests and then requeue if it should be suspended, remove the above code
+
 	templateAsm := values3.NewAssembler(ehr.k8sClient)
 	combinedValues, err := combineValues(ctx, doguResource, ehr.chartService, templateAsm)
 	if err != nil {

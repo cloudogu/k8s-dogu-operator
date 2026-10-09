@@ -80,7 +80,9 @@ func TestSuspendHelmReleaseStep_Run(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) { runSuspendHelmReleaseCase(t, test) })
+		t.Run(test.name, func(t *testing.T) {
+			runSuspendHelmReleaseCase(t, test)
+		})
 	}
 }
 
@@ -182,7 +184,7 @@ func TestSuspendHelmReleaseStep_RunErrors(t *testing.T) {
 		dogu := newSuspendTestDogu()
 		k8sClient := newSuspendTestClient(t,
 			newGlobalConfigForSuspendTest(dogu.Namespace),
-			&flux.HelmRelease{ObjectMeta: metav1.ObjectMeta{Name: dogu.Spec.Name, Namespace: dogu.Namespace}},
+			&flux.HelmRelease{Name: dogu.Spec.Name, Namespace: dogu.Namespace},
 		)
 		chartService := NewMockChartService(t)
 		chartService.EXPECT().DoguMetaValues(mock.Anything, dogu).Return(nil, false, errors.New("metadata failed"))
@@ -224,7 +226,7 @@ func TestSuspendHelmReleaseStep_existingHelmRelease(t *testing.T) {
 
 	t.Run("returns the existing HelmRelease", func(t *testing.T) {
 		dogu := newSuspendTestDogu()
-		expected := &flux.HelmRelease{ObjectMeta: metav1.ObjectMeta{Name: dogu.Spec.Name, Namespace: dogu.Namespace}}
+		expected := &flux.HelmRelease{Name: dogu.Spec.Name, Namespace: dogu.Namespace}
 		step := NewSuspendHelmReleaseStep(newSuspendTestClient(t, expected), nil, nil, nil)
 
 		release, err := step.existingHelmRelease(t.Context(), dogu)
@@ -266,8 +268,8 @@ func TestSuspendHelmReleaseStep_ChangeSuspendValueOfHelmRelease(t *testing.T) {
 			t.Run(test.name, func(t *testing.T) {
 				dogu := newSuspendTestDogu()
 				release := &flux.HelmRelease{
-					ObjectMeta: metav1.ObjectMeta{Name: dogu.Spec.Name, Namespace: dogu.Namespace},
-					Spec:       flux.HelmReleaseSpec{Suspend: test.initial},
+					Name: dogu.Spec.Name, Namespace: dogu.Namespace,
+					Spec: flux.HelmReleaseSpec{Suspend: test.initial},
 				}
 				k8sClient := newSuspendTestClient(t, release)
 				step := NewSuspendHelmReleaseStep(k8sClient, nil, nil, nil)
@@ -297,7 +299,7 @@ func TestSuspendHelmReleaseStep_ChangeSuspendValueOfHelmRelease(t *testing.T) {
 		step := NewSuspendHelmReleaseStep(clientWithError, nil, nil, nil)
 
 		err := step.ChangeSuspendValueOfHelmRelease(t.Context(), &flux.HelmRelease{
-			ObjectMeta: metav1.ObjectMeta{Name: dogu.Spec.Name, Namespace: dogu.Namespace},
+			Name: dogu.Spec.Name, Namespace: dogu.Namespace,
 		}, true)
 
 		require.ErrorContains(t, err, "failed to suspend HelmRelease")
@@ -458,7 +460,7 @@ func (checker *suspendTestResizeChecker) Check(_ context.Context, namespace stri
 
 func newSuspendTestDogu() *doguv3.Dogu {
 	return &doguv3.Dogu{
-		ObjectMeta: metav1.ObjectMeta{Name: "dogu-resource", Namespace: "dogu-operator", Generation: 3},
+		Name: "dogu-resource", Namespace: "dogu-operator", Generation: 3,
 		Spec: doguv3.DoguSpec{
 			Name:          "my-dogu",
 			DoguNamespace: "dogu-space",
@@ -468,8 +470,8 @@ func newSuspendTestDogu() *doguv3.Dogu {
 
 func newGlobalConfigForSuspendTest(namespace string) *corev1.ConfigMap {
 	return &corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{Namespace: namespace, Name: "global-config"},
-		Data:       map[string]string{"config.yaml": "{}"},
+		Namespace: namespace, Name: "global-config",
+		Data: map[string]string{"config.yaml": "{}"},
 	}
 }
 
