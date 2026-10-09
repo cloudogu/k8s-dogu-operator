@@ -169,22 +169,22 @@ func NewOperatorConfig(version Version) (*OperatorConfig, error) {
 	log.Info(fmt.Sprintf("Found stored helm retry interval! Using interval %s", doguHelmRetryInterval))
 
 	return &OperatorConfig{
-		Namespace:                     	namespace,
-		DoguRegistry:                  	doguRegistryData,
-		Version:                       	&parsedVersion,
-		NetworkPoliciesEnabled:        	getNetworkPoliciesEnabled(),
-		AuthRegistrationEnabled:       	getAuthRegistrationEnabled(),
-		ExpositionEnabled:             	getExpositionEnabled(),
-		WarpMenuEntryEnabled:          	getWarpMenuEntryEnabled(),
-		DoguV3Enabled:                 	getDoguV3Enabled(),
-		DisablePostfixDependencyCheck: 	getDisablePostfixDependencyCheck(),
-		RequeueTimeForDoguReconciler:  	doguReconcilerRequeueTime,
-		ImageConfigCacheSize:          	getImageConfigCacheSize(),
-		DoguV3Registry:                	readDoguV3RegistryData(),
+		Namespace:                      namespace,
+		DoguRegistry:                   doguRegistryData,
+		Version:                        &parsedVersion,
+		NetworkPoliciesEnabled:         getNetworkPoliciesEnabled(),
+		AuthRegistrationEnabled:        getAuthRegistrationEnabled(),
+		ExpositionEnabled:              getExpositionEnabled(),
+		WarpMenuEntryEnabled:           getWarpMenuEntryEnabled(),
+		DoguV3Enabled:                  getDoguV3Enabled(),
+		DisablePostfixDependencyCheck:  getDisablePostfixDependencyCheck(),
+		RequeueTimeForDoguReconciler:   doguReconcilerRequeueTime,
+		ImageConfigCacheSize:           getImageConfigCacheSize(),
+		DoguV3Registry:                 readDoguV3RegistryData(),
 		DoguHelmReconciliationInterval: doguHelmReconciliationInterval,
 		DoguHelmRetryInterval:          doguHelmRetryInterval,
 		ExperimentalHelmfileSupport:    getExperimentalHelmfileSupport(),
-		HelmfileGlobalConfig:          	getHelmfileGlobalConfig(),
+		HelmfileGlobalConfig:           getHelmfileGlobalConfig(),
 		HelmfileOpenDeskConfig:         getHelmfileOpenDeskConfig(),
 	}, nil
 }
@@ -488,14 +488,15 @@ type HelmfileGlobalConfig struct {
 }
 
 type HelmfileOpenDeskConfig struct {
-	HelmfileSource  string            `json:"helmfileSource"`
-	Environment     string            `json:"environment"`
-	ValuesFilePath  string            `json:"valuesFilePath"`
-	ExtraValues     map[string]any    `json:"extraValues"`
-	ExtraEnvVars    map[string]string `json:"extraEnvVars"`
-	Namespace       string            `json:"namespace"`
-	DomainConfigMap K8sConfigRef      `json:"domainConfigMap"`
-	MasterkeySecret K8sConfigRef      `json:"masterkeySecret"`
+	HelmfileSource string            `json:"helmfileSource"`
+	Environment    string            `json:"environment"`
+	ValuesFilePath string            `json:"valuesFilePath"`
+	ExtraValues    map[string]any    `json:"extraValues"`
+	ExtraEnvVars   map[string]string `json:"extraEnvVars"`
+	// Namespace is the deployment namespace of the helmfile
+	Namespace       string       `json:"namespace"`
+	DomainConfigMap K8sConfigRef `json:"domainConfigMap"`
+	MasterkeySecret K8sConfigRef `json:"masterkeySecret"`
 }
 
 type K8sConfigRef struct {

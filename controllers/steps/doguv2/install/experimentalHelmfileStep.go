@@ -23,6 +23,7 @@ import (
 	steps "github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv2"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/yaml"
@@ -34,6 +35,7 @@ type ExperimentalHelmfileStep struct {
 	helmfileGlobalConfig config.HelmfileGlobalConfig
 	openDeskDoguConfig   config.HelmfileOpenDeskConfig
 	client               k8sClient
+	operatorNamespace    string
 }
 
 func NewExperimentalHelmfileStep(
@@ -47,13 +49,15 @@ func NewExperimentalHelmfileStep(
 		helmfileGlobalConfig: config.HelmfileGlobalConfig,
 		openDeskDoguConfig:   config.HelmfileOpenDeskConfig,
 		client:               client,
+		operatorNamespace:    config.Namespace,
 	}
 }
 
 // TODO
+// - conditions
+// optional:
 // - finalizer
 // - delete
-// - conditions
 
 func (e *ExperimentalHelmfileStep) Run(ctx context.Context, resource *doguv2.Dogu) steps.StepResult {
 	logger := log.FromContext(ctx).
@@ -113,7 +117,7 @@ func (e *ExperimentalHelmfileStep) extractAndConfigureHelmfile(ctx context.Conte
 	}
 
 	var domainConfig corev1.ConfigMap
-	if err := e.client.Get(ctx, client.ObjectKey{Namespace: cfg.Namespace, Name: cfg.DomainConfigMap.Name}, &domainConfig); err != nil {
+	if err := e.client.Get(ctx, client.ObjectKey{Namespace: e.operatorNamespace, Name: cfg.DomainConfigMap.Name}, &domainConfig); err != nil {
 		return options, fmt.Errorf("read domain ConfigMap: %w", err)
 	}
 
@@ -183,11 +187,16 @@ func (e *ExperimentalHelmfileStep) extractAndConfigureHelmfile(ctx context.Conte
 	}
 	env = append(env, "MASTER_PASSWORD="+password)
 
+	err = e.createNamespaceIfNotExists(ctx, cfg.Namespace)
+	if err != nil {
+		return options, fmt.Errorf("create deploy namespace if not exists: %w", err)
+	}
+
 	return helmfileApplyOptions{
 		HelmfileGlobalConfig: e.helmfileGlobalConfig,
 		helmfilePath:         filepath.Join(name, workingDir),
 		environment:          cfg.Environment,
-		namespace:            cfg.Namespace,
+		deployNamespace:      cfg.Namespace,
 		envVars:              env,
 	}, nil
 }
@@ -331,7 +340,7 @@ func helmfileWorkingDir(baseDir string) (string, error) {
 
 func (e *ExperimentalHelmfileStep) masterPassword(ctx context.Context) (string, error) {
 	cfg := e.openDeskDoguConfig
-	key := client.ObjectKey{Namespace: cfg.Namespace, Name: cfg.MasterkeySecret.Name}
+	key := client.ObjectKey{Namespace: e.operatorNamespace, Name: cfg.MasterkeySecret.Name}
 	secret := &corev1.Secret{}
 	err := e.client.Get(ctx, key, secret)
 	if apierrors.IsNotFound(err) {
@@ -361,12 +370,28 @@ func (e *ExperimentalHelmfileStep) masterPassword(ctx context.Context) (string, 
 	return password, nil
 }
 
+func (e *ExperimentalHelmfileStep) createNamespaceIfNotExists(ctx context.Context, namespace string) error {
+	err := e.client.Get(ctx, types.NamespacedName{Name: namespace}, &corev1.Namespace{})
+	if err == nil {
+		return nil
+	} else if client.IgnoreNotFound(err) != nil {
+		return fmt.Errorf("check if namespace %s exists: %w", namespace, err)
+	}
+
+	err = e.client.Create(ctx, &corev1.Namespace{Name: namespace})
+	if err != nil {
+		return fmt.Errorf("create namespace %s: %w", namespace, err)
+	}
+
+	return nil
+}
+
 type helmfileApplyOptions struct {
 	config.HelmfileGlobalConfig
-	helmfilePath string
-	environment  string
-	envVars      []string
-	namespace    string
+	helmfilePath    string
+	environment     string
+	envVars         []string
+	deployNamespace string
 }
 
 func (h helmfileApplyOptions) command(ctx context.Context) *exec.Cmd {
@@ -374,7 +399,7 @@ func (h helmfileApplyOptions) command(ctx context.Context) *exec.Cmd {
 	cmd := exec.CommandContext(ctx,
 		h.HelmfileBin, "apply",
 		"--environment", h.environment,
-		"--namespace", h.namespace,
+		"--namespace", h.deployNamespace,
 		"--helm-binary", h.HelmBin,
 		"--quiet", "--no-color")
 	envWithHelmDirs := append(h.envVars,

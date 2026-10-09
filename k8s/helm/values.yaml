@@ -66,10 +66,13 @@ controllerManager:
         valuesFilePath: helmfile/environments/prod/values.yaml.gotmpl
         extraValues: {}
         extraEnvVars: {}
-        namespace: ecosystem
+        # deploy namespace of the helmfile
+        namespace: opendesk
+        # config map is expected to be in the operator namespace
         domainConfigMap:
           name: opendesk-domain
           key: domain
+        # secret is automatically created in the operator namespace
         masterkeySecret:
           name: opendesk-masterkey
           key: masterkey
