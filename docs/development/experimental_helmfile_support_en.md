@@ -46,7 +46,7 @@ make push-helmfile-image
 helm helm repo add haproxy-ingress https://haproxy-ingress.github.io/charts
 helm repo update haproxy-ingress
 helm upgrade --install haproxy-ingress haproxy-ingress/haproxy-ingress \
- --namespace ecosystem -f helmfile-resources/haproxy-ingress-values.yaml
+ --namespace haproxy --create-namespace -f helmfile-resources/haproxy-ingress-values.yaml
 ```
 
 ### DNS records
