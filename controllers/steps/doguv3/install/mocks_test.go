@@ -407,8 +407,8 @@ func (_m *MockValueAssembler) EXPECT() *MockValueAssembler_Expecter {
 }
 
 // Assemble provides a mock function for the type MockValueAssembler
-func (_mock *MockValueAssembler) Assemble(ctx context.Context, cr *v3beta1.Dogu, valuesMeta []byte) (values.Values, error) {
-	ret := _mock.Called(ctx, cr, valuesMeta)
+func (_mock *MockValueAssembler) Assemble(ctx context.Context, cr *v3beta1.Dogu, valuesMeta []byte, patchTemplate []byte) (values.Values, error) {
+	ret := _mock.Called(ctx, cr, valuesMeta, patchTemplate)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Assemble")
@@ -416,18 +416,18 @@ func (_mock *MockValueAssembler) Assemble(ctx context.Context, cr *v3beta1.Dogu,
 
 	var r0 values.Values
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, *v3beta1.Dogu, []byte) (values.Values, error)); ok {
-		return returnFunc(ctx, cr, valuesMeta)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *v3beta1.Dogu, []byte, []byte) (values.Values, error)); ok {
+		return returnFunc(ctx, cr, valuesMeta, patchTemplate)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, *v3beta1.Dogu, []byte) values.Values); ok {
-		r0 = returnFunc(ctx, cr, valuesMeta)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *v3beta1.Dogu, []byte, []byte) values.Values); ok {
+		r0 = returnFunc(ctx, cr, valuesMeta, patchTemplate)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(values.Values)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, *v3beta1.Dogu, []byte) error); ok {
-		r1 = returnFunc(ctx, cr, valuesMeta)
+	if returnFunc, ok := ret.Get(1).(func(context.Context, *v3beta1.Dogu, []byte, []byte) error); ok {
+		r1 = returnFunc(ctx, cr, valuesMeta, patchTemplate)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -443,11 +443,12 @@ type MockValueAssembler_Assemble_Call struct {
 //   - ctx context.Context
 //   - cr *v3beta1.Dogu
 //   - valuesMeta []byte
-func (_e *MockValueAssembler_Expecter) Assemble(ctx any, cr any, valuesMeta any) *MockValueAssembler_Assemble_Call {
-	return &MockValueAssembler_Assemble_Call{Call: _e.mock.On("Assemble", ctx, cr, valuesMeta)}
+//   - patchTemplate []byte
+func (_e *MockValueAssembler_Expecter) Assemble(ctx any, cr any, valuesMeta any, patchTemplate any) *MockValueAssembler_Assemble_Call {
+	return &MockValueAssembler_Assemble_Call{Call: _e.mock.On("Assemble", ctx, cr, valuesMeta, patchTemplate)}
 }
 
-func (_c *MockValueAssembler_Assemble_Call) Run(run func(ctx context.Context, cr *v3beta1.Dogu, valuesMeta []byte)) *MockValueAssembler_Assemble_Call {
+func (_c *MockValueAssembler_Assemble_Call) Run(run func(ctx context.Context, cr *v3beta1.Dogu, valuesMeta []byte, patchTemplate []byte)) *MockValueAssembler_Assemble_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -461,10 +462,15 @@ func (_c *MockValueAssembler_Assemble_Call) Run(run func(ctx context.Context, cr
 		if args[2] != nil {
 			arg2 = args[2].([]byte)
 		}
+		var arg3 []byte
+		if args[3] != nil {
+			arg3 = args[3].([]byte)
+		}
 		run(
 			arg0,
 			arg1,
 			arg2,
+			arg3,
 		)
 	})
 	return _c
@@ -475,7 +481,7 @@ func (_c *MockValueAssembler_Assemble_Call) Return(values1 values.Values, err er
 	return _c
 }
 
-func (_c *MockValueAssembler_Assemble_Call) RunAndReturn(run func(ctx context.Context, cr *v3beta1.Dogu, valuesMeta []byte) (values.Values, error)) *MockValueAssembler_Assemble_Call {
+func (_c *MockValueAssembler_Assemble_Call) RunAndReturn(run func(ctx context.Context, cr *v3beta1.Dogu, valuesMeta []byte, patchTemplate []byte) (values.Values, error)) *MockValueAssembler_Assemble_Call {
 	_c.Call.Return(run)
 	return _c
 }

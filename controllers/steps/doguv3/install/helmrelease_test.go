@@ -35,7 +35,7 @@ func Test_combineValues(t *testing.T) {
 		var doguMetadataValues []byte
 		doguValuesMetadataSvcMock := NewMockChartService(t)
 		doguValuesMetadataSvcMock.EXPECT().DoguMetaValues(testCtx, inputDogu).Return(doguMetadataValues, true, nil)
-		valueAsmMock.EXPECT().Assemble(testCtx, inputDogu, doguMetadataValues).Return(assembledDoguValues, nil)
+		valueAsmMock.EXPECT().Assemble(testCtx, inputDogu, doguMetadataValues, []byte(nil)).Return(assembledDoguValues, nil)
 
 		// when
 		actual, err := combineValues(testCtx, inputDogu, doguValuesMetadataSvcMock, valueAsmMock)
@@ -70,7 +70,7 @@ func Test_combineValues(t *testing.T) {
 		doguValuesMetadataSvcMock := NewMockChartService(t)
 		doguValuesMetadataSvcMock.EXPECT().DoguMetaValues(testCtx, inputDogu).Return(doguMetadataValues, true, nil)
 		valueAsmMock := NewMockValueAssembler(t)
-		valueAsmMock.EXPECT().Assemble(testCtx, inputDogu, doguMetadataValues).Return(nil, assert.AnError)
+		valueAsmMock.EXPECT().Assemble(testCtx, inputDogu, doguMetadataValues, []byte(nil)).Return(nil, assert.AnError)
 
 		// when
 		_, err := combineValues(testCtx, inputDogu, doguValuesMetadataSvcMock, valueAsmMock)

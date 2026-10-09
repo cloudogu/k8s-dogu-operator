@@ -134,7 +134,7 @@ func combineValues(ctx context.Context, dogu *doguv3.Dogu, doguMetadataValueSvc 
 		return nil, fmt.Errorf("failed to retrieve dogu metadata values: %w", err)
 	}
 
-	values, err := valueAssembler.Assemble(ctx, dogu, metaValues)
+	values, err := valueAssembler.Assemble(ctx, dogu, metaValues, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to assemble dogu values: %w", err)
 	}

@@ -1,17 +1,21 @@
 package values
 
 import (
+	"bytes"
 	"context"
+	stdlog "log"
 	"testing"
 
 	"github.com/cloudogu/k8s-dogu-lib/v3/api/v3beta1"
 	"github.com/go-logr/logr"
+	"github.com/go-logr/logr/funcr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	coreV1 "k8s.io/api/core/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 const testNamespace = "ecosystem"
@@ -375,6 +379,36 @@ func Test_mergeValues(t *testing.T) {
 			},
 			want: Values{"parent": map[string]any{"keep": "x", "override": "new", "add": "y"}},
 		},
+		{
+			name:   "higher scalar replaces lower map",
+			values: []Values{{"key": Values{"child": "lower"}}, {"key": "higher"}},
+			want:   Values{"key": "higher"},
+		},
+		{
+			name:   "higher map replaces lower scalar",
+			values: []Values{{"key": "lower"}, {"key": Values{"child": "higher"}}},
+			want:   Values{"key": Values{"child": "higher"}},
+		},
+		{
+			name:   "null removes an existing key but retains a new null key",
+			values: []Values{{"existing": "lower", "sibling": "keep"}, {"existing": nil, "new": nil}},
+			want:   Values{"sibling": "keep", "new": nil},
+		},
+		{
+			name:   "nested null removes only the existing leaf",
+			values: []Values{{"parent": Values{"child": "lower", "sibling": "keep"}}, {"parent": Values{"child": nil}}},
+			want:   Values{"parent": Values{"sibling": "keep"}},
+		},
+		{
+			name:   "null over null remains explicit",
+			values: []Values{{"key": nil}, {"key": nil}},
+			want:   Values{"key": nil},
+		},
+		{
+			name:   "later source can restore a removed key",
+			values: []Values{{"key": "lower"}, {"key": nil}, {"key": "restored"}},
+			want:   Values{"key": "restored"},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -418,7 +452,7 @@ metavalues:
 		})
 		a := Assembler{k8s: k8s}
 
-		got, err := a.Assemble(context.Background(), cr, patchTpl)
+		got, err := a.Assemble(context.Background(), cr, patchTpl, nil)
 
 		require.NoError(t, err)
 		// Top level: meta overrides cr; global lives in its own subtree and does not touch it.
@@ -437,7 +471,7 @@ metavalues:
 		})
 		a := Assembler{k8s: k8s}
 
-		got, err := a.Assemble(context.Background(), cr, patchTpl)
+		got, err := a.Assemble(context.Background(), cr, patchTpl, nil)
 
 		require.NoError(t, err)
 		assert.Equal(t, "fromCR", cesConfig(t, got)["key"])
@@ -450,7 +484,7 @@ metavalues:
 		})
 		a := Assembler{k8s: k8s}
 
-		got, err := a.Assemble(context.Background(), cr, patchTpl)
+		got, err := a.Assemble(context.Background(), cr, patchTpl, nil)
 
 		require.NoError(t, err)
 		assert.Equal(t, Values{"global": map[string]any{"cesConfig": Values{"onlyGlobal": "value"}}}, got)
@@ -462,7 +496,7 @@ metavalues:
 			globalConfigFileName: "a: b",
 		})}
 
-		_, err := a.Assemble(context.Background(), cr, patchTpl)
+		_, err := a.Assemble(context.Background(), cr, patchTpl, nil)
 
 		require.Error(t, err)
 		assert.ErrorContains(t, err, "failed to dogu spec values")
@@ -472,9 +506,96 @@ metavalues:
 		cr := newTestDogu(testNamespace, []byte("a: b\n"), nil)
 		a := Assembler{k8s: fake.NewClientBuilder().Build()}
 
-		_, err := a.Assemble(context.Background(), cr, patchTpl)
+		_, err := a.Assemble(context.Background(), cr, patchTpl, nil)
 
 		require.Error(t, err)
 		assert.ErrorContains(t, err, "failed to get values from global config")
 	})
+}
+
+func TestAssembler_RuntimePrecedence(t *testing.T) {
+	cr := newTestDogu(testNamespace, []byte(`application:
+  host: fromCR
+  logging: fromCR
+  list: [cr]
+global:
+  cesConfig:
+    crOverride: fromCR
+`), map[string]string{"logging": "debug"})
+	metadata := []byte(`apiVersion: v1
+metavalues:
+  logging:
+    keys:
+      - path: application.logging
+        mapping:
+          debug: trace
+`)
+	patch := []byte(`apiVersion: v1
+runtimePatches:
+  values.yaml:
+    application:
+      host: fromRuntime
+      logging: fromRuntime
+      sibling: {{ globalConfig "fqdn" | quote }}
+      list: [runtime]
+    global:
+      cesConfig:
+        runtimeOverride: fromRuntime
+        crOverride: fromRuntime
+`)
+	a := NewAssembler(newFakeClientWithGlobalConfig(testNamespace, map[string]string{
+		globalConfigFileName: "fqdn: ces.example.org\nruntimeOverride: fromGlobal\ncrOverride: fromGlobal\nuntouched: original\n",
+	}))
+	got, err := a.Assemble(t.Context(), cr, metadata, patch)
+	require.NoError(t, err)
+	assert.Equal(t, Values{
+		"application": Values{"host": "fromCR", "logging": "trace", "sibling": "ces.example.org", "list": []any{"cr"}},
+		"global":      Values{"cesConfig": Values{"fqdn": "ces.example.org", "runtimeOverride": "fromRuntime", "crOverride": "fromCR", "untouched": "original"}},
+	}, got)
+}
+
+func TestAssembler_RuntimeErrorsDoNotBecomeDefaults(t *testing.T) {
+	patch := []byte("apiVersion: v1\nruntimePatches:\n  values.yaml:\n    host: {{ globalConfig \"absent\" | default \"fallback\" | quote }}\n")
+	for _, config := range []map[string]string{nil, {globalConfigFileName: "["}} {
+		a := NewAssembler(newFakeClientWithGlobalConfig(testNamespace, config))
+		_, err := a.Assemble(t.Context(), newTestDogu(testNamespace, nil, nil), nil, patch)
+		require.Error(t, err)
+	}
+	a := NewAssembler(newFakeClientWithGlobalConfig(testNamespace, map[string]string{globalConfigFileName: "{}"}))
+	_, err := a.Assemble(t.Context(), newTestDogu(testNamespace, nil, nil), nil, []byte("apiVersion: v1\nruntimePatches:\n  values.yaml:\n    value: {{ fail \"required\" }}"))
+	require.ErrorContains(t, err, "required")
+}
+
+func TestAssembler_ConflictsDoNotLogValues(t *testing.T) {
+	var standardLogs, structuredLogs bytes.Buffer
+	previousOutput := stdlog.Writer()
+	stdlog.SetOutput(&standardLogs)
+	t.Cleanup(func() { stdlog.SetOutput(previousOutput) })
+	logger := funcr.New(func(prefix, message string) {
+		structuredLogs.WriteString(prefix + message + "\n")
+	}, funcr.Options{})
+	cr := newTestDogu(testNamespace, []byte(`application:
+  mapToScalar: replacement
+  scalarToMap:
+    enabled: true
+`), nil)
+	patch := []byte(`apiVersion: v1
+runtimePatches:
+  values.yaml:
+    application:
+      mapToScalar:
+        token: {{ globalConfig "token" | quote }}
+      scalarToMap: {{ globalConfig "token" | quote }}
+`)
+	a := NewAssembler(newFakeClientWithGlobalConfig(testNamespace, map[string]string{
+		globalConfigFileName: "token: sensitive-sentinel\n",
+	}))
+	got, err := a.Assemble(log.IntoContext(t.Context(), logger), cr, nil, patch)
+	require.NoError(t, err)
+	assert.Equal(t, Values{"mapToScalar": "replacement", "scalarToMap": Values{"enabled": true}}, got["application"])
+	assert.Contains(t, structuredLogs.String(), "application.mapToScalar")
+	assert.Contains(t, structuredLogs.String(), "application.scalarToMap")
+	assert.Contains(t, structuredLogs.String(), "spec.values")
+	assert.NotContains(t, structuredLogs.String(), "sensitive-sentinel")
+	assert.Empty(t, standardLogs.String(), "merging must not emit value-bearing Helm warnings")
 }

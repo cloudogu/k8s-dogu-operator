@@ -23,7 +23,7 @@ type ChartService interface {
 }
 
 type ValueAssembler interface {
-	Assemble(ctx context.Context, cr *v3beta1.Dogu, valuesMeta []byte) (values.Values, error)
+	Assemble(ctx context.Context, cr *v3beta1.Dogu, valuesMeta, patchTemplate []byte) (values.Values, error)
 }
 
 type K8sClient interface {

@@ -46,7 +46,7 @@ func (vcs *ValidateChartStep) Run(ctx context.Context, doguResource *v3beta1.Dog
 		return stepsv3.RequeueWithError(fmt.Errorf("failed to get dogu meta values: %w", err), v3beta1.ReasonInstalling)
 	}
 
-	values, err := vcs.assembler.Assemble(ctx, doguResource, metaValues)
+	values, err := vcs.assembler.Assemble(ctx, doguResource, metaValues, nil)
 	if err != nil {
 		return stepsv3.RequeueWithError(fmt.Errorf("failed to assemble values: %w", err), v3beta1.ReasonInstalling)
 	}
