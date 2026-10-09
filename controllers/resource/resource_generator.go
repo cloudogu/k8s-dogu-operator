@@ -233,7 +233,7 @@ func (r *resourceGenerator) generateSidecarContainers(doguResource *k8sv2.Dogu, 
 	if doguResource.Spec.ExportMode {
 		exporterImage := r.additionalImages[config.ExporterImageConfigmapNameKey]
 
-		exporterContainer, err := getExporterContainer(dogu, doguResource, exporterImage)
+		exporterContainer, err := GetExporterContainer(dogu, doguResource, exporterImage)
 		if err != nil {
 			return nil, err
 		}
@@ -423,7 +423,7 @@ func getChownInitContainer(dogu *core.Dogu, doguResource *k8sv2.Dogu, chownInitI
 	}, nil
 }
 
-func getExporterContainer(dogu *core.Dogu, doguResource *k8sv2.Dogu, exporterImage string) (*corev1.Container, error) {
+func GetExporterContainer(dogu *core.Dogu, doguResource *k8sv2.Dogu, exporterImage string) (*corev1.Container, error) {
 	mounts, err := createExporterSidecarVolumeMounts(doguResource, dogu)
 	if err != nil {
 		return nil, err
