@@ -1,6 +1,7 @@
 package config
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/url"
 	"os"
@@ -52,6 +53,9 @@ const (
 	envVarDoguRegistryUsername                    = "DOGU_REGISTRY_USERNAME"
 	envVarDoguRegistryPassword                    = "DOGU_REGISTRY_PASSWORD"
 	envVarDoguRegistryURLSchema                   = "DOGU_REGISTRY_URLSCHEMA"
+	envVarExperimentalHelmfileSupport             = "EXPERIMENTAL_HELMFILE_SUPPORT"
+	envVarHelmfileGlobalConfig                    = "HELMFILE_GLOBAL_CONFIG"
+	envVarHelmfileOpenDeskConfig                  = "HELMFILE_OPENDESK_CONFIG"
 	envVarNetworkPolicyEnabled                    = "NETWORK_POLICIES_ENABLED"
 	envVarAuthRegistrationEnabled                 = "AUTH_REGISTRATION_ENABLED"
 	envVarExpositionEnabled                       = "EXPOSITION_ENABLED"
@@ -108,6 +112,11 @@ type OperatorConfig struct {
 	// ImageConfigCacheSize defines the maximum number of dogu image configs kept in the in-memory image config cache.
 	// A value <= 0 disables the cache.
 	ImageConfigCacheSize int `json:"image_config_cache_size"`
+	// ExperimentalHelmfileSupport defines whether the operator should install v2 dogus of kind helmfile.
+	// This is only an experimental PoC and not for production use.
+	ExperimentalHelmfileSupport bool                   `json:"experimental_helmfile_support"`
+	HelmfileGlobalConfig        HelmfileGlobalConfig   `json:"helmfile_global_config"`
+	HelmfileOpenDeskConfig      HelmfileOpenDeskConfig `json:"helmfile_opendesk_config"`
 	// DoguHelmReconciliationInterval defines the interval in which dogu Helm releases should be reconciled by helm-controller
 	DoguHelmReconciliationInterval time.Duration `json:"dogu_helm_reconciliation_interval"`
 	// DoguHelmRetryInterval defines the interval in which Helm installs or upgrade for a dogu should be retried on error
@@ -167,13 +176,16 @@ func NewOperatorConfig(version Version) (*OperatorConfig, error) {
 		AuthRegistrationEnabled:        getAuthRegistrationEnabled(),
 		ExpositionEnabled:              getExpositionEnabled(),
 		WarpMenuEntryEnabled:           getWarpMenuEntryEnabled(),
-		DoguV3Enabled:                 getDoguV3Enabled(),
+		DoguV3Enabled:                  getDoguV3Enabled(),
 		DisablePostfixDependencyCheck:  getDisablePostfixDependencyCheck(),
 		RequeueTimeForDoguReconciler:   doguReconcilerRequeueTime,
 		ImageConfigCacheSize:           getImageConfigCacheSize(),
 		DoguV3Registry:                 readDoguV3RegistryData(),
 		DoguHelmReconciliationInterval: doguHelmReconciliationInterval,
 		DoguHelmRetryInterval:          doguHelmRetryInterval,
+		ExperimentalHelmfileSupport:    getExperimentalHelmfileSupport(),
+		HelmfileGlobalConfig:           getHelmfileGlobalConfig(),
+		HelmfileOpenDeskConfig:         getHelmfileOpenDeskConfig(),
 	}, nil
 }
 
@@ -413,6 +425,83 @@ func getDoguV3Enabled() bool {
 	}
 
 	return doguV3Enabled
+}
+
+func getExperimentalHelmfileSupport() bool {
+	helmfileSupportStr, found := os.LookupEnv(envVarExperimentalHelmfileSupport)
+	if !found {
+		log.Info(fmt.Sprintf("Environment variable %s not set. Enabling network policies by default", envVarExperimentalHelmfileSupport))
+		return false
+	}
+
+	helmfileSupport, err := strconv.ParseBool(helmfileSupportStr)
+	if err != nil {
+		log.Error(fmt.Errorf(errMsgFailedToParseEnvVarValue, envVarExperimentalHelmfileSupport, err), "Disabling experimental helmfile support by default")
+		return false
+	}
+
+	return helmfileSupport
+}
+
+func getHelmfileGlobalConfig() HelmfileGlobalConfig {
+	env, found := os.LookupEnv(envVarHelmfileGlobalConfig)
+	if !found {
+		log.Info(fmt.Sprintf("Environment variable %s not set. Using empty helmfile global config", envVarHelmfileGlobalConfig))
+		return HelmfileGlobalConfig{}
+	}
+
+	var helmfileGlobalConfig HelmfileGlobalConfig
+	err := json.Unmarshal([]byte(env), &helmfileGlobalConfig)
+	if err != nil {
+		log.Error(fmt.Errorf(errMsgFailedToParseEnvVarValue, envVarHelmfileGlobalConfig, err), "Using empty helmfile global config")
+		return HelmfileGlobalConfig{}
+	}
+
+	return helmfileGlobalConfig
+}
+
+func getHelmfileOpenDeskConfig() HelmfileOpenDeskConfig {
+	env, found := os.LookupEnv(envVarHelmfileOpenDeskConfig)
+	if !found {
+		log.Info(fmt.Sprintf("Environment variable %s not set. Using empty helmfile openDesk config", envVarHelmfileOpenDeskConfig))
+		return HelmfileOpenDeskConfig{}
+	}
+
+	var helmfileOpenDeskConfig HelmfileOpenDeskConfig
+	err := json.Unmarshal([]byte(env), &helmfileOpenDeskConfig)
+	if err != nil {
+		log.Error(fmt.Errorf(errMsgFailedToParseEnvVarValue, envVarHelmfileOpenDeskConfig, err), "Using empty helmfile openDesk config")
+		return HelmfileOpenDeskConfig{}
+	}
+
+	return helmfileOpenDeskConfig
+}
+
+type HelmfileGlobalConfig struct {
+	HelmfileBin       string `json:"helmfileBin"`
+	HelmBin           string `json:"helmBin"`
+	HelmPluginHome    string `json:"helmPluginHome"`
+	HelmCacheHome     string `json:"helmCacheHome"`
+	HelmConfigHome    string `json:"helmConfigHome"`
+	HelmDataHome      string `json:"helmDataHome"`
+	HelmfileUnpackDir string `json:"helmfileUnpackDir"`
+}
+
+type HelmfileOpenDeskConfig struct {
+	HelmfileSource string            `json:"helmfileSource"`
+	Environment    string            `json:"environment"`
+	ValuesFilePath string            `json:"valuesFilePath"`
+	ExtraValues    map[string]any    `json:"extraValues"`
+	ExtraEnvVars   map[string]string `json:"extraEnvVars"`
+	// Namespace is the deployment namespace of the helmfile
+	Namespace       string       `json:"namespace"`
+	DomainConfigMap K8sConfigRef `json:"domainConfigMap"`
+	MasterkeySecret K8sConfigRef `json:"masterkeySecret"`
+}
+
+type K8sConfigRef struct {
+	Name string `json:"name"`
+	Key  string `json:"key"`
 }
 
 func getNetworkPoliciesEnabled() bool {

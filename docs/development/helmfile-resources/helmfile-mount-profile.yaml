@@ -1,0 +1,8 @@
+volumeMounts:
+  - name: helmfile-binaries
+    mountPath: /helmfile_binaries
+  - name: helmfile-data
+    mountPath: /helmfile_data
+securityContext:
+  runAsNonRoot: false
+  runAsUser: 0
