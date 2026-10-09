@@ -18,12 +18,13 @@ type DoguRegistryReader interface {
 
 type ChartService interface {
 	DoguMetaValues(ctx context.Context, doguResource *v3beta1.Dogu) ([]byte, bool, error)
+	ChartPatchTemplate(ctx context.Context, doguResource *v3beta1.Dogu) ([]byte, bool, error)
 	ValidateValues(ctx context.Context, doguResource *v3beta1.Dogu, values map[string]any) error
 	Render(ctx context.Context, doguResource *v3beta1.Dogu, values map[string]any) ([]*unstructured.Unstructured, error)
 }
 
 type ValueAssembler interface {
-	Assemble(ctx context.Context, cr *v3beta1.Dogu, valuesMeta []byte) (values.Values, error)
+	Assemble(ctx context.Context, cr *v3beta1.Dogu, valuesMeta, patchTemplate []byte) (values.Values, error)
 }
 
 type K8sClient interface {

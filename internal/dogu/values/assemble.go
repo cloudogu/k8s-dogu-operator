@@ -8,7 +8,6 @@ import (
 	"github.com/cloudogu/k8s-dogu-lib/v3/api/v3beta1"
 	"github.com/go-logr/logr"
 	"gopkg.in/yaml.v3"
-	"helm.sh/helm/v3/pkg/chartutil"
 	"helm.sh/helm/v3/pkg/strvals"
 	coreV1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -48,7 +47,7 @@ func NewAssembler(k8s client.Client) *Assembler {
 	return &Assembler{k8s: k8s}
 }
 
-func (a Assembler) Assemble(ctx context.Context, cr *v3beta1.Dogu, valuesMeta []byte) (Values, error) {
+func (a Assembler) Assemble(ctx context.Context, cr *v3beta1.Dogu, valuesMeta, patchTemplate []byte) (Values, error) {
 	logger := log.FromContext(ctx)
 
 	crValues, err := getDoguCRValues(cr)
@@ -66,13 +65,47 @@ func (a Assembler) Assemble(ctx context.Context, cr *v3beta1.Dogu, valuesMeta []
 		return nil, fmt.Errorf("failed to get values from global config: %w", err)
 	}
 
+	runtimeValues, err := renderRuntimePatches(patchTemplate, globalConfigValues)
+	if err != nil {
+		return nil, fmt.Errorf("failed to render chart-patch-tpl.yaml runtime patches: %w", err)
+	}
+
 	// Place global config under global.cesConfig.
 	nestedGlobalConfig := Values{"global": Values{"cesConfig": globalConfigValues}}
 
-	// Merge order sets (later wins): global config < dogu CR values < mapped meta values.
-	finalValues := mergeValues(nestedGlobalConfig, crValues, doguMetaValues)
+	// Later sources win: global config < runtime patches < CR values < mapped values.
+	finalValues := nestedGlobalConfig
+	for _, source := range []struct {
+		name   string
+		values Values
+	}{
+		{"runtimePatches", runtimeValues},
+		{"spec.values", crValues},
+		{"spec.mappedValues", doguMetaValues},
+	} {
+		logValueOverlaps(logger, finalValues, source.values, source.name, "")
+		finalValues = mergeValues(finalValues, source.values)
+	}
 
 	return finalValues, nil
+}
+
+// Log paths, never configuration contents, when a higher-priority source overrides values.
+func logValueOverlaps(logger logr.Logger, lower, higher Values, source, prefix string) {
+	for key, value := range higher {
+		previous, exists := lower[key]
+		if !exists {
+			continue
+		}
+		path := prefix + key
+		lowMap, lowOK := previous.(map[string]any)
+		highMap, highOK := value.(map[string]any)
+		if lowOK && highOK {
+			logValueOverlaps(logger, lowMap, highMap, source, path+".")
+		} else {
+			logger.Info("Values overlap; higher-priority source wins", "path", path, "source", source)
+		}
+	}
 }
 
 func getDoguCRValues(cr *v3beta1.Dogu) (Values, error) {
@@ -150,16 +183,27 @@ func getGlobalConfigValues(ctx context.Context, cr *v3beta1.Dogu, s client.Clien
 	return globalCfgValues, nil
 }
 
-// mergeValues merges maps in order. Later Values override earlier Values.
+// mergeValues merges maps in order without Helm's value-bearing conflict warnings.
+// Later Values win; maps merge recursively and lists replace earlier lists.
+// A null removes an existing non-null key, but otherwise remains an explicit null.
 func mergeValues(values ...Values) Values {
 	mergedValues := make(Values)
 
 	for _, vMap := range values {
-		if vMap == nil {
-			continue
+		for key, value := range vMap {
+			previous, exists := mergedValues[key]
+			if value == nil && exists && previous != nil {
+				delete(mergedValues, key)
+				continue
+			}
+			lower, lowOK := previous.(Values)
+			higher, highOK := value.(Values)
+			if lowOK && highOK {
+				mergedValues[key] = mergeValues(lower, higher)
+			} else {
+				mergedValues[key] = value
+			}
 		}
-		// Merge current map on top of accumulated result
-		mergedValues = chartutil.CoalesceTables(vMap, mergedValues)
 	}
 
 	return mergedValues

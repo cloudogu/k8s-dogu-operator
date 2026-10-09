@@ -6,6 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
+- [#353] Support runtime patches in chart-patch-tpl.yaml to inject CES global configuration into Dogu v3 Helm values and update them on global configuration changes.
 - [#339] Add step to validate values and template of a dogu helm chart
 - [#339] Add mock for dcc v3
 
