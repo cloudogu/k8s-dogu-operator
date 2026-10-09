@@ -159,9 +159,11 @@ spec:
               port: 8081
             initialDelaySeconds: 5
             periodSeconds: 10
+          {{- if not .Values.controllerManager.experimental.helmfileSupport.enabled }}
           resources:
             limits: {{- toYaml .Values.controllerManager.resourceLimits | nindent 14 }}
             requests: {{- toYaml .Values.controllerManager.resourceRequests | nindent 14 }}
+          {{- end }}
           securityContext:
             allowPrivilegeEscalation: true
           volumeMounts:
