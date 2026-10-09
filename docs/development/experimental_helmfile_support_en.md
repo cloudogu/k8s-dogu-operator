@@ -76,3 +76,20 @@ kubectl create configmap -n ecosystem opendesk-domain --from-literal domain=your
 ```shell
 kubectl apply -n ecosystem -f helmfile-resources/dogu-resource.yaml
 ```
+
+## Debugging
+
+Since the dogu operator image is distro-less, we have to rely on an ephemeral debug container.
+To replicate volume mounts in that container and run it with elevated privileges,
+we can use this [custom profile](helmfile-resources/helmfile-mount-profile.yaml).
+
+```shell
+POD_NAME=$(kubectl get pods -n ecosystem -l=k8s.cloudogu.com/component.name=k8s-dogu-operator --no-headers=true -o custom-columns=":metadata.name")
+kubectl debug -n ecosystem $POD_NAME -it --image=alpine/openssl --custom=helmfile-resources/helmfile-mount-profile.yaml -- sh
+```
+
+To test the helmfile call:
+```shell
+cd /helmfile_data/unpack/opendesk
+MASTER_PASSWORD=yourmasterpassword HELM_PLUGINS=/helmfile_binaries/helm_plugins HELM_CACHE_HOME=/helmfile_data/helm/cache HELM_DATA_HOME=/helmfile_data/helm/data HELM_CONFIG_HOME=/helmfile_data/helm/config /helmfile_binaries/helmfile apply --environment prod --namespace ecosystem --helm-binary /helmfile_binaries/helm
+```
