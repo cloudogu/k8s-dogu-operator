@@ -85,18 +85,25 @@ func (shr *SuspendHelmReleaseStep) Run(ctx context.Context, doguResource *doguv3
 			}
 			return stepsv3.RequeueAfter(time.Duration(0), reason, message)
 		}
-		//TODO: what if the reason for suspension has changed pauseReconciliation <=> stop <=> PVC-Resize
+		//If the reason for suspension has changed pauseReconciliation <=> stop <=> PVC-Resize
+		//TODO: do we need this check, or do we say also for pvc, we update the status
+		if ReasonReconciliationPaused == reason || ReasonDoguStopped == reason {
+			if err := shr.setSuspendedConditionOnDoguCR(ctx, doguResource, reason, message); err != nil {
+				return stepsv3.RequeueWithError(err, doguv3.ReasonReconciliationPaused)
+			}
+		}
+
 	} else {
 		if reason != ReasonNotSuspended {
 			if err := shr.ChangeSuspendValueOfHelmRelease(ctx, helmRelease, true); err != nil {
 				return stepsv3.RequeueWithError(err, doguv3.ReasonReconciliationPaused)
 			}
+			//TODO: do we need this check, or do we say also for pvc, we update the status
 			if ReasonReconciliationPaused == reason || ReasonDoguStopped == reason {
 				if err := shr.setSuspendedConditionOnDoguCR(ctx, doguResource, reason, message); err != nil {
 					return stepsv3.RequeueWithError(err, doguv3.ReasonReconciliationPaused)
 				}
 			}
-			//TODO: what if the reason for suspension has changed pauseReconciliation / stop => PVC-Resize, then we are not updating the status of the dogu CR
 			return stepsv3.RequeueAfter(time.Duration(0), reason, message)
 		}
 	}
