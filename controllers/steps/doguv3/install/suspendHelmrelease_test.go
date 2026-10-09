@@ -52,6 +52,7 @@ func TestSuspendHelmReleaseStep_Run(t *testing.T) {
 			resizeInProgress: true,
 			wantResult:       stepsv3.RequeueAfter(0, ReasonPVCResizeInProgress, messagePVCResizeInProgress),
 			wantSuspended:    true,
+			wantCondition:    ReasonPVCResizeInProgress,
 		},
 		{
 			name:             "resume when suspension reason has disappeared",
@@ -76,6 +77,7 @@ func TestSuspendHelmReleaseStep_Run(t *testing.T) {
 			resizeInProgress: true,
 			wantResult:       stepsv3.Continue(),
 			wantSuspended:    true,
+			wantCondition:    ReasonPVCResizeInProgress,
 		},
 	}
 
@@ -497,9 +499,12 @@ func assertSuspendTestCondition(t *testing.T, k8sClient client.Client, dogu *dog
 	t.Helper()
 	status := metav1.ConditionTrue
 	message := messageDoguStopped
-	if reason == ReasonReconciliationPaused {
+	switch reason {
+	case ReasonReconciliationPaused:
 		message = messageReconciliationPaused
-	} else if reason == ReasonNotSuspended {
+	case ReasonPVCResizeInProgress:
+		message = messagePVCResizeInProgress
+	case ReasonNotSuspended:
 		status = metav1.ConditionFalse
 		message = messageNotSuspended
 	}
