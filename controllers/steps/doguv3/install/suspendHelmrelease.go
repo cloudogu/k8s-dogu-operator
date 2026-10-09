@@ -51,63 +51,95 @@ func NewSuspendHelmReleaseStep(k8sClient K8sClient, chartService ChartService, r
 func (shr *SuspendHelmReleaseStep) Run(ctx context.Context, doguResource *doguv3.Dogu) stepsv3.StepResult {
 	//Get Helm release if it exists
 
+	helmRelease, stepResult, done := shr.checkExistingHelmRelease(ctx, doguResource)
+	if done {
+		return stepResult
+	}
+
+	reason, message, stepResult, done := shr.expectedSuspensionState(ctx, doguResource)
+	if done {
+		return stepResult
+	}
+
+	if helmRelease.Spec.Suspend {
+		stepResult, done := shr.handleHelmReleaseAlreadySuspended(ctx, doguResource, reason, helmRelease, message)
+		if done {
+			return stepResult
+		}
+
+	} else {
+		stepResult, done := shr.handleHelmReleaseNotYetSuspended(ctx, doguResource, reason, helmRelease, message)
+		if done {
+			return stepResult
+		}
+	}
+	return stepsv3.Continue()
+}
+
+func (shr *SuspendHelmReleaseStep) checkExistingHelmRelease(ctx context.Context, doguResource *doguv3.Dogu) (*flux.HelmRelease, stepsv3.StepResult, bool) {
 	helmRelease, hrErr := shr.existingHelmRelease(ctx, doguResource)
 	if hrErr != nil {
-		return stepsv3.RequeueWithError(hrErr, doguv3.ReasonInstalling)
+		return nil, stepsv3.RequeueWithError(hrErr, doguv3.ReasonInstalling), true
 	}
 	//There is no helm release to suspend, so continue to the next step
 	if helmRelease == nil {
-		return stepsv3.Continue()
+		return nil, stepsv3.Continue(), true
 	}
+	return helmRelease, stepsv3.StepResult{}, false
+}
 
+func (shr *SuspendHelmReleaseStep) expectedSuspensionState(ctx context.Context, doguResource *doguv3.Dogu) (string, string, stepsv3.StepResult, bool) {
 	//Get the details required to check for pvc
 	templateAsm := values3.NewAssembler(shr.k8sClient)
 	combinedValues, err := combineValues(ctx, doguResource, shr.chartService, templateAsm)
 	if err != nil {
-		return stepsv3.RequeueWithError(err, doguv3.ReasonReconciliationPaused)
+		return "", "", stepsv3.RequeueWithError(err, doguv3.ReasonReconciliationPaused), true
 	}
 
 	//Get the state of the suspension
 	reason, message, err := shr.suspensionReason(ctx, doguResource, combinedValues)
 
 	if err != nil {
-		return stepsv3.RequeueWithError(err, doguv3.ReasonReconciliationPaused)
+		return "", "", stepsv3.RequeueWithError(err, doguv3.ReasonReconciliationPaused), true
 	}
+	return reason, message, stepsv3.StepResult{}, false
+}
 
-	if helmRelease.Spec.Suspend {
-		//We need to update if the reason for suspension has changed
-		if reason == ReasonNotSuspended {
-			if err := shr.ChangeSuspendValueOfHelmRelease(ctx, helmRelease, false); err != nil {
-				return stepsv3.RequeueWithError(err, doguv3.ReasonReconciliationPaused)
-			}
-			if err := shr.setSuspendedConditionOnDoguCR(ctx, doguResource, reason, message); err != nil {
-				return stepsv3.RequeueWithError(err, doguv3.ReasonReconciliationPaused)
-			}
-			return stepsv3.RequeueAfter(time.Duration(0), reason, message)
+func (shr *SuspendHelmReleaseStep) handleHelmReleaseNotYetSuspended(ctx context.Context, doguResource *doguv3.Dogu, reason string, helmRelease *flux.HelmRelease, message string) (result stepsv3.StepResult, done bool) {
+	if reason != ReasonNotSuspended {
+		if err := shr.ChangeSuspendValueOfHelmRelease(ctx, helmRelease, true); err != nil {
+			return stepsv3.RequeueWithError(err, doguv3.ReasonReconciliationPaused), true
 		}
-		//If the reason for suspension has changed pauseReconciliation <=> stop <=> PVC-Resize
 		//TODO: do we need this check, or do we say also for pvc, we update the status
 		if ReasonReconciliationPaused == reason || ReasonDoguStopped == reason {
 			if err := shr.setSuspendedConditionOnDoguCR(ctx, doguResource, reason, message); err != nil {
-				return stepsv3.RequeueWithError(err, doguv3.ReasonReconciliationPaused)
+				return stepsv3.RequeueWithError(err, doguv3.ReasonReconciliationPaused), true
 			}
 		}
+		return stepsv3.RequeueAfter(time.Duration(0), reason, message), true
+	}
+	return stepsv3.StepResult{}, false
+}
 
-	} else {
-		if reason != ReasonNotSuspended {
-			if err := shr.ChangeSuspendValueOfHelmRelease(ctx, helmRelease, true); err != nil {
-				return stepsv3.RequeueWithError(err, doguv3.ReasonReconciliationPaused)
-			}
-			//TODO: do we need this check, or do we say also for pvc, we update the status
-			if ReasonReconciliationPaused == reason || ReasonDoguStopped == reason {
-				if err := shr.setSuspendedConditionOnDoguCR(ctx, doguResource, reason, message); err != nil {
-					return stepsv3.RequeueWithError(err, doguv3.ReasonReconciliationPaused)
-				}
-			}
-			return stepsv3.RequeueAfter(time.Duration(0), reason, message)
+func (shr *SuspendHelmReleaseStep) handleHelmReleaseAlreadySuspended(ctx context.Context, doguResource *doguv3.Dogu, reason string, helmRelease *flux.HelmRelease, message string) (result stepsv3.StepResult, done bool) {
+	//We need to update if the reason for suspension has changed
+	if reason == ReasonNotSuspended {
+		if err := shr.ChangeSuspendValueOfHelmRelease(ctx, helmRelease, false); err != nil {
+			return stepsv3.RequeueWithError(err, doguv3.ReasonReconciliationPaused), true
+		}
+		if err := shr.setSuspendedConditionOnDoguCR(ctx, doguResource, reason, message); err != nil {
+			return stepsv3.RequeueWithError(err, doguv3.ReasonReconciliationPaused), true
+		}
+		return stepsv3.RequeueAfter(time.Duration(0), reason, message), true
+	}
+	//If the reason for suspension has changed pauseReconciliation <=> stop <=> PVC-Resize
+	//TODO: do we need this check, or do we say also for pvc, we update the status
+	if ReasonReconciliationPaused == reason || ReasonDoguStopped == reason {
+		if err := shr.setSuspendedConditionOnDoguCR(ctx, doguResource, reason, message); err != nil {
+			return stepsv3.RequeueWithError(err, doguv3.ReasonReconciliationPaused), true
 		}
 	}
-	return stepsv3.Continue()
+	return stepsv3.StepResult{}, false
 }
 
 func (shr *SuspendHelmReleaseStep) existingHelmRelease(ctx context.Context, doguResource *doguv3.Dogu) (*flux.HelmRelease, error) {
