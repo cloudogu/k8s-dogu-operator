@@ -7,9 +7,7 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv3/install"
 	"github.com/cloudogu/k8s-dogu-operator/v3/internal/charts"
-	"github.com/cloudogu/k8s-dogu-operator/v3/internal/dogu/health"
 	"github.com/cloudogu/k8s-dogu-operator/v3/internal/dogu/values"
-	"github.com/cloudogu/k8s-dogu-operator/v3/internal/dogu/workloads"
 	"github.com/cloudogu/k8s-dogu-operator/v3/internal/flux"
 	"github.com/cloudogu/k8s-dogu-operator/v3/internal/registry"
 	"k8s.io/client-go/kubernetes"
@@ -41,14 +39,11 @@ func NewDoguV3UseCases(
 	chartService := charts.NewService(charts.NewChartProvider(k8sClient, charts.NewHTTPClient()), restConfig, capabilities, flux.NewHelmReleaseReader(k8sClient))
 	assembler := values.NewAssembler(k8sClient)
 
-	workloadDiscovery := workloads.NewDiscovery(k8sClient)
-	healthChecker := health.NewChecker(workloadDiscovery)
-
 	ociStep := install.NewEnsureOCIRepositoryStep(k8sClient, registryReader, recorder)
 	waitStep := install.NewWaitForOCIRepositoryReadyStep(k8sClient, recorder)
 	validateStep := install.NewValidateChartStep(chartService, assembler, k8sClient)
 	helmReleaseStep := install.NewEnsureHelmReleaseStep(k8sClient, operatorConfig, chartService, recorder)
-	helmReleaseStatusStep := install.NewHelmReleaseStatusStep(k8sClient, recorder, healthChecker)
+	helmReleaseStatusStep := install.NewHelmReleaseStatusStep(k8sClient, recorder)
 
 	installUseCase := NewDoguInstallOrChangeUseCase(ociStep, waitStep, validateStep, helmReleaseStep, helmReleaseStatusStep, k8sClient, recorder)
 	deleteUseCase := NewDoguDeleteUseCase(k8sClient)
