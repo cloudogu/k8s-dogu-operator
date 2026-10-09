@@ -60,49 +60,23 @@ func (s *ShutdownHandler) handleV2(ctx context.Context, k8sClient client.Client)
 
 		updateErr := updateStatusWithRetry(ctx, k8sClient, &v2.Dogu{}, client.ObjectKeyFromObject(&dogu), func(current *v2.Dogu) {
 			current.Status.Health = v2.UnknownHealthStatus
-			reason := "StoppingOperator"
-			message := "The operator is shutting down"
-			conditions := []metav1.Condition{
-				{
-					Type:               v2.ConditionReady,
+			for _, conditionType := range []string{
+				v2.ConditionReady,
+				v2.ConditionHealthy,
+				v2.ConditionSupportMode,
+				v2.ConditionMeetsMinVolumeSize,
+				v2.ConditionPauseReconciliation,
+			} {
+				meta.SetStatusCondition(&current.Status.Conditions, metav1.Condition{
+					Type:               conditionType,
 					Status:             metav1.ConditionUnknown,
-					ObservedGeneration: dogu.Generation,
-					Reason:             reason,
-					Message:            message,
-				},
-				{
-					Type:               v2.ConditionHealthy,
-					Status:             metav1.ConditionUnknown,
-					ObservedGeneration: dogu.Generation,
-					Reason:             reason,
-					Message:            message,
-				},
-				{
-					Type:               v2.ConditionSupportMode,
-					Status:             metav1.ConditionUnknown,
-					ObservedGeneration: dogu.Generation,
-					Reason:             reason,
-					Message:            message,
-				},
-				{
-					Type:               v2.ConditionMeetsMinVolumeSize,
-					Status:             metav1.ConditionUnknown,
-					ObservedGeneration: dogu.Generation,
-					Reason:             reason,
-					Message:            message,
-				},
-				{
-					Type:               v2.ConditionPauseReconciliation,
-					Status:             metav1.ConditionUnknown,
-					ObservedGeneration: dogu.Generation,
-					Reason:             reason,
-					Message:            message,
-				},
-			}
-			for _, condition := range conditions {
-				meta.SetStatusCondition(&current.Status.Conditions, condition)
+					ObservedGeneration: current.Generation,
+					Reason:             ReasonStoppingOperator,
+					Message:            stoppingOperatorMessage,
+				})
 			}
 		})
+
 		if updateErr != nil {
 			errs = append(errs, fmt.Errorf("failed to set health status and conditions of %q to unknown: %w", dogu.Name, updateErr))
 		}
