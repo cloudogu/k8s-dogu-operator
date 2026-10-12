@@ -40,6 +40,18 @@ rules:
       - helmreleases/status
     verbs:
       - get
+  # dogu v3: discover a dogu's workloads to derive its health.
+  # watch is needed for the caching kes-client
+  - apiGroups:
+      - apps
+    resources:
+      - deployments
+      - statefulsets
+      - daemonsets
+    verbs:
+      - get
+      - list
+      - watch
   # dogu v3: read-only access so Helm `lookup` resolves during the chart validation render.
   # Namespaced on purpose: dogu charts may only `lookup` resources in their own (release)
   # namespace; cluster-scoped or cross-namespace lookups are unsupported and will fail validation.

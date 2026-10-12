@@ -225,7 +225,10 @@ func (r *DoguReconciler) setupWithManager(mgr ctrlManager) error {
 	}
 
 	controllerBuilder := ctrl.NewControllerManagedBy(mgr).
-		For(&doguv2.Dogu{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
+		For(&doguv2.Dogu{}, builder.WithPredicates(predicate.Or(
+			predicate.GenerationChangedPredicate{},
+			predicate.Funcs{UpdateFunc: v3HealthyStatusChanged},
+		))).
 		Owns(&coreV1.ConfigMap{}).
 		Owns(&coreV1.Secret{}).
 		Owns(&coreV1.Service{}).
@@ -276,4 +279,24 @@ func (r *DoguReconciler) setReadyCondition(ctx context.Context, doguResource *do
 	*doguResource = *updatedDoguResource
 	logger.Info("Updated dogu resource successfully!")
 	return nil
+}
+
+func v3HealthyStatusChanged(e event.UpdateEvent) bool {
+	oldDogu, okOld := e.ObjectOld.(*doguv2.Dogu)
+	newDogu, okNew := e.ObjectNew.(*doguv2.Dogu)
+	isDogu := !okOld || !okNew
+
+	if isDogu || newDogu.IsV2() {
+		return false
+	}
+
+	return healthyStatus(oldDogu) != healthyStatus(newDogu)
+}
+
+func healthyStatus(dogu *doguv2.Dogu) string {
+	condition := meta.FindStatusCondition(dogu.Status.Conditions, v3beta1.ConditionHealthy)
+	if condition == nil {
+		return ""
+	}
+	return string(condition.Status)
 }
