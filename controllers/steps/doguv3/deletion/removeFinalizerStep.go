@@ -33,7 +33,7 @@ func (rf *RemoveFinalizerStep) Run(ctx context.Context, doguResource *v3beta1.Do
 			return stepsv3.Continue()
 		}
 
-		return stepsv3.RequeueWithError(fmt.Errorf("failed to remove finalizer from dogu %q: %w", doguResource.Name, uErr), stepsv3.ReasonDeletionFailed)
+		return stepsv3.RequeueWithError(fmt.Errorf("failed to remove finalizer from dogu %q: %w", doguResource.Name, uErr), v3beta1.ReasonDeletionFailed)
 	}
 
 	log.FromContext(ctx).Info("removed cleanup finalizer from dogu", "name", doguResource.Name)

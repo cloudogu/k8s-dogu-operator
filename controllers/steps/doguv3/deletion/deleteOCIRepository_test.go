@@ -82,10 +82,10 @@ func TestDeleteOCIRepositoryStep_Run(t *testing.T) {
 
 				wrappedErr := fmt.Errorf("failed to delete OCIRepository %q: %w", testDoguName, assert.AnError)
 				recorder := NewMockEventRecorder(t)
-				recorder.EXPECT().Event(doguResource, v1.EventTypeWarning, stepsv3.ReasonDeletionFailed, wrappedErr.Error())
+				recorder.EXPECT().Event(doguResource, v1.EventTypeWarning, v3beta1.ReasonDeletionFailed, wrappedErr.Error())
 				return c, recorder, doguResource
 			},
-			want: stepsv3.RequeueWithError(fmt.Errorf("failed to delete OCIRepository %q: %w", testDoguName, assert.AnError), stepsv3.ReasonDeletionFailed),
+			want: stepsv3.RequeueWithError(fmt.Errorf("failed to delete OCIRepository %q: %w", testDoguName, assert.AnError), v3beta1.ReasonDeletionFailed),
 		},
 		{
 			name: "should emit event and requeue with error when get fails",
@@ -103,10 +103,10 @@ func TestDeleteOCIRepositoryStep_Run(t *testing.T) {
 
 				wrappedErr := fmt.Errorf("failed to get OCIRepository %q: %w", testDoguName, assert.AnError)
 				recorder := NewMockEventRecorder(t)
-				recorder.EXPECT().Event(doguResource, v1.EventTypeWarning, stepsv3.ReasonDeletionFailed, wrappedErr.Error())
+				recorder.EXPECT().Event(doguResource, v1.EventTypeWarning, v3beta1.ReasonDeletionFailed, wrappedErr.Error())
 				return c, recorder, doguResource
 			},
-			want: stepsv3.RequeueWithError(fmt.Errorf("failed to get OCIRepository %q: %w", testDoguName, assert.AnError), stepsv3.ReasonDeletionFailed),
+			want: stepsv3.RequeueWithError(fmt.Errorf("failed to get OCIRepository %q: %w", testDoguName, assert.AnError), v3beta1.ReasonDeletionFailed),
 		},
 	}
 	for _, tt := range tests {

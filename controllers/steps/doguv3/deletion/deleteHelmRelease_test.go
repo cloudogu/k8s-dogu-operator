@@ -89,10 +89,10 @@ func TestDeleteHelmReleaseStep_Run(t *testing.T) {
 
 				msg := fmt.Sprintf("HelmRelease %q uninstall stalled: %s", testDoguName, "uninstall retries exhausted")
 				recorder := NewMockEventRecorder(t)
-				recorder.EXPECT().Event(doguResource, v1.EventTypeWarning, stepsv3.ReasonDeletionStalled, msg)
+				recorder.EXPECT().Event(doguResource, v1.EventTypeWarning, v3beta1.ReasonDeletionStalled, msg)
 				return c, recorder, doguResource
 			},
-			want: stepsv3.RequeueAfter(defaultRequeueAfter, stepsv3.ReasonDeletionStalled, fmt.Sprintf("HelmRelease %q uninstall stalled: %s", testDoguName, "uninstall retries exhausted")),
+			want: stepsv3.RequeueAfter(defaultRequeueAfter, v3beta1.ReasonDeletionStalled, fmt.Sprintf("HelmRelease %q uninstall stalled: %s", testDoguName, "uninstall retries exhausted")),
 		},
 		{
 			name: "should escalate but keep requeueing when HelmRelease reports uninstall failed",
@@ -111,10 +111,10 @@ func TestDeleteHelmReleaseStep_Run(t *testing.T) {
 
 				msg := fmt.Sprintf("HelmRelease %q uninstall failed: %s", testDoguName, "helm uninstall failed")
 				recorder := NewMockEventRecorder(t)
-				recorder.EXPECT().Event(doguResource, v1.EventTypeWarning, stepsv3.ReasonDeletionStalled, msg)
+				recorder.EXPECT().Event(doguResource, v1.EventTypeWarning, v3beta1.ReasonDeletionStalled, msg)
 				return c, recorder, doguResource
 			},
-			want: stepsv3.RequeueAfter(defaultRequeueAfter, stepsv3.ReasonDeletionStalled, fmt.Sprintf("HelmRelease %q uninstall failed: %s", testDoguName, "helm uninstall failed")),
+			want: stepsv3.RequeueAfter(defaultRequeueAfter, v3beta1.ReasonDeletionStalled, fmt.Sprintf("HelmRelease %q uninstall failed: %s", testDoguName, "helm uninstall failed")),
 		},
 		{
 			name: "should emit event and requeue with error when delete fails",
@@ -130,10 +130,10 @@ func TestDeleteHelmReleaseStep_Run(t *testing.T) {
 
 				wrappedErr := fmt.Errorf("failed to delete HelmRelease %q: %w", testDoguName, assert.AnError)
 				recorder := NewMockEventRecorder(t)
-				recorder.EXPECT().Event(doguResource, v1.EventTypeWarning, stepsv3.ReasonDeletionFailed, wrappedErr.Error())
+				recorder.EXPECT().Event(doguResource, v1.EventTypeWarning, v3beta1.ReasonDeletionFailed, wrappedErr.Error())
 				return c, recorder, doguResource
 			},
-			want: stepsv3.RequeueWithError(fmt.Errorf("failed to delete HelmRelease %q: %w", testDoguName, assert.AnError), stepsv3.ReasonDeletionFailed),
+			want: stepsv3.RequeueWithError(fmt.Errorf("failed to delete HelmRelease %q: %w", testDoguName, assert.AnError), v3beta1.ReasonDeletionFailed),
 		},
 		{
 			name: "should emit event and requeue with error when get fails",
@@ -151,10 +151,10 @@ func TestDeleteHelmReleaseStep_Run(t *testing.T) {
 
 				wrappedErr := fmt.Errorf("failed to get HelmRelease %q: %w", testDoguName, assert.AnError)
 				recorder := NewMockEventRecorder(t)
-				recorder.EXPECT().Event(doguResource, v1.EventTypeWarning, stepsv3.ReasonDeletionFailed, wrappedErr.Error())
+				recorder.EXPECT().Event(doguResource, v1.EventTypeWarning, v3beta1.ReasonDeletionFailed, wrappedErr.Error())
 				return c, recorder, doguResource
 			},
-			want: stepsv3.RequeueWithError(fmt.Errorf("failed to get HelmRelease %q: %w", testDoguName, assert.AnError), stepsv3.ReasonDeletionFailed),
+			want: stepsv3.RequeueWithError(fmt.Errorf("failed to get HelmRelease %q: %w", testDoguName, assert.AnError), v3beta1.ReasonDeletionFailed),
 		},
 	}
 	for _, tt := range tests {

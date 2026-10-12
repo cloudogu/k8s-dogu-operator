@@ -85,7 +85,7 @@ func TestRemoveFinalizerStep_Run(t *testing.T) {
 					}).Build()
 				return c, doguResource
 			},
-			want: stepsv3.RequeueWithError(fmt.Errorf("failed to remove finalizer from dogu %q: %w", testDoguName, assert.AnError), stepsv3.ReasonDeletionFailed),
+			want: stepsv3.RequeueWithError(fmt.Errorf("failed to remove finalizer from dogu %q: %w", testDoguName, assert.AnError), v3beta1.ReasonDeletionFailed),
 		},
 	}
 	for _, tt := range tests {
