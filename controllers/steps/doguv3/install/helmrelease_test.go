@@ -168,6 +168,22 @@ func Test_configureHelmRelease(t *testing.T) {
 		}
 		assert.Equal(t, originalStatus, release.Status)
 	})
+	t.Run("propagate schema validation setting and re-enable it", func(t *testing.T) {
+		release := &fluxhelm.HelmRelease{}
+		dogu := &doguv3.Dogu{}
+		values := &apiext.JSON{}
+		retryInterval := &metav1.Duration{Duration: 30 * time.Second}
+		reconcileInterval := &metav1.Duration{Duration: 60 * time.Second}
+
+		for _, skipValidation := range []bool{false, true, false} {
+			dogu.Spec.SkipSchemaValidation = skipValidation
+
+			configureHelmRelease(release, dogu, values, retryInterval, reconcileInterval)
+
+			assert.Equal(t, skipValidation, release.Spec.Install.DisableSchemaValidation, "install")
+			assert.Equal(t, skipValidation, release.Spec.Upgrade.DisableSchemaValidation, "upgrade")
+		}
+	})
 }
 
 func checkExpectedValues(t *testing.T, release *fluxhelm.HelmRelease, retryInterval *metav1.Duration, reconcileInterval *metav1.Duration, values *apiext.JSON) {

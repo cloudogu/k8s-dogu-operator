@@ -1,0 +1,9 @@
+apiVersion: k8s.cloudogu.com/v3beta1
+kind: Dogu
+metadata:
+  name: nexus
+spec:
+  doguApiVersion: v3
+  doguNamespace: internal
+  name: nexus
+  version: 3.86.2-5

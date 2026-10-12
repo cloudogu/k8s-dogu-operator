@@ -1,0 +1,4 @@
+{
+  "Chart": "oci://registry.cloudogu.com/internal/dogu/v3/charts/nexus",
+  "Version": "3.86.2-8"
+}

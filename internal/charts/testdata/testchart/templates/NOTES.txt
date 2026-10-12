@@ -1,0 +1,1 @@
+Installed release {{ .Release.Name }} in namespace {{ .Release.Namespace }}.

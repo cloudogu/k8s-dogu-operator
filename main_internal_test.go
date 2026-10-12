@@ -15,8 +15,11 @@ import (
 	"go.uber.org/fx/fxtest"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/version"
+	fakediscovery "k8s.io/client-go/discovery/fake"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
+	coretesting "k8s.io/client-go/testing"
 	ctrl "sigs.k8s.io/controller-runtime"
 )
 
@@ -51,6 +54,11 @@ func Test_options(t *testing.T) {
 	kubernetesInterfaceMock := newMockKubernetesInterface(t)
 	kubernetesInterfaceMock.EXPECT().CoreV1().Return(coreV1InterfaceMock)
 	kubernetesInterfaceMock.EXPECT().AppsV1().Return(appsV1InterfaceMock)
+	// The chart capabilities provider discovers the cluster version and API versions at startup.
+	kubernetesInterfaceMock.EXPECT().Discovery().Return(&fakediscovery.FakeDiscovery{
+		Fake:               &coretesting.Fake{},
+		FakedServerVersion: &version.Info{Major: "1", Minor: "30", GitVersion: "v1.30.0"},
+	})
 
 	doguClientsetInterfaceMock := newMockDoguClientsetInterface(t)
 	doguV2InterfaceMock := newMockDoguV2Interface(t)

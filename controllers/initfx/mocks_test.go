@@ -10,24 +10,24 @@ import (
 
 	"github.com/cloudogu/ces-commons-lib/dogu"
 	"github.com/cloudogu/cesapp-lib/core"
-	v127 "github.com/cloudogu/k8s-auth-registration-lib/api/v1"
-	v126 "github.com/cloudogu/k8s-auth-registration-lib/client/typed/api/v1"
+	v128 "github.com/cloudogu/k8s-auth-registration-lib/api/v1"
+	v127 "github.com/cloudogu/k8s-auth-registration-lib/client/typed/api/v1"
 	"github.com/cloudogu/k8s-dogu-lib/v3/api/v2"
 	v21 "github.com/cloudogu/k8s-dogu-lib/v3/client/typed/api/v2"
 	"github.com/cloudogu/k8s-dogu-lib/v3/client/typed/api/v3beta1"
-	v129 "github.com/cloudogu/k8s-exposition-lib/api/v1"
-	v128 "github.com/cloudogu/k8s-exposition-lib/client/typed/api/v1"
+	v130 "github.com/cloudogu/k8s-exposition-lib/api/v1"
+	v129 "github.com/cloudogu/k8s-exposition-lib/client/typed/api/v1"
 	"github.com/cloudogu/k8s-registry-lib/config"
 	"github.com/cloudogu/k8s-registry-lib/repository"
-	v131 "github.com/cloudogu/k8s-warp-menu-entry-lib/api/v1"
-	v130 "github.com/cloudogu/k8s-warp-menu-entry-lib/client/typed/api/v1"
+	v132 "github.com/cloudogu/k8s-warp-menu-entry-lib/api/v1"
+	v131 "github.com/cloudogu/k8s-warp-menu-entry-lib/client/typed/api/v1"
 	"github.com/go-logr/logr"
 	mock "github.com/stretchr/testify/mock"
 	"go.uber.org/fx"
-	v122 "k8s.io/api/apps/v1"
-	v124 "k8s.io/api/autoscaling/v1"
+	v123 "k8s.io/api/apps/v1"
+	v125 "k8s.io/api/autoscaling/v1"
 	v11 "k8s.io/api/core/v1"
-	v125 "k8s.io/api/policy/v1"
+	v126 "k8s.io/api/policy/v1"
 	v1beta118 "k8s.io/api/policy/v1beta1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -35,8 +35,8 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/watch"
-	v121 "k8s.io/client-go/applyconfigurations/apps/v1"
-	v123 "k8s.io/client-go/applyconfigurations/autoscaling/v1"
+	v122 "k8s.io/client-go/applyconfigurations/apps/v1"
+	v124 "k8s.io/client-go/applyconfigurations/autoscaling/v1"
 	v10 "k8s.io/client-go/applyconfigurations/core/v1"
 	"k8s.io/client-go/discovery"
 	v12 "k8s.io/client-go/kubernetes/typed/admissionregistration/v1"
@@ -71,26 +71,28 @@ import (
 	v1beta19 "k8s.io/client-go/kubernetes/typed/flowcontrol/v1beta1"
 	v1beta20 "k8s.io/client-go/kubernetes/typed/flowcontrol/v1beta2"
 	"k8s.io/client-go/kubernetes/typed/flowcontrol/v1beta3"
+	v1alpha13 "k8s.io/client-go/kubernetes/typed/lifecycle/v1alpha1"
 	v114 "k8s.io/client-go/kubernetes/typed/networking/v1"
 	v1beta110 "k8s.io/client-go/kubernetes/typed/networking/v1beta1"
 	v115 "k8s.io/client-go/kubernetes/typed/node/v1"
-	v1alpha13 "k8s.io/client-go/kubernetes/typed/node/v1alpha1"
+	v1alpha14 "k8s.io/client-go/kubernetes/typed/node/v1alpha1"
 	v1beta111 "k8s.io/client-go/kubernetes/typed/node/v1beta1"
 	v116 "k8s.io/client-go/kubernetes/typed/policy/v1"
 	v1beta112 "k8s.io/client-go/kubernetes/typed/policy/v1beta1"
 	v117 "k8s.io/client-go/kubernetes/typed/rbac/v1"
-	v1alpha14 "k8s.io/client-go/kubernetes/typed/rbac/v1alpha1"
+	v1alpha15 "k8s.io/client-go/kubernetes/typed/rbac/v1alpha1"
 	v1beta113 "k8s.io/client-go/kubernetes/typed/rbac/v1beta1"
 	v118 "k8s.io/client-go/kubernetes/typed/resource/v1"
 	"k8s.io/client-go/kubernetes/typed/resource/v1alpha3"
 	v1beta114 "k8s.io/client-go/kubernetes/typed/resource/v1beta1"
 	v1beta21 "k8s.io/client-go/kubernetes/typed/resource/v1beta2"
 	v119 "k8s.io/client-go/kubernetes/typed/scheduling/v1"
-	v1alpha20 "k8s.io/client-go/kubernetes/typed/scheduling/v1alpha2"
+	v1alpha30 "k8s.io/client-go/kubernetes/typed/scheduling/v1alpha3"
 	v1beta115 "k8s.io/client-go/kubernetes/typed/scheduling/v1beta1"
 	v120 "k8s.io/client-go/kubernetes/typed/storage/v1"
-	v1alpha15 "k8s.io/client-go/kubernetes/typed/storage/v1alpha1"
+	v1alpha16 "k8s.io/client-go/kubernetes/typed/storage/v1alpha1"
 	v1beta116 "k8s.io/client-go/kubernetes/typed/storage/v1beta1"
+	v121 "k8s.io/client-go/kubernetes/typed/storagemigration/v1"
 	v1beta117 "k8s.io/client-go/kubernetes/typed/storagemigration/v1beta1"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/events"
@@ -4965,19 +4967,19 @@ func (_c *mockClientSet_CoreV1_Call) RunAndReturn(run func() v110.CoreV1Interfac
 }
 
 // Discovery provides a mock function for the type mockClientSet
-func (_mock *mockClientSet) Discovery() discovery.DiscoveryInterface {
+func (_mock *mockClientSet) Discovery() discovery.DiscoveryInterfaces {
 	ret := _mock.Called()
 
 	if len(ret) == 0 {
 		panic("no return value specified for Discovery")
 	}
 
-	var r0 discovery.DiscoveryInterface
-	if returnFunc, ok := ret.Get(0).(func() discovery.DiscoveryInterface); ok {
+	var r0 discovery.DiscoveryInterfaces
+	if returnFunc, ok := ret.Get(0).(func() discovery.DiscoveryInterfaces); ok {
 		r0 = returnFunc()
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(discovery.DiscoveryInterface)
+			r0 = ret.Get(0).(discovery.DiscoveryInterfaces)
 		}
 	}
 	return r0
@@ -5000,12 +5002,12 @@ func (_c *mockClientSet_Discovery_Call) Run(run func()) *mockClientSet_Discovery
 	return _c
 }
 
-func (_c *mockClientSet_Discovery_Call) Return(discoveryInterface discovery.DiscoveryInterface) *mockClientSet_Discovery_Call {
-	_c.Call.Return(discoveryInterface)
+func (_c *mockClientSet_Discovery_Call) Return(discoveryInterfaces discovery.DiscoveryInterfaces) *mockClientSet_Discovery_Call {
+	_c.Call.Return(discoveryInterfaces)
 	return _c
 }
 
-func (_c *mockClientSet_Discovery_Call) RunAndReturn(run func() discovery.DiscoveryInterface) *mockClientSet_Discovery_Call {
+func (_c *mockClientSet_Discovery_Call) RunAndReturn(run func() discovery.DiscoveryInterfaces) *mockClientSet_Discovery_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -5470,6 +5472,52 @@ func (_c *mockClientSet_InternalV1alpha1_Call) RunAndReturn(run func() v1alpha12
 	return _c
 }
 
+// LifecycleV1alpha1 provides a mock function for the type mockClientSet
+func (_mock *mockClientSet) LifecycleV1alpha1() v1alpha13.LifecycleV1alpha1Interface {
+	ret := _mock.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for LifecycleV1alpha1")
+	}
+
+	var r0 v1alpha13.LifecycleV1alpha1Interface
+	if returnFunc, ok := ret.Get(0).(func() v1alpha13.LifecycleV1alpha1Interface); ok {
+		r0 = returnFunc()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(v1alpha13.LifecycleV1alpha1Interface)
+		}
+	}
+	return r0
+}
+
+// mockClientSet_LifecycleV1alpha1_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'LifecycleV1alpha1'
+type mockClientSet_LifecycleV1alpha1_Call struct {
+	*mock.Call
+}
+
+// LifecycleV1alpha1 is a helper method to define mock.On call
+func (_e *mockClientSet_Expecter) LifecycleV1alpha1() *mockClientSet_LifecycleV1alpha1_Call {
+	return &mockClientSet_LifecycleV1alpha1_Call{Call: _e.mock.On("LifecycleV1alpha1")}
+}
+
+func (_c *mockClientSet_LifecycleV1alpha1_Call) Run(run func()) *mockClientSet_LifecycleV1alpha1_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *mockClientSet_LifecycleV1alpha1_Call) Return(lifecycleV1alpha1Interface v1alpha13.LifecycleV1alpha1Interface) *mockClientSet_LifecycleV1alpha1_Call {
+	_c.Call.Return(lifecycleV1alpha1Interface)
+	return _c
+}
+
+func (_c *mockClientSet_LifecycleV1alpha1_Call) RunAndReturn(run func() v1alpha13.LifecycleV1alpha1Interface) *mockClientSet_LifecycleV1alpha1_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // NetworkingV1 provides a mock function for the type mockClientSet
 func (_mock *mockClientSet) NetworkingV1() v114.NetworkingV1Interface {
 	ret := _mock.Called()
@@ -5609,19 +5657,19 @@ func (_c *mockClientSet_NodeV1_Call) RunAndReturn(run func() v115.NodeV1Interfac
 }
 
 // NodeV1alpha1 provides a mock function for the type mockClientSet
-func (_mock *mockClientSet) NodeV1alpha1() v1alpha13.NodeV1alpha1Interface {
+func (_mock *mockClientSet) NodeV1alpha1() v1alpha14.NodeV1alpha1Interface {
 	ret := _mock.Called()
 
 	if len(ret) == 0 {
 		panic("no return value specified for NodeV1alpha1")
 	}
 
-	var r0 v1alpha13.NodeV1alpha1Interface
-	if returnFunc, ok := ret.Get(0).(func() v1alpha13.NodeV1alpha1Interface); ok {
+	var r0 v1alpha14.NodeV1alpha1Interface
+	if returnFunc, ok := ret.Get(0).(func() v1alpha14.NodeV1alpha1Interface); ok {
 		r0 = returnFunc()
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(v1alpha13.NodeV1alpha1Interface)
+			r0 = ret.Get(0).(v1alpha14.NodeV1alpha1Interface)
 		}
 	}
 	return r0
@@ -5644,12 +5692,12 @@ func (_c *mockClientSet_NodeV1alpha1_Call) Run(run func()) *mockClientSet_NodeV1
 	return _c
 }
 
-func (_c *mockClientSet_NodeV1alpha1_Call) Return(nodeV1alpha1Interface v1alpha13.NodeV1alpha1Interface) *mockClientSet_NodeV1alpha1_Call {
+func (_c *mockClientSet_NodeV1alpha1_Call) Return(nodeV1alpha1Interface v1alpha14.NodeV1alpha1Interface) *mockClientSet_NodeV1alpha1_Call {
 	_c.Call.Return(nodeV1alpha1Interface)
 	return _c
 }
 
-func (_c *mockClientSet_NodeV1alpha1_Call) RunAndReturn(run func() v1alpha13.NodeV1alpha1Interface) *mockClientSet_NodeV1alpha1_Call {
+func (_c *mockClientSet_NodeV1alpha1_Call) RunAndReturn(run func() v1alpha14.NodeV1alpha1Interface) *mockClientSet_NodeV1alpha1_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -5839,19 +5887,19 @@ func (_c *mockClientSet_RbacV1_Call) RunAndReturn(run func() v117.RbacV1Interfac
 }
 
 // RbacV1alpha1 provides a mock function for the type mockClientSet
-func (_mock *mockClientSet) RbacV1alpha1() v1alpha14.RbacV1alpha1Interface {
+func (_mock *mockClientSet) RbacV1alpha1() v1alpha15.RbacV1alpha1Interface {
 	ret := _mock.Called()
 
 	if len(ret) == 0 {
 		panic("no return value specified for RbacV1alpha1")
 	}
 
-	var r0 v1alpha14.RbacV1alpha1Interface
-	if returnFunc, ok := ret.Get(0).(func() v1alpha14.RbacV1alpha1Interface); ok {
+	var r0 v1alpha15.RbacV1alpha1Interface
+	if returnFunc, ok := ret.Get(0).(func() v1alpha15.RbacV1alpha1Interface); ok {
 		r0 = returnFunc()
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(v1alpha14.RbacV1alpha1Interface)
+			r0 = ret.Get(0).(v1alpha15.RbacV1alpha1Interface)
 		}
 	}
 	return r0
@@ -5874,12 +5922,12 @@ func (_c *mockClientSet_RbacV1alpha1_Call) Run(run func()) *mockClientSet_RbacV1
 	return _c
 }
 
-func (_c *mockClientSet_RbacV1alpha1_Call) Return(rbacV1alpha1Interface v1alpha14.RbacV1alpha1Interface) *mockClientSet_RbacV1alpha1_Call {
+func (_c *mockClientSet_RbacV1alpha1_Call) Return(rbacV1alpha1Interface v1alpha15.RbacV1alpha1Interface) *mockClientSet_RbacV1alpha1_Call {
 	_c.Call.Return(rbacV1alpha1Interface)
 	return _c
 }
 
-func (_c *mockClientSet_RbacV1alpha1_Call) RunAndReturn(run func() v1alpha14.RbacV1alpha1Interface) *mockClientSet_RbacV1alpha1_Call {
+func (_c *mockClientSet_RbacV1alpha1_Call) RunAndReturn(run func() v1alpha15.RbacV1alpha1Interface) *mockClientSet_RbacV1alpha1_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -6160,48 +6208,48 @@ func (_c *mockClientSet_SchedulingV1_Call) RunAndReturn(run func() v119.Scheduli
 	return _c
 }
 
-// SchedulingV1alpha2 provides a mock function for the type mockClientSet
-func (_mock *mockClientSet) SchedulingV1alpha2() v1alpha20.SchedulingV1alpha2Interface {
+// SchedulingV1alpha3 provides a mock function for the type mockClientSet
+func (_mock *mockClientSet) SchedulingV1alpha3() v1alpha30.SchedulingV1alpha3Interface {
 	ret := _mock.Called()
 
 	if len(ret) == 0 {
-		panic("no return value specified for SchedulingV1alpha2")
+		panic("no return value specified for SchedulingV1alpha3")
 	}
 
-	var r0 v1alpha20.SchedulingV1alpha2Interface
-	if returnFunc, ok := ret.Get(0).(func() v1alpha20.SchedulingV1alpha2Interface); ok {
+	var r0 v1alpha30.SchedulingV1alpha3Interface
+	if returnFunc, ok := ret.Get(0).(func() v1alpha30.SchedulingV1alpha3Interface); ok {
 		r0 = returnFunc()
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(v1alpha20.SchedulingV1alpha2Interface)
+			r0 = ret.Get(0).(v1alpha30.SchedulingV1alpha3Interface)
 		}
 	}
 	return r0
 }
 
-// mockClientSet_SchedulingV1alpha2_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SchedulingV1alpha2'
-type mockClientSet_SchedulingV1alpha2_Call struct {
+// mockClientSet_SchedulingV1alpha3_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SchedulingV1alpha3'
+type mockClientSet_SchedulingV1alpha3_Call struct {
 	*mock.Call
 }
 
-// SchedulingV1alpha2 is a helper method to define mock.On call
-func (_e *mockClientSet_Expecter) SchedulingV1alpha2() *mockClientSet_SchedulingV1alpha2_Call {
-	return &mockClientSet_SchedulingV1alpha2_Call{Call: _e.mock.On("SchedulingV1alpha2")}
+// SchedulingV1alpha3 is a helper method to define mock.On call
+func (_e *mockClientSet_Expecter) SchedulingV1alpha3() *mockClientSet_SchedulingV1alpha3_Call {
+	return &mockClientSet_SchedulingV1alpha3_Call{Call: _e.mock.On("SchedulingV1alpha3")}
 }
 
-func (_c *mockClientSet_SchedulingV1alpha2_Call) Run(run func()) *mockClientSet_SchedulingV1alpha2_Call {
+func (_c *mockClientSet_SchedulingV1alpha3_Call) Run(run func()) *mockClientSet_SchedulingV1alpha3_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		run()
 	})
 	return _c
 }
 
-func (_c *mockClientSet_SchedulingV1alpha2_Call) Return(schedulingV1alpha2Interface v1alpha20.SchedulingV1alpha2Interface) *mockClientSet_SchedulingV1alpha2_Call {
-	_c.Call.Return(schedulingV1alpha2Interface)
+func (_c *mockClientSet_SchedulingV1alpha3_Call) Return(schedulingV1alpha3Interface v1alpha30.SchedulingV1alpha3Interface) *mockClientSet_SchedulingV1alpha3_Call {
+	_c.Call.Return(schedulingV1alpha3Interface)
 	return _c
 }
 
-func (_c *mockClientSet_SchedulingV1alpha2_Call) RunAndReturn(run func() v1alpha20.SchedulingV1alpha2Interface) *mockClientSet_SchedulingV1alpha2_Call {
+func (_c *mockClientSet_SchedulingV1alpha3_Call) RunAndReturn(run func() v1alpha30.SchedulingV1alpha3Interface) *mockClientSet_SchedulingV1alpha3_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -6299,19 +6347,19 @@ func (_c *mockClientSet_StorageV1_Call) RunAndReturn(run func() v120.StorageV1In
 }
 
 // StorageV1alpha1 provides a mock function for the type mockClientSet
-func (_mock *mockClientSet) StorageV1alpha1() v1alpha15.StorageV1alpha1Interface {
+func (_mock *mockClientSet) StorageV1alpha1() v1alpha16.StorageV1alpha1Interface {
 	ret := _mock.Called()
 
 	if len(ret) == 0 {
 		panic("no return value specified for StorageV1alpha1")
 	}
 
-	var r0 v1alpha15.StorageV1alpha1Interface
-	if returnFunc, ok := ret.Get(0).(func() v1alpha15.StorageV1alpha1Interface); ok {
+	var r0 v1alpha16.StorageV1alpha1Interface
+	if returnFunc, ok := ret.Get(0).(func() v1alpha16.StorageV1alpha1Interface); ok {
 		r0 = returnFunc()
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(v1alpha15.StorageV1alpha1Interface)
+			r0 = ret.Get(0).(v1alpha16.StorageV1alpha1Interface)
 		}
 	}
 	return r0
@@ -6334,12 +6382,12 @@ func (_c *mockClientSet_StorageV1alpha1_Call) Run(run func()) *mockClientSet_Sto
 	return _c
 }
 
-func (_c *mockClientSet_StorageV1alpha1_Call) Return(storageV1alpha1Interface v1alpha15.StorageV1alpha1Interface) *mockClientSet_StorageV1alpha1_Call {
+func (_c *mockClientSet_StorageV1alpha1_Call) Return(storageV1alpha1Interface v1alpha16.StorageV1alpha1Interface) *mockClientSet_StorageV1alpha1_Call {
 	_c.Call.Return(storageV1alpha1Interface)
 	return _c
 }
 
-func (_c *mockClientSet_StorageV1alpha1_Call) RunAndReturn(run func() v1alpha15.StorageV1alpha1Interface) *mockClientSet_StorageV1alpha1_Call {
+func (_c *mockClientSet_StorageV1alpha1_Call) RunAndReturn(run func() v1alpha16.StorageV1alpha1Interface) *mockClientSet_StorageV1alpha1_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -6386,6 +6434,52 @@ func (_c *mockClientSet_StorageV1beta1_Call) Return(storageV1beta1Interface v1be
 }
 
 func (_c *mockClientSet_StorageV1beta1_Call) RunAndReturn(run func() v1beta116.StorageV1beta1Interface) *mockClientSet_StorageV1beta1_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// StoragemigrationV1 provides a mock function for the type mockClientSet
+func (_mock *mockClientSet) StoragemigrationV1() v121.StoragemigrationV1Interface {
+	ret := _mock.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for StoragemigrationV1")
+	}
+
+	var r0 v121.StoragemigrationV1Interface
+	if returnFunc, ok := ret.Get(0).(func() v121.StoragemigrationV1Interface); ok {
+		r0 = returnFunc()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(v121.StoragemigrationV1Interface)
+		}
+	}
+	return r0
+}
+
+// mockClientSet_StoragemigrationV1_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'StoragemigrationV1'
+type mockClientSet_StoragemigrationV1_Call struct {
+	*mock.Call
+}
+
+// StoragemigrationV1 is a helper method to define mock.On call
+func (_e *mockClientSet_Expecter) StoragemigrationV1() *mockClientSet_StoragemigrationV1_Call {
+	return &mockClientSet_StoragemigrationV1_Call{Call: _e.mock.On("StoragemigrationV1")}
+}
+
+func (_c *mockClientSet_StoragemigrationV1_Call) Run(run func()) *mockClientSet_StoragemigrationV1_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *mockClientSet_StoragemigrationV1_Call) Return(storagemigrationV1Interface v121.StoragemigrationV1Interface) *mockClientSet_StoragemigrationV1_Call {
+	_c.Call.Return(storagemigrationV1Interface)
+	return _c
+}
+
+func (_c *mockClientSet_StoragemigrationV1_Call) RunAndReturn(run func() v121.StoragemigrationV1Interface) *mockClientSet_StoragemigrationV1_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -7896,26 +7990,26 @@ func (_m *mockDeploymentInterface) EXPECT() *mockDeploymentInterface_Expecter {
 }
 
 // Apply provides a mock function for the type mockDeploymentInterface
-func (_mock *mockDeploymentInterface) Apply(ctx context.Context, deployment *v121.DeploymentApplyConfiguration, opts v1.ApplyOptions) (*v122.Deployment, error) {
+func (_mock *mockDeploymentInterface) Apply(ctx context.Context, deployment *v122.DeploymentApplyConfiguration, opts v1.ApplyOptions) (*v123.Deployment, error) {
 	ret := _mock.Called(ctx, deployment, opts)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Apply")
 	}
 
-	var r0 *v122.Deployment
+	var r0 *v123.Deployment
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, *v121.DeploymentApplyConfiguration, v1.ApplyOptions) (*v122.Deployment, error)); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *v122.DeploymentApplyConfiguration, v1.ApplyOptions) (*v123.Deployment, error)); ok {
 		return returnFunc(ctx, deployment, opts)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, *v121.DeploymentApplyConfiguration, v1.ApplyOptions) *v122.Deployment); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *v122.DeploymentApplyConfiguration, v1.ApplyOptions) *v123.Deployment); ok {
 		r0 = returnFunc(ctx, deployment, opts)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*v122.Deployment)
+			r0 = ret.Get(0).(*v123.Deployment)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, *v121.DeploymentApplyConfiguration, v1.ApplyOptions) error); ok {
+	if returnFunc, ok := ret.Get(1).(func(context.Context, *v122.DeploymentApplyConfiguration, v1.ApplyOptions) error); ok {
 		r1 = returnFunc(ctx, deployment, opts)
 	} else {
 		r1 = ret.Error(1)
@@ -7930,21 +8024,21 @@ type mockDeploymentInterface_Apply_Call struct {
 
 // Apply is a helper method to define mock.On call
 //   - ctx context.Context
-//   - deployment *v121.DeploymentApplyConfiguration
+//   - deployment *v122.DeploymentApplyConfiguration
 //   - opts v1.ApplyOptions
 func (_e *mockDeploymentInterface_Expecter) Apply(ctx any, deployment any, opts any) *mockDeploymentInterface_Apply_Call {
 	return &mockDeploymentInterface_Apply_Call{Call: _e.mock.On("Apply", ctx, deployment, opts)}
 }
 
-func (_c *mockDeploymentInterface_Apply_Call) Run(run func(ctx context.Context, deployment *v121.DeploymentApplyConfiguration, opts v1.ApplyOptions)) *mockDeploymentInterface_Apply_Call {
+func (_c *mockDeploymentInterface_Apply_Call) Run(run func(ctx context.Context, deployment *v122.DeploymentApplyConfiguration, opts v1.ApplyOptions)) *mockDeploymentInterface_Apply_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
 			arg0 = args[0].(context.Context)
 		}
-		var arg1 *v121.DeploymentApplyConfiguration
+		var arg1 *v122.DeploymentApplyConfiguration
 		if args[1] != nil {
-			arg1 = args[1].(*v121.DeploymentApplyConfiguration)
+			arg1 = args[1].(*v122.DeploymentApplyConfiguration)
 		}
 		var arg2 v1.ApplyOptions
 		if args[2] != nil {
@@ -7959,37 +8053,37 @@ func (_c *mockDeploymentInterface_Apply_Call) Run(run func(ctx context.Context, 
 	return _c
 }
 
-func (_c *mockDeploymentInterface_Apply_Call) Return(result *v122.Deployment, err error) *mockDeploymentInterface_Apply_Call {
+func (_c *mockDeploymentInterface_Apply_Call) Return(result *v123.Deployment, err error) *mockDeploymentInterface_Apply_Call {
 	_c.Call.Return(result, err)
 	return _c
 }
 
-func (_c *mockDeploymentInterface_Apply_Call) RunAndReturn(run func(ctx context.Context, deployment *v121.DeploymentApplyConfiguration, opts v1.ApplyOptions) (*v122.Deployment, error)) *mockDeploymentInterface_Apply_Call {
+func (_c *mockDeploymentInterface_Apply_Call) RunAndReturn(run func(ctx context.Context, deployment *v122.DeploymentApplyConfiguration, opts v1.ApplyOptions) (*v123.Deployment, error)) *mockDeploymentInterface_Apply_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // ApplyScale provides a mock function for the type mockDeploymentInterface
-func (_mock *mockDeploymentInterface) ApplyScale(ctx context.Context, deploymentName string, scale *v123.ScaleApplyConfiguration, opts v1.ApplyOptions) (*v124.Scale, error) {
+func (_mock *mockDeploymentInterface) ApplyScale(ctx context.Context, deploymentName string, scale *v124.ScaleApplyConfiguration, opts v1.ApplyOptions) (*v125.Scale, error) {
 	ret := _mock.Called(ctx, deploymentName, scale, opts)
 
 	if len(ret) == 0 {
 		panic("no return value specified for ApplyScale")
 	}
 
-	var r0 *v124.Scale
+	var r0 *v125.Scale
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, *v123.ScaleApplyConfiguration, v1.ApplyOptions) (*v124.Scale, error)); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, *v124.ScaleApplyConfiguration, v1.ApplyOptions) (*v125.Scale, error)); ok {
 		return returnFunc(ctx, deploymentName, scale, opts)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, *v123.ScaleApplyConfiguration, v1.ApplyOptions) *v124.Scale); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, *v124.ScaleApplyConfiguration, v1.ApplyOptions) *v125.Scale); ok {
 		r0 = returnFunc(ctx, deploymentName, scale, opts)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*v124.Scale)
+			r0 = ret.Get(0).(*v125.Scale)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, string, *v123.ScaleApplyConfiguration, v1.ApplyOptions) error); ok {
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string, *v124.ScaleApplyConfiguration, v1.ApplyOptions) error); ok {
 		r1 = returnFunc(ctx, deploymentName, scale, opts)
 	} else {
 		r1 = ret.Error(1)
@@ -8005,13 +8099,13 @@ type mockDeploymentInterface_ApplyScale_Call struct {
 // ApplyScale is a helper method to define mock.On call
 //   - ctx context.Context
 //   - deploymentName string
-//   - scale *v123.ScaleApplyConfiguration
+//   - scale *v124.ScaleApplyConfiguration
 //   - opts v1.ApplyOptions
 func (_e *mockDeploymentInterface_Expecter) ApplyScale(ctx any, deploymentName any, scale any, opts any) *mockDeploymentInterface_ApplyScale_Call {
 	return &mockDeploymentInterface_ApplyScale_Call{Call: _e.mock.On("ApplyScale", ctx, deploymentName, scale, opts)}
 }
 
-func (_c *mockDeploymentInterface_ApplyScale_Call) Run(run func(ctx context.Context, deploymentName string, scale *v123.ScaleApplyConfiguration, opts v1.ApplyOptions)) *mockDeploymentInterface_ApplyScale_Call {
+func (_c *mockDeploymentInterface_ApplyScale_Call) Run(run func(ctx context.Context, deploymentName string, scale *v124.ScaleApplyConfiguration, opts v1.ApplyOptions)) *mockDeploymentInterface_ApplyScale_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -8021,9 +8115,9 @@ func (_c *mockDeploymentInterface_ApplyScale_Call) Run(run func(ctx context.Cont
 		if args[1] != nil {
 			arg1 = args[1].(string)
 		}
-		var arg2 *v123.ScaleApplyConfiguration
+		var arg2 *v124.ScaleApplyConfiguration
 		if args[2] != nil {
-			arg2 = args[2].(*v123.ScaleApplyConfiguration)
+			arg2 = args[2].(*v124.ScaleApplyConfiguration)
 		}
 		var arg3 v1.ApplyOptions
 		if args[3] != nil {
@@ -8039,37 +8133,37 @@ func (_c *mockDeploymentInterface_ApplyScale_Call) Run(run func(ctx context.Cont
 	return _c
 }
 
-func (_c *mockDeploymentInterface_ApplyScale_Call) Return(scale1 *v124.Scale, err error) *mockDeploymentInterface_ApplyScale_Call {
+func (_c *mockDeploymentInterface_ApplyScale_Call) Return(scale1 *v125.Scale, err error) *mockDeploymentInterface_ApplyScale_Call {
 	_c.Call.Return(scale1, err)
 	return _c
 }
 
-func (_c *mockDeploymentInterface_ApplyScale_Call) RunAndReturn(run func(ctx context.Context, deploymentName string, scale *v123.ScaleApplyConfiguration, opts v1.ApplyOptions) (*v124.Scale, error)) *mockDeploymentInterface_ApplyScale_Call {
+func (_c *mockDeploymentInterface_ApplyScale_Call) RunAndReturn(run func(ctx context.Context, deploymentName string, scale *v124.ScaleApplyConfiguration, opts v1.ApplyOptions) (*v125.Scale, error)) *mockDeploymentInterface_ApplyScale_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // ApplyStatus provides a mock function for the type mockDeploymentInterface
-func (_mock *mockDeploymentInterface) ApplyStatus(ctx context.Context, deployment *v121.DeploymentApplyConfiguration, opts v1.ApplyOptions) (*v122.Deployment, error) {
+func (_mock *mockDeploymentInterface) ApplyStatus(ctx context.Context, deployment *v122.DeploymentApplyConfiguration, opts v1.ApplyOptions) (*v123.Deployment, error) {
 	ret := _mock.Called(ctx, deployment, opts)
 
 	if len(ret) == 0 {
 		panic("no return value specified for ApplyStatus")
 	}
 
-	var r0 *v122.Deployment
+	var r0 *v123.Deployment
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, *v121.DeploymentApplyConfiguration, v1.ApplyOptions) (*v122.Deployment, error)); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *v122.DeploymentApplyConfiguration, v1.ApplyOptions) (*v123.Deployment, error)); ok {
 		return returnFunc(ctx, deployment, opts)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, *v121.DeploymentApplyConfiguration, v1.ApplyOptions) *v122.Deployment); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *v122.DeploymentApplyConfiguration, v1.ApplyOptions) *v123.Deployment); ok {
 		r0 = returnFunc(ctx, deployment, opts)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*v122.Deployment)
+			r0 = ret.Get(0).(*v123.Deployment)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, *v121.DeploymentApplyConfiguration, v1.ApplyOptions) error); ok {
+	if returnFunc, ok := ret.Get(1).(func(context.Context, *v122.DeploymentApplyConfiguration, v1.ApplyOptions) error); ok {
 		r1 = returnFunc(ctx, deployment, opts)
 	} else {
 		r1 = ret.Error(1)
@@ -8084,21 +8178,21 @@ type mockDeploymentInterface_ApplyStatus_Call struct {
 
 // ApplyStatus is a helper method to define mock.On call
 //   - ctx context.Context
-//   - deployment *v121.DeploymentApplyConfiguration
+//   - deployment *v122.DeploymentApplyConfiguration
 //   - opts v1.ApplyOptions
 func (_e *mockDeploymentInterface_Expecter) ApplyStatus(ctx any, deployment any, opts any) *mockDeploymentInterface_ApplyStatus_Call {
 	return &mockDeploymentInterface_ApplyStatus_Call{Call: _e.mock.On("ApplyStatus", ctx, deployment, opts)}
 }
 
-func (_c *mockDeploymentInterface_ApplyStatus_Call) Run(run func(ctx context.Context, deployment *v121.DeploymentApplyConfiguration, opts v1.ApplyOptions)) *mockDeploymentInterface_ApplyStatus_Call {
+func (_c *mockDeploymentInterface_ApplyStatus_Call) Run(run func(ctx context.Context, deployment *v122.DeploymentApplyConfiguration, opts v1.ApplyOptions)) *mockDeploymentInterface_ApplyStatus_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
 			arg0 = args[0].(context.Context)
 		}
-		var arg1 *v121.DeploymentApplyConfiguration
+		var arg1 *v122.DeploymentApplyConfiguration
 		if args[1] != nil {
-			arg1 = args[1].(*v121.DeploymentApplyConfiguration)
+			arg1 = args[1].(*v122.DeploymentApplyConfiguration)
 		}
 		var arg2 v1.ApplyOptions
 		if args[2] != nil {
@@ -8113,37 +8207,37 @@ func (_c *mockDeploymentInterface_ApplyStatus_Call) Run(run func(ctx context.Con
 	return _c
 }
 
-func (_c *mockDeploymentInterface_ApplyStatus_Call) Return(result *v122.Deployment, err error) *mockDeploymentInterface_ApplyStatus_Call {
+func (_c *mockDeploymentInterface_ApplyStatus_Call) Return(result *v123.Deployment, err error) *mockDeploymentInterface_ApplyStatus_Call {
 	_c.Call.Return(result, err)
 	return _c
 }
 
-func (_c *mockDeploymentInterface_ApplyStatus_Call) RunAndReturn(run func(ctx context.Context, deployment *v121.DeploymentApplyConfiguration, opts v1.ApplyOptions) (*v122.Deployment, error)) *mockDeploymentInterface_ApplyStatus_Call {
+func (_c *mockDeploymentInterface_ApplyStatus_Call) RunAndReturn(run func(ctx context.Context, deployment *v122.DeploymentApplyConfiguration, opts v1.ApplyOptions) (*v123.Deployment, error)) *mockDeploymentInterface_ApplyStatus_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // Create provides a mock function for the type mockDeploymentInterface
-func (_mock *mockDeploymentInterface) Create(ctx context.Context, deployment *v122.Deployment, opts v1.CreateOptions) (*v122.Deployment, error) {
+func (_mock *mockDeploymentInterface) Create(ctx context.Context, deployment *v123.Deployment, opts v1.CreateOptions) (*v123.Deployment, error) {
 	ret := _mock.Called(ctx, deployment, opts)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Create")
 	}
 
-	var r0 *v122.Deployment
+	var r0 *v123.Deployment
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, *v122.Deployment, v1.CreateOptions) (*v122.Deployment, error)); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *v123.Deployment, v1.CreateOptions) (*v123.Deployment, error)); ok {
 		return returnFunc(ctx, deployment, opts)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, *v122.Deployment, v1.CreateOptions) *v122.Deployment); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *v123.Deployment, v1.CreateOptions) *v123.Deployment); ok {
 		r0 = returnFunc(ctx, deployment, opts)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*v122.Deployment)
+			r0 = ret.Get(0).(*v123.Deployment)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, *v122.Deployment, v1.CreateOptions) error); ok {
+	if returnFunc, ok := ret.Get(1).(func(context.Context, *v123.Deployment, v1.CreateOptions) error); ok {
 		r1 = returnFunc(ctx, deployment, opts)
 	} else {
 		r1 = ret.Error(1)
@@ -8158,21 +8252,21 @@ type mockDeploymentInterface_Create_Call struct {
 
 // Create is a helper method to define mock.On call
 //   - ctx context.Context
-//   - deployment *v122.Deployment
+//   - deployment *v123.Deployment
 //   - opts v1.CreateOptions
 func (_e *mockDeploymentInterface_Expecter) Create(ctx any, deployment any, opts any) *mockDeploymentInterface_Create_Call {
 	return &mockDeploymentInterface_Create_Call{Call: _e.mock.On("Create", ctx, deployment, opts)}
 }
 
-func (_c *mockDeploymentInterface_Create_Call) Run(run func(ctx context.Context, deployment *v122.Deployment, opts v1.CreateOptions)) *mockDeploymentInterface_Create_Call {
+func (_c *mockDeploymentInterface_Create_Call) Run(run func(ctx context.Context, deployment *v123.Deployment, opts v1.CreateOptions)) *mockDeploymentInterface_Create_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
 			arg0 = args[0].(context.Context)
 		}
-		var arg1 *v122.Deployment
+		var arg1 *v123.Deployment
 		if args[1] != nil {
-			arg1 = args[1].(*v122.Deployment)
+			arg1 = args[1].(*v123.Deployment)
 		}
 		var arg2 v1.CreateOptions
 		if args[2] != nil {
@@ -8187,12 +8281,12 @@ func (_c *mockDeploymentInterface_Create_Call) Run(run func(ctx context.Context,
 	return _c
 }
 
-func (_c *mockDeploymentInterface_Create_Call) Return(deployment1 *v122.Deployment, err error) *mockDeploymentInterface_Create_Call {
+func (_c *mockDeploymentInterface_Create_Call) Return(deployment1 *v123.Deployment, err error) *mockDeploymentInterface_Create_Call {
 	_c.Call.Return(deployment1, err)
 	return _c
 }
 
-func (_c *mockDeploymentInterface_Create_Call) RunAndReturn(run func(ctx context.Context, deployment *v122.Deployment, opts v1.CreateOptions) (*v122.Deployment, error)) *mockDeploymentInterface_Create_Call {
+func (_c *mockDeploymentInterface_Create_Call) RunAndReturn(run func(ctx context.Context, deployment *v123.Deployment, opts v1.CreateOptions) (*v123.Deployment, error)) *mockDeploymentInterface_Create_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -8324,23 +8418,23 @@ func (_c *mockDeploymentInterface_DeleteCollection_Call) RunAndReturn(run func(c
 }
 
 // Get provides a mock function for the type mockDeploymentInterface
-func (_mock *mockDeploymentInterface) Get(ctx context.Context, name string, opts v1.GetOptions) (*v122.Deployment, error) {
+func (_mock *mockDeploymentInterface) Get(ctx context.Context, name string, opts v1.GetOptions) (*v123.Deployment, error) {
 	ret := _mock.Called(ctx, name, opts)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Get")
 	}
 
-	var r0 *v122.Deployment
+	var r0 *v123.Deployment
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, v1.GetOptions) (*v122.Deployment, error)); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, v1.GetOptions) (*v123.Deployment, error)); ok {
 		return returnFunc(ctx, name, opts)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, v1.GetOptions) *v122.Deployment); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, v1.GetOptions) *v123.Deployment); ok {
 		r0 = returnFunc(ctx, name, opts)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*v122.Deployment)
+			r0 = ret.Get(0).(*v123.Deployment)
 		}
 	}
 	if returnFunc, ok := ret.Get(1).(func(context.Context, string, v1.GetOptions) error); ok {
@@ -8387,34 +8481,34 @@ func (_c *mockDeploymentInterface_Get_Call) Run(run func(ctx context.Context, na
 	return _c
 }
 
-func (_c *mockDeploymentInterface_Get_Call) Return(deployment *v122.Deployment, err error) *mockDeploymentInterface_Get_Call {
+func (_c *mockDeploymentInterface_Get_Call) Return(deployment *v123.Deployment, err error) *mockDeploymentInterface_Get_Call {
 	_c.Call.Return(deployment, err)
 	return _c
 }
 
-func (_c *mockDeploymentInterface_Get_Call) RunAndReturn(run func(ctx context.Context, name string, opts v1.GetOptions) (*v122.Deployment, error)) *mockDeploymentInterface_Get_Call {
+func (_c *mockDeploymentInterface_Get_Call) RunAndReturn(run func(ctx context.Context, name string, opts v1.GetOptions) (*v123.Deployment, error)) *mockDeploymentInterface_Get_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // GetScale provides a mock function for the type mockDeploymentInterface
-func (_mock *mockDeploymentInterface) GetScale(ctx context.Context, deploymentName string, options v1.GetOptions) (*v124.Scale, error) {
+func (_mock *mockDeploymentInterface) GetScale(ctx context.Context, deploymentName string, options v1.GetOptions) (*v125.Scale, error) {
 	ret := _mock.Called(ctx, deploymentName, options)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetScale")
 	}
 
-	var r0 *v124.Scale
+	var r0 *v125.Scale
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, v1.GetOptions) (*v124.Scale, error)); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, v1.GetOptions) (*v125.Scale, error)); ok {
 		return returnFunc(ctx, deploymentName, options)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, v1.GetOptions) *v124.Scale); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, v1.GetOptions) *v125.Scale); ok {
 		r0 = returnFunc(ctx, deploymentName, options)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*v124.Scale)
+			r0 = ret.Get(0).(*v125.Scale)
 		}
 	}
 	if returnFunc, ok := ret.Get(1).(func(context.Context, string, v1.GetOptions) error); ok {
@@ -8461,34 +8555,34 @@ func (_c *mockDeploymentInterface_GetScale_Call) Run(run func(ctx context.Contex
 	return _c
 }
 
-func (_c *mockDeploymentInterface_GetScale_Call) Return(scale *v124.Scale, err error) *mockDeploymentInterface_GetScale_Call {
+func (_c *mockDeploymentInterface_GetScale_Call) Return(scale *v125.Scale, err error) *mockDeploymentInterface_GetScale_Call {
 	_c.Call.Return(scale, err)
 	return _c
 }
 
-func (_c *mockDeploymentInterface_GetScale_Call) RunAndReturn(run func(ctx context.Context, deploymentName string, options v1.GetOptions) (*v124.Scale, error)) *mockDeploymentInterface_GetScale_Call {
+func (_c *mockDeploymentInterface_GetScale_Call) RunAndReturn(run func(ctx context.Context, deploymentName string, options v1.GetOptions) (*v125.Scale, error)) *mockDeploymentInterface_GetScale_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // List provides a mock function for the type mockDeploymentInterface
-func (_mock *mockDeploymentInterface) List(ctx context.Context, opts v1.ListOptions) (*v122.DeploymentList, error) {
+func (_mock *mockDeploymentInterface) List(ctx context.Context, opts v1.ListOptions) (*v123.DeploymentList, error) {
 	ret := _mock.Called(ctx, opts)
 
 	if len(ret) == 0 {
 		panic("no return value specified for List")
 	}
 
-	var r0 *v122.DeploymentList
+	var r0 *v123.DeploymentList
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, v1.ListOptions) (*v122.DeploymentList, error)); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, v1.ListOptions) (*v123.DeploymentList, error)); ok {
 		return returnFunc(ctx, opts)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, v1.ListOptions) *v122.DeploymentList); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, v1.ListOptions) *v123.DeploymentList); ok {
 		r0 = returnFunc(ctx, opts)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*v122.DeploymentList)
+			r0 = ret.Get(0).(*v123.DeploymentList)
 		}
 	}
 	if returnFunc, ok := ret.Get(1).(func(context.Context, v1.ListOptions) error); ok {
@@ -8529,18 +8623,18 @@ func (_c *mockDeploymentInterface_List_Call) Run(run func(ctx context.Context, o
 	return _c
 }
 
-func (_c *mockDeploymentInterface_List_Call) Return(deploymentList *v122.DeploymentList, err error) *mockDeploymentInterface_List_Call {
+func (_c *mockDeploymentInterface_List_Call) Return(deploymentList *v123.DeploymentList, err error) *mockDeploymentInterface_List_Call {
 	_c.Call.Return(deploymentList, err)
 	return _c
 }
 
-func (_c *mockDeploymentInterface_List_Call) RunAndReturn(run func(ctx context.Context, opts v1.ListOptions) (*v122.DeploymentList, error)) *mockDeploymentInterface_List_Call {
+func (_c *mockDeploymentInterface_List_Call) RunAndReturn(run func(ctx context.Context, opts v1.ListOptions) (*v123.DeploymentList, error)) *mockDeploymentInterface_List_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // Patch provides a mock function for the type mockDeploymentInterface
-func (_mock *mockDeploymentInterface) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (*v122.Deployment, error) {
+func (_mock *mockDeploymentInterface) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (*v123.Deployment, error) {
 	// string
 	_va := make([]any, len(subresources))
 	for _i := range subresources {
@@ -8555,16 +8649,16 @@ func (_mock *mockDeploymentInterface) Patch(ctx context.Context, name string, pt
 		panic("no return value specified for Patch")
 	}
 
-	var r0 *v122.Deployment
+	var r0 *v123.Deployment
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, types.PatchType, []byte, v1.PatchOptions, ...string) (*v122.Deployment, error)); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, types.PatchType, []byte, v1.PatchOptions, ...string) (*v123.Deployment, error)); ok {
 		return returnFunc(ctx, name, pt, data, opts, subresources...)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, types.PatchType, []byte, v1.PatchOptions, ...string) *v122.Deployment); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, types.PatchType, []byte, v1.PatchOptions, ...string) *v123.Deployment); ok {
 		r0 = returnFunc(ctx, name, pt, data, opts, subresources...)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*v122.Deployment)
+			r0 = ret.Get(0).(*v123.Deployment)
 		}
 	}
 	if returnFunc, ok := ret.Get(1).(func(context.Context, string, types.PatchType, []byte, v1.PatchOptions, ...string) error); ok {
@@ -8634,37 +8728,37 @@ func (_c *mockDeploymentInterface_Patch_Call) Run(run func(ctx context.Context, 
 	return _c
 }
 
-func (_c *mockDeploymentInterface_Patch_Call) Return(result *v122.Deployment, err error) *mockDeploymentInterface_Patch_Call {
+func (_c *mockDeploymentInterface_Patch_Call) Return(result *v123.Deployment, err error) *mockDeploymentInterface_Patch_Call {
 	_c.Call.Return(result, err)
 	return _c
 }
 
-func (_c *mockDeploymentInterface_Patch_Call) RunAndReturn(run func(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (*v122.Deployment, error)) *mockDeploymentInterface_Patch_Call {
+func (_c *mockDeploymentInterface_Patch_Call) RunAndReturn(run func(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (*v123.Deployment, error)) *mockDeploymentInterface_Patch_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // Update provides a mock function for the type mockDeploymentInterface
-func (_mock *mockDeploymentInterface) Update(ctx context.Context, deployment *v122.Deployment, opts v1.UpdateOptions) (*v122.Deployment, error) {
+func (_mock *mockDeploymentInterface) Update(ctx context.Context, deployment *v123.Deployment, opts v1.UpdateOptions) (*v123.Deployment, error) {
 	ret := _mock.Called(ctx, deployment, opts)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Update")
 	}
 
-	var r0 *v122.Deployment
+	var r0 *v123.Deployment
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, *v122.Deployment, v1.UpdateOptions) (*v122.Deployment, error)); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *v123.Deployment, v1.UpdateOptions) (*v123.Deployment, error)); ok {
 		return returnFunc(ctx, deployment, opts)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, *v122.Deployment, v1.UpdateOptions) *v122.Deployment); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *v123.Deployment, v1.UpdateOptions) *v123.Deployment); ok {
 		r0 = returnFunc(ctx, deployment, opts)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*v122.Deployment)
+			r0 = ret.Get(0).(*v123.Deployment)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, *v122.Deployment, v1.UpdateOptions) error); ok {
+	if returnFunc, ok := ret.Get(1).(func(context.Context, *v123.Deployment, v1.UpdateOptions) error); ok {
 		r1 = returnFunc(ctx, deployment, opts)
 	} else {
 		r1 = ret.Error(1)
@@ -8679,21 +8773,21 @@ type mockDeploymentInterface_Update_Call struct {
 
 // Update is a helper method to define mock.On call
 //   - ctx context.Context
-//   - deployment *v122.Deployment
+//   - deployment *v123.Deployment
 //   - opts v1.UpdateOptions
 func (_e *mockDeploymentInterface_Expecter) Update(ctx any, deployment any, opts any) *mockDeploymentInterface_Update_Call {
 	return &mockDeploymentInterface_Update_Call{Call: _e.mock.On("Update", ctx, deployment, opts)}
 }
 
-func (_c *mockDeploymentInterface_Update_Call) Run(run func(ctx context.Context, deployment *v122.Deployment, opts v1.UpdateOptions)) *mockDeploymentInterface_Update_Call {
+func (_c *mockDeploymentInterface_Update_Call) Run(run func(ctx context.Context, deployment *v123.Deployment, opts v1.UpdateOptions)) *mockDeploymentInterface_Update_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
 			arg0 = args[0].(context.Context)
 		}
-		var arg1 *v122.Deployment
+		var arg1 *v123.Deployment
 		if args[1] != nil {
-			arg1 = args[1].(*v122.Deployment)
+			arg1 = args[1].(*v123.Deployment)
 		}
 		var arg2 v1.UpdateOptions
 		if args[2] != nil {
@@ -8708,37 +8802,37 @@ func (_c *mockDeploymentInterface_Update_Call) Run(run func(ctx context.Context,
 	return _c
 }
 
-func (_c *mockDeploymentInterface_Update_Call) Return(deployment1 *v122.Deployment, err error) *mockDeploymentInterface_Update_Call {
+func (_c *mockDeploymentInterface_Update_Call) Return(deployment1 *v123.Deployment, err error) *mockDeploymentInterface_Update_Call {
 	_c.Call.Return(deployment1, err)
 	return _c
 }
 
-func (_c *mockDeploymentInterface_Update_Call) RunAndReturn(run func(ctx context.Context, deployment *v122.Deployment, opts v1.UpdateOptions) (*v122.Deployment, error)) *mockDeploymentInterface_Update_Call {
+func (_c *mockDeploymentInterface_Update_Call) RunAndReturn(run func(ctx context.Context, deployment *v123.Deployment, opts v1.UpdateOptions) (*v123.Deployment, error)) *mockDeploymentInterface_Update_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // UpdateScale provides a mock function for the type mockDeploymentInterface
-func (_mock *mockDeploymentInterface) UpdateScale(ctx context.Context, deploymentName string, scale *v124.Scale, opts v1.UpdateOptions) (*v124.Scale, error) {
+func (_mock *mockDeploymentInterface) UpdateScale(ctx context.Context, deploymentName string, scale *v125.Scale, opts v1.UpdateOptions) (*v125.Scale, error) {
 	ret := _mock.Called(ctx, deploymentName, scale, opts)
 
 	if len(ret) == 0 {
 		panic("no return value specified for UpdateScale")
 	}
 
-	var r0 *v124.Scale
+	var r0 *v125.Scale
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, *v124.Scale, v1.UpdateOptions) (*v124.Scale, error)); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, *v125.Scale, v1.UpdateOptions) (*v125.Scale, error)); ok {
 		return returnFunc(ctx, deploymentName, scale, opts)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, *v124.Scale, v1.UpdateOptions) *v124.Scale); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, *v125.Scale, v1.UpdateOptions) *v125.Scale); ok {
 		r0 = returnFunc(ctx, deploymentName, scale, opts)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*v124.Scale)
+			r0 = ret.Get(0).(*v125.Scale)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, string, *v124.Scale, v1.UpdateOptions) error); ok {
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string, *v125.Scale, v1.UpdateOptions) error); ok {
 		r1 = returnFunc(ctx, deploymentName, scale, opts)
 	} else {
 		r1 = ret.Error(1)
@@ -8754,13 +8848,13 @@ type mockDeploymentInterface_UpdateScale_Call struct {
 // UpdateScale is a helper method to define mock.On call
 //   - ctx context.Context
 //   - deploymentName string
-//   - scale *v124.Scale
+//   - scale *v125.Scale
 //   - opts v1.UpdateOptions
 func (_e *mockDeploymentInterface_Expecter) UpdateScale(ctx any, deploymentName any, scale any, opts any) *mockDeploymentInterface_UpdateScale_Call {
 	return &mockDeploymentInterface_UpdateScale_Call{Call: _e.mock.On("UpdateScale", ctx, deploymentName, scale, opts)}
 }
 
-func (_c *mockDeploymentInterface_UpdateScale_Call) Run(run func(ctx context.Context, deploymentName string, scale *v124.Scale, opts v1.UpdateOptions)) *mockDeploymentInterface_UpdateScale_Call {
+func (_c *mockDeploymentInterface_UpdateScale_Call) Run(run func(ctx context.Context, deploymentName string, scale *v125.Scale, opts v1.UpdateOptions)) *mockDeploymentInterface_UpdateScale_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -8770,9 +8864,9 @@ func (_c *mockDeploymentInterface_UpdateScale_Call) Run(run func(ctx context.Con
 		if args[1] != nil {
 			arg1 = args[1].(string)
 		}
-		var arg2 *v124.Scale
+		var arg2 *v125.Scale
 		if args[2] != nil {
-			arg2 = args[2].(*v124.Scale)
+			arg2 = args[2].(*v125.Scale)
 		}
 		var arg3 v1.UpdateOptions
 		if args[3] != nil {
@@ -8788,37 +8882,37 @@ func (_c *mockDeploymentInterface_UpdateScale_Call) Run(run func(ctx context.Con
 	return _c
 }
 
-func (_c *mockDeploymentInterface_UpdateScale_Call) Return(scale1 *v124.Scale, err error) *mockDeploymentInterface_UpdateScale_Call {
+func (_c *mockDeploymentInterface_UpdateScale_Call) Return(scale1 *v125.Scale, err error) *mockDeploymentInterface_UpdateScale_Call {
 	_c.Call.Return(scale1, err)
 	return _c
 }
 
-func (_c *mockDeploymentInterface_UpdateScale_Call) RunAndReturn(run func(ctx context.Context, deploymentName string, scale *v124.Scale, opts v1.UpdateOptions) (*v124.Scale, error)) *mockDeploymentInterface_UpdateScale_Call {
+func (_c *mockDeploymentInterface_UpdateScale_Call) RunAndReturn(run func(ctx context.Context, deploymentName string, scale *v125.Scale, opts v1.UpdateOptions) (*v125.Scale, error)) *mockDeploymentInterface_UpdateScale_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // UpdateStatus provides a mock function for the type mockDeploymentInterface
-func (_mock *mockDeploymentInterface) UpdateStatus(ctx context.Context, deployment *v122.Deployment, opts v1.UpdateOptions) (*v122.Deployment, error) {
+func (_mock *mockDeploymentInterface) UpdateStatus(ctx context.Context, deployment *v123.Deployment, opts v1.UpdateOptions) (*v123.Deployment, error) {
 	ret := _mock.Called(ctx, deployment, opts)
 
 	if len(ret) == 0 {
 		panic("no return value specified for UpdateStatus")
 	}
 
-	var r0 *v122.Deployment
+	var r0 *v123.Deployment
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, *v122.Deployment, v1.UpdateOptions) (*v122.Deployment, error)); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *v123.Deployment, v1.UpdateOptions) (*v123.Deployment, error)); ok {
 		return returnFunc(ctx, deployment, opts)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, *v122.Deployment, v1.UpdateOptions) *v122.Deployment); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *v123.Deployment, v1.UpdateOptions) *v123.Deployment); ok {
 		r0 = returnFunc(ctx, deployment, opts)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*v122.Deployment)
+			r0 = ret.Get(0).(*v123.Deployment)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, *v122.Deployment, v1.UpdateOptions) error); ok {
+	if returnFunc, ok := ret.Get(1).(func(context.Context, *v123.Deployment, v1.UpdateOptions) error); ok {
 		r1 = returnFunc(ctx, deployment, opts)
 	} else {
 		r1 = ret.Error(1)
@@ -8833,21 +8927,21 @@ type mockDeploymentInterface_UpdateStatus_Call struct {
 
 // UpdateStatus is a helper method to define mock.On call
 //   - ctx context.Context
-//   - deployment *v122.Deployment
+//   - deployment *v123.Deployment
 //   - opts v1.UpdateOptions
 func (_e *mockDeploymentInterface_Expecter) UpdateStatus(ctx any, deployment any, opts any) *mockDeploymentInterface_UpdateStatus_Call {
 	return &mockDeploymentInterface_UpdateStatus_Call{Call: _e.mock.On("UpdateStatus", ctx, deployment, opts)}
 }
 
-func (_c *mockDeploymentInterface_UpdateStatus_Call) Run(run func(ctx context.Context, deployment *v122.Deployment, opts v1.UpdateOptions)) *mockDeploymentInterface_UpdateStatus_Call {
+func (_c *mockDeploymentInterface_UpdateStatus_Call) Run(run func(ctx context.Context, deployment *v123.Deployment, opts v1.UpdateOptions)) *mockDeploymentInterface_UpdateStatus_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
 			arg0 = args[0].(context.Context)
 		}
-		var arg1 *v122.Deployment
+		var arg1 *v123.Deployment
 		if args[1] != nil {
-			arg1 = args[1].(*v122.Deployment)
+			arg1 = args[1].(*v123.Deployment)
 		}
 		var arg2 v1.UpdateOptions
 		if args[2] != nil {
@@ -8862,12 +8956,12 @@ func (_c *mockDeploymentInterface_UpdateStatus_Call) Run(run func(ctx context.Co
 	return _c
 }
 
-func (_c *mockDeploymentInterface_UpdateStatus_Call) Return(deployment1 *v122.Deployment, err error) *mockDeploymentInterface_UpdateStatus_Call {
+func (_c *mockDeploymentInterface_UpdateStatus_Call) Return(deployment1 *v123.Deployment, err error) *mockDeploymentInterface_UpdateStatus_Call {
 	_c.Call.Return(deployment1, err)
 	return _c
 }
 
-func (_c *mockDeploymentInterface_UpdateStatus_Call) RunAndReturn(run func(ctx context.Context, deployment *v122.Deployment, opts v1.UpdateOptions) (*v122.Deployment, error)) *mockDeploymentInterface_UpdateStatus_Call {
+func (_c *mockDeploymentInterface_UpdateStatus_Call) RunAndReturn(run func(ctx context.Context, deployment *v123.Deployment, opts v1.UpdateOptions) (*v123.Deployment, error)) *mockDeploymentInterface_UpdateStatus_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -10144,7 +10238,7 @@ func (_c *mockPodInterface_Evict_Call) RunAndReturn(run func(ctx context.Context
 }
 
 // EvictV1 provides a mock function for the type mockPodInterface
-func (_mock *mockPodInterface) EvictV1(ctx context.Context, eviction *v125.Eviction) error {
+func (_mock *mockPodInterface) EvictV1(ctx context.Context, eviction *v126.Eviction) error {
 	ret := _mock.Called(ctx, eviction)
 
 	if len(ret) == 0 {
@@ -10152,7 +10246,7 @@ func (_mock *mockPodInterface) EvictV1(ctx context.Context, eviction *v125.Evict
 	}
 
 	var r0 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, *v125.Eviction) error); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *v126.Eviction) error); ok {
 		r0 = returnFunc(ctx, eviction)
 	} else {
 		r0 = ret.Error(0)
@@ -10167,20 +10261,20 @@ type mockPodInterface_EvictV1_Call struct {
 
 // EvictV1 is a helper method to define mock.On call
 //   - ctx context.Context
-//   - eviction *v125.Eviction
+//   - eviction *v126.Eviction
 func (_e *mockPodInterface_Expecter) EvictV1(ctx any, eviction any) *mockPodInterface_EvictV1_Call {
 	return &mockPodInterface_EvictV1_Call{Call: _e.mock.On("EvictV1", ctx, eviction)}
 }
 
-func (_c *mockPodInterface_EvictV1_Call) Run(run func(ctx context.Context, eviction *v125.Eviction)) *mockPodInterface_EvictV1_Call {
+func (_c *mockPodInterface_EvictV1_Call) Run(run func(ctx context.Context, eviction *v126.Eviction)) *mockPodInterface_EvictV1_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
 			arg0 = args[0].(context.Context)
 		}
-		var arg1 *v125.Eviction
+		var arg1 *v126.Eviction
 		if args[1] != nil {
-			arg1 = args[1].(*v125.Eviction)
+			arg1 = args[1].(*v126.Eviction)
 		}
 		run(
 			arg0,
@@ -10195,7 +10289,7 @@ func (_c *mockPodInterface_EvictV1_Call) Return(err error) *mockPodInterface_Evi
 	return _c
 }
 
-func (_c *mockPodInterface_EvictV1_Call) RunAndReturn(run func(ctx context.Context, eviction *v125.Eviction) error) *mockPodInterface_EvictV1_Call {
+func (_c *mockPodInterface_EvictV1_Call) RunAndReturn(run func(ctx context.Context, eviction *v126.Eviction) error) *mockPodInterface_EvictV1_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -14667,19 +14761,19 @@ func (_m *mockAuthRegistrationClient) EXPECT() *mockAuthRegistrationClient_Expec
 }
 
 // AuthRegistrations provides a mock function for the type mockAuthRegistrationClient
-func (_mock *mockAuthRegistrationClient) AuthRegistrations(namespace string) v126.AuthRegistrationInterface {
+func (_mock *mockAuthRegistrationClient) AuthRegistrations(namespace string) v127.AuthRegistrationInterface {
 	ret := _mock.Called(namespace)
 
 	if len(ret) == 0 {
 		panic("no return value specified for AuthRegistrations")
 	}
 
-	var r0 v126.AuthRegistrationInterface
-	if returnFunc, ok := ret.Get(0).(func(string) v126.AuthRegistrationInterface); ok {
+	var r0 v127.AuthRegistrationInterface
+	if returnFunc, ok := ret.Get(0).(func(string) v127.AuthRegistrationInterface); ok {
 		r0 = returnFunc(namespace)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(v126.AuthRegistrationInterface)
+			r0 = ret.Get(0).(v127.AuthRegistrationInterface)
 		}
 	}
 	return r0
@@ -14709,12 +14803,12 @@ func (_c *mockAuthRegistrationClient_AuthRegistrations_Call) Run(run func(namesp
 	return _c
 }
 
-func (_c *mockAuthRegistrationClient_AuthRegistrations_Call) Return(authRegistrationInterface v126.AuthRegistrationInterface) *mockAuthRegistrationClient_AuthRegistrations_Call {
+func (_c *mockAuthRegistrationClient_AuthRegistrations_Call) Return(authRegistrationInterface v127.AuthRegistrationInterface) *mockAuthRegistrationClient_AuthRegistrations_Call {
 	_c.Call.Return(authRegistrationInterface)
 	return _c
 }
 
-func (_c *mockAuthRegistrationClient_AuthRegistrations_Call) RunAndReturn(run func(namespace string) v126.AuthRegistrationInterface) *mockAuthRegistrationClient_AuthRegistrations_Call {
+func (_c *mockAuthRegistrationClient_AuthRegistrations_Call) RunAndReturn(run func(namespace string) v127.AuthRegistrationInterface) *mockAuthRegistrationClient_AuthRegistrations_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -14802,26 +14896,26 @@ func (_m *mockAuthRegistrationInterface) EXPECT() *mockAuthRegistrationInterface
 }
 
 // Create provides a mock function for the type mockAuthRegistrationInterface
-func (_mock *mockAuthRegistrationInterface) Create(ctx context.Context, authRegistration *v127.AuthRegistration, opts v1.CreateOptions) (*v127.AuthRegistration, error) {
+func (_mock *mockAuthRegistrationInterface) Create(ctx context.Context, authRegistration *v128.AuthRegistration, opts v1.CreateOptions) (*v128.AuthRegistration, error) {
 	ret := _mock.Called(ctx, authRegistration, opts)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Create")
 	}
 
-	var r0 *v127.AuthRegistration
+	var r0 *v128.AuthRegistration
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, *v127.AuthRegistration, v1.CreateOptions) (*v127.AuthRegistration, error)); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *v128.AuthRegistration, v1.CreateOptions) (*v128.AuthRegistration, error)); ok {
 		return returnFunc(ctx, authRegistration, opts)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, *v127.AuthRegistration, v1.CreateOptions) *v127.AuthRegistration); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *v128.AuthRegistration, v1.CreateOptions) *v128.AuthRegistration); ok {
 		r0 = returnFunc(ctx, authRegistration, opts)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*v127.AuthRegistration)
+			r0 = ret.Get(0).(*v128.AuthRegistration)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, *v127.AuthRegistration, v1.CreateOptions) error); ok {
+	if returnFunc, ok := ret.Get(1).(func(context.Context, *v128.AuthRegistration, v1.CreateOptions) error); ok {
 		r1 = returnFunc(ctx, authRegistration, opts)
 	} else {
 		r1 = ret.Error(1)
@@ -14836,21 +14930,21 @@ type mockAuthRegistrationInterface_Create_Call struct {
 
 // Create is a helper method to define mock.On call
 //   - ctx context.Context
-//   - authRegistration *v127.AuthRegistration
+//   - authRegistration *v128.AuthRegistration
 //   - opts v1.CreateOptions
 func (_e *mockAuthRegistrationInterface_Expecter) Create(ctx any, authRegistration any, opts any) *mockAuthRegistrationInterface_Create_Call {
 	return &mockAuthRegistrationInterface_Create_Call{Call: _e.mock.On("Create", ctx, authRegistration, opts)}
 }
 
-func (_c *mockAuthRegistrationInterface_Create_Call) Run(run func(ctx context.Context, authRegistration *v127.AuthRegistration, opts v1.CreateOptions)) *mockAuthRegistrationInterface_Create_Call {
+func (_c *mockAuthRegistrationInterface_Create_Call) Run(run func(ctx context.Context, authRegistration *v128.AuthRegistration, opts v1.CreateOptions)) *mockAuthRegistrationInterface_Create_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
 			arg0 = args[0].(context.Context)
 		}
-		var arg1 *v127.AuthRegistration
+		var arg1 *v128.AuthRegistration
 		if args[1] != nil {
-			arg1 = args[1].(*v127.AuthRegistration)
+			arg1 = args[1].(*v128.AuthRegistration)
 		}
 		var arg2 v1.CreateOptions
 		if args[2] != nil {
@@ -14865,12 +14959,12 @@ func (_c *mockAuthRegistrationInterface_Create_Call) Run(run func(ctx context.Co
 	return _c
 }
 
-func (_c *mockAuthRegistrationInterface_Create_Call) Return(authRegistration1 *v127.AuthRegistration, err error) *mockAuthRegistrationInterface_Create_Call {
+func (_c *mockAuthRegistrationInterface_Create_Call) Return(authRegistration1 *v128.AuthRegistration, err error) *mockAuthRegistrationInterface_Create_Call {
 	_c.Call.Return(authRegistration1, err)
 	return _c
 }
 
-func (_c *mockAuthRegistrationInterface_Create_Call) RunAndReturn(run func(ctx context.Context, authRegistration *v127.AuthRegistration, opts v1.CreateOptions) (*v127.AuthRegistration, error)) *mockAuthRegistrationInterface_Create_Call {
+func (_c *mockAuthRegistrationInterface_Create_Call) RunAndReturn(run func(ctx context.Context, authRegistration *v128.AuthRegistration, opts v1.CreateOptions) (*v128.AuthRegistration, error)) *mockAuthRegistrationInterface_Create_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -15002,23 +15096,23 @@ func (_c *mockAuthRegistrationInterface_DeleteCollection_Call) RunAndReturn(run 
 }
 
 // Get provides a mock function for the type mockAuthRegistrationInterface
-func (_mock *mockAuthRegistrationInterface) Get(ctx context.Context, name string, opts v1.GetOptions) (*v127.AuthRegistration, error) {
+func (_mock *mockAuthRegistrationInterface) Get(ctx context.Context, name string, opts v1.GetOptions) (*v128.AuthRegistration, error) {
 	ret := _mock.Called(ctx, name, opts)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Get")
 	}
 
-	var r0 *v127.AuthRegistration
+	var r0 *v128.AuthRegistration
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, v1.GetOptions) (*v127.AuthRegistration, error)); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, v1.GetOptions) (*v128.AuthRegistration, error)); ok {
 		return returnFunc(ctx, name, opts)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, v1.GetOptions) *v127.AuthRegistration); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, v1.GetOptions) *v128.AuthRegistration); ok {
 		r0 = returnFunc(ctx, name, opts)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*v127.AuthRegistration)
+			r0 = ret.Get(0).(*v128.AuthRegistration)
 		}
 	}
 	if returnFunc, ok := ret.Get(1).(func(context.Context, string, v1.GetOptions) error); ok {
@@ -15065,34 +15159,34 @@ func (_c *mockAuthRegistrationInterface_Get_Call) Run(run func(ctx context.Conte
 	return _c
 }
 
-func (_c *mockAuthRegistrationInterface_Get_Call) Return(authRegistration *v127.AuthRegistration, err error) *mockAuthRegistrationInterface_Get_Call {
+func (_c *mockAuthRegistrationInterface_Get_Call) Return(authRegistration *v128.AuthRegistration, err error) *mockAuthRegistrationInterface_Get_Call {
 	_c.Call.Return(authRegistration, err)
 	return _c
 }
 
-func (_c *mockAuthRegistrationInterface_Get_Call) RunAndReturn(run func(ctx context.Context, name string, opts v1.GetOptions) (*v127.AuthRegistration, error)) *mockAuthRegistrationInterface_Get_Call {
+func (_c *mockAuthRegistrationInterface_Get_Call) RunAndReturn(run func(ctx context.Context, name string, opts v1.GetOptions) (*v128.AuthRegistration, error)) *mockAuthRegistrationInterface_Get_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // List provides a mock function for the type mockAuthRegistrationInterface
-func (_mock *mockAuthRegistrationInterface) List(ctx context.Context, opts v1.ListOptions) (*v127.AuthRegistrationList, error) {
+func (_mock *mockAuthRegistrationInterface) List(ctx context.Context, opts v1.ListOptions) (*v128.AuthRegistrationList, error) {
 	ret := _mock.Called(ctx, opts)
 
 	if len(ret) == 0 {
 		panic("no return value specified for List")
 	}
 
-	var r0 *v127.AuthRegistrationList
+	var r0 *v128.AuthRegistrationList
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, v1.ListOptions) (*v127.AuthRegistrationList, error)); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, v1.ListOptions) (*v128.AuthRegistrationList, error)); ok {
 		return returnFunc(ctx, opts)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, v1.ListOptions) *v127.AuthRegistrationList); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, v1.ListOptions) *v128.AuthRegistrationList); ok {
 		r0 = returnFunc(ctx, opts)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*v127.AuthRegistrationList)
+			r0 = ret.Get(0).(*v128.AuthRegistrationList)
 		}
 	}
 	if returnFunc, ok := ret.Get(1).(func(context.Context, v1.ListOptions) error); ok {
@@ -15133,18 +15227,18 @@ func (_c *mockAuthRegistrationInterface_List_Call) Run(run func(ctx context.Cont
 	return _c
 }
 
-func (_c *mockAuthRegistrationInterface_List_Call) Return(authRegistrationList *v127.AuthRegistrationList, err error) *mockAuthRegistrationInterface_List_Call {
+func (_c *mockAuthRegistrationInterface_List_Call) Return(authRegistrationList *v128.AuthRegistrationList, err error) *mockAuthRegistrationInterface_List_Call {
 	_c.Call.Return(authRegistrationList, err)
 	return _c
 }
 
-func (_c *mockAuthRegistrationInterface_List_Call) RunAndReturn(run func(ctx context.Context, opts v1.ListOptions) (*v127.AuthRegistrationList, error)) *mockAuthRegistrationInterface_List_Call {
+func (_c *mockAuthRegistrationInterface_List_Call) RunAndReturn(run func(ctx context.Context, opts v1.ListOptions) (*v128.AuthRegistrationList, error)) *mockAuthRegistrationInterface_List_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // Patch provides a mock function for the type mockAuthRegistrationInterface
-func (_mock *mockAuthRegistrationInterface) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (*v127.AuthRegistration, error) {
+func (_mock *mockAuthRegistrationInterface) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (*v128.AuthRegistration, error) {
 	// string
 	_va := make([]any, len(subresources))
 	for _i := range subresources {
@@ -15159,16 +15253,16 @@ func (_mock *mockAuthRegistrationInterface) Patch(ctx context.Context, name stri
 		panic("no return value specified for Patch")
 	}
 
-	var r0 *v127.AuthRegistration
+	var r0 *v128.AuthRegistration
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, types.PatchType, []byte, v1.PatchOptions, ...string) (*v127.AuthRegistration, error)); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, types.PatchType, []byte, v1.PatchOptions, ...string) (*v128.AuthRegistration, error)); ok {
 		return returnFunc(ctx, name, pt, data, opts, subresources...)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, types.PatchType, []byte, v1.PatchOptions, ...string) *v127.AuthRegistration); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, types.PatchType, []byte, v1.PatchOptions, ...string) *v128.AuthRegistration); ok {
 		r0 = returnFunc(ctx, name, pt, data, opts, subresources...)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*v127.AuthRegistration)
+			r0 = ret.Get(0).(*v128.AuthRegistration)
 		}
 	}
 	if returnFunc, ok := ret.Get(1).(func(context.Context, string, types.PatchType, []byte, v1.PatchOptions, ...string) error); ok {
@@ -15238,37 +15332,37 @@ func (_c *mockAuthRegistrationInterface_Patch_Call) Run(run func(ctx context.Con
 	return _c
 }
 
-func (_c *mockAuthRegistrationInterface_Patch_Call) Return(result *v127.AuthRegistration, err error) *mockAuthRegistrationInterface_Patch_Call {
+func (_c *mockAuthRegistrationInterface_Patch_Call) Return(result *v128.AuthRegistration, err error) *mockAuthRegistrationInterface_Patch_Call {
 	_c.Call.Return(result, err)
 	return _c
 }
 
-func (_c *mockAuthRegistrationInterface_Patch_Call) RunAndReturn(run func(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (*v127.AuthRegistration, error)) *mockAuthRegistrationInterface_Patch_Call {
+func (_c *mockAuthRegistrationInterface_Patch_Call) RunAndReturn(run func(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (*v128.AuthRegistration, error)) *mockAuthRegistrationInterface_Patch_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // Update provides a mock function for the type mockAuthRegistrationInterface
-func (_mock *mockAuthRegistrationInterface) Update(ctx context.Context, authRegistration *v127.AuthRegistration, opts v1.UpdateOptions) (*v127.AuthRegistration, error) {
+func (_mock *mockAuthRegistrationInterface) Update(ctx context.Context, authRegistration *v128.AuthRegistration, opts v1.UpdateOptions) (*v128.AuthRegistration, error) {
 	ret := _mock.Called(ctx, authRegistration, opts)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Update")
 	}
 
-	var r0 *v127.AuthRegistration
+	var r0 *v128.AuthRegistration
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, *v127.AuthRegistration, v1.UpdateOptions) (*v127.AuthRegistration, error)); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *v128.AuthRegistration, v1.UpdateOptions) (*v128.AuthRegistration, error)); ok {
 		return returnFunc(ctx, authRegistration, opts)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, *v127.AuthRegistration, v1.UpdateOptions) *v127.AuthRegistration); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *v128.AuthRegistration, v1.UpdateOptions) *v128.AuthRegistration); ok {
 		r0 = returnFunc(ctx, authRegistration, opts)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*v127.AuthRegistration)
+			r0 = ret.Get(0).(*v128.AuthRegistration)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, *v127.AuthRegistration, v1.UpdateOptions) error); ok {
+	if returnFunc, ok := ret.Get(1).(func(context.Context, *v128.AuthRegistration, v1.UpdateOptions) error); ok {
 		r1 = returnFunc(ctx, authRegistration, opts)
 	} else {
 		r1 = ret.Error(1)
@@ -15283,21 +15377,21 @@ type mockAuthRegistrationInterface_Update_Call struct {
 
 // Update is a helper method to define mock.On call
 //   - ctx context.Context
-//   - authRegistration *v127.AuthRegistration
+//   - authRegistration *v128.AuthRegistration
 //   - opts v1.UpdateOptions
 func (_e *mockAuthRegistrationInterface_Expecter) Update(ctx any, authRegistration any, opts any) *mockAuthRegistrationInterface_Update_Call {
 	return &mockAuthRegistrationInterface_Update_Call{Call: _e.mock.On("Update", ctx, authRegistration, opts)}
 }
 
-func (_c *mockAuthRegistrationInterface_Update_Call) Run(run func(ctx context.Context, authRegistration *v127.AuthRegistration, opts v1.UpdateOptions)) *mockAuthRegistrationInterface_Update_Call {
+func (_c *mockAuthRegistrationInterface_Update_Call) Run(run func(ctx context.Context, authRegistration *v128.AuthRegistration, opts v1.UpdateOptions)) *mockAuthRegistrationInterface_Update_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
 			arg0 = args[0].(context.Context)
 		}
-		var arg1 *v127.AuthRegistration
+		var arg1 *v128.AuthRegistration
 		if args[1] != nil {
-			arg1 = args[1].(*v127.AuthRegistration)
+			arg1 = args[1].(*v128.AuthRegistration)
 		}
 		var arg2 v1.UpdateOptions
 		if args[2] != nil {
@@ -15312,37 +15406,37 @@ func (_c *mockAuthRegistrationInterface_Update_Call) Run(run func(ctx context.Co
 	return _c
 }
 
-func (_c *mockAuthRegistrationInterface_Update_Call) Return(authRegistration1 *v127.AuthRegistration, err error) *mockAuthRegistrationInterface_Update_Call {
+func (_c *mockAuthRegistrationInterface_Update_Call) Return(authRegistration1 *v128.AuthRegistration, err error) *mockAuthRegistrationInterface_Update_Call {
 	_c.Call.Return(authRegistration1, err)
 	return _c
 }
 
-func (_c *mockAuthRegistrationInterface_Update_Call) RunAndReturn(run func(ctx context.Context, authRegistration *v127.AuthRegistration, opts v1.UpdateOptions) (*v127.AuthRegistration, error)) *mockAuthRegistrationInterface_Update_Call {
+func (_c *mockAuthRegistrationInterface_Update_Call) RunAndReturn(run func(ctx context.Context, authRegistration *v128.AuthRegistration, opts v1.UpdateOptions) (*v128.AuthRegistration, error)) *mockAuthRegistrationInterface_Update_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // UpdateStatus provides a mock function for the type mockAuthRegistrationInterface
-func (_mock *mockAuthRegistrationInterface) UpdateStatus(ctx context.Context, authRegistration *v127.AuthRegistration, opts v1.UpdateOptions) (*v127.AuthRegistration, error) {
+func (_mock *mockAuthRegistrationInterface) UpdateStatus(ctx context.Context, authRegistration *v128.AuthRegistration, opts v1.UpdateOptions) (*v128.AuthRegistration, error) {
 	ret := _mock.Called(ctx, authRegistration, opts)
 
 	if len(ret) == 0 {
 		panic("no return value specified for UpdateStatus")
 	}
 
-	var r0 *v127.AuthRegistration
+	var r0 *v128.AuthRegistration
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, *v127.AuthRegistration, v1.UpdateOptions) (*v127.AuthRegistration, error)); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *v128.AuthRegistration, v1.UpdateOptions) (*v128.AuthRegistration, error)); ok {
 		return returnFunc(ctx, authRegistration, opts)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, *v127.AuthRegistration, v1.UpdateOptions) *v127.AuthRegistration); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *v128.AuthRegistration, v1.UpdateOptions) *v128.AuthRegistration); ok {
 		r0 = returnFunc(ctx, authRegistration, opts)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*v127.AuthRegistration)
+			r0 = ret.Get(0).(*v128.AuthRegistration)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, *v127.AuthRegistration, v1.UpdateOptions) error); ok {
+	if returnFunc, ok := ret.Get(1).(func(context.Context, *v128.AuthRegistration, v1.UpdateOptions) error); ok {
 		r1 = returnFunc(ctx, authRegistration, opts)
 	} else {
 		r1 = ret.Error(1)
@@ -15357,21 +15451,21 @@ type mockAuthRegistrationInterface_UpdateStatus_Call struct {
 
 // UpdateStatus is a helper method to define mock.On call
 //   - ctx context.Context
-//   - authRegistration *v127.AuthRegistration
+//   - authRegistration *v128.AuthRegistration
 //   - opts v1.UpdateOptions
 func (_e *mockAuthRegistrationInterface_Expecter) UpdateStatus(ctx any, authRegistration any, opts any) *mockAuthRegistrationInterface_UpdateStatus_Call {
 	return &mockAuthRegistrationInterface_UpdateStatus_Call{Call: _e.mock.On("UpdateStatus", ctx, authRegistration, opts)}
 }
 
-func (_c *mockAuthRegistrationInterface_UpdateStatus_Call) Run(run func(ctx context.Context, authRegistration *v127.AuthRegistration, opts v1.UpdateOptions)) *mockAuthRegistrationInterface_UpdateStatus_Call {
+func (_c *mockAuthRegistrationInterface_UpdateStatus_Call) Run(run func(ctx context.Context, authRegistration *v128.AuthRegistration, opts v1.UpdateOptions)) *mockAuthRegistrationInterface_UpdateStatus_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
 			arg0 = args[0].(context.Context)
 		}
-		var arg1 *v127.AuthRegistration
+		var arg1 *v128.AuthRegistration
 		if args[1] != nil {
-			arg1 = args[1].(*v127.AuthRegistration)
+			arg1 = args[1].(*v128.AuthRegistration)
 		}
 		var arg2 v1.UpdateOptions
 		if args[2] != nil {
@@ -15386,12 +15480,12 @@ func (_c *mockAuthRegistrationInterface_UpdateStatus_Call) Run(run func(ctx cont
 	return _c
 }
 
-func (_c *mockAuthRegistrationInterface_UpdateStatus_Call) Return(authRegistration1 *v127.AuthRegistration, err error) *mockAuthRegistrationInterface_UpdateStatus_Call {
+func (_c *mockAuthRegistrationInterface_UpdateStatus_Call) Return(authRegistration1 *v128.AuthRegistration, err error) *mockAuthRegistrationInterface_UpdateStatus_Call {
 	_c.Call.Return(authRegistration1, err)
 	return _c
 }
 
-func (_c *mockAuthRegistrationInterface_UpdateStatus_Call) RunAndReturn(run func(ctx context.Context, authRegistration *v127.AuthRegistration, opts v1.UpdateOptions) (*v127.AuthRegistration, error)) *mockAuthRegistrationInterface_UpdateStatus_Call {
+func (_c *mockAuthRegistrationInterface_UpdateStatus_Call) RunAndReturn(run func(ctx context.Context, authRegistration *v128.AuthRegistration, opts v1.UpdateOptions) (*v128.AuthRegistration, error)) *mockAuthRegistrationInterface_UpdateStatus_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -15501,19 +15595,19 @@ func (_m *mockExpositionClient) EXPECT() *mockExpositionClient_Expecter {
 }
 
 // Expositions provides a mock function for the type mockExpositionClient
-func (_mock *mockExpositionClient) Expositions(namespace string) v128.ExpositionInterface {
+func (_mock *mockExpositionClient) Expositions(namespace string) v129.ExpositionInterface {
 	ret := _mock.Called(namespace)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Expositions")
 	}
 
-	var r0 v128.ExpositionInterface
-	if returnFunc, ok := ret.Get(0).(func(string) v128.ExpositionInterface); ok {
+	var r0 v129.ExpositionInterface
+	if returnFunc, ok := ret.Get(0).(func(string) v129.ExpositionInterface); ok {
 		r0 = returnFunc(namespace)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(v128.ExpositionInterface)
+			r0 = ret.Get(0).(v129.ExpositionInterface)
 		}
 	}
 	return r0
@@ -15543,12 +15637,12 @@ func (_c *mockExpositionClient_Expositions_Call) Run(run func(namespace string))
 	return _c
 }
 
-func (_c *mockExpositionClient_Expositions_Call) Return(expositionInterface v128.ExpositionInterface) *mockExpositionClient_Expositions_Call {
+func (_c *mockExpositionClient_Expositions_Call) Return(expositionInterface v129.ExpositionInterface) *mockExpositionClient_Expositions_Call {
 	_c.Call.Return(expositionInterface)
 	return _c
 }
 
-func (_c *mockExpositionClient_Expositions_Call) RunAndReturn(run func(namespace string) v128.ExpositionInterface) *mockExpositionClient_Expositions_Call {
+func (_c *mockExpositionClient_Expositions_Call) RunAndReturn(run func(namespace string) v129.ExpositionInterface) *mockExpositionClient_Expositions_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -15636,26 +15730,26 @@ func (_m *mockExpositionInterface) EXPECT() *mockExpositionInterface_Expecter {
 }
 
 // Create provides a mock function for the type mockExpositionInterface
-func (_mock *mockExpositionInterface) Create(ctx context.Context, exposition *v129.Exposition, opts v1.CreateOptions) (*v129.Exposition, error) {
+func (_mock *mockExpositionInterface) Create(ctx context.Context, exposition *v130.Exposition, opts v1.CreateOptions) (*v130.Exposition, error) {
 	ret := _mock.Called(ctx, exposition, opts)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Create")
 	}
 
-	var r0 *v129.Exposition
+	var r0 *v130.Exposition
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, *v129.Exposition, v1.CreateOptions) (*v129.Exposition, error)); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *v130.Exposition, v1.CreateOptions) (*v130.Exposition, error)); ok {
 		return returnFunc(ctx, exposition, opts)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, *v129.Exposition, v1.CreateOptions) *v129.Exposition); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *v130.Exposition, v1.CreateOptions) *v130.Exposition); ok {
 		r0 = returnFunc(ctx, exposition, opts)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*v129.Exposition)
+			r0 = ret.Get(0).(*v130.Exposition)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, *v129.Exposition, v1.CreateOptions) error); ok {
+	if returnFunc, ok := ret.Get(1).(func(context.Context, *v130.Exposition, v1.CreateOptions) error); ok {
 		r1 = returnFunc(ctx, exposition, opts)
 	} else {
 		r1 = ret.Error(1)
@@ -15670,21 +15764,21 @@ type mockExpositionInterface_Create_Call struct {
 
 // Create is a helper method to define mock.On call
 //   - ctx context.Context
-//   - exposition *v129.Exposition
+//   - exposition *v130.Exposition
 //   - opts v1.CreateOptions
 func (_e *mockExpositionInterface_Expecter) Create(ctx any, exposition any, opts any) *mockExpositionInterface_Create_Call {
 	return &mockExpositionInterface_Create_Call{Call: _e.mock.On("Create", ctx, exposition, opts)}
 }
 
-func (_c *mockExpositionInterface_Create_Call) Run(run func(ctx context.Context, exposition *v129.Exposition, opts v1.CreateOptions)) *mockExpositionInterface_Create_Call {
+func (_c *mockExpositionInterface_Create_Call) Run(run func(ctx context.Context, exposition *v130.Exposition, opts v1.CreateOptions)) *mockExpositionInterface_Create_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
 			arg0 = args[0].(context.Context)
 		}
-		var arg1 *v129.Exposition
+		var arg1 *v130.Exposition
 		if args[1] != nil {
-			arg1 = args[1].(*v129.Exposition)
+			arg1 = args[1].(*v130.Exposition)
 		}
 		var arg2 v1.CreateOptions
 		if args[2] != nil {
@@ -15699,12 +15793,12 @@ func (_c *mockExpositionInterface_Create_Call) Run(run func(ctx context.Context,
 	return _c
 }
 
-func (_c *mockExpositionInterface_Create_Call) Return(exposition1 *v129.Exposition, err error) *mockExpositionInterface_Create_Call {
+func (_c *mockExpositionInterface_Create_Call) Return(exposition1 *v130.Exposition, err error) *mockExpositionInterface_Create_Call {
 	_c.Call.Return(exposition1, err)
 	return _c
 }
 
-func (_c *mockExpositionInterface_Create_Call) RunAndReturn(run func(ctx context.Context, exposition *v129.Exposition, opts v1.CreateOptions) (*v129.Exposition, error)) *mockExpositionInterface_Create_Call {
+func (_c *mockExpositionInterface_Create_Call) RunAndReturn(run func(ctx context.Context, exposition *v130.Exposition, opts v1.CreateOptions) (*v130.Exposition, error)) *mockExpositionInterface_Create_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -15836,23 +15930,23 @@ func (_c *mockExpositionInterface_DeleteCollection_Call) RunAndReturn(run func(c
 }
 
 // Get provides a mock function for the type mockExpositionInterface
-func (_mock *mockExpositionInterface) Get(ctx context.Context, name string, opts v1.GetOptions) (*v129.Exposition, error) {
+func (_mock *mockExpositionInterface) Get(ctx context.Context, name string, opts v1.GetOptions) (*v130.Exposition, error) {
 	ret := _mock.Called(ctx, name, opts)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Get")
 	}
 
-	var r0 *v129.Exposition
+	var r0 *v130.Exposition
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, v1.GetOptions) (*v129.Exposition, error)); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, v1.GetOptions) (*v130.Exposition, error)); ok {
 		return returnFunc(ctx, name, opts)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, v1.GetOptions) *v129.Exposition); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, v1.GetOptions) *v130.Exposition); ok {
 		r0 = returnFunc(ctx, name, opts)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*v129.Exposition)
+			r0 = ret.Get(0).(*v130.Exposition)
 		}
 	}
 	if returnFunc, ok := ret.Get(1).(func(context.Context, string, v1.GetOptions) error); ok {
@@ -15899,34 +15993,34 @@ func (_c *mockExpositionInterface_Get_Call) Run(run func(ctx context.Context, na
 	return _c
 }
 
-func (_c *mockExpositionInterface_Get_Call) Return(exposition *v129.Exposition, err error) *mockExpositionInterface_Get_Call {
+func (_c *mockExpositionInterface_Get_Call) Return(exposition *v130.Exposition, err error) *mockExpositionInterface_Get_Call {
 	_c.Call.Return(exposition, err)
 	return _c
 }
 
-func (_c *mockExpositionInterface_Get_Call) RunAndReturn(run func(ctx context.Context, name string, opts v1.GetOptions) (*v129.Exposition, error)) *mockExpositionInterface_Get_Call {
+func (_c *mockExpositionInterface_Get_Call) RunAndReturn(run func(ctx context.Context, name string, opts v1.GetOptions) (*v130.Exposition, error)) *mockExpositionInterface_Get_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // List provides a mock function for the type mockExpositionInterface
-func (_mock *mockExpositionInterface) List(ctx context.Context, opts v1.ListOptions) (*v129.ExpositionList, error) {
+func (_mock *mockExpositionInterface) List(ctx context.Context, opts v1.ListOptions) (*v130.ExpositionList, error) {
 	ret := _mock.Called(ctx, opts)
 
 	if len(ret) == 0 {
 		panic("no return value specified for List")
 	}
 
-	var r0 *v129.ExpositionList
+	var r0 *v130.ExpositionList
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, v1.ListOptions) (*v129.ExpositionList, error)); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, v1.ListOptions) (*v130.ExpositionList, error)); ok {
 		return returnFunc(ctx, opts)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, v1.ListOptions) *v129.ExpositionList); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, v1.ListOptions) *v130.ExpositionList); ok {
 		r0 = returnFunc(ctx, opts)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*v129.ExpositionList)
+			r0 = ret.Get(0).(*v130.ExpositionList)
 		}
 	}
 	if returnFunc, ok := ret.Get(1).(func(context.Context, v1.ListOptions) error); ok {
@@ -15967,18 +16061,18 @@ func (_c *mockExpositionInterface_List_Call) Run(run func(ctx context.Context, o
 	return _c
 }
 
-func (_c *mockExpositionInterface_List_Call) Return(expositionList *v129.ExpositionList, err error) *mockExpositionInterface_List_Call {
+func (_c *mockExpositionInterface_List_Call) Return(expositionList *v130.ExpositionList, err error) *mockExpositionInterface_List_Call {
 	_c.Call.Return(expositionList, err)
 	return _c
 }
 
-func (_c *mockExpositionInterface_List_Call) RunAndReturn(run func(ctx context.Context, opts v1.ListOptions) (*v129.ExpositionList, error)) *mockExpositionInterface_List_Call {
+func (_c *mockExpositionInterface_List_Call) RunAndReturn(run func(ctx context.Context, opts v1.ListOptions) (*v130.ExpositionList, error)) *mockExpositionInterface_List_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // Patch provides a mock function for the type mockExpositionInterface
-func (_mock *mockExpositionInterface) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (*v129.Exposition, error) {
+func (_mock *mockExpositionInterface) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (*v130.Exposition, error) {
 	// string
 	_va := make([]any, len(subresources))
 	for _i := range subresources {
@@ -15993,16 +16087,16 @@ func (_mock *mockExpositionInterface) Patch(ctx context.Context, name string, pt
 		panic("no return value specified for Patch")
 	}
 
-	var r0 *v129.Exposition
+	var r0 *v130.Exposition
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, types.PatchType, []byte, v1.PatchOptions, ...string) (*v129.Exposition, error)); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, types.PatchType, []byte, v1.PatchOptions, ...string) (*v130.Exposition, error)); ok {
 		return returnFunc(ctx, name, pt, data, opts, subresources...)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, types.PatchType, []byte, v1.PatchOptions, ...string) *v129.Exposition); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, types.PatchType, []byte, v1.PatchOptions, ...string) *v130.Exposition); ok {
 		r0 = returnFunc(ctx, name, pt, data, opts, subresources...)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*v129.Exposition)
+			r0 = ret.Get(0).(*v130.Exposition)
 		}
 	}
 	if returnFunc, ok := ret.Get(1).(func(context.Context, string, types.PatchType, []byte, v1.PatchOptions, ...string) error); ok {
@@ -16072,37 +16166,37 @@ func (_c *mockExpositionInterface_Patch_Call) Run(run func(ctx context.Context, 
 	return _c
 }
 
-func (_c *mockExpositionInterface_Patch_Call) Return(result *v129.Exposition, err error) *mockExpositionInterface_Patch_Call {
+func (_c *mockExpositionInterface_Patch_Call) Return(result *v130.Exposition, err error) *mockExpositionInterface_Patch_Call {
 	_c.Call.Return(result, err)
 	return _c
 }
 
-func (_c *mockExpositionInterface_Patch_Call) RunAndReturn(run func(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (*v129.Exposition, error)) *mockExpositionInterface_Patch_Call {
+func (_c *mockExpositionInterface_Patch_Call) RunAndReturn(run func(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (*v130.Exposition, error)) *mockExpositionInterface_Patch_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // Update provides a mock function for the type mockExpositionInterface
-func (_mock *mockExpositionInterface) Update(ctx context.Context, exposition *v129.Exposition, opts v1.UpdateOptions) (*v129.Exposition, error) {
+func (_mock *mockExpositionInterface) Update(ctx context.Context, exposition *v130.Exposition, opts v1.UpdateOptions) (*v130.Exposition, error) {
 	ret := _mock.Called(ctx, exposition, opts)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Update")
 	}
 
-	var r0 *v129.Exposition
+	var r0 *v130.Exposition
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, *v129.Exposition, v1.UpdateOptions) (*v129.Exposition, error)); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *v130.Exposition, v1.UpdateOptions) (*v130.Exposition, error)); ok {
 		return returnFunc(ctx, exposition, opts)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, *v129.Exposition, v1.UpdateOptions) *v129.Exposition); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *v130.Exposition, v1.UpdateOptions) *v130.Exposition); ok {
 		r0 = returnFunc(ctx, exposition, opts)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*v129.Exposition)
+			r0 = ret.Get(0).(*v130.Exposition)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, *v129.Exposition, v1.UpdateOptions) error); ok {
+	if returnFunc, ok := ret.Get(1).(func(context.Context, *v130.Exposition, v1.UpdateOptions) error); ok {
 		r1 = returnFunc(ctx, exposition, opts)
 	} else {
 		r1 = ret.Error(1)
@@ -16117,21 +16211,21 @@ type mockExpositionInterface_Update_Call struct {
 
 // Update is a helper method to define mock.On call
 //   - ctx context.Context
-//   - exposition *v129.Exposition
+//   - exposition *v130.Exposition
 //   - opts v1.UpdateOptions
 func (_e *mockExpositionInterface_Expecter) Update(ctx any, exposition any, opts any) *mockExpositionInterface_Update_Call {
 	return &mockExpositionInterface_Update_Call{Call: _e.mock.On("Update", ctx, exposition, opts)}
 }
 
-func (_c *mockExpositionInterface_Update_Call) Run(run func(ctx context.Context, exposition *v129.Exposition, opts v1.UpdateOptions)) *mockExpositionInterface_Update_Call {
+func (_c *mockExpositionInterface_Update_Call) Run(run func(ctx context.Context, exposition *v130.Exposition, opts v1.UpdateOptions)) *mockExpositionInterface_Update_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
 			arg0 = args[0].(context.Context)
 		}
-		var arg1 *v129.Exposition
+		var arg1 *v130.Exposition
 		if args[1] != nil {
-			arg1 = args[1].(*v129.Exposition)
+			arg1 = args[1].(*v130.Exposition)
 		}
 		var arg2 v1.UpdateOptions
 		if args[2] != nil {
@@ -16146,37 +16240,37 @@ func (_c *mockExpositionInterface_Update_Call) Run(run func(ctx context.Context,
 	return _c
 }
 
-func (_c *mockExpositionInterface_Update_Call) Return(exposition1 *v129.Exposition, err error) *mockExpositionInterface_Update_Call {
+func (_c *mockExpositionInterface_Update_Call) Return(exposition1 *v130.Exposition, err error) *mockExpositionInterface_Update_Call {
 	_c.Call.Return(exposition1, err)
 	return _c
 }
 
-func (_c *mockExpositionInterface_Update_Call) RunAndReturn(run func(ctx context.Context, exposition *v129.Exposition, opts v1.UpdateOptions) (*v129.Exposition, error)) *mockExpositionInterface_Update_Call {
+func (_c *mockExpositionInterface_Update_Call) RunAndReturn(run func(ctx context.Context, exposition *v130.Exposition, opts v1.UpdateOptions) (*v130.Exposition, error)) *mockExpositionInterface_Update_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // UpdateStatus provides a mock function for the type mockExpositionInterface
-func (_mock *mockExpositionInterface) UpdateStatus(ctx context.Context, exposition *v129.Exposition, opts v1.UpdateOptions) (*v129.Exposition, error) {
+func (_mock *mockExpositionInterface) UpdateStatus(ctx context.Context, exposition *v130.Exposition, opts v1.UpdateOptions) (*v130.Exposition, error) {
 	ret := _mock.Called(ctx, exposition, opts)
 
 	if len(ret) == 0 {
 		panic("no return value specified for UpdateStatus")
 	}
 
-	var r0 *v129.Exposition
+	var r0 *v130.Exposition
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, *v129.Exposition, v1.UpdateOptions) (*v129.Exposition, error)); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *v130.Exposition, v1.UpdateOptions) (*v130.Exposition, error)); ok {
 		return returnFunc(ctx, exposition, opts)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, *v129.Exposition, v1.UpdateOptions) *v129.Exposition); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *v130.Exposition, v1.UpdateOptions) *v130.Exposition); ok {
 		r0 = returnFunc(ctx, exposition, opts)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*v129.Exposition)
+			r0 = ret.Get(0).(*v130.Exposition)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, *v129.Exposition, v1.UpdateOptions) error); ok {
+	if returnFunc, ok := ret.Get(1).(func(context.Context, *v130.Exposition, v1.UpdateOptions) error); ok {
 		r1 = returnFunc(ctx, exposition, opts)
 	} else {
 		r1 = ret.Error(1)
@@ -16191,21 +16285,21 @@ type mockExpositionInterface_UpdateStatus_Call struct {
 
 // UpdateStatus is a helper method to define mock.On call
 //   - ctx context.Context
-//   - exposition *v129.Exposition
+//   - exposition *v130.Exposition
 //   - opts v1.UpdateOptions
 func (_e *mockExpositionInterface_Expecter) UpdateStatus(ctx any, exposition any, opts any) *mockExpositionInterface_UpdateStatus_Call {
 	return &mockExpositionInterface_UpdateStatus_Call{Call: _e.mock.On("UpdateStatus", ctx, exposition, opts)}
 }
 
-func (_c *mockExpositionInterface_UpdateStatus_Call) Run(run func(ctx context.Context, exposition *v129.Exposition, opts v1.UpdateOptions)) *mockExpositionInterface_UpdateStatus_Call {
+func (_c *mockExpositionInterface_UpdateStatus_Call) Run(run func(ctx context.Context, exposition *v130.Exposition, opts v1.UpdateOptions)) *mockExpositionInterface_UpdateStatus_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
 			arg0 = args[0].(context.Context)
 		}
-		var arg1 *v129.Exposition
+		var arg1 *v130.Exposition
 		if args[1] != nil {
-			arg1 = args[1].(*v129.Exposition)
+			arg1 = args[1].(*v130.Exposition)
 		}
 		var arg2 v1.UpdateOptions
 		if args[2] != nil {
@@ -16220,12 +16314,12 @@ func (_c *mockExpositionInterface_UpdateStatus_Call) Run(run func(ctx context.Co
 	return _c
 }
 
-func (_c *mockExpositionInterface_UpdateStatus_Call) Return(exposition1 *v129.Exposition, err error) *mockExpositionInterface_UpdateStatus_Call {
+func (_c *mockExpositionInterface_UpdateStatus_Call) Return(exposition1 *v130.Exposition, err error) *mockExpositionInterface_UpdateStatus_Call {
 	_c.Call.Return(exposition1, err)
 	return _c
 }
 
-func (_c *mockExpositionInterface_UpdateStatus_Call) RunAndReturn(run func(ctx context.Context, exposition *v129.Exposition, opts v1.UpdateOptions) (*v129.Exposition, error)) *mockExpositionInterface_UpdateStatus_Call {
+func (_c *mockExpositionInterface_UpdateStatus_Call) RunAndReturn(run func(ctx context.Context, exposition *v130.Exposition, opts v1.UpdateOptions) (*v130.Exposition, error)) *mockExpositionInterface_UpdateStatus_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -16381,19 +16475,19 @@ func (_c *mockWarpmenuentryClient_RESTClient_Call) RunAndReturn(run func() rest.
 }
 
 // WarpMenuEntries provides a mock function for the type mockWarpmenuentryClient
-func (_mock *mockWarpmenuentryClient) WarpMenuEntries(namespace string) v130.WarpMenuEntryInterface {
+func (_mock *mockWarpmenuentryClient) WarpMenuEntries(namespace string) v131.WarpMenuEntryInterface {
 	ret := _mock.Called(namespace)
 
 	if len(ret) == 0 {
 		panic("no return value specified for WarpMenuEntries")
 	}
 
-	var r0 v130.WarpMenuEntryInterface
-	if returnFunc, ok := ret.Get(0).(func(string) v130.WarpMenuEntryInterface); ok {
+	var r0 v131.WarpMenuEntryInterface
+	if returnFunc, ok := ret.Get(0).(func(string) v131.WarpMenuEntryInterface); ok {
 		r0 = returnFunc(namespace)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(v130.WarpMenuEntryInterface)
+			r0 = ret.Get(0).(v131.WarpMenuEntryInterface)
 		}
 	}
 	return r0
@@ -16423,12 +16517,12 @@ func (_c *mockWarpmenuentryClient_WarpMenuEntries_Call) Run(run func(namespace s
 	return _c
 }
 
-func (_c *mockWarpmenuentryClient_WarpMenuEntries_Call) Return(warpMenuEntryInterface v130.WarpMenuEntryInterface) *mockWarpmenuentryClient_WarpMenuEntries_Call {
+func (_c *mockWarpmenuentryClient_WarpMenuEntries_Call) Return(warpMenuEntryInterface v131.WarpMenuEntryInterface) *mockWarpmenuentryClient_WarpMenuEntries_Call {
 	_c.Call.Return(warpMenuEntryInterface)
 	return _c
 }
 
-func (_c *mockWarpmenuentryClient_WarpMenuEntries_Call) RunAndReturn(run func(namespace string) v130.WarpMenuEntryInterface) *mockWarpmenuentryClient_WarpMenuEntries_Call {
+func (_c *mockWarpmenuentryClient_WarpMenuEntries_Call) RunAndReturn(run func(namespace string) v131.WarpMenuEntryInterface) *mockWarpmenuentryClient_WarpMenuEntries_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -16470,26 +16564,26 @@ func (_m *mockWarpmenuentryInterface) EXPECT() *mockWarpmenuentryInterface_Expec
 }
 
 // Create provides a mock function for the type mockWarpmenuentryInterface
-func (_mock *mockWarpmenuentryInterface) Create(ctx context.Context, warpMenuEntry *v131.WarpMenuEntry, opts v1.CreateOptions) (*v131.WarpMenuEntry, error) {
+func (_mock *mockWarpmenuentryInterface) Create(ctx context.Context, warpMenuEntry *v132.WarpMenuEntry, opts v1.CreateOptions) (*v132.WarpMenuEntry, error) {
 	ret := _mock.Called(ctx, warpMenuEntry, opts)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Create")
 	}
 
-	var r0 *v131.WarpMenuEntry
+	var r0 *v132.WarpMenuEntry
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, *v131.WarpMenuEntry, v1.CreateOptions) (*v131.WarpMenuEntry, error)); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *v132.WarpMenuEntry, v1.CreateOptions) (*v132.WarpMenuEntry, error)); ok {
 		return returnFunc(ctx, warpMenuEntry, opts)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, *v131.WarpMenuEntry, v1.CreateOptions) *v131.WarpMenuEntry); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *v132.WarpMenuEntry, v1.CreateOptions) *v132.WarpMenuEntry); ok {
 		r0 = returnFunc(ctx, warpMenuEntry, opts)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*v131.WarpMenuEntry)
+			r0 = ret.Get(0).(*v132.WarpMenuEntry)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, *v131.WarpMenuEntry, v1.CreateOptions) error); ok {
+	if returnFunc, ok := ret.Get(1).(func(context.Context, *v132.WarpMenuEntry, v1.CreateOptions) error); ok {
 		r1 = returnFunc(ctx, warpMenuEntry, opts)
 	} else {
 		r1 = ret.Error(1)
@@ -16504,21 +16598,21 @@ type mockWarpmenuentryInterface_Create_Call struct {
 
 // Create is a helper method to define mock.On call
 //   - ctx context.Context
-//   - warpMenuEntry *v131.WarpMenuEntry
+//   - warpMenuEntry *v132.WarpMenuEntry
 //   - opts v1.CreateOptions
 func (_e *mockWarpmenuentryInterface_Expecter) Create(ctx any, warpMenuEntry any, opts any) *mockWarpmenuentryInterface_Create_Call {
 	return &mockWarpmenuentryInterface_Create_Call{Call: _e.mock.On("Create", ctx, warpMenuEntry, opts)}
 }
 
-func (_c *mockWarpmenuentryInterface_Create_Call) Run(run func(ctx context.Context, warpMenuEntry *v131.WarpMenuEntry, opts v1.CreateOptions)) *mockWarpmenuentryInterface_Create_Call {
+func (_c *mockWarpmenuentryInterface_Create_Call) Run(run func(ctx context.Context, warpMenuEntry *v132.WarpMenuEntry, opts v1.CreateOptions)) *mockWarpmenuentryInterface_Create_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
 			arg0 = args[0].(context.Context)
 		}
-		var arg1 *v131.WarpMenuEntry
+		var arg1 *v132.WarpMenuEntry
 		if args[1] != nil {
-			arg1 = args[1].(*v131.WarpMenuEntry)
+			arg1 = args[1].(*v132.WarpMenuEntry)
 		}
 		var arg2 v1.CreateOptions
 		if args[2] != nil {
@@ -16533,12 +16627,12 @@ func (_c *mockWarpmenuentryInterface_Create_Call) Run(run func(ctx context.Conte
 	return _c
 }
 
-func (_c *mockWarpmenuentryInterface_Create_Call) Return(warpMenuEntry1 *v131.WarpMenuEntry, err error) *mockWarpmenuentryInterface_Create_Call {
+func (_c *mockWarpmenuentryInterface_Create_Call) Return(warpMenuEntry1 *v132.WarpMenuEntry, err error) *mockWarpmenuentryInterface_Create_Call {
 	_c.Call.Return(warpMenuEntry1, err)
 	return _c
 }
 
-func (_c *mockWarpmenuentryInterface_Create_Call) RunAndReturn(run func(ctx context.Context, warpMenuEntry *v131.WarpMenuEntry, opts v1.CreateOptions) (*v131.WarpMenuEntry, error)) *mockWarpmenuentryInterface_Create_Call {
+func (_c *mockWarpmenuentryInterface_Create_Call) RunAndReturn(run func(ctx context.Context, warpMenuEntry *v132.WarpMenuEntry, opts v1.CreateOptions) (*v132.WarpMenuEntry, error)) *mockWarpmenuentryInterface_Create_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -16670,23 +16764,23 @@ func (_c *mockWarpmenuentryInterface_DeleteCollection_Call) RunAndReturn(run fun
 }
 
 // Get provides a mock function for the type mockWarpmenuentryInterface
-func (_mock *mockWarpmenuentryInterface) Get(ctx context.Context, name string, opts v1.GetOptions) (*v131.WarpMenuEntry, error) {
+func (_mock *mockWarpmenuentryInterface) Get(ctx context.Context, name string, opts v1.GetOptions) (*v132.WarpMenuEntry, error) {
 	ret := _mock.Called(ctx, name, opts)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Get")
 	}
 
-	var r0 *v131.WarpMenuEntry
+	var r0 *v132.WarpMenuEntry
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, v1.GetOptions) (*v131.WarpMenuEntry, error)); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, v1.GetOptions) (*v132.WarpMenuEntry, error)); ok {
 		return returnFunc(ctx, name, opts)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, v1.GetOptions) *v131.WarpMenuEntry); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, v1.GetOptions) *v132.WarpMenuEntry); ok {
 		r0 = returnFunc(ctx, name, opts)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*v131.WarpMenuEntry)
+			r0 = ret.Get(0).(*v132.WarpMenuEntry)
 		}
 	}
 	if returnFunc, ok := ret.Get(1).(func(context.Context, string, v1.GetOptions) error); ok {
@@ -16733,34 +16827,34 @@ func (_c *mockWarpmenuentryInterface_Get_Call) Run(run func(ctx context.Context,
 	return _c
 }
 
-func (_c *mockWarpmenuentryInterface_Get_Call) Return(warpMenuEntry *v131.WarpMenuEntry, err error) *mockWarpmenuentryInterface_Get_Call {
+func (_c *mockWarpmenuentryInterface_Get_Call) Return(warpMenuEntry *v132.WarpMenuEntry, err error) *mockWarpmenuentryInterface_Get_Call {
 	_c.Call.Return(warpMenuEntry, err)
 	return _c
 }
 
-func (_c *mockWarpmenuentryInterface_Get_Call) RunAndReturn(run func(ctx context.Context, name string, opts v1.GetOptions) (*v131.WarpMenuEntry, error)) *mockWarpmenuentryInterface_Get_Call {
+func (_c *mockWarpmenuentryInterface_Get_Call) RunAndReturn(run func(ctx context.Context, name string, opts v1.GetOptions) (*v132.WarpMenuEntry, error)) *mockWarpmenuentryInterface_Get_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // List provides a mock function for the type mockWarpmenuentryInterface
-func (_mock *mockWarpmenuentryInterface) List(ctx context.Context, opts v1.ListOptions) (*v131.WarpMenuEntryList, error) {
+func (_mock *mockWarpmenuentryInterface) List(ctx context.Context, opts v1.ListOptions) (*v132.WarpMenuEntryList, error) {
 	ret := _mock.Called(ctx, opts)
 
 	if len(ret) == 0 {
 		panic("no return value specified for List")
 	}
 
-	var r0 *v131.WarpMenuEntryList
+	var r0 *v132.WarpMenuEntryList
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, v1.ListOptions) (*v131.WarpMenuEntryList, error)); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, v1.ListOptions) (*v132.WarpMenuEntryList, error)); ok {
 		return returnFunc(ctx, opts)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, v1.ListOptions) *v131.WarpMenuEntryList); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, v1.ListOptions) *v132.WarpMenuEntryList); ok {
 		r0 = returnFunc(ctx, opts)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*v131.WarpMenuEntryList)
+			r0 = ret.Get(0).(*v132.WarpMenuEntryList)
 		}
 	}
 	if returnFunc, ok := ret.Get(1).(func(context.Context, v1.ListOptions) error); ok {
@@ -16801,18 +16895,18 @@ func (_c *mockWarpmenuentryInterface_List_Call) Run(run func(ctx context.Context
 	return _c
 }
 
-func (_c *mockWarpmenuentryInterface_List_Call) Return(warpMenuEntryList *v131.WarpMenuEntryList, err error) *mockWarpmenuentryInterface_List_Call {
+func (_c *mockWarpmenuentryInterface_List_Call) Return(warpMenuEntryList *v132.WarpMenuEntryList, err error) *mockWarpmenuentryInterface_List_Call {
 	_c.Call.Return(warpMenuEntryList, err)
 	return _c
 }
 
-func (_c *mockWarpmenuentryInterface_List_Call) RunAndReturn(run func(ctx context.Context, opts v1.ListOptions) (*v131.WarpMenuEntryList, error)) *mockWarpmenuentryInterface_List_Call {
+func (_c *mockWarpmenuentryInterface_List_Call) RunAndReturn(run func(ctx context.Context, opts v1.ListOptions) (*v132.WarpMenuEntryList, error)) *mockWarpmenuentryInterface_List_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // Patch provides a mock function for the type mockWarpmenuentryInterface
-func (_mock *mockWarpmenuentryInterface) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (*v131.WarpMenuEntry, error) {
+func (_mock *mockWarpmenuentryInterface) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (*v132.WarpMenuEntry, error) {
 	// string
 	_va := make([]any, len(subresources))
 	for _i := range subresources {
@@ -16827,16 +16921,16 @@ func (_mock *mockWarpmenuentryInterface) Patch(ctx context.Context, name string,
 		panic("no return value specified for Patch")
 	}
 
-	var r0 *v131.WarpMenuEntry
+	var r0 *v132.WarpMenuEntry
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, types.PatchType, []byte, v1.PatchOptions, ...string) (*v131.WarpMenuEntry, error)); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, types.PatchType, []byte, v1.PatchOptions, ...string) (*v132.WarpMenuEntry, error)); ok {
 		return returnFunc(ctx, name, pt, data, opts, subresources...)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, types.PatchType, []byte, v1.PatchOptions, ...string) *v131.WarpMenuEntry); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, types.PatchType, []byte, v1.PatchOptions, ...string) *v132.WarpMenuEntry); ok {
 		r0 = returnFunc(ctx, name, pt, data, opts, subresources...)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*v131.WarpMenuEntry)
+			r0 = ret.Get(0).(*v132.WarpMenuEntry)
 		}
 	}
 	if returnFunc, ok := ret.Get(1).(func(context.Context, string, types.PatchType, []byte, v1.PatchOptions, ...string) error); ok {
@@ -16906,37 +17000,37 @@ func (_c *mockWarpmenuentryInterface_Patch_Call) Run(run func(ctx context.Contex
 	return _c
 }
 
-func (_c *mockWarpmenuentryInterface_Patch_Call) Return(result *v131.WarpMenuEntry, err error) *mockWarpmenuentryInterface_Patch_Call {
+func (_c *mockWarpmenuentryInterface_Patch_Call) Return(result *v132.WarpMenuEntry, err error) *mockWarpmenuentryInterface_Patch_Call {
 	_c.Call.Return(result, err)
 	return _c
 }
 
-func (_c *mockWarpmenuentryInterface_Patch_Call) RunAndReturn(run func(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (*v131.WarpMenuEntry, error)) *mockWarpmenuentryInterface_Patch_Call {
+func (_c *mockWarpmenuentryInterface_Patch_Call) RunAndReturn(run func(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (*v132.WarpMenuEntry, error)) *mockWarpmenuentryInterface_Patch_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // Update provides a mock function for the type mockWarpmenuentryInterface
-func (_mock *mockWarpmenuentryInterface) Update(ctx context.Context, warpMenuEntry *v131.WarpMenuEntry, opts v1.UpdateOptions) (*v131.WarpMenuEntry, error) {
+func (_mock *mockWarpmenuentryInterface) Update(ctx context.Context, warpMenuEntry *v132.WarpMenuEntry, opts v1.UpdateOptions) (*v132.WarpMenuEntry, error) {
 	ret := _mock.Called(ctx, warpMenuEntry, opts)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Update")
 	}
 
-	var r0 *v131.WarpMenuEntry
+	var r0 *v132.WarpMenuEntry
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, *v131.WarpMenuEntry, v1.UpdateOptions) (*v131.WarpMenuEntry, error)); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *v132.WarpMenuEntry, v1.UpdateOptions) (*v132.WarpMenuEntry, error)); ok {
 		return returnFunc(ctx, warpMenuEntry, opts)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, *v131.WarpMenuEntry, v1.UpdateOptions) *v131.WarpMenuEntry); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *v132.WarpMenuEntry, v1.UpdateOptions) *v132.WarpMenuEntry); ok {
 		r0 = returnFunc(ctx, warpMenuEntry, opts)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*v131.WarpMenuEntry)
+			r0 = ret.Get(0).(*v132.WarpMenuEntry)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, *v131.WarpMenuEntry, v1.UpdateOptions) error); ok {
+	if returnFunc, ok := ret.Get(1).(func(context.Context, *v132.WarpMenuEntry, v1.UpdateOptions) error); ok {
 		r1 = returnFunc(ctx, warpMenuEntry, opts)
 	} else {
 		r1 = ret.Error(1)
@@ -16951,21 +17045,21 @@ type mockWarpmenuentryInterface_Update_Call struct {
 
 // Update is a helper method to define mock.On call
 //   - ctx context.Context
-//   - warpMenuEntry *v131.WarpMenuEntry
+//   - warpMenuEntry *v132.WarpMenuEntry
 //   - opts v1.UpdateOptions
 func (_e *mockWarpmenuentryInterface_Expecter) Update(ctx any, warpMenuEntry any, opts any) *mockWarpmenuentryInterface_Update_Call {
 	return &mockWarpmenuentryInterface_Update_Call{Call: _e.mock.On("Update", ctx, warpMenuEntry, opts)}
 }
 
-func (_c *mockWarpmenuentryInterface_Update_Call) Run(run func(ctx context.Context, warpMenuEntry *v131.WarpMenuEntry, opts v1.UpdateOptions)) *mockWarpmenuentryInterface_Update_Call {
+func (_c *mockWarpmenuentryInterface_Update_Call) Run(run func(ctx context.Context, warpMenuEntry *v132.WarpMenuEntry, opts v1.UpdateOptions)) *mockWarpmenuentryInterface_Update_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
 			arg0 = args[0].(context.Context)
 		}
-		var arg1 *v131.WarpMenuEntry
+		var arg1 *v132.WarpMenuEntry
 		if args[1] != nil {
-			arg1 = args[1].(*v131.WarpMenuEntry)
+			arg1 = args[1].(*v132.WarpMenuEntry)
 		}
 		var arg2 v1.UpdateOptions
 		if args[2] != nil {
@@ -16980,37 +17074,37 @@ func (_c *mockWarpmenuentryInterface_Update_Call) Run(run func(ctx context.Conte
 	return _c
 }
 
-func (_c *mockWarpmenuentryInterface_Update_Call) Return(warpMenuEntry1 *v131.WarpMenuEntry, err error) *mockWarpmenuentryInterface_Update_Call {
+func (_c *mockWarpmenuentryInterface_Update_Call) Return(warpMenuEntry1 *v132.WarpMenuEntry, err error) *mockWarpmenuentryInterface_Update_Call {
 	_c.Call.Return(warpMenuEntry1, err)
 	return _c
 }
 
-func (_c *mockWarpmenuentryInterface_Update_Call) RunAndReturn(run func(ctx context.Context, warpMenuEntry *v131.WarpMenuEntry, opts v1.UpdateOptions) (*v131.WarpMenuEntry, error)) *mockWarpmenuentryInterface_Update_Call {
+func (_c *mockWarpmenuentryInterface_Update_Call) RunAndReturn(run func(ctx context.Context, warpMenuEntry *v132.WarpMenuEntry, opts v1.UpdateOptions) (*v132.WarpMenuEntry, error)) *mockWarpmenuentryInterface_Update_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // UpdateStatus provides a mock function for the type mockWarpmenuentryInterface
-func (_mock *mockWarpmenuentryInterface) UpdateStatus(ctx context.Context, warpMenuEntry *v131.WarpMenuEntry, opts v1.UpdateOptions) (*v131.WarpMenuEntry, error) {
+func (_mock *mockWarpmenuentryInterface) UpdateStatus(ctx context.Context, warpMenuEntry *v132.WarpMenuEntry, opts v1.UpdateOptions) (*v132.WarpMenuEntry, error) {
 	ret := _mock.Called(ctx, warpMenuEntry, opts)
 
 	if len(ret) == 0 {
 		panic("no return value specified for UpdateStatus")
 	}
 
-	var r0 *v131.WarpMenuEntry
+	var r0 *v132.WarpMenuEntry
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, *v131.WarpMenuEntry, v1.UpdateOptions) (*v131.WarpMenuEntry, error)); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *v132.WarpMenuEntry, v1.UpdateOptions) (*v132.WarpMenuEntry, error)); ok {
 		return returnFunc(ctx, warpMenuEntry, opts)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, *v131.WarpMenuEntry, v1.UpdateOptions) *v131.WarpMenuEntry); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *v132.WarpMenuEntry, v1.UpdateOptions) *v132.WarpMenuEntry); ok {
 		r0 = returnFunc(ctx, warpMenuEntry, opts)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*v131.WarpMenuEntry)
+			r0 = ret.Get(0).(*v132.WarpMenuEntry)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, *v131.WarpMenuEntry, v1.UpdateOptions) error); ok {
+	if returnFunc, ok := ret.Get(1).(func(context.Context, *v132.WarpMenuEntry, v1.UpdateOptions) error); ok {
 		r1 = returnFunc(ctx, warpMenuEntry, opts)
 	} else {
 		r1 = ret.Error(1)
@@ -17025,21 +17119,21 @@ type mockWarpmenuentryInterface_UpdateStatus_Call struct {
 
 // UpdateStatus is a helper method to define mock.On call
 //   - ctx context.Context
-//   - warpMenuEntry *v131.WarpMenuEntry
+//   - warpMenuEntry *v132.WarpMenuEntry
 //   - opts v1.UpdateOptions
 func (_e *mockWarpmenuentryInterface_Expecter) UpdateStatus(ctx any, warpMenuEntry any, opts any) *mockWarpmenuentryInterface_UpdateStatus_Call {
 	return &mockWarpmenuentryInterface_UpdateStatus_Call{Call: _e.mock.On("UpdateStatus", ctx, warpMenuEntry, opts)}
 }
 
-func (_c *mockWarpmenuentryInterface_UpdateStatus_Call) Run(run func(ctx context.Context, warpMenuEntry *v131.WarpMenuEntry, opts v1.UpdateOptions)) *mockWarpmenuentryInterface_UpdateStatus_Call {
+func (_c *mockWarpmenuentryInterface_UpdateStatus_Call) Run(run func(ctx context.Context, warpMenuEntry *v132.WarpMenuEntry, opts v1.UpdateOptions)) *mockWarpmenuentryInterface_UpdateStatus_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
 			arg0 = args[0].(context.Context)
 		}
-		var arg1 *v131.WarpMenuEntry
+		var arg1 *v132.WarpMenuEntry
 		if args[1] != nil {
-			arg1 = args[1].(*v131.WarpMenuEntry)
+			arg1 = args[1].(*v132.WarpMenuEntry)
 		}
 		var arg2 v1.UpdateOptions
 		if args[2] != nil {
@@ -17054,12 +17148,12 @@ func (_c *mockWarpmenuentryInterface_UpdateStatus_Call) Run(run func(ctx context
 	return _c
 }
 
-func (_c *mockWarpmenuentryInterface_UpdateStatus_Call) Return(warpMenuEntry1 *v131.WarpMenuEntry, err error) *mockWarpmenuentryInterface_UpdateStatus_Call {
+func (_c *mockWarpmenuentryInterface_UpdateStatus_Call) Return(warpMenuEntry1 *v132.WarpMenuEntry, err error) *mockWarpmenuentryInterface_UpdateStatus_Call {
 	_c.Call.Return(warpMenuEntry1, err)
 	return _c
 }
 
-func (_c *mockWarpmenuentryInterface_UpdateStatus_Call) RunAndReturn(run func(ctx context.Context, warpMenuEntry *v131.WarpMenuEntry, opts v1.UpdateOptions) (*v131.WarpMenuEntry, error)) *mockWarpmenuentryInterface_UpdateStatus_Call {
+func (_c *mockWarpmenuentryInterface_UpdateStatus_Call) RunAndReturn(run func(ctx context.Context, warpMenuEntry *v132.WarpMenuEntry, opts v1.UpdateOptions) (*v132.WarpMenuEntry, error)) *mockWarpmenuentryInterface_UpdateStatus_Call {
 	_c.Call.Return(run)
 	return _c
 }

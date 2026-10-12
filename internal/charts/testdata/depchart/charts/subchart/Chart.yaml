@@ -1,0 +1,5 @@
+apiVersion: v2
+name: subchart
+description: Subchart that must only render when enabled via its condition
+version: 0.1.0
+appVersion: "1.0.0"

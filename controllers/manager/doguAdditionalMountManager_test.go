@@ -767,7 +767,11 @@ func CreateExpectedVolumes() []corev1.Volume {
 						Name: "k8s-dogu-operator-manager-config",
 					},
 					Items: []corev1.KeyToPath{
-						{"timezone", "timezone", new(int32(0o444))},
+						{
+							Key:  "timezone",
+							Path: "timezone",
+							Mode: new(int32(0o444)),
+						},
 					},
 				},
 			},

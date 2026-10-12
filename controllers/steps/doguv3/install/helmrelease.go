@@ -94,12 +94,14 @@ func configureHelmRelease(release *flux.HelmRelease, doguResource *doguv3.Dogu, 
 			Name:       doguResource.Name,
 		},
 		Install: &flux.Install{
+			DisableSchemaValidation: doguResource.Spec.SkipSchemaValidation,
 			Strategy: &flux.InstallStrategy{
 				Name:          string(flux.ActionStrategyRetryOnFailure),
 				RetryInterval: retryInterval,
 			},
 		},
 		Upgrade: &flux.Upgrade{
+			DisableSchemaValidation: doguResource.Spec.SkipSchemaValidation,
 			Strategy: &flux.UpgradeStrategy{
 				Name:          string(flux.ActionStrategyRetryOnFailure),
 				RetryInterval: retryInterval,

@@ -1,0 +1,9 @@
+apiVersion: v2
+name: depchart
+description: Fixture chart with a conditional subchart dependency for dependency-processing tests
+version: 0.1.0
+appVersion: "1.0.0"
+dependencies:
+  - name: subchart
+    version: 0.1.0
+    condition: subchart.enabled

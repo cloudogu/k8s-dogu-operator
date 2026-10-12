@@ -1,9 +1,6 @@
 package main
 
 import (
-	"context"
-
-	beta1 "github.com/cloudogu/k8s-dogu-lib/v3/api/v3beta1"
 	doguv2 "github.com/cloudogu/k8s-dogu-lib/v3/client/typed/api/v2"
 	"github.com/cloudogu/k8s-dogu-lib/v3/client/typed/api/v3beta1"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/additionalMount"
@@ -76,30 +73,17 @@ func allOptions() fx.Option {
 func v3Options() fx.Option {
 	return fx.Options(
 		fx.Provide(
-			// Dependencies
+			// The DoguV3 subgraph is hand-wired in controllers/usecase/doguv3. NewDoguV3UseCases
+			// assembles every v3 dependency (chart stack, registry reader, install steps) into the
+			// two use-cases the reconciler consumes; fx only supplies the shared infra it takes and
+			// applies the reconciler's named tags to its two results.
 			fx.Annotate(
-				initfx.NewDoguV3RegistryReader,
-				fx.As(new(installv3.DoguRegistryReader)),
+				usecasev3.NewDoguV3UseCases,
+				fx.ResultTags(`name:"doguV3InstallOrChangeUseCase"`, `name:"doguV3DeleteUseCase"`),
 			),
-
-			// install/update steps
-			installv3.NewEnsureOCIRepositoryStep,
-			installv3.NewWaitForOCIRepositoryReadyStep,
-			installv3.NewEnsureHelmReleaseStep,
-
-			// delete steps
-
-			// usecases
-			fx.Annotate(
-				usecasev3.NewDoguDeleteUseCase,
-				fx.As(new(controllers.DoguV3DeleteUseCase)),
-				fx.ResultTags(`name:"doguV3DeleteUseCase"`),
-			),
-			fx.Annotate(
-				usecasev3.NewDoguInstallOrChangeUseCase,
-				fx.As(new(controllers.DoguV3InstallOrChangeUseCase)),
-				fx.ResultTags(`name:"doguV3InstallOrChangeUseCase"`),
-			),
+			// NewDoguV3Interface is provided but currently has no consumer (it is only embedded in
+			// the unused doguV3Client interface). Left as-is on purpose: removing it is a dead-code
+			// cleanup independent of this wiring change.
 			fx.Annotate(initfx.NewDoguV3Interface, fx.As(new(v3beta1.DoguInterface))),
 		),
 	)
@@ -137,17 +121,6 @@ func k8sOptions() fx.Option {
 			fx.Annotate(initfx.NewEventRecorder, fx.As(new(record.EventRecorder)), fx.As(new(installv3.EventRecorder)), fx.As(new(usecasev3.EventRecorder))),
 		),
 	)
-}
-
-// TODO remove this when feature/339-ValidateHelmChart is merged
-type dummyDoguValuesMetadataService struct{}
-
-func newDummyDoguValuesMetadataService() *dummyDoguValuesMetadataService {
-	return &dummyDoguValuesMetadataService{}
-}
-
-func (d dummyDoguValuesMetadataService) DoguMetaValues(ctx context.Context, doguResource *beta1.Dogu) ([]byte, bool, error) {
-	return nil, false, nil
 }
 
 //nolint:funlen
@@ -227,9 +200,6 @@ func v2DependencyOptions() fx.Option {
 			controllers.NewDoguEvents,
 			controllers.NewDoguEventsIn,
 			controllers.NewDoguEventsOut,
-
-			// TODO remove this when feature/339-ValidateHelmChart is merged
-			fx.Annotate(newDummyDoguValuesMetadataService, fx.As(new(installv3.ChartService))),
 
 			// use-cases
 			fx.Annotate(

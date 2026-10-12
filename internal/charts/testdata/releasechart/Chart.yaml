@@ -1,0 +1,5 @@
+apiVersion: v2
+name: releasechart
+description: Fixture chart that renders the Helm release operation into a ConfigMap for assertions
+version: 0.1.0
+appVersion: "1.0.0"

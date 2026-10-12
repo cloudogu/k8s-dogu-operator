@@ -32,8 +32,10 @@ const (
 var (
 	testCtx          = context.Background()
 	testDoguResource = &v3beta1.Dogu{
-		Name:      testDoguName,
-		Namespace: testNamespace,
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      testDoguName,
+			Namespace: testNamespace,
+		},
 		Spec: v3beta1.DoguSpec{
 			Name:          testDoguName,
 			DoguNamespace: testDoguNamespace,
@@ -53,12 +55,14 @@ func TestNewDoguInstallOrChangeUseCase(t *testing.T) {
 	recorderMock := NewMockEventRecorder(t)
 	ensureOCIStep := &install.EnsureOCIRepositoryStep{}
 	waitOCIStep := &install.WaitForOCIRepositoryReadyStep{}
-	ensureHelmStep := &install.EnsureHelmReleaseStep{}
+	validateChartStep := &install.ValidateChartStep{}
+	helmReleaseStep := &install.EnsureHelmReleaseStep{}
 
 	got := NewDoguInstallOrChangeUseCase(
 		ensureOCIStep,
 		waitOCIStep,
-		ensureHelmStep,
+		validateChartStep,
+		helmReleaseStep,
 		clientMock,
 		recorderMock,
 	)
@@ -66,6 +70,7 @@ func TestNewDoguInstallOrChangeUseCase(t *testing.T) {
 	wantTypes := []string{
 		"*install.EnsureOCIRepositoryStep",
 		"*install.WaitForOCIRepositoryReadyStep",
+		"*install.ValidateChartStep",
 		"*install.EnsureHelmReleaseStep",
 	}
 
