@@ -31,7 +31,8 @@ func (s *DeleteHelmReleaseStep) Run(ctx context.Context, doguResource *v3beta1.D
 	release := &flux.HelmRelease{}
 	err := s.client.Get(ctx, client.ObjectKey{Namespace: doguResource.Namespace, Name: doguResource.Spec.Name}, release)
 	if apierrors.IsNotFound(err) {
-		// The HelmRelease is fully deleted - continue.
+		// The HelmRelease is gone - either flux finished the uninstall or it never existed.
+		log.FromContext(ctx).Info("HelmRelease is gone, continuing deletion")
 		return stepsv3.Continue()
 	}
 	if err != nil {

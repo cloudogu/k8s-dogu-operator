@@ -26,7 +26,8 @@ func (s *DeleteOCIRepositoryStep) Run(ctx context.Context, doguResource *v3beta1
 	repository := &flux.OCIRepository{}
 	err := s.client.Get(ctx, client.ObjectKey{Namespace: doguResource.Namespace, Name: doguResource.Spec.Name}, repository)
 	if apierrors.IsNotFound(err) {
-		// The OCIRepository is fully deleted - continue.
+		// The OCIRepository is gone - either flux deleted it or it never existed.
+		log.FromContext(ctx).Info("OCIRepository is gone, continuing deletion")
 		return stepsv3.Continue()
 	}
 	if err != nil {
