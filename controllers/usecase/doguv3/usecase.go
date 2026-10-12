@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"reflect"
 	"time"
 
 	"github.com/cloudogu/k8s-dogu-lib/v3/api/v3beta1"
@@ -89,7 +90,10 @@ func NewDoguInstallOrChangeUseCase(
 // If the dogu executed all steps successfully, the duration and the error will contain null values indicating the dogu phase is done.
 func (duc *DoguUseCase) HandleUntilApplied(ctx context.Context, doguResource *v3beta1.Dogu) (time.Duration, error) {
 	for _, s := range duc.steps {
-		result := s.Run(ctx, doguResource)
+		// Name the logger after the step type so every log line carries the step that produced it
+		// (e.g. "logger":"DeleteHelmReleaseStep"), without each step having to name itself.
+		stepCtx := log.IntoContext(ctx, log.FromContext(ctx).WithName(stepName(s)))
+		result := s.Run(stepCtx, doguResource)
 
 		// Abort, requeue or error
 		if !result.Continue {
@@ -117,6 +121,16 @@ func (duc *DoguUseCase) HandleUntilApplied(ctx context.Context, doguResource *v3
 	log.FromContext(ctx).Info(successMessage)
 
 	return 0, nil
+}
+
+// stepName derives a human-readable logger name from a step's concrete type (e.g. "DeleteHelmReleaseStep").
+// The pointer guard keeps a value-type step from panicking on Elem().
+func stepName(s Step) string {
+	t := reflect.TypeOf(s)
+	if t.Kind() == reflect.Pointer {
+		t = t.Elem()
+	}
+	return t.Name()
 }
 
 func (duc *DoguUseCase) stopStepExecution(ctx context.Context, doguResource *v3beta1.Dogu, result v3.StepResult) (time.Duration, error) {

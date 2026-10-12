@@ -13,6 +13,7 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv3/deletion"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv3/install"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -143,8 +144,8 @@ func TestDoguUseCase_HandleUntilApplied(t *testing.T) {
 				doguResource := testDoguResource.DeepCopy()
 				stepMock1 := NewMockStep(t)
 				stepMock2 := NewMockStep(t)
-				stepMock1.EXPECT().Run(testCtx, doguResource).Return(successStepResult)
-				stepMock2.EXPECT().Run(testCtx, doguResource).Return(successStepResult)
+				stepMock1.EXPECT().Run(mock.Anything, doguResource).Return(successStepResult)
+				stepMock2.EXPECT().Run(mock.Anything, doguResource).Return(successStepResult)
 
 				eventRecorderMock := NewMockEventRecorder(t)
 				eventRecorderMock.EXPECT().Event(doguResource, v1.EventTypeNormal, ReasonReconcileSuccess, "Dogu reconciliation completed successfully")
@@ -174,7 +175,7 @@ func TestDoguUseCase_HandleUntilApplied(t *testing.T) {
 				// The fake client only accepts an object carrying a deletion timestamp if it has a finalizer.
 				doguResource.Finalizers = []string{doguv3.FinalizerName}
 				stepMock1 := NewMockStep(t)
-				stepMock1.EXPECT().Run(testCtx, doguResource).Return(successStepResult)
+				stepMock1.EXPECT().Run(mock.Anything, doguResource).Return(successStepResult)
 
 				// No event must be emitted during deletion success; the mock fails on any unexpected call.
 				eventRecorderMock := NewMockEventRecorder(t)
@@ -196,8 +197,8 @@ func TestDoguUseCase_HandleUntilApplied(t *testing.T) {
 				doguResource := testDoguResource.DeepCopy()
 				stepMock1 := NewMockStep(t)
 				stepMock2 := NewMockStep(t)
-				stepMock1.EXPECT().Run(testCtx, doguResource).Return(successStepResult)
-				stepMock2.EXPECT().Run(testCtx, doguResource).Return(successStepResult)
+				stepMock1.EXPECT().Run(mock.Anything, doguResource).Return(successStepResult)
+				stepMock2.EXPECT().Run(mock.Anything, doguResource).Return(successStepResult)
 
 				clientMock := fake.NewClientBuilder().
 					WithScheme(testScheme).
@@ -224,8 +225,8 @@ func TestDoguUseCase_HandleUntilApplied(t *testing.T) {
 				doguResource := testDoguResource.DeepCopy()
 				stepMock1 := NewMockStep(t)
 				stepMock2 := NewMockStep(t)
-				stepMock1.EXPECT().Run(testCtx, doguResource).Return(successStepResult)
-				stepMock2.EXPECT().Run(testCtx, doguResource).Return(successStepResult)
+				stepMock1.EXPECT().Run(mock.Anything, doguResource).Return(successStepResult)
+				stepMock2.EXPECT().Run(mock.Anything, doguResource).Return(successStepResult)
 
 				clientMock := fake.NewClientBuilder().
 					WithScheme(testScheme).
@@ -254,7 +255,7 @@ func TestDoguUseCase_HandleUntilApplied(t *testing.T) {
 				doguResource := testDoguResource.DeepCopy()
 				stepMock1 := NewMockStep(t)
 				stepMock2 := NewMockStep(t)
-				stepMock1.EXPECT().Run(testCtx, doguResource).Return(abortResult)
+				stepMock1.EXPECT().Run(mock.Anything, doguResource).Return(abortResult)
 
 				eventRecorderMock := NewMockEventRecorder(t)
 				eventRecorderMock.EXPECT().Event(doguResource, v1.EventTypeWarning, v3beta1.ReasonDownloadFailed, "chart not found")
@@ -281,7 +282,7 @@ func TestDoguUseCase_HandleUntilApplied(t *testing.T) {
 				doguResource := testDoguResource.DeepCopy()
 				stepMock1 := NewMockStep(t)
 				stepMock2 := NewMockStep(t)
-				stepMock1.EXPECT().Run(testCtx, doguResource).Return(requeueResult)
+				stepMock1.EXPECT().Run(mock.Anything, doguResource).Return(requeueResult)
 
 				clientMock := fake.NewClientBuilder().WithScheme(testScheme).WithObjects(doguResource).WithStatusSubresource(&v3beta1.Dogu{}).Build()
 
@@ -305,7 +306,7 @@ func TestDoguUseCase_HandleUntilApplied(t *testing.T) {
 				doguResource := testDoguResource.DeepCopy()
 				stepMock1 := NewMockStep(t)
 				stepMock2 := NewMockStep(t)
-				stepMock1.EXPECT().Run(testCtx, doguResource).Return(requeueWithErrResult)
+				stepMock1.EXPECT().Run(mock.Anything, doguResource).Return(requeueWithErrResult)
 
 				clientMock := fake.NewClientBuilder().WithScheme(testScheme).WithObjects(doguResource).WithStatusSubresource(&v3beta1.Dogu{}).Build()
 
@@ -331,7 +332,7 @@ func TestDoguUseCase_HandleUntilApplied(t *testing.T) {
 				doguResource := testDoguResource.DeepCopy()
 				stepMock1 := NewMockStep(t)
 				stepMock2 := NewMockStep(t)
-				stepMock1.EXPECT().Run(testCtx, doguResource).Return(abortResult)
+				stepMock1.EXPECT().Run(mock.Anything, doguResource).Return(abortResult)
 
 				clientMock := fake.NewClientBuilder().
 					WithScheme(testScheme).
@@ -358,7 +359,7 @@ func TestDoguUseCase_HandleUntilApplied(t *testing.T) {
 				doguResource := testDoguResource.DeepCopy()
 				stepMock1 := NewMockStep(t)
 				stepMock2 := NewMockStep(t)
-				stepMock1.EXPECT().Run(testCtx, doguResource).Return(requeueWithErrResult)
+				stepMock1.EXPECT().Run(mock.Anything, doguResource).Return(requeueWithErrResult)
 
 				clientMock := fake.NewClientBuilder().
 					WithScheme(testScheme).
