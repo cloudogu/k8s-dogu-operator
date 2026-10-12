@@ -77,7 +77,6 @@ func (hrs *HelmReleaseStatusStep) stepResultForRelease(state fluxstate.ReleaseSt
 
 // stepResultForDeployed derives the Ready condition of a deployed dogu from its Healthy condition.
 func stepResultForDeployed(doguResource *v3beta1.Dogu) stepsv3.StepResult {
-	// TODO: A stopped dogu is not healthy, but ready.
 	if doguResource.Status.Stopped {
 		return stepsv3.Continue()
 	}
