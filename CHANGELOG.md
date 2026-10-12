@@ -5,6 +5,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Fixed
+- [#342] Exclude the export container for a Dogu from the security context update.
+  - This prevents an infinite loop of pod termination and creation during export mode.
+
 ### Added
 - [#339] Add step to validate values and template of a dogu helm chart
 - [#339] Add mock for dcc v3
