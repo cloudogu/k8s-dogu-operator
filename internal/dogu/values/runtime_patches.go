@@ -5,165 +5,73 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"regexp"
-	"slices"
 	"strings"
 	"text/template"
 
-	"github.com/Masterminds/sprig/v3"
-	"github.com/mitchellh/copystructure"
 	"gopkg.in/yaml.v3"
-	syaml "sigs.k8s.io/yaml"
 )
 
-var runtimeRootKey = regexp.MustCompile(`^([A-Za-z_][A-Za-z0-9_.-]*):(?:[ \t]*(.*))?$`)
-var runtimeDocumentStart = regexp.MustCompile(`^---(?:[ \t]+(?:#.*)?)?$`)
+type patchTemplate struct {
+	APIVersion     string            `yaml:"apiVersion"`
+	RuntimePatches map[string]Values `yaml:"runtimePatches"`
+}
 
 func renderRuntimePatches(source []byte, global Values) (Values, error) {
 	if source == nil {
 		return nil, nil
 	}
-	section, err := runtimePatchSection(source)
-	if err != nil || section == nil {
-		return nil, err
+	decoder := yaml.NewDecoder(bytes.NewReader(source))
+	var envelope patchTemplate
+	if err := decoder.Decode(&envelope); err != nil {
+		return nil, fmt.Errorf("decode chart patch template: %w", err)
 	}
-	tpl, err := template.New("runtimePatches").Option("missingkey=error").Funcs(runtimePatchFunctions(global)).Parse(string(section))
-	if err != nil {
-		return nil, fmt.Errorf("parse runtimePatches template: %w", err)
+	var extra any
+	if err := decoder.Decode(&extra); err != io.EOF {
+		return nil, fmt.Errorf("chart patch template must contain exactly one YAML document")
 	}
-	var output bytes.Buffer
-	if err = tpl.Execute(&output, nil); err != nil {
-		return nil, fmt.Errorf("execute runtimePatches template: %w", err)
-	}
-	return decodeRuntimePatches(output.Bytes())
-}
-
-// runtimePatchSection isolates only the literal runtimePatches section. The
-// envelope deliberately supports block-style, unquoted root keys only; template
-// actions at column zero within the section are retained, not section boundaries.
-func runtimePatchSection(source []byte) ([]byte, error) {
-	lines := strings.SplitAfter(string(source), "\n")
-	firstContent := slices.IndexFunc(lines, func(line string) bool {
-		return strings.TrimSpace(line) != "" && !strings.HasPrefix(strings.TrimSpace(line), "#")
-	})
-	start, end := -1, len(lines)
-	api := ""
-	seen := map[string]bool{}
-	for i, line := range lines {
-		plain := strings.TrimSuffix(strings.TrimSuffix(line, "\n"), "\r")
-		if strings.TrimSpace(plain) == "" || strings.HasPrefix(plain, "#") || strings.HasPrefix(plain, " ") || strings.HasPrefix(plain, "\t") {
-			continue
-		}
-		if i == firstContent && runtimeDocumentStart.MatchString(plain) {
-			continue
-		}
-		if strings.HasPrefix(plain, "{{") {
-			if start >= 0 && end == len(lines) {
-				continue
-			}
-			return nil, fmt.Errorf("chart patch envelope: root template actions outside runtimePatches are unsupported")
-		}
-		match := runtimeRootKey.FindStringSubmatch(plain)
-		if match == nil {
-			return nil, fmt.Errorf("chart patch envelope: expected literal block-style root key at line %d", i+1)
-		}
-		key := match[1]
-		if seen[key] {
-			return nil, fmt.Errorf("chart patch envelope: duplicate %s section", key)
-		}
-		seen[key] = true
-		if start >= 0 && end == len(lines) {
-			end = i
-		}
-		if key == "runtimePatches" {
-			start = i
-			value := strings.TrimSpace(strings.SplitN(match[2], "#", 2)[0])
-			if value != "" && value != "{}" {
-				return nil, fmt.Errorf("runtimePatches must be a block mapping or {}")
-			}
-		}
-		if key == "apiVersion" {
-			if err := yaml.Unmarshal([]byte(match[2]), &api); err != nil {
-				return nil, fmt.Errorf("chart patch apiVersion: %w", err)
-			}
-		}
-	}
-	if len(seen) == 0 {
-		return nil, fmt.Errorf("chart patch envelope is empty")
-	}
-	if start < 0 {
+	if envelope.RuntimePatches == nil {
 		return nil, nil
 	}
-	if api != "v1" {
+	if envelope.APIVersion != "v1" {
 		return nil, fmt.Errorf("runtimePatches requires apiVersion v1")
 	}
-	return []byte(strings.Join(lines[start:end], "")), nil
-}
-
-func runtimePatchFunctions(global Values) template.FuncMap {
-	funcs := sprig.TxtFuncMap()
-	for _, name := range []string{"env", "expandenv", "getHostByName"} {
-		delete(funcs, name)
-	}
-	funcs["globalConfig"] = func(path string) (any, error) {
-		var value any = global
-		segments := strings.Split(path, "/")
-		for _, segment := range segments {
-			if segment == "" {
-				return nil, fmt.Errorf("globalConfig path contains an empty segment")
-			}
-		}
-		for _, segment := range segments {
-			mapping, ok := value.(map[string]any)
-			if !ok {
-				return nil, nil
-			}
-			value = mapping[segment]
-		}
-		if value == nil {
-			return nil, nil
-		}
-		return copystructure.Copy(value)
-	}
-	funcs["toYaml"] = func(value any) (string, error) {
-		data, err := syaml.Marshal(value)
-		return strings.TrimSuffix(string(data), "\n"), err
-	}
-	return funcs
-}
-
-func decodeRuntimePatches(output []byte) (Values, error) {
-	decoder := yaml.NewDecoder(bytes.NewReader(output))
-	var document yaml.Node
-	if err := decoder.Decode(&document); err != nil {
-		return nil, fmt.Errorf("decode runtimePatches: %w", err)
-	}
-	var extra yaml.Node
-	if err := decoder.Decode(&extra); err != io.EOF {
-		return nil, fmt.Errorf("runtimePatches must contain exactly one YAML document")
-	}
-	if err := validateRuntimeNode(&document); err != nil {
-		return nil, err
-	}
-	var envelope Values
-	if err := document.Decode(&envelope); err != nil {
-		return nil, fmt.Errorf("decode runtimePatches mapping: %w", err)
-	}
-	if len(envelope) != 1 {
-		return nil, fmt.Errorf("runtimePatches template must not generate additional root sections")
-	}
-	targets, ok := envelope["runtimePatches"].(Values)
-	if !ok {
-		return nil, fmt.Errorf("runtimePatches must be a mapping")
-	}
 	result := Values{}
-	for target, value := range targets {
+	for target := range envelope.RuntimePatches {
 		if target != "values.yaml" {
 			return nil, fmt.Errorf("unsupported runtimePatches target %q", target)
 		}
-		if result, ok = value.(Values); !ok {
+	}
+	if value, exists := envelope.RuntimePatches["values.yaml"]; exists {
+		if value == nil {
 			return nil, fmt.Errorf("runtimePatches values.yaml must be a mapping")
 		}
+		result = value
+	}
+	funcs := template.FuncMap{
+		"globalConfig": func(path string) (string, error) {
+			var value any = global
+			for _, segment := range strings.Split(path, "/") {
+				if segment == "" {
+					return "", fmt.Errorf("globalConfig path contains an empty segment")
+				}
+				mapping, ok := value.(map[string]any)
+				if !ok {
+					return "", fmt.Errorf("globalConfig %q does not refer to a string", path)
+				}
+				value, ok = mapping[segment]
+				if !ok {
+					return "", fmt.Errorf("globalConfig %q is missing", path)
+				}
+			}
+			text, ok := value.(string)
+			if !ok {
+				return "", fmt.Errorf("globalConfig %q does not refer to a string", path)
+			}
+			return text, nil
+		},
+	}
+	if _, err := renderRuntimeValue(result, funcs, "runtimePatches.values.yaml"); err != nil {
+		return nil, err
 	}
 	if _, err := json.Marshal(result); err != nil {
 		return nil, fmt.Errorf("runtimePatches JSON conversion: %w", err)
@@ -171,23 +79,41 @@ func decodeRuntimePatches(output []byte) (Values, error) {
 	return result, nil
 }
 
-func validateRuntimeNode(node *yaml.Node) error {
-	if node.Kind == yaml.AliasNode || node.Anchor != "" {
-		return fmt.Errorf("runtimePatches aliases and anchors are unsupported")
-	}
-	if node.Kind == yaml.MappingNode {
-		// Node.Decode rejects duplicate keys; enforce our additional string-key policy here.
-		for i := 0; i < len(node.Content); i += 2 {
-			key := node.Content[i]
-			if key.Kind != yaml.ScalarNode || key.Tag != "!!str" {
-				return fmt.Errorf("runtimePatches mapping keys must be strings")
+// Render string leaves directly: inserted quotes and newlines are data, never YAML syntax.
+func renderRuntimeValue(value any, funcs template.FuncMap, path string) (any, error) {
+	switch value := value.(type) {
+	case map[string]any:
+		for key, child := range value {
+			if strings.Contains(key, "{{") {
+				return nil, fmt.Errorf("runtimePatches mapping keys must not contain templates")
 			}
+			rendered, err := renderRuntimeValue(child, funcs, path+"."+key)
+			if err != nil {
+				return nil, err
+			}
+			value[key] = rendered
 		}
-	}
-	for _, child := range node.Content {
-		if err := validateRuntimeNode(child); err != nil {
-			return err
+	case []any:
+		for i, child := range value {
+			rendered, err := renderRuntimeValue(child, funcs, fmt.Sprintf("%s[%d]", path, i))
+			if err != nil {
+				return nil, err
+			}
+			value[i] = rendered
 		}
+	case string:
+		if !strings.Contains(value, "{{") {
+			return value, nil
+		}
+		tpl, err := template.New(path).Option("missingkey=error").Funcs(funcs).Parse(value)
+		if err != nil {
+			return nil, fmt.Errorf("parse %s template: %w", path, err)
+		}
+		var output bytes.Buffer
+		if err := tpl.Execute(&output, nil); err != nil {
+			return nil, fmt.Errorf("execute %s template: %w", path, err)
+		}
+		return output.String(), nil
 	}
-	return nil
+	return value, nil
 }

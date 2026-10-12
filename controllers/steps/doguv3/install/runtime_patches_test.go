@@ -18,6 +18,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	"gopkg.in/yaml.v3"
 	helmchart "helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chartutil"
 	corev1 "k8s.io/api/core/v1"
@@ -70,15 +71,15 @@ func TestRuntimePatchesHelmRelease(t *testing.T) {
 apiVersion: v1
 patches:
   values.yaml:
-    image: {{ registryFrom .images.fixture }}
+    image: '{{ registryFrom .images.fixture }}'
 runtimePatches:
   values.yaml:
-    host: {{ globalConfig "fqdn" | default "" | quote }}
+    host: '{{ globalConfig "fqdn" }}'
     explicit: runtime
     mapped: runtime
     integer: 9007199254740993
     backend:
-      applicationHost: {{ globalConfig "fqdn" | default "" | quote }}
+      applicationHost: '{{ globalConfig "fqdn" }}'
 `)},
 			{Name: "dogu-values-metadata.yaml", Data: []byte(`apiVersion: v1
 metavalues:
@@ -121,9 +122,12 @@ data:
 	}, service, record.NewFakeRecorder(10))
 	validateStep := NewValidateChartStep(service, values.NewAssembler(cl), cl)
 
-	for _, host := range []string{"first.example", "changed.example", ""} {
+	// The fixture schema accepts arbitrary nonempty strings, allowing YAML-sensitive config values.
+	for _, host := range []string{"first.example", "O'Reilly: #quoted", "BEGIN\nEND\n", `a"b\c`, "changed.example", ""} {
 		require.NoError(t, cl.Get(ctx, client.ObjectKeyFromObject(global), global))
-		global.Data["config.yaml"] = "fqdn: " + host + "\n"
+		configYAML, err := yaml.Marshal(map[string]string{"fqdn": host})
+		require.NoError(t, err)
+		global.Data["config.yaml"] = string(configYAML)
 		require.NoError(t, cl.Update(ctx, global))
 		require.NoError(t, cl.Get(ctx, client.ObjectKeyFromObject(dogu), dogu))
 		result := validateStep.Run(ctx, dogu)
@@ -169,10 +173,10 @@ func TestRuntimePatchesValidationFailures(t *testing.T) {
 		name, template, errorContains string
 		renderFailure                 bool
 	}{
-		{name: "template", errorContains: "mandatory value missing", template: `apiVersion: v1
+		{name: "template", errorContains: `globalConfig "absent" is missing`, template: `apiVersion: v1
 runtimePatches:
   values.yaml:
-    host: {{ fail "mandatory value missing" }}
+    host: '{{ globalConfig "absent" }}'
 `},
 		{name: "render", renderFailure: true},
 	} {
@@ -206,10 +210,15 @@ func TestRuntimePatchesWriteFailuresPreserveHelmRelease(t *testing.T) {
 	for _, tt := range []struct {
 		name, config, template, errorContains string
 	}{
-		{name: "template", config: "fqdn: new.example", errorContains: "mandatory value missing", template: `apiVersion: v1
+		{name: "missing config", config: "fqdn: new.example", errorContains: `globalConfig "absent" is missing`, template: `apiVersion: v1
 runtimePatches:
   values.yaml:
-    host: {{ fail "mandatory value missing" }}
+    host: '{{ globalConfig "absent" }}'
+`},
+		{name: "non-string config", config: "fqdn: false", errorContains: "does not refer to a string", template: `apiVersion: v1
+runtimePatches:
+  values.yaml:
+    host: '{{ globalConfig "fqdn" }}'
 `},
 		{name: "serialization", config: "invalid: .nan", errorContains: "unsupported value: NaN"},
 	} {

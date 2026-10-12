@@ -536,7 +536,7 @@ runtimePatches:
     application:
       host: fromRuntime
       logging: fromRuntime
-      sibling: {{ globalConfig "fqdn" | quote }}
+      sibling: '{{ globalConfig "fqdn" }}'
       list: [runtime]
     global:
       cesConfig:
@@ -555,15 +555,15 @@ runtimePatches:
 }
 
 func TestAssembler_RuntimeErrorsDoNotBecomeDefaults(t *testing.T) {
-	patch := []byte("apiVersion: v1\nruntimePatches:\n  values.yaml:\n    host: {{ globalConfig \"absent\" | default \"fallback\" | quote }}\n")
+	patch := []byte("apiVersion: v1\nruntimePatches:\n  values.yaml:\n    host: '{{ globalConfig \"absent\" }}'\n")
 	for _, config := range []map[string]string{nil, {globalConfigFileName: "["}} {
 		a := NewAssembler(newFakeClientWithGlobalConfig(testNamespace, config))
 		_, err := a.Assemble(t.Context(), newTestDogu(testNamespace, nil, nil), nil, patch)
 		require.Error(t, err)
 	}
 	a := NewAssembler(newFakeClientWithGlobalConfig(testNamespace, map[string]string{globalConfigFileName: "{}"}))
-	_, err := a.Assemble(t.Context(), newTestDogu(testNamespace, nil, nil), nil, []byte("apiVersion: v1\nruntimePatches:\n  values.yaml:\n    value: {{ fail \"required\" }}"))
-	require.ErrorContains(t, err, "required")
+	_, err := a.Assemble(t.Context(), newTestDogu(testNamespace, nil, nil), nil, patch)
+	require.ErrorContains(t, err, `globalConfig "absent" is missing`)
 }
 
 func TestAssembler_ConflictsDoNotLogValues(t *testing.T) {
@@ -584,8 +584,8 @@ runtimePatches:
   values.yaml:
     application:
       mapToScalar:
-        token: {{ globalConfig "token" | quote }}
-      scalarToMap: {{ globalConfig "token" | quote }}
+        token: '{{ globalConfig "token" }}'
+      scalarToMap: '{{ globalConfig "token" }}'
 `)
 	a := NewAssembler(newFakeClientWithGlobalConfig(testNamespace, map[string]string{
 		globalConfigFileName: "token: sensitive-sentinel\n",
