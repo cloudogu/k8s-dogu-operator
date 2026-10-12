@@ -10,15 +10,11 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv3"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
-
-var testFinalizerConflictErr = apierrors.NewConflict(schema.GroupResource{Group: "k8s.cloudogu.com", Resource: "dogus"}, testDoguName, assert.AnError)
 
 func TestCreateFinalizerStep_Run(t *testing.T) {
 	tests := []struct {

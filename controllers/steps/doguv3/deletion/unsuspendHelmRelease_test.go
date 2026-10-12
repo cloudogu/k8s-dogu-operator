@@ -12,14 +12,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	v1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 )
-
-var testUnsuspendConflictErr = apierrors.NewConflict(schema.GroupResource{Group: "helm.toolkit.fluxcd.io", Resource: "helmreleases"}, testDoguName, assert.AnError)
 
 func TestUnsuspendHelmReleaseStep_Run(t *testing.T) {
 	tests := []struct {
