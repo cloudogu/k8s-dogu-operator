@@ -37,6 +37,7 @@ patches:
 runtimePatches:
   values.yaml:
     host: '{{ globalConfig "fqdn" }}'
+    prefixed: '1{{ globalConfig "fqdn" }}'
     nested:
       cert: '{{ globalConfig "certificates/server.crt" }}'
     list: ['{{ globalConfig "fqdn" }}', false, 17, null]
@@ -48,16 +49,11 @@ runtimePatches:
 			for _, input := range []string{source, strings.ReplaceAll(source, "\n", "\r\n")} {
 				got, err := renderRuntimePatches([]byte(input), global)
 				require.NoError(t, err)
-				assert.Equal(t, Values{"host": text, "nested": Values{"cert": text}, "list": []any{text, false, 17, nil}, "dotted": "literal"}, got)
+				assert.Equal(t, Values{
+					"host": text, "prefixed": "1" + text, "nested": Values{"cert": text},
+					"list": []any{text, false, 17, nil}, "dotted": "literal",
+				}, got)
 			}
-			// Prefixes must not change a string into a YAML number or introduce new keys.
-			got, err := renderRuntimePatches([]byte(`apiVersion: v1
-runtimePatches:
-  values.yaml:
-    value: '1{{ globalConfig "fqdn" }}'
-`), global)
-			require.NoError(t, err)
-			assert.Equal(t, Values{"value": "1" + text}, got)
 			assert.Equal(t, text, global["fqdn"])
 		})
 	}

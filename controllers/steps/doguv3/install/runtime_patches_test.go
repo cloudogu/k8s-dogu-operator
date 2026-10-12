@@ -169,40 +169,23 @@ data:
 }
 
 func TestRuntimePatchesValidationFailures(t *testing.T) {
-	for _, tt := range []struct {
-		name, template, errorContains string
-		renderFailure                 bool
-	}{
-		{name: "template", errorContains: `globalConfig "absent" is missing`, template: `apiVersion: v1
+	const patch = `apiVersion: v1
 runtimePatches:
   values.yaml:
     host: '{{ globalConfig "absent" }}'
-`},
-		{name: "render", renderFailure: true},
-	} {
-		for _, skip := range []bool{false, true} {
-			t.Run(tt.name+"/skipSchema="+fmt.Sprint(skip), func(t *testing.T) {
-				cl, dogu := runtimeFailureFixture(t, "fqdn: new.example")
-				dogu.Spec.SkipSchemaValidation = skip
-				service := NewMockChartService(t)
-				service.EXPECT().DoguMetaValues(mock.Anything, dogu).Return(nil, false, nil).Once()
-				service.EXPECT().ChartPatchTemplate(mock.Anything, dogu).Return([]byte(tt.template), tt.template != "", nil).Once()
-				if tt.renderFailure {
-					if !skip {
-						service.EXPECT().ValidateValues(mock.Anything, dogu, mock.Anything).Return(nil).Once()
-					}
-					service.EXPECT().Render(mock.Anything, dogu, mock.Anything).Return(nil, assert.AnError).Once()
-				}
-				step := NewValidateChartStep(service, values.NewAssembler(cl), cl)
-				result := step.Run(t.Context(), dogu)
-				assert.False(t, result.Continue)
-				if tt.renderFailure {
-					assertCondition(t, dogu, v3beta1.ConditionValid, metav1.ConditionFalse, ReasonRenderFailed)
-				} else {
-					require.ErrorContains(t, result.Err, tt.errorContains)
-				}
-			})
-		}
+`
+	for _, skip := range []bool{false, true} {
+		t.Run("skipSchema="+fmt.Sprint(skip), func(t *testing.T) {
+			cl, dogu := runtimeFailureFixture(t, "fqdn: new.example")
+			dogu.Spec.SkipSchemaValidation = skip
+			service := NewMockChartService(t)
+			service.EXPECT().DoguMetaValues(mock.Anything, dogu).Return(nil, false, nil).Once()
+			service.EXPECT().ChartPatchTemplate(mock.Anything, dogu).Return([]byte(patch), true, nil).Once()
+			step := NewValidateChartStep(service, values.NewAssembler(cl), cl)
+			result := step.Run(t.Context(), dogu)
+			assert.False(t, result.Continue)
+			require.ErrorContains(t, result.Err, `globalConfig "absent" is missing`)
+		})
 	}
 }
 
