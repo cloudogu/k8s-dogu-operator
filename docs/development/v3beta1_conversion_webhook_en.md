@@ -34,7 +34,9 @@ right away — but the webhook server takes ~5-10 seconds to become ready. Witho
 be no Service endpoints yet, those webhook calls would fail, the reconciles would fail, and the pod could get
 stuck never reaching readiness (a self-inflicted deadlock). With `v2` as the storage version, most
 startup reconciles don't hit the webhook at all, so the risk is currently latent rather than active —
-but the setting is in place either way.
+but the setting is in place either way. The new health reconciler already runs on `v3beta1`, so it will produce some
+errors during startup for each V3-Dogu (only if `doguV3Enabled: true`), but those are harmless and resolve within seconds.
+This was decided, since it is a V3-Feature only and will not happen anymore once the storage version is switched.
 
 ### `deny-all-network-policy.yaml`
 
