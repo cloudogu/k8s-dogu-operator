@@ -49,6 +49,7 @@ func NewDoguInstallOrChangeUseCase(
 	validateChartStep *install.ValidateChartStep,
 	suspendHelmReleaseStep *install.SuspendHelmReleaseStep,
 	helmReleaseStep *install.EnsureHelmReleaseStep,
+	helmReleaseStatusStep *install.HelmReleaseStatusStep,
 	client K8sClient, recorder EventRecorder) *DoguUseCase {
 	return &DoguUseCase{
 		steps: []Step{
@@ -57,6 +58,7 @@ func NewDoguInstallOrChangeUseCase(
 			validateChartStep,
 			suspendHelmReleaseStep,
 			helmReleaseStep,
+			helmReleaseStatusStep,
 		},
 		k8sClient:     client,
 		eventRecorder: recorder,

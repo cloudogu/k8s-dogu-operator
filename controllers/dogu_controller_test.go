@@ -22,6 +22,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/config"
+	"sigs.k8s.io/controller-runtime/pkg/event"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
 )
 
 func TestNewDoguReconciler(t *testing.T) {
@@ -102,12 +104,12 @@ func TestDoguReconciler_Reconcile(t *testing.T) {
 				},
 				requeueHandlerV2Fn: func(t *testing.T) RequeueHandlerV2 {
 					mck := NewMockRequeueHandlerV2(t)
-					mck.EXPECT().Handle(testCtx, &v2.Dogu{}, assert.AnError, time.Duration(0)).Return(controllerruntime.Result{Requeue: true, RequeueAfter: requeueTime}, nil)
+					mck.EXPECT().Handle(testCtx, &v2.Dogu{}, assert.AnError, time.Duration(0)).Return(controllerruntime.Result{RequeueAfter: requeueTime}, nil)
 					return mck
 				},
 			},
 			req:     controllerruntime.Request{},
-			want:    controllerruntime.Result{Requeue: true, RequeueAfter: requeueTime},
+			want:    controllerruntime.Result{RequeueAfter: requeueTime},
 			wantErr: assert.NoError,
 		},
 		{
@@ -266,12 +268,12 @@ func TestDoguReconciler_Reconcile(t *testing.T) {
 				},
 				requeueHandlerV2Fn: func(t *testing.T) RequeueHandlerV2 {
 					mck := NewMockRequeueHandlerV2(t)
-					mck.EXPECT().Handle(testCtx, mock.AnythingOfType("*v2.Dogu"), errors.Join(assert.AnError), time.Duration(0)).Return(controllerruntime.Result{Requeue: true, RequeueAfter: requeueTime}, nil)
+					mck.EXPECT().Handle(testCtx, mock.AnythingOfType("*v2.Dogu"), errors.Join(assert.AnError), time.Duration(0)).Return(controllerruntime.Result{RequeueAfter: requeueTime}, nil)
 					return mck
 				},
 			},
 			req:     controllerruntime.Request{NamespacedName: types.NamespacedName{Name: testDoguName}},
-			want:    controllerruntime.Result{Requeue: true, RequeueAfter: requeueTime},
+			want:    controllerruntime.Result{RequeueAfter: requeueTime},
 			wantErr: assert.NoError,
 		},
 		{
@@ -309,12 +311,12 @@ func TestDoguReconciler_Reconcile(t *testing.T) {
 				},
 				requeueHandlerV2Fn: func(t *testing.T) RequeueHandlerV2 {
 					mck := NewMockRequeueHandlerV2(t)
-					mck.EXPECT().Handle(testCtx, mock.AnythingOfType("*v2.Dogu"), errors.Join(assert.AnError), time.Duration(0)).Return(controllerruntime.Result{Requeue: true, RequeueAfter: requeueTime}, nil)
+					mck.EXPECT().Handle(testCtx, mock.AnythingOfType("*v2.Dogu"), errors.Join(assert.AnError), time.Duration(0)).Return(controllerruntime.Result{RequeueAfter: requeueTime}, nil)
 					return mck
 				},
 			},
 			req:     controllerruntime.Request{NamespacedName: types.NamespacedName{Name: testDoguName}},
-			want:    controllerruntime.Result{Requeue: true, RequeueAfter: 5 * time.Second},
+			want:    controllerruntime.Result{RequeueAfter: 5 * time.Second},
 			wantErr: assert.NoError,
 		},
 		{
@@ -352,7 +354,7 @@ func TestDoguReconciler_Reconcile(t *testing.T) {
 				},
 				requeueHandlerV2Fn: func(t *testing.T) RequeueHandlerV2 {
 					mck := NewMockRequeueHandlerV2(t)
-					mck.EXPECT().Handle(testCtx, mock.AnythingOfType("*v2.Dogu"), nil, time.Duration(0)).Return(controllerruntime.Result{Requeue: false, RequeueAfter: 0}, nil)
+					mck.EXPECT().Handle(testCtx, mock.AnythingOfType("*v2.Dogu"), nil, time.Duration(0)).Return(controllerruntime.Result{RequeueAfter: 0}, nil)
 					return mck
 				},
 			},
@@ -395,7 +397,7 @@ func TestDoguReconciler_Reconcile(t *testing.T) {
 				},
 				requeueHandlerV2Fn: func(t *testing.T) RequeueHandlerV2 {
 					mck := NewMockRequeueHandlerV2(t)
-					mck.EXPECT().Handle(testCtx, mock.AnythingOfType("*v2.Dogu"), nil, time.Duration(0)).Return(controllerruntime.Result{Requeue: false, RequeueAfter: 0}, nil)
+					mck.EXPECT().Handle(testCtx, mock.AnythingOfType("*v2.Dogu"), nil, time.Duration(0)).Return(controllerruntime.Result{RequeueAfter: 0}, nil)
 					return mck
 				},
 			},
@@ -499,4 +501,70 @@ func TestDoguV2ConvertsToV3(t *testing.T) {
 		},
 	}
 	assert.Equal(t, v3Dogu, v3Dogu2)
+}
+
+func testDogu(apiVersion v3beta1.DoguApiVersion, generation int64, conditions ...v1.Condition) *v2.Dogu {
+	return &v2.Dogu{
+		Name:        "ldap",
+		Namespace:   "ecosystem",
+		Generation:  generation,
+		Annotations: map[string]string{"k8s.cloudogu.com/v3beta1-doguApiVersion": string(apiVersion)},
+		Status:      v2.DoguStatus{Conditions: conditions},
+	}
+}
+
+func Test_doguReconcilePredicate_Update(t *testing.T) {
+	healthyTrue := v1.Condition{Type: v3beta1.ConditionHealthy, Status: v1.ConditionTrue, Reason: "SomeReason", Message: "all workloads are ready"}
+	healthyFalse := v1.Condition{Type: v3beta1.ConditionHealthy, Status: v1.ConditionFalse, Reason: "SomeReason", Message: "deployment ldap is not ready"}
+
+	tests := []struct {
+		name   string
+		oldObj *v2.Dogu
+		newObj *v2.Dogu
+		want   bool
+	}{
+		{
+			name:   "should trigger on generation change",
+			oldObj: testDogu(v3beta1.DoguApiVersionV2, 1),
+			newObj: testDogu(v3beta1.DoguApiVersionV2, 2),
+			want:   true,
+		},
+		{
+			name:   "should trigger on Healthy status change of a v3 dogu",
+			oldObj: testDogu(v3beta1.DoguApiVersionV3, 1, healthyTrue),
+			newObj: testDogu(v3beta1.DoguApiVersionV3, 1, healthyFalse),
+			want:   true,
+		},
+		{
+			name:   "should trigger if the Healthy condition of a v3 dogu is set for the first time",
+			oldObj: testDogu(v3beta1.DoguApiVersionV3, 1),
+			newObj: testDogu(v3beta1.DoguApiVersionV3, 1, healthyTrue),
+			want:   true,
+		},
+		{
+			name:   "should not trigger on Healthy message-only change of a v3 dogu",
+			oldObj: testDogu(v3beta1.DoguApiVersionV3, 1, healthyFalse),
+			newObj: testDogu(v3beta1.DoguApiVersionV3, 1, v1.Condition{Type: v3beta1.ConditionHealthy, Status: v1.ConditionFalse, Reason: "SomeReason", Message: "other message"}),
+			want:   false,
+		},
+		{
+			name:   "should not trigger on Healthy status change of a v2 dogu",
+			oldObj: testDogu(v3beta1.DoguApiVersionV2, 1, healthyTrue),
+			newObj: testDogu(v3beta1.DoguApiVersionV2, 1, healthyFalse),
+			want:   false,
+		},
+		{
+			name:   "should not trigger on unrelated status change of a v3 dogu",
+			oldObj: testDogu(v3beta1.DoguApiVersionV3, 1, healthyTrue, v1.Condition{Type: v3beta1.ConditionReady, Status: v1.ConditionFalse, Reason: "SomeReason", Message: ""}),
+			newObj: testDogu(v3beta1.DoguApiVersionV3, 1, healthyTrue, v1.Condition{Type: v3beta1.ConditionReady, Status: v1.ConditionTrue, Reason: "SomeReason", Message: ""}),
+			want:   false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := predicate.Or(predicate.GenerationChangedPredicate{}, predicate.Funcs{UpdateFunc: v3HealthyStatusChanged}).Update(event.UpdateEvent{ObjectOld: tt.oldObj, ObjectNew: tt.newObj})
+
+			assert.Equal(t, tt.want, got)
+		})
+	}
 }
