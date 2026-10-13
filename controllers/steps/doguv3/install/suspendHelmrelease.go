@@ -9,7 +9,6 @@ import (
 	doguv3 "github.com/cloudogu/k8s-dogu-lib/v3/api/v3beta1"
 	stepsv3 "github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv3"
 	"github.com/cloudogu/k8s-dogu-operator/v3/internal/dogu/pvc"
-	values3 "github.com/cloudogu/k8s-dogu-operator/v3/internal/dogu/values"
 	flux "github.com/fluxcd/helm-controller/api/v2"
 	apiext "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -36,14 +35,16 @@ type SuspendHelmReleaseStep struct {
 	k8sClient     K8sClient
 	eventRecorder EventRecorder
 	chartService  ChartService
+	assembler     ValueAssembler
 	resizeChecker pvc.ResizeChecker
 }
 
-func NewSuspendHelmReleaseStep(k8sClient K8sClient, chartService ChartService, resizeChecker pvc.ResizeChecker, recorder EventRecorder) *SuspendHelmReleaseStep {
+func NewSuspendHelmReleaseStep(k8sClient K8sClient, chartService ChartService, assembler ValueAssembler, resizeChecker pvc.ResizeChecker, recorder EventRecorder) *SuspendHelmReleaseStep {
 	return &SuspendHelmReleaseStep{
 		k8sClient:     k8sClient,
 		eventRecorder: recorder,
 		chartService:  chartService,
+		assembler:     assembler,
 		resizeChecker: resizeChecker,
 	}
 }
@@ -120,8 +121,7 @@ func (shr *SuspendHelmReleaseStep) existingHelmRelease(ctx context.Context, dogu
 
 func (shr *SuspendHelmReleaseStep) expectedState(ctx context.Context, doguResource *doguv3.Dogu) (string, string, stepsv3.StepResult, bool) {
 	//Get the details required to check for pvc
-	templateAsm := values3.NewAssembler(shr.k8sClient)
-	combinedValues, err := combineValues(ctx, doguResource, shr.chartService, templateAsm)
+	combinedValues, err := combineValues(ctx, doguResource, shr.chartService, shr.assembler)
 	if err != nil {
 		return "", "", stepsv3.RequeueWithError(err, doguv3.ReasonReconciliationPaused), true
 	}

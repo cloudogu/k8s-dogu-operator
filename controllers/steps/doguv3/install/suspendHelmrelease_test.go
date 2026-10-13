@@ -8,6 +8,7 @@ import (
 	doguv3 "github.com/cloudogu/k8s-dogu-lib/v3/api/v3beta1"
 	stepsv3 "github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv3"
 	"github.com/cloudogu/k8s-dogu-operator/v3/internal/dogu/pvc"
+	values3 "github.com/cloudogu/k8s-dogu-operator/v3/internal/dogu/values"
 	flux "github.com/fluxcd/helm-controller/api/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -108,8 +109,9 @@ func runSuspendHelmReleaseCase(t *testing.T, test suspendHelmReleaseRunCase) {
 
 	k8sClient := newSuspendRunTestClient(t, dogu, test.existingRelease, test.alreadySuspended)
 	chartService := newSuspendRunChartService(t, dogu, test)
+	assembler := values3.NewAssembler(k8sClient) // easier to use this here, that to mock the result
 	checker := newSuspendRunResizeChecker(test.resizeInProgress)
-	step := NewSuspendHelmReleaseStep(k8sClient, chartService, checker, nil)
+	step := NewSuspendHelmReleaseStep(k8sClient, chartService, assembler, checker, nil)
 	result := step.Run(t.Context(), dogu)
 
 	assert.Equal(t, test.wantResult, result)
@@ -175,7 +177,7 @@ func TestSuspendHelmReleaseStep_RunErrors(t *testing.T) {
 			}).
 			Build()
 
-		step := NewSuspendHelmReleaseStep(k8sClient, nil, nil, nil)
+		step := NewSuspendHelmReleaseStep(k8sClient, nil, nil, nil, nil)
 		result := step.Run(t.Context(), dogu)
 
 		require.Error(t, result.Err)
@@ -191,7 +193,7 @@ func TestSuspendHelmReleaseStep_RunErrors(t *testing.T) {
 		chartService := NewMockChartService(t)
 		chartService.EXPECT().DoguMetaValues(mock.Anything, dogu).Return(nil, false, errors.New("metadata failed"))
 
-		result := NewSuspendHelmReleaseStep(k8sClient, chartService, &suspendTestResizeChecker{}, nil).Run(t.Context(), dogu)
+		result := NewSuspendHelmReleaseStep(k8sClient, chartService, nil, &suspendTestResizeChecker{}, nil).Run(t.Context(), dogu)
 
 		require.Error(t, result.Err)
 		assert.Equal(t, doguv3.ReasonReconciliationPaused, result.ReadyReason)
@@ -203,12 +205,13 @@ func TestSuspendHelmReleaseStep_RunErrors(t *testing.T) {
 			newGlobalConfigForSuspendTest(dogu.Namespace),
 			&flux.HelmRelease{ObjectMeta: metav1.ObjectMeta{Name: dogu.Spec.Name, Namespace: dogu.Namespace}},
 		)
+		assembler := values3.NewAssembler(k8sClient) // easier to use this here, that to mock the result
 		chartService := NewMockChartService(t)
 		chartService.EXPECT().DoguMetaValues(mock.Anything, dogu).Return(nil, false, nil)
 		chartService.EXPECT().Render(mock.Anything, dogu, mock.Anything).Return(nil, nil)
 		checker := &suspendTestResizeChecker{err: errors.New("resize check failed")}
 
-		result := NewSuspendHelmReleaseStep(k8sClient, chartService, checker, nil).Run(t.Context(), dogu)
+		result := NewSuspendHelmReleaseStep(k8sClient, chartService, assembler, checker, nil).Run(t.Context(), dogu)
 
 		require.Error(t, result.Err)
 		assert.Equal(t, doguv3.ReasonReconciliationPaused, result.ReadyReason)
@@ -218,7 +221,7 @@ func TestSuspendHelmReleaseStep_RunErrors(t *testing.T) {
 func TestSuspendHelmReleaseStep_existingHelmRelease(t *testing.T) {
 	t.Run("returns nil when HelmRelease is not found", func(t *testing.T) {
 		dogu := newSuspendTestDogu()
-		step := NewSuspendHelmReleaseStep(newSuspendTestClient(t), nil, nil, nil)
+		step := NewSuspendHelmReleaseStep(newSuspendTestClient(t), nil, nil, nil, nil)
 
 		release, err := step.existingHelmRelease(t.Context(), dogu)
 
@@ -229,7 +232,7 @@ func TestSuspendHelmReleaseStep_existingHelmRelease(t *testing.T) {
 	t.Run("returns the existing HelmRelease", func(t *testing.T) {
 		dogu := newSuspendTestDogu()
 		expected := &flux.HelmRelease{Name: dogu.Spec.Name, Namespace: dogu.Namespace}
-		step := NewSuspendHelmReleaseStep(newSuspendTestClient(t, expected), nil, nil, nil)
+		step := NewSuspendHelmReleaseStep(newSuspendTestClient(t, expected), nil, nil, nil, nil)
 
 		release, err := step.existingHelmRelease(t.Context(), dogu)
 
@@ -247,7 +250,7 @@ func TestSuspendHelmReleaseStep_existingHelmRelease(t *testing.T) {
 				},
 			}).
 			Build()
-		step := NewSuspendHelmReleaseStep(clientWithError, nil, nil, nil)
+		step := NewSuspendHelmReleaseStep(clientWithError, nil, nil, nil, nil)
 
 		release, err := step.existingHelmRelease(t.Context(), dogu)
 
@@ -274,7 +277,7 @@ func TestSuspendHelmReleaseStep_ChangeSuspendValueOfHelmRelease(t *testing.T) {
 					Spec: flux.HelmReleaseSpec{Suspend: test.initial},
 				}
 				k8sClient := newSuspendTestClient(t, release)
-				step := NewSuspendHelmReleaseStep(k8sClient, nil, nil, nil)
+				step := NewSuspendHelmReleaseStep(k8sClient, nil, nil, nil, nil)
 
 				err := step.ChangeSuspendValueOfHelmRelease(t.Context(), release, test.desired)
 
@@ -298,7 +301,7 @@ func TestSuspendHelmReleaseStep_ChangeSuspendValueOfHelmRelease(t *testing.T) {
 				},
 			}).
 			Build()
-		step := NewSuspendHelmReleaseStep(clientWithError, nil, nil, nil)
+		step := NewSuspendHelmReleaseStep(clientWithError, nil, nil, nil, nil)
 
 		err := step.ChangeSuspendValueOfHelmRelease(t.Context(), &flux.HelmRelease{
 			Name: dogu.Spec.Name, Namespace: dogu.Namespace,
@@ -377,7 +380,7 @@ func TestSuspendHelmReleaseStep_suspensionReason(t *testing.T) {
 			if !test.pause && !test.stopped && test.wantErrorText != "failed to decode assembled chart values" {
 				chartService.EXPECT().Render(mock.Anything, dogu, map[string]any{}).Return(nil, test.renderError)
 			}
-			step := NewSuspendHelmReleaseStep(nil, chartService, checker, nil)
+			step := NewSuspendHelmReleaseStep(nil, chartService, nil, checker, nil)
 
 			reason, message, err := step.suspensionReason(t.Context(), dogu, values)
 
@@ -420,7 +423,7 @@ func TestSuspendHelmReleaseStep_setSuspendedConditionOnDoguCR(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			dogu := newSuspendTestDogu()
 			k8sClient := newSuspendTestClient(t, dogu)
-			step := NewSuspendHelmReleaseStep(k8sClient, nil, nil, nil)
+			step := NewSuspendHelmReleaseStep(k8sClient, nil, nil, nil, nil)
 
 			err := step.setSuspendedConditionOnDoguCR(t.Context(), dogu, test.reason, test.message)
 
@@ -441,7 +444,7 @@ func TestSuspendHelmReleaseStep_setSuspendedConditionOnDoguCR(t *testing.T) {
 				},
 			}).
 			Build()
-		step := NewSuspendHelmReleaseStep(k8sClient, nil, nil, nil)
+		step := NewSuspendHelmReleaseStep(k8sClient, nil, nil, nil, nil)
 
 		err := step.setSuspendedConditionOnDoguCR(t.Context(), dogu, ReasonDoguStopped, messageDoguStopped)
 

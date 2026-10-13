@@ -45,7 +45,7 @@ func NewDoguV3UseCases(
 	ociStep := install.NewEnsureOCIRepositoryStep(k8sClient, registryReader, recorder)
 	waitStep := install.NewWaitForOCIRepositoryReadyStep(k8sClient, recorder)
 	validateStep := install.NewValidateChartStep(chartService, assembler, k8sClient)
-	suspendStep := install.NewSuspendHelmReleaseStep(k8sClient, chartService, resizeChecker, recorder)
+	suspendStep := install.NewSuspendHelmReleaseStep(k8sClient, chartService, assembler, resizeChecker, recorder)
 	helmReleaseStep := install.NewEnsureHelmReleaseStep(k8sClient, operatorConfig, chartService, recorder)
 	helmReleaseStatusStep := install.NewHelmReleaseStatusStep(k8sClient, recorder)
 
