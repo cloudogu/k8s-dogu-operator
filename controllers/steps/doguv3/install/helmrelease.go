@@ -87,6 +87,7 @@ func configureHelmRelease(release *flux.HelmRelease, doguResource *doguv3.Dogu, 
 	release.Labels[doguv3.DoguLabelName] = doguResource.Spec.Name
 	release.Labels[doguv3.DoguLabelVersion] = doguResource.Spec.Version
 	release.Spec = flux.HelmReleaseSpec{
+		Suspend: release.Spec.Suspend,
 		ChartRef: &flux.CrossNamespaceSourceReference{
 			APIVersion: "v1",
 			Kind:       fluxoci.OCIRepositoryKind,

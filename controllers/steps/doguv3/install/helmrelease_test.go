@@ -120,6 +120,7 @@ func Test_configureHelmRelease(t *testing.T) {
 				Failures:           5,
 			},
 			Spec: fluxhelm.HelmReleaseSpec{
+				Suspend: true,
 				ChartRef: &fluxhelm.CrossNamespaceSourceReference{
 					APIVersion: "v7",
 					Kind:       "FunnyKind",
@@ -159,6 +160,7 @@ func Test_configureHelmRelease(t *testing.T) {
 
 		// existing label should be retained
 		assert.Equal(t, "my.value", release.Labels["my.label"])
+		assert.True(t, release.Spec.Suspend, "suspension must remain owned by its separate step")
 
 		// existing status should be unchanged
 		originalStatus := fluxhelm.HelmReleaseStatus{
