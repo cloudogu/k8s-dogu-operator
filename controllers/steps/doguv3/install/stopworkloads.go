@@ -46,7 +46,9 @@ func (s *StopWorkloadsStep) Run(ctx context.Context, dogu *v3beta1.Dogu) stepsv3
 	}
 	// Record a known version change even when the new chart cannot be fetched.
 	pending := meta.FindStatusCondition(dogu.Status.Conditions, v3beta1.ConditionUpdatePending)
-	if releaseMissing || release.Labels[v3beta1.DoguLabelVersion] != dogu.Spec.Version {
+	versionOrInstallPending := releaseMissing || release.Labels[v3beta1.DoguLabelVersion] != dogu.Spec.Version
+	alreadyReported := pending != nil && pending.Status == metav1.ConditionTrue && pending.ObservedGeneration == dogu.Generation
+	if versionOrInstallPending && !alreadyReported {
 		if err := updatePending(ctx, s.k8sClient, dogu, metav1.ConditionTrue, "A chart version or installation is pending until the dogu starts"); err != nil {
 			return stepsv3.RequeueWithError(err, v3beta1.ReasonStopping)
 		}

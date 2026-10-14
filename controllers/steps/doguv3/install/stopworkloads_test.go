@@ -55,6 +55,25 @@ func TestStopWorkloadsStep(t *testing.T) {
 		assert.False(t, dogu.Status.Stopped)
 	})
 
+	t.Run("preserves a known pending change while waiting for suspension", func(t *testing.T) {
+		dogu, k8s := stoppedDoguClient(t, release.DeepCopy())
+		meta.SetStatusCondition(&dogu.Status.Conditions, metav1.Condition{
+			Type: v3beta1.ConditionUpdatePending, Status: metav1.ConditionTrue, Reason: v3beta1.ReasonStopped,
+			Message: "Chart or values changes are pending until the dogu starts", ObservedGeneration: dogu.Generation,
+		})
+		require.NoError(t, k8s.Status().Update(t.Context(), dogu))
+		before := dogu.DeepCopy()
+		step := NewStopWorkloadsStep(k8s)
+		for range 2 {
+			result := step.Run(t.Context(), dogu)
+			require.NoError(t, result.Err)
+			assert.Positive(t, result.RequeueAfter)
+			require.NoError(t, k8s.Get(t.Context(), client.ObjectKeyFromObject(dogu), dogu))
+			assert.Equal(t, before.Status, dogu.Status)
+			assert.Equal(t, before.ResourceVersion, dogu.ResourceVersion)
+		}
+	})
+
 	t.Run("does not stop existing workloads without a HelmRelease", func(t *testing.T) {
 		dogu, k8s := stoppedDoguClient(t, deployment.DeepCopy())
 		result := NewStopWorkloadsStep(k8s).Run(t.Context(), dogu)

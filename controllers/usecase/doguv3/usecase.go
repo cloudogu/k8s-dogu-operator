@@ -23,10 +23,9 @@ const (
 )
 
 // DoguUseCase is a controlling structure responsible for handling all those actions that occur within the dogu's lifecycle phase.
-// The actions are set up as [v3.Step]s during the use-case construction, independently of the dogu at hand, i. e. different
-// dogus within the same lifecycle phase traverse the same list of steps.
+// The step factory selects the steps to execute based on the desired Dogu state.
 type DoguUseCase struct {
-	steps         []Step
+	stepFactory   StepFactory
 	k8sClient     K8sClient
 	eventRecorder EventRecorder
 }
@@ -38,7 +37,7 @@ func NewDoguDeleteUseCase(
 	removeFinalizerStep *deletion.RemoveFinalizerStep,
 	client K8sClient, recorder EventRecorder) *DoguUseCase {
 	return &DoguUseCase{
-		steps: []Step{
+		stepFactory: StepFactory{deletionSteps: []Step{
 			// Unsuspend first so a suspended HelmRelease is actually processed (and thus uninstalled)
 			// by flux once we delete it. Then delete the HelmRelease and wait for flux to finish the
 			// uninstall, delete the chart source, and finally drop the finalizer so the dogu cr is removed.
@@ -46,18 +45,14 @@ func NewDoguDeleteUseCase(
 			deleteHelmReleaseStep,
 			deleteOCIRepositoryStep,
 			removeFinalizerStep,
-		},
+		}},
 		k8sClient:     client,
 		eventRecorder: recorder,
 	}
 }
 
 // NewDoguInstallOrChangeUseCase creates a new DoguUseCase instance with the given steps.
-// The steps are executed in the order they are provided.
-// With new steps the parameter list will grow.
-// Unfortunately, this is the only way to provide the steps in the correct order.
-// Uber fx provides value groups to use variadic parameters like NewDoguInstallOrChangeUseCase(steps ...doguv3.Step),
-// but these are unordered.
+// The step factory defines their execution order for running and stopped Dogus.
 func NewDoguInstallOrChangeUseCase(
 	finalizerStep *install.CreateFinalizerStep,
 	ociStep *install.EnsureOCIRepositoryStep,
@@ -66,19 +61,9 @@ func NewDoguInstallOrChangeUseCase(
 	helmReleaseStep *install.EnsureHelmReleaseStep,
 	helmReleaseStatusStep *install.HelmReleaseStatusStep,
 	client K8sClient, recorder EventRecorder) *DoguUseCase {
+	stopStep := install.NewStopWorkloadsStep(client)
 	return &DoguUseCase{
-		steps: []Step{
-			// CreateFinalizerStep MUST run before any owned resource (OCIRepository, HelmRelease) is
-			// created, so a delete racing an install can never orphan those resources. (In v2 the
-			// finalizer is added after its read-only gate steps, but likewise before resource creation;
-			// v3 has no such gate steps, so "first" is the equivalent placement.)
-			finalizerStep,
-			ociStep,
-			waitOCIStep,
-			validateChartStep,
-			helmReleaseStep,
-			helmReleaseStatusStep,
-		},
+		stepFactory:   NewStepFactory(finalizerStep, stopStep, ociStep, waitOCIStep, validateChartStep, helmReleaseStep, helmReleaseStatusStep),
 		k8sClient:     client,
 		eventRecorder: recorder,
 	}
@@ -91,7 +76,8 @@ func NewDoguInstallOrChangeUseCase(
 //
 // If the dogu executed all steps successfully, the duration and the error will contain null values indicating the dogu phase is done.
 func (duc *DoguUseCase) HandleUntilApplied(ctx context.Context, doguResource *v3beta1.Dogu) (time.Duration, error) {
-	for _, s := range duc.steps {
+	releaseCompared := false
+	for _, s := range duc.stepFactory.StepsFor(doguResource) {
 		// Name the logger after the step type so every log line carries the step that produced it
 		// (e.g. "logger":"DeleteHelmReleaseStep"), without each step having to name itself.
 		stepCtx := log.IntoContext(ctx, log.FromContext(ctx).WithName(stepName(s)))
@@ -99,7 +85,10 @@ func (duc *DoguUseCase) HandleUntilApplied(ctx context.Context, doguResource *v3
 
 		// Abort, requeue or error
 		if !result.Continue {
-			return duc.stopStepExecution(ctx, doguResource, result)
+			return duc.stopStepExecution(ctx, doguResource, result, releaseCompared)
+		}
+		if _, comparesRelease := s.(*install.EnsureHelmReleaseStep); comparesRelease {
+			releaseCompared = true
 		}
 	}
 
@@ -112,12 +101,21 @@ func (duc *DoguUseCase) HandleUntilApplied(ctx context.Context, doguResource *v3
 
 	// success
 	successMessage := "Dogu reconciliation completed successfully"
-	err := duc.updateReadyCondition(ctx, doguResource, metav1.ConditionTrue, v3beta1.ReasonSucceeded, successMessage)
-	if err != nil {
-		if apierrors.IsConflict(err) {
-			return 5 * time.Second, nil
-		}
-		return 0, err
+	if doguResource.Spec.Stopped {
+		successMessage = "Dogu workloads are stopped; release changes remain deferred"
+	}
+
+	stoppedChanged := clearStoppedStatusAfterStart(doguResource) // Save Stopped status changes even if Ready is unchanged.
+	readyChanged := setReadyCondition(doguResource, metav1.ConditionTrue, v3beta1.ReasonSucceeded, successMessage)
+	var statusErr error
+	if stoppedChanged || readyChanged {
+		statusErr = duc.saveStatus(ctx, doguResource)
+	}
+	if apierrors.IsConflict(statusErr) {
+		return 5 * time.Second, nil
+	}
+	if statusErr != nil {
+		return 0, statusErr
 	}
 	duc.eventRecorder.Event(doguResource, coreV1.EventTypeNormal, ReasonReconcileSuccess, successMessage)
 	log.FromContext(ctx).Info(successMessage)
@@ -135,19 +133,24 @@ func stepName(s Step) string {
 	return t.Name()
 }
 
-func (duc *DoguUseCase) stopStepExecution(ctx context.Context, doguResource *v3beta1.Dogu, result v3.StepResult) (time.Duration, error) {
+func (duc *DoguUseCase) stopStepExecution(ctx context.Context, doguResource *v3beta1.Dogu, result v3.StepResult, releaseCompared bool) (time.Duration, error) {
 	reason, msg := deriveReasonAndMessage(result)
 	logger := log.FromContext(ctx)
-	if err := duc.updateReadyCondition(ctx, doguResource, metav1.ConditionFalse, reason, msg); err != nil {
-		if apierrors.IsConflict(err) {
-			logger.V(1).Info("requeueing due to conflict", "dogu", doguResource.Name)
-			return 5 * time.Second, nil
-		}
-
-		return result.RequeueAfter, errors.Join(result.Err, err)
+	pendingChanged := markPendingComparisonUnknown(doguResource, releaseCompared)
+	readyChanged := setReadyCondition(doguResource, metav1.ConditionFalse, reason, msg)
+	var statusErr error
+	if pendingChanged || readyChanged {
+		statusErr = duc.saveStatus(ctx, doguResource)
+	}
+	if apierrors.IsConflict(statusErr) {
+		logger.V(1).Info("requeueing due to conflict", "dogu", doguResource.Name)
+		return 5 * time.Second, nil
+	}
+	if statusErr != nil {
+		return result.RequeueAfter, errors.Join(result.Err, statusErr)
 	}
 	// Only send events on abort and do not send events on requeues because this would flood the apiserver.
-	if result.Err == nil && result.RequeueAfter == 0 {
+	if result.Err == nil && result.RequeueAfter == 0 && reason != v3beta1.ReasonPauseReconciliation && reason != v3beta1.ReasonStopped {
 		logger.Error(errors.New(result.ReadyMessage), "dogu reconciliation aborted")
 		duc.eventRecorder.Event(doguResource, coreV1.EventTypeWarning, result.ReadyReason, result.ReadyMessage)
 	}
@@ -161,20 +164,68 @@ func (duc *DoguUseCase) stopStepExecution(ctx context.Context, doguResource *v3b
 	return result.RequeueAfter, result.Err
 }
 
-// updateReadyCondition kapselt rein das Aktualisieren der K8s-Ressource
-func (duc *DoguUseCase) updateReadyCondition(ctx context.Context, doguResource *v3beta1.Dogu, status metav1.ConditionStatus, reason, message string) error {
-	condition := metav1.Condition{
+// clearStoppedStatusAfterStart resets the previous stop status after a successful start and reports any change.
+func clearStoppedStatusAfterStart(dogu *v3beta1.Dogu) bool {
+	if dogu.Spec.Stopped {
+		return false
+	}
+	if !dogu.Status.Stopped && meta.FindStatusCondition(dogu.Status.Conditions, v3beta1.ConditionStopped) == nil {
+		return false
+	}
+
+	stoppedChanged := dogu.Status.Stopped
+	dogu.Status.Stopped = false
+
+	conditionChanged := meta.SetStatusCondition(&dogu.Status.Conditions, metav1.Condition{
+		Type:               v3beta1.ConditionStopped,
+		Status:             metav1.ConditionFalse,
+		Reason:             v3beta1.ReasonNotStopped,
+		Message:            "Dogu workloads are running",
+		ObservedGeneration: dogu.Generation,
+	})
+	return stoppedChanged || conditionChanged
+}
+
+// markPendingComparisonUnknown invalidates an incomplete comparison, preserving current True or Unknown results, and reports any change.
+func markPendingComparisonUnknown(dogu *v3beta1.Dogu, releaseCompared bool) bool {
+	if !dogu.Spec.Stopped || releaseCompared {
+		return false
+	}
+	if dogu.Spec.PauseReconciliation || !dogu.GetDeletionTimestamp().IsZero() {
+		return false
+	}
+
+	pending := meta.FindStatusCondition(dogu.Status.Conditions, v3beta1.ConditionUpdatePending)
+	if pending != nil && pending.ObservedGeneration == dogu.Generation &&
+		(pending.Status == metav1.ConditionTrue || pending.Status == metav1.ConditionUnknown) {
+		return false
+	}
+
+	// Global inputs can change without advancing the Dogu generation.
+	return meta.SetStatusCondition(&dogu.Status.Conditions, metav1.Condition{
+		Type:               v3beta1.ConditionUpdatePending,
+		Status:             metav1.ConditionUnknown,
+		Reason:             v3beta1.ReasonStopped,
+		Message:            "The desired release cannot yet be fully compared",
+		ObservedGeneration: dogu.Generation,
+	})
+}
+
+// setReadyCondition updates Ready in memory and reports whether it changed.
+func setReadyCondition(doguResource *v3beta1.Dogu, status metav1.ConditionStatus, reason, message string) bool {
+	return meta.SetStatusCondition(&doguResource.Status.Conditions, metav1.Condition{
 		Type:               v3beta1.ConditionReady,
 		Status:             status,
 		Reason:             reason,
 		Message:            message,
 		ObservedGeneration: doguResource.Generation,
-	}
+	})
+}
 
-	if meta.SetStatusCondition(&doguResource.Status.Conditions, condition) {
-		if err := duc.k8sClient.Status().Update(ctx, doguResource); err != nil {
-			return fmt.Errorf("failed to update dogu status resource: %w", err)
-		}
+// saveStatus persists the Dogu status through the Kubernetes API.
+func (duc *DoguUseCase) saveStatus(ctx context.Context, doguResource *v3beta1.Dogu) error {
+	if err := duc.k8sClient.Status().Update(ctx, doguResource); err != nil {
+		return fmt.Errorf("failed to update dogu status resource: %w", err)
 	}
 
 	return nil
