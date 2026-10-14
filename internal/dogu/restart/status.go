@@ -18,7 +18,7 @@ func IsFailed(restart *doguv2.DoguRestart) bool {
 		return false
 	}
 
-	return ready.Reason == doguv2.DoguRestartReasonDoguNotFound || ready.Reason == doguv2.DoguRestartReasonDoguV3Disabled
+	return ready.Reason == doguv2.DoguRestartReasonDoguNotFound
 }
 
 // IsTerminal returns true if the restart of a v3 dogu is finished, successfully or not.

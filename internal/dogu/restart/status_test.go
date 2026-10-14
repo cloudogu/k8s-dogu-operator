@@ -30,7 +30,6 @@ func TestStatus(t *testing.T) {
 		{name: "superseded", restart: restartWithReady(metav1.ConditionTrue, doguv2.DoguRestartReasonSuperseded), wantSucceeded: true},
 		{name: "dogu stopped", restart: restartWithReady(metav1.ConditionTrue, doguv2.DoguRestartReasonDoguStopped), wantSucceeded: true},
 		{name: "dogu not found", restart: restartWithReady(metav1.ConditionFalse, doguv2.DoguRestartReasonDoguNotFound), wantFailed: true},
-		{name: "dogu v3 disabled", restart: restartWithReady(metav1.ConditionFalse, doguv2.DoguRestartReasonDoguV3Disabled), wantFailed: true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
