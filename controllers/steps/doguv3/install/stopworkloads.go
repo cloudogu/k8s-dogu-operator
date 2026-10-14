@@ -2,6 +2,9 @@ package install
 
 import (
 	"context"
+	"fmt"
+	"strconv"
+	"strings"
 
 	"github.com/cloudogu/k8s-dogu-lib/v3/api/v3beta1"
 	stepsv3 "github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv3"
@@ -74,6 +77,16 @@ func (s *StopWorkloadsStep) Run(ctx context.Context, dogu *v3beta1.Dogu) stepsv3
 			waiting = true
 		}
 	}
+	// scale statefulsets
+	for i := range found.StatefulSets {
+		statefulSet := &found.StatefulSets[i]
+		owners[statefulSet.UID] = true
+		workloadWaiting, err := s.stopStatefulSet(ctx, statefulSet)
+		if err != nil {
+			return stepsv3.RequeueWithError(err, v3beta1.ReasonStopping)
+		}
+		waiting = waiting || workloadWaiting
+	}
 	if len(owners) > 0 {
 		podsRemain, err := s.podsRemain(ctx, dogu.Namespace, owners, found.Deployments)
 		if err != nil {
@@ -109,6 +122,66 @@ func (s *StopWorkloadsStep) Run(ctx context.Context, dogu *v3beta1.Dogu) stepsv3
 	return stepsv3.Continue()
 }
 
+// stopStatefulSet protects claims before scaling. A true result requires another
+// reconciliation; Pod termination is checked separately by the caller.
+func (s *StopWorkloadsStep) stopStatefulSet(ctx context.Context, statefulSet *appsv1.StatefulSet) (waiting bool, err error) {
+	if policy := statefulSet.Spec.PersistentVolumeClaimRetentionPolicy; policy != nil && policy.WhenScaled == appsv1.DeletePersistentVolumeClaimRetentionPolicyType {
+		before := statefulSet.DeepCopy()
+		statefulSet.Spec.PersistentVolumeClaimRetentionPolicy.WhenScaled = appsv1.RetainPersistentVolumeClaimRetentionPolicyType
+		if err := s.k8sClient.Patch(ctx, statefulSet, client.MergeFromWithOptions(before, client.MergeFromWithOptimisticLock{})); err != nil {
+			return false, fmt.Errorf("failed to retain PVCs when scaling StatefulSet %s/%s: %w", statefulSet.Namespace, statefulSet.Name, err)
+		}
+		return true, nil // Wait for the StatefulSet controller to remove Pod owner references from PVCs before scaling down.
+	}
+	if ptr.Equal(statefulSet.Spec.Replicas, ptr.To[int32](0)) {
+		return false, nil
+	}
+	safe, err := s.claimsRetained(ctx, statefulSet)
+	if err != nil {
+		return false, err
+	}
+	if !safe {
+		return true, nil
+	}
+	before := statefulSet.DeepCopy()
+	statefulSet.Spec.Replicas = ptr.To[int32](0)
+	if err := s.k8sClient.Patch(ctx, statefulSet, client.MergeFromWithOptions(before, client.MergeFromWithOptimisticLock{})); err != nil {
+		return false, fmt.Errorf("failed to scale StatefulSet %s/%s to zero: %w", statefulSet.Namespace, statefulSet.Name, err)
+	}
+	return true, nil
+}
+
+// claimsRetained checks that the StatefulSet's PVCs are not being deleted and no longer
+// have Pod owner references. PVCs are identified by name, even without a dogu label.
+func (s *StopWorkloadsStep) claimsRetained(ctx context.Context, statefulSet *appsv1.StatefulSet) (bool, error) {
+	claims := &corev1.PersistentVolumeClaimList{}
+	if err := s.k8sClient.List(ctx, claims, client.InNamespace(statefulSet.Namespace)); err != nil {
+		return false, err
+	}
+	for _, claim := range claims.Items {
+		for _, template := range statefulSet.Spec.VolumeClaimTemplates {
+			ordinal, found := strings.CutPrefix(claim.Name, template.Name+"-"+statefulSet.Name+"-")
+			if !found {
+				continue
+			}
+			if n, err := strconv.ParseUint(ordinal, 10, 32); err != nil || fmt.Sprint(n) != ordinal {
+				continue
+			}
+			if !claim.DeletionTimestamp.IsZero() {
+				return false, fmt.Errorf("PVC %s/%s is already being deleted", claim.Namespace, claim.Name)
+			}
+			for _, owner := range claim.OwnerReferences {
+				if owner.APIVersion == "v1" && owner.Kind == "Pod" {
+					return false, nil
+				}
+			}
+		}
+	}
+	return true, nil
+}
+
+// podsRemain checks whether any Pods still belong to the workloads, including terminating Pods.
+// Deployment Pods are identified through their ReplicaSets; StatefulSet Pods are owned directly.
 func (s *StopWorkloadsStep) podsRemain(ctx context.Context, namespace string, owners map[types.UID]bool, deployments []appsv1.Deployment) (bool, error) {
 	replicaSets := &appsv1.ReplicaSetList{}
 	if err := s.k8sClient.List(ctx, replicaSets, client.InNamespace(namespace)); err != nil {

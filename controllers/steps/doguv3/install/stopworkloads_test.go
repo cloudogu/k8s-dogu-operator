@@ -107,6 +107,10 @@ func TestStopWorkloadsStep(t *testing.T) {
 	t.Run("stops all owned workloads and waits for unlabeled Pods", func(t *testing.T) {
 		suspended := release.DeepCopy()
 		suspended.Spec.Suspend = true
+		statefulSet := &appsv1.StatefulSet{
+			ObjectMeta: metav1.ObjectMeta{Name: "data", Namespace: "ecosystem", UID: "data-uid", Labels: deployment.Labels},
+			Spec:       appsv1.StatefulSetSpec{Replicas: ptr.To[int32](2)},
+		}
 		foreign := deployment.DeepCopy()
 		foreign.Name, foreign.UID = "foreign", "foreign-uid"
 		foreign.Labels = map[string]string{v3beta1.DoguLabelName: "other"}
@@ -118,7 +122,11 @@ func TestStopWorkloadsStep(t *testing.T) {
 			Name: "web-pod", Namespace: "ecosystem", UID: "pod-uid",
 			OwnerReferences: []metav1.OwnerReference{{APIVersion: "apps/v1", Kind: "ReplicaSet", Name: replicaSet.Name, UID: replicaSet.UID, Controller: ptr.To(true)}},
 		}}
-		dogu, k8s := stoppedDoguClient(t, deployment.DeepCopy(), suspended, foreign, replicaSet, pod)
+		statefulPod := &corev1.Pod{ObjectMeta: metav1.ObjectMeta{
+			Name: "data-0", Namespace: "ecosystem", UID: "data-pod-uid",
+			OwnerReferences: []metav1.OwnerReference{{APIVersion: "apps/v1", Kind: "StatefulSet", Name: statefulSet.Name, UID: statefulSet.UID, Controller: ptr.To(true)}},
+		}}
+		dogu, k8s := stoppedDoguClient(t, deployment.DeepCopy(), suspended, statefulSet, foreign, replicaSet, pod, statefulPod)
 		step := NewStopWorkloadsStep(k8s)
 		result := step.Run(t.Context(), dogu)
 		require.NoError(t, result.Err)
@@ -126,6 +134,9 @@ func TestStopWorkloadsStep(t *testing.T) {
 		actual := &appsv1.Deployment{}
 		require.NoError(t, k8s.Get(t.Context(), client.ObjectKeyFromObject(deployment), actual))
 		assert.Zero(t, *actual.Spec.Replicas)
+		actualSet := &appsv1.StatefulSet{}
+		require.NoError(t, k8s.Get(t.Context(), client.ObjectKeyFromObject(statefulSet), actualSet))
+		assert.Zero(t, *actualSet.Spec.Replicas)
 		require.NoError(t, k8s.Get(t.Context(), client.ObjectKeyFromObject(foreign), actual))
 		assert.Equal(t, int32(3), *actual.Spec.Replicas)
 
@@ -137,10 +148,113 @@ func TestStopWorkloadsStep(t *testing.T) {
 		require.NoError(t, k8s.Delete(t.Context(), pod))
 		result = step.Run(t.Context(), dogu)
 		require.NoError(t, result.Err)
+		assert.Positive(t, result.RequeueAfter, "the StatefulSet Pod must also be gone")
+		assert.False(t, dogu.Status.Stopped)
+		require.NoError(t, k8s.Delete(t.Context(), statefulPod))
+		result = step.Run(t.Context(), dogu)
+		require.NoError(t, result.Err)
 		assert.True(t, result.Continue)
 		assert.True(t, dogu.Status.Stopped)
 		assert.True(t, meta.IsStatusConditionTrue(dogu.Status.Conditions, v3beta1.ConditionStopped))
-		assert.True(t, step.Run(t.Context(), dogu).Continue)
+	})
+
+	t.Run("retains StatefulSet claims before scaling down", func(t *testing.T) {
+		suspended := release.DeepCopy()
+		suspended.Spec.Suspend = true
+		statefulSet := &appsv1.StatefulSet{
+			ObjectMeta: metav1.ObjectMeta{Name: "data", Namespace: "ecosystem", UID: "data-uid", Labels: deployment.Labels},
+			Spec: appsv1.StatefulSetSpec{
+				Replicas: ptr.To[int32](2),
+				PersistentVolumeClaimRetentionPolicy: &appsv1.StatefulSetPersistentVolumeClaimRetentionPolicy{
+					WhenScaled: appsv1.DeletePersistentVolumeClaimRetentionPolicyType, WhenDeleted: appsv1.DeletePersistentVolumeClaimRetentionPolicyType,
+				},
+				VolumeClaimTemplates: []corev1.PersistentVolumeClaim{{ObjectMeta: metav1.ObjectMeta{Name: "volume"}}},
+			},
+		}
+		claim := &corev1.PersistentVolumeClaim{ObjectMeta: metav1.ObjectMeta{
+			Name: "volume-data-1", Namespace: "ecosystem", UID: "claim-uid",
+			OwnerReferences: []metav1.OwnerReference{{APIVersion: "v1", Kind: "Pod", Name: "data-1", UID: "data-pod-uid"}},
+		}}
+		dogu, k8s := stoppedDoguClient(t, suspended, statefulSet, claim)
+		step := NewStopWorkloadsStep(k8s)
+		for range 2 {
+			result := step.Run(t.Context(), dogu)
+			require.NoError(t, result.Err)
+			assert.Positive(t, result.RequeueAfter)
+			actual := &appsv1.StatefulSet{}
+			require.NoError(t, k8s.Get(t.Context(), client.ObjectKeyFromObject(statefulSet), actual))
+			assert.Equal(t, int32(2), *actual.Spec.Replicas)
+			assert.Equal(t, appsv1.RetainPersistentVolumeClaimRetentionPolicyType, actual.Spec.PersistentVolumeClaimRetentionPolicy.WhenScaled)
+			assert.Equal(t, appsv1.DeletePersistentVolumeClaimRetentionPolicyType, actual.Spec.PersistentVolumeClaimRetentionPolicy.WhenDeleted)
+		}
+		// Simulate the StatefulSet controller removing the scale-down owner.
+		require.NoError(t, k8s.Get(t.Context(), client.ObjectKeyFromObject(claim), claim))
+		claim.OwnerReferences = nil
+		require.NoError(t, k8s.Update(t.Context(), claim))
+		result := step.Run(t.Context(), dogu)
+		require.NoError(t, result.Err)
+		actual := &appsv1.StatefulSet{}
+		require.NoError(t, k8s.Get(t.Context(), client.ObjectKeyFromObject(statefulSet), actual))
+		assert.Zero(t, *actual.Spec.Replicas)
+		require.NoError(t, k8s.Get(t.Context(), client.ObjectKeyFromObject(claim), &corev1.PersistentVolumeClaim{}))
+	})
+
+	t.Run("does not scale a StatefulSet whose claim is already being deleted", func(t *testing.T) {
+		suspended := release.DeepCopy()
+		suspended.Spec.Suspend = true
+		statefulSet := &appsv1.StatefulSet{
+			ObjectMeta: metav1.ObjectMeta{Name: "data", Namespace: "ecosystem", UID: "data-uid", Labels: deployment.Labels},
+			Spec: appsv1.StatefulSetSpec{
+				Replicas:             ptr.To[int32](2),
+				VolumeClaimTemplates: []corev1.PersistentVolumeClaim{{ObjectMeta: metav1.ObjectMeta{Name: "volume"}}},
+			},
+		}
+		claim := &corev1.PersistentVolumeClaim{ObjectMeta: metav1.ObjectMeta{
+			Name: "volume-data-1", Namespace: "ecosystem", Finalizers: []string{"test.cloudogu.com/hold"},
+		}}
+		dogu, k8s := stoppedDoguClient(t, suspended, statefulSet, claim)
+		require.NoError(t, k8s.Delete(t.Context(), claim))
+
+		result := NewStopWorkloadsStep(k8s).Run(t.Context(), dogu)
+		require.ErrorContains(t, result.Err, "already being deleted")
+		require.NoError(t, k8s.Get(t.Context(), client.ObjectKeyFromObject(statefulSet), statefulSet))
+		assert.Equal(t, int32(2), *statefulSet.Spec.Replicas)
+		assert.False(t, dogu.Status.Stopped)
+	})
+
+	t.Run("waits after changing retention without blocking other StatefulSets", func(t *testing.T) {
+		suspended := release.DeepCopy()
+		suspended.Spec.Suspend = true
+		protecting := &appsv1.StatefulSet{
+			ObjectMeta: metav1.ObjectMeta{Name: "a-data", Namespace: "ecosystem", UID: "data-uid", Labels: deployment.Labels},
+			Spec: appsv1.StatefulSetSpec{
+				Replicas: ptr.To[int32](2),
+				PersistentVolumeClaimRetentionPolicy: &appsv1.StatefulSetPersistentVolumeClaimRetentionPolicy{
+					WhenScaled: appsv1.DeletePersistentVolumeClaimRetentionPolicyType,
+				},
+				VolumeClaimTemplates: []corev1.PersistentVolumeClaim{{ObjectMeta: metav1.ObjectMeta{Name: "volume"}}},
+			},
+		}
+		ready := &appsv1.StatefulSet{
+			ObjectMeta: metav1.ObjectMeta{Name: "z-ready", Namespace: "ecosystem", UID: "ready-uid", Labels: deployment.Labels},
+			Spec:       appsv1.StatefulSetSpec{Replicas: ptr.To[int32](3)},
+		}
+		claim := &corev1.PersistentVolumeClaim{ObjectMeta: metav1.ObjectMeta{Name: "volume-a-data-0", Namespace: "ecosystem"}}
+		dogu, k8s := stoppedDoguClient(t, suspended, protecting, ready, claim)
+		step := NewStopWorkloadsStep(k8s)
+		result := step.Run(t.Context(), dogu)
+		require.NoError(t, result.Err)
+		assert.Positive(t, result.RequeueAfter)
+		require.NoError(t, k8s.Get(t.Context(), client.ObjectKeyFromObject(protecting), protecting))
+		assert.Equal(t, appsv1.RetainPersistentVolumeClaimRetentionPolicyType, protecting.Spec.PersistentVolumeClaimRetentionPolicy.WhenScaled)
+		assert.Equal(t, int32(2), *protecting.Spec.Replicas, "retention changes must wait even without Pod-owned claims")
+		require.NoError(t, k8s.Get(t.Context(), client.ObjectKeyFromObject(ready), ready))
+		assert.Zero(t, *ready.Spec.Replicas, "one waiting StatefulSet must not block another")
+
+		result = step.Run(t.Context(), dogu)
+		require.NoError(t, result.Err)
+		require.NoError(t, k8s.Get(t.Context(), client.ObjectKeyFromObject(protecting), protecting))
+		assert.Zero(t, *protecting.Spec.Replicas)
 	})
 
 	t.Run("stopped first installation has no running workloads", func(t *testing.T) {
