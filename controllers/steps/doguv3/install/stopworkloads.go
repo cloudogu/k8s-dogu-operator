@@ -40,18 +40,29 @@ func (s *StopWorkloadsStep) Run(ctx context.Context, dogu *v3beta1.Dogu) stepsv3
 
 	release := &flux.HelmRelease{}
 	err := s.k8sClient.Get(ctx, client.ObjectKey{Namespace: dogu.Namespace, Name: dogu.Spec.Name}, release)
-	if err != nil && !apierrors.IsNotFound(err) {
+	releaseMissing := apierrors.IsNotFound(err)
+	if err != nil && !releaseMissing {
 		return stepsv3.RequeueWithError(err, v3beta1.ReasonStopping)
 	}
-	if err == nil && !release.Spec.Suspend {
+	// Record a known version change even when the new chart cannot be fetched.
+	pending := meta.FindStatusCondition(dogu.Status.Conditions, v3beta1.ConditionUpdatePending)
+	if releaseMissing || release.Labels[v3beta1.DoguLabelVersion] != dogu.Spec.Version {
+		if err := updatePending(ctx, s.k8sClient, dogu, metav1.ConditionTrue, "A chart version or installation is pending until the dogu starts"); err != nil {
+			return stepsv3.RequeueWithError(err, v3beta1.ReasonStopping)
+		}
+	} else if pending == nil || pending.ObservedGeneration != dogu.Generation {
+		if err := updatePending(ctx, s.k8sClient, dogu, metav1.ConditionUnknown, "The desired release has not been compared yet"); err != nil {
+			return stepsv3.RequeueWithError(err, v3beta1.ReasonStopping)
+		}
+	}
+	if !releaseMissing && !release.Spec.Suspend {
 		return stepsv3.RequeueAfter(defaultRequeueAfter, v3beta1.ReasonStopping, "Waiting for HelmRelease suspension before stopping workloads")
 	}
 	// Suspension does not cancel an action already in flight. Flux acknowledges
 	// the suspended generation only after that reconciliation has returned.
-	if err == nil && release.Status.ObservedGeneration != release.Generation {
+	if !releaseMissing && release.Status.ObservedGeneration != release.Generation {
 		return stepsv3.RequeueAfter(defaultRequeueAfter, v3beta1.ReasonStopping, "Waiting for Flux to acknowledge the suspended HelmRelease generation")
 	}
-	releaseMissing := apierrors.IsNotFound(err)
 
 	found, err := s.discovery.Workloads(ctx, dogu.Namespace, dogu.Spec.Name)
 	if err != nil {
