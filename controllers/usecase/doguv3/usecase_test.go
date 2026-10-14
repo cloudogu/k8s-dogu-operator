@@ -58,6 +58,7 @@ func TestNewDoguInstallOrChangeUseCase(t *testing.T) {
 	validateChartStep := &install.ValidateChartStep{}
 	helmReleaseStep := &install.EnsureHelmReleaseStep{}
 	helmReleaseStatusStep := &install.HelmReleaseStatusStep{}
+	volumeStatusStep := &install.VolumeStatusStep{}
 
 	got := NewDoguInstallOrChangeUseCase(
 		ensureOCIStep,
@@ -65,6 +66,7 @@ func TestNewDoguInstallOrChangeUseCase(t *testing.T) {
 		validateChartStep,
 		helmReleaseStep,
 		helmReleaseStatusStep,
+		volumeStatusStep,
 		clientMock,
 		recorderMock,
 	)
@@ -75,6 +77,7 @@ func TestNewDoguInstallOrChangeUseCase(t *testing.T) {
 		"*install.ValidateChartStep",
 		"*install.EnsureHelmReleaseStep",
 		"*install.HelmReleaseStatusStep",
+		"*install.VolumeStatusStep",
 	}
 
 	assert.NotNil(t, got)

@@ -104,7 +104,7 @@ func (c *resizeChecker) checkStatefulSetClaims(ctx context.Context, desiredTempl
 		for i := range livePVCs.Items {
 			livePVC := &livePVCs.Items[i]
 			for _, template := range templates {
-				if !matchesStatefulSetPVCName(livePVC.Name, template.name, template.statefulSet.Name) {
+				if !MatchesStatefulSetClaim(livePVC.Name, template.name, template.statefulSet.Name) {
 					continue
 				}
 
@@ -288,7 +288,8 @@ func desiredClaimTemplatesFromStatefulSet(statefulSet *appsv1.StatefulSet) ([]de
 	return templates, extractionErr
 }
 
-func matchesStatefulSetPVCName(pvcName, templateName, statefulSetName string) bool {
+// MatchesStatefulSetClaim reports whether the PVC was created from the StatefulSet's volume claim template.
+func MatchesStatefulSetClaim(pvcName, templateName, statefulSetName string) bool {
 	ordinal, found := strings.CutPrefix(pvcName, templateName+"-"+statefulSetName+"-")
 	if !found || ordinal == "" || ordinal[0] == '0' && len(ordinal) > 1 {
 		return false

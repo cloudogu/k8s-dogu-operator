@@ -167,7 +167,7 @@ func NewOperatorConfig(version Version) (*OperatorConfig, error) {
 		AuthRegistrationEnabled:        getAuthRegistrationEnabled(),
 		ExpositionEnabled:              getExpositionEnabled(),
 		WarpMenuEntryEnabled:           getWarpMenuEntryEnabled(),
-		DoguV3Enabled:                 getDoguV3Enabled(),
+		DoguV3Enabled:                  getDoguV3Enabled(),
 		DisablePostfixDependencyCheck:  getDisablePostfixDependencyCheck(),
 		RequeueTimeForDoguReconciler:   doguReconcilerRequeueTime,
 		ImageConfigCacheSize:           getImageConfigCacheSize(),

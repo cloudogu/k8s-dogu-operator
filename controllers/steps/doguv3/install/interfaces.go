@@ -7,6 +7,7 @@ import (
 	"github.com/cloudogu/k8s-dogu-lib/v3/api/v3beta1"
 	doguv3steps "github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv3"
 	"github.com/cloudogu/k8s-dogu-operator/v3/internal/dogu/values"
+	"github.com/cloudogu/k8s-dogu-operator/v3/internal/dogu/workloads"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -24,6 +25,11 @@ type ChartService interface {
 
 type ValueAssembler interface {
 	Assemble(ctx context.Context, cr *v3beta1.Dogu, valuesMeta []byte) (values.Values, error)
+}
+
+type VolumeDiscovery interface {
+	Workloads(ctx context.Context, namespace, doguName string) (workloads.Workloads, error)
+	Volumes(ctx context.Context, namespace string, workloads workloads.Workloads) ([]workloads.Volume, error)
 }
 
 type K8sClient interface {

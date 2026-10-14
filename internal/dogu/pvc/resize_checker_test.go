@@ -550,6 +550,26 @@ func TestExtractDesiredClaims(t *testing.T) {
 	})
 }
 
+func TestMatchesStatefulSetClaim(t *testing.T) {
+	tests := []struct {
+		pvcName string
+		want    bool
+	}{
+		{pvcName: "data-postgres-0", want: true},
+		{pvcName: "data-postgres-12", want: true},
+		{pvcName: "data-postgres-", want: false},
+		{pvcName: "data-postgres-01", want: false},
+		{pvcName: "data-postgres-a", want: false},
+		{pvcName: "data-postgres-replica-0", want: false},
+		{pvcName: "logs-postgres-0", want: false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.pvcName, func(t *testing.T) {
+			assert.Equal(t, tt.want, MatchesStatefulSetClaim(tt.pvcName, "data", "postgres"))
+		})
+	}
+}
+
 func newPVC(name, storage string, storageClass *string) *corev1.PersistentVolumeClaim {
 	storageQuantity := resource.MustParse(storage)
 	return &corev1.PersistentVolumeClaim{
