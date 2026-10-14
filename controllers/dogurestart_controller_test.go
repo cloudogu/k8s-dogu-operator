@@ -130,18 +130,14 @@ func TestDoguRestartReconciler_createRestartInstruction(t *testing.T) {
 		assert.Equal(t, handleDoguNotFound, instruction.op)
 	})
 
-	t.Run("should return error on incompatible dogu api version", func(t *testing.T) {
+	t.Run("should ignore restarts of v3 dogus", func(t *testing.T) {
 		// given
 		doguRestartInterfaceMock := newMockDoguRestartInterface(t)
-		doguRestart := &v2.DoguRestart{Spec: v2.DoguRestartSpec{DoguName: testCasDoguName}, Status: v2.DoguRestartStatus{Phase: v2.RestartStatusPhaseStopping}}
+		doguRestart := &v2.DoguRestart{Spec: v2.DoguRestartSpec{DoguName: testCasDoguName}}
 		doguRestartInterfaceMock.EXPECT().Get(testCtx, testCasRestartName, metav1.GetOptions{}).Return(doguRestart, nil)
 
-		dogu := &v2.Dogu{
-			ObjectMeta: metav1.ObjectMeta{Name: testCasDoguName, Namespace: testNamespace, Annotations: map[string]string{"k8s.cloudogu.com/v3beta1-doguApiVersion": "v3beta1"}},
-		}
-
 		doguInterfaceMock := newMockDoguInterface(t)
-		doguInterfaceMock.EXPECT().Get(testCtx, testCasDoguName, metav1.GetOptions{}).Return(dogu, nil)
+		doguInterfaceMock.EXPECT().Get(testCtx, testCasDoguName, metav1.GetOptions{}).Return(v3TestDogu(), nil)
 
 		sut := DoguRestartReconciler{doguRestartInterface: doguRestartInterfaceMock, doguInterface: doguInterfaceMock}
 
@@ -149,8 +145,27 @@ func TestDoguRestartReconciler_createRestartInstruction(t *testing.T) {
 		instruction := sut.createRestartInstruction(testCtx, testCasRestartRequest)
 
 		// then
-		require.ErrorContains(t, instruction.err, "the referenced dogu in dogurestart \"ecosystem/cas-1234\" is not dogu api version v2, the operator currently only supports v2 dogus")
-		assert.Equal(t, handleGetDoguRestartFailed, instruction.op)
+		require.NoError(t, instruction.err)
+		assert.Equal(t, ignore, instruction.op)
+	})
+
+	t.Run("should ignore restarts that are handled with conditions", func(t *testing.T) {
+		// given
+		doguRestartInterfaceMock := newMockDoguRestartInterface(t)
+		doguRestart := &v2.DoguRestart{
+			Spec:   v2.DoguRestartSpec{DoguName: testCasDoguName},
+			Status: v2.DoguRestartStatus{Conditions: []metav1.Condition{{Type: v2.DoguRestartConditionReady, Status: metav1.ConditionFalse, Reason: v2.DoguRestartReasonDoguNotFound}}},
+		}
+		doguRestartInterfaceMock.EXPECT().Get(testCtx, testCasRestartName, metav1.GetOptions{}).Return(doguRestart, nil)
+
+		sut := DoguRestartReconciler{doguRestartInterface: doguRestartInterfaceMock}
+
+		// when
+		instruction := sut.createRestartInstruction(testCtx, testCasRestartRequest)
+
+		// then
+		require.NoError(t, instruction.err)
+		assert.Equal(t, ignore, instruction.op)
 	})
 
 	t.Run("should check if stopped on status phase stopping", func(t *testing.T) {
@@ -197,6 +212,12 @@ func testRestartPhaseMapping(t *testing.T, phase v2.RestartStatusPhase, expected
 	require.NoError(t, instruction.err)
 	assert.Equal(t, expectedOperation, instruction.op)
 	assert.Equal(t, dogu, instruction.dogu)
+}
+
+func v3TestDogu() *v2.Dogu {
+	return &v2.Dogu{
+		ObjectMeta: metav1.ObjectMeta{Name: testCasDoguName, Namespace: testNamespace, Annotations: map[string]string{"k8s.cloudogu.com/v3beta1-doguApiVersion": "v3"}},
+	}
 }
 
 func TestNewDoguRestartReconciler(t *testing.T) {
@@ -281,4 +302,56 @@ func TestDoguRestartReconciler_Reconcile(t *testing.T) {
 			assert.Equalf(t, tt.want, got, "Reconcile(%v, %v)", testCtx, tt.req)
 		})
 	}
+}
+
+func TestDoguRestartReconciler_Reconcile_v3Restarts(t *testing.T) {
+	t.Run("should ignore restarts with conditions without loading the dogu", func(t *testing.T) {
+		// given
+		doguRestartInterfaceMock := newMockDoguRestartInterface(t)
+		doguRestart := &v2.DoguRestart{
+			Spec:   v2.DoguRestartSpec{DoguName: testCasDoguName},
+			Status: v2.DoguRestartStatus{Conditions: []metav1.Condition{{Type: v2.DoguRestartConditionReady, Status: metav1.ConditionTrue, Reason: v2.DoguRestartReasonSucceeded}}},
+		}
+		doguRestartInterfaceMock.EXPECT().Get(testCtx, testCasRestartName, metav1.GetOptions{}).Return(doguRestart, nil)
+
+		garbageCollectorMock := NewMockDoguRestartGarbageCollector(t)
+		garbageCollectorMock.EXPECT().DoGarbageCollection(testCtx, testCasDoguName).Return(nil)
+
+		// the dogu interface mock fails the test if the dogu is loaded, e.g. to set the phase DoguNotFound for a deleted dogu
+		sut := DoguRestartReconciler{doguRestartInterface: doguRestartInterfaceMock, doguInterface: newMockDoguInterface(t), garbageCollector: garbageCollectorMock}
+
+		// when
+		result, err := sut.Reconcile(testCtx, testCasRestartRequest)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, controllerruntime.Result{}, result)
+	})
+
+	t.Run("should not stop the dogu of a new restart of a v3 dogu", func(t *testing.T) {
+		// given
+		doguRestartInterfaceMock := newMockDoguRestartInterface(t)
+		doguRestart := &v2.DoguRestart{Spec: v2.DoguRestartSpec{DoguName: testCasDoguName}}
+		doguRestartInterfaceMock.EXPECT().Get(testCtx, testCasRestartName, metav1.GetOptions{}).Return(doguRestart, nil)
+
+		// the dogu interface mock fails the test if the dogu is stopped
+		doguInterfaceMock := newMockDoguInterface(t)
+		doguInterfaceMock.EXPECT().Get(testCtx, testCasDoguName, metav1.GetOptions{}).Return(v3TestDogu(), nil)
+
+		garbageCollectorMock := NewMockDoguRestartGarbageCollector(t)
+		garbageCollectorMock.EXPECT().DoGarbageCollection(testCtx, testCasDoguName).Return(nil)
+
+		sut := DoguRestartReconciler{
+			doguRestartInterface: doguRestartInterfaceMock,
+			doguInterface:        doguInterfaceMock,
+			garbageCollector:     garbageCollectorMock,
+		}
+
+		// when
+		result, err := sut.Reconcile(testCtx, testCasRestartRequest)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, controllerruntime.Result{}, result)
+	})
 }

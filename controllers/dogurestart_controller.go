@@ -90,6 +90,14 @@ func (r *DoguRestartReconciler) createRestartInstruction(ctx context.Context, re
 	logger.Info("dogu restart ressource has been found")
 	instruction.restart = doguRestart
 
+	// restarts with conditions belong to v3 dogus. This is checked before loading the dogu, so that the
+	// DoguRestartV3Reconciler handles a deleted dogu of a started restart and not this reconciler.
+	if len(doguRestart.Status.Conditions) > 0 {
+		logger.Info("restart has conditions and belongs to the DoguRestartV3Reconciler, ignoring")
+		instruction.op = ignore
+		return
+	}
+
 	if instruction.op = RestartOperationFromRestartStatusPhase(doguRestart.Status.Phase); instruction.op == ignore {
 		// early exit to prevent unnecessary dogu loading
 		return
@@ -108,8 +116,9 @@ func (r *DoguRestartReconciler) createRestartInstruction(ctx context.Context, re
 	}
 
 	if !dogu.IsV2() {
-		instruction.op = handleGetDoguRestartFailed
-		instruction.err = fmt.Errorf("the referenced dogu in dogurestart %q is not dogu api version v2, the operator currently only supports v2 dogus", req.NamespacedName)
+		// new restarts of v3 dogus have no conditions yet; without this check the dogu would be stopped like a v2 dogu
+		logger.Info("dogu is not a v2 dogu, restart belongs to the DoguRestartV3Reconciler, ignoring")
+		instruction.op = ignore
 		return
 	}
 
