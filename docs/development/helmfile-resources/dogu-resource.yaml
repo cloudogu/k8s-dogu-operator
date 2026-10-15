@@ -1,0 +1,11 @@
+apiVersion: k8s.cloudogu.com/v2
+kind: Dogu
+metadata:
+  name: opendesk
+  labels:
+    app: ces
+    dogu.name: opendesk
+  namespace: ecosystem
+spec:
+  name: internal/opendesk
+  version: 1.18.2-1

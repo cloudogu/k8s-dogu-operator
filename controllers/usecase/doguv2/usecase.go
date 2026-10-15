@@ -39,6 +39,7 @@ func NewDoguDeleteUseCase(
 //nolint:funlen
 func NewDoguInstallOrChangeUseCase(
 	conditionsStep *install.InitializeConditionsStep,
+	experimentalHelmfileStep *install.ExperimentalHelmfileStep,
 	healthCheckStep *install.HealthCheckStep,
 	fetchRemoteDoguDescriptorStep *install.FetchRemoteDoguDescriptorStep,
 	validationStep *install.ValidationStep,
@@ -84,6 +85,7 @@ func NewDoguInstallOrChangeUseCase(
 	return &DoguUseCase{
 		steps: []Step{
 			conditionsStep,
+			experimentalHelmfileStep,
 			healthCheckStep,
 			fetchRemoteDoguDescriptorStep,
 			validationStep,
