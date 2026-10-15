@@ -5,6 +5,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [v3.32.0] - 2026-10-12
+### Added
+- [#350] Map the flux `HelmRelease` status to dogu v3 conditions.
+- [#350] Add a health controller that keeps the `Healthy` condition of dogu v3 in sync with its workloads.
+- [#350] Set the conditions of dogu v3 to `Unknown` on operator shutdown.
+
+## [v3.31.2] - 2026-10-12
+### Fixed
+- [#342] Exclude the export container for a Dogu from the security context update.
+  - This prevents an infinite loop of pod termination and creation during export mode.
+
 ### Added
 - [#339] Add step to validate values and template of a dogu helm chart
 - [#339] Add mock for dcc v3

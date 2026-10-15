@@ -2,13 +2,17 @@ package postinstall
 
 import (
 	"fmt"
+	"reflect"
 	"testing"
 
 	"github.com/cloudogu/ces-commons-lib/dogu"
 	"github.com/cloudogu/cesapp-lib/core"
 	v2 "github.com/cloudogu/k8s-dogu-lib/v3/api/v2"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/resource"
 	steps "github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv2"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 	v4 "k8s.io/api/apps/v1"
 	v3 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -238,5 +242,54 @@ func TestSecurityContextStep_Run(t *testing.T) {
 			}
 			assert.Equalf(t, tt.want, scs.Run(testCtx, tt.doguResource), "Run(%v, %v)", testCtx, tt.doguResource)
 		})
+	}
+}
+
+func TestSecurityContextStepIgnoreExportContainer(t *testing.T) {
+	t.Run("Shouldn't set the export container's security context", func(t *testing.T) {
+		aDogu := &core.Dogu{Name: "aDogu"}
+		aDoguResource := &v2.Dogu{Name: "aDogu"}
+		aExportContainer, err := resource.GetExporterContainer(aDogu, aDoguResource, "exporter-image")
+		require.NoError(t, err)
+
+		fetcherMock := newMockLocalDoguFetcher(t)
+		fetcherMock.EXPECT().
+			FetchInstalled(testCtx, mock.Anything).
+			Return(aDogu, nil)
+
+		generatorMock := newMockSecurityContextGenerator(t)
+		generatorMock.EXPECT().
+			Generate(testCtx, mock.Anything, mock.Anything).
+			Return(&v3.PodSecurityContext{}, &v3.SecurityContext{})
+
+		deployment := deploymentWithContainersForTest(v3.Container{Name: "container01"}, *aExportContainer)
+		deploymentInterfaceMock := newMockDeploymentInterface(t)
+		deploymentInterfaceMock.EXPECT().
+			Get(testCtx, mock.Anything, mock.Anything).
+			Return(deployment, nil)
+		deploymentInterfaceMock.EXPECT().
+			Update(testCtx, mock.Anything, mock.Anything).
+			Return(&v4.Deployment{}, nil)
+
+		secCtxStep := NewSecurityContextStep(fetcherMock, generatorMock, deploymentInterfaceMock)
+		exportContainerSecurityCtxBefore := aExportContainer.SecurityContext.DeepCopy()
+
+		secCtxStep.Run(testCtx, aDoguResource)
+
+		exportContainerSecurityCtxAfter := deployment.Spec.Template.Spec.Containers[1].SecurityContext
+		assert.True(t, reflect.DeepEqual(exportContainerSecurityCtxBefore, exportContainerSecurityCtxAfter))
+	})
+}
+
+func deploymentWithContainersForTest(containers ...v3.Container) *v4.Deployment {
+	return &v4.Deployment{
+		Spec: v4.DeploymentSpec{
+			Template: v3.PodTemplateSpec{
+				Spec: v3.PodSpec{
+					SecurityContext: &v3.PodSecurityContext{},
+					Containers:      containers,
+				},
+			},
+		},
 	}
 }

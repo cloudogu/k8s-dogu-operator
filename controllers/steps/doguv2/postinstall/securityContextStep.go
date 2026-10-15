@@ -34,6 +34,7 @@ func (scs *SecurityContextStep) Run(ctx context.Context, doguResource *v2.Dogu) 
 		return steps.RequeueWithError(fmt.Errorf("failed to get local descriptor for dogu %q: %w", doguResource.Name, err))
 	}
 
+	exportContainerName := resource.CreateExporterContainerName(doguResource.Name)
 	err = retry.OnConflict(func() error {
 		var retryErr error
 		deployment, retryErr := scs.deploymentInterface.Get(ctx, doguResource.Name, metav1.GetOptions{})
@@ -45,7 +46,9 @@ func (scs *SecurityContextStep) Run(ctx context.Context, doguResource *v2.Dogu) 
 
 		deployment.Spec.Template.Spec.SecurityContext = podSecurityContext
 		for i := range deployment.Spec.Template.Spec.Containers {
-			deployment.Spec.Template.Spec.Containers[i].SecurityContext = containerSecurityContext
+			if deployment.Spec.Template.Spec.Containers[i].Name != exportContainerName {
+				deployment.Spec.Template.Spec.Containers[i].SecurityContext = containerSecurityContext
+			}
 		}
 
 		_, retryErr = scs.deploymentInterface.Update(ctx, deployment, metav1.UpdateOptions{})
