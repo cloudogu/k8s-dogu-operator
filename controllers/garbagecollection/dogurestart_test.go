@@ -10,7 +10,9 @@ import (
 	v2 "github.com/cloudogu/k8s-dogu-lib/v3/api/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
 var testCtx = context.Background()
@@ -294,6 +296,69 @@ func TestDoguRestartGarbageCollector_DoGarbageCollection(t *testing.T) {
 		// then
 		require.NoError(t, err)
 	})
+
+	t.Run("Should count v3 restarts by their Ready condition and keep restarts in progress", func(t *testing.T) {
+		// given
+		t.Setenv("DOGU_RESTART_SUCCESSFUL_HISTORY_LIMIT", "1")
+		t.Setenv("DOGU_RESTART_FAILED_HISTORY_LIMIT", "1")
+		doguName := "ldap"
+		doguRestartInterfaceMock := newMockDoguRestartInterface(t)
+		now := metav1.Now()
+
+		restartList := &v2.DoguRestartList{
+			Items: []v2.DoguRestart{
+				getDoguRestartWithCreationTimestamp(doguName, "1", v2.RestartStatusPhaseCompleted, now.Add(time.Second)),
+				getV3DoguRestartWithCreationTimestamp(doguName, "2", metav1.ConditionTrue, v2.DoguRestartReasonSuperseded, now.Add(time.Second*2)),
+				getV3DoguRestartWithCreationTimestamp(doguName, "3", metav1.ConditionTrue, v2.DoguRestartReasonSucceeded, now.Add(time.Second*3)),
+				getV3DoguRestartWithCreationTimestamp(doguName, "4", metav1.ConditionFalse, v2.DoguRestartReasonDoguNotFound, now.Add(time.Second*4)),
+				getV3DoguRestartWithCreationTimestamp(doguName, "5", metav1.ConditionFalse, v2.DoguRestartReasonDoguNotFound, now.Add(time.Second*5)),
+				getV3DoguRestartWithCreationTimestamp(doguName, "6", metav1.ConditionFalse, v2.DoguRestartReasonRolloutInProgress, now.Add(time.Second*6)),
+				getDoguRestartWithCreationTimestamp(doguName, "7", v2.RestartStatusPhaseNew, now.Add(time.Second*7)),
+			},
+		}
+
+		doguRestartInterfaceMock.EXPECT().List(testCtx, metav1.ListOptions{}).Return(restartList, nil).Times(1)
+		doguRestartInterfaceMock.EXPECT().Delete(testCtx, fmt.Sprintf("%s-1", doguName), metav1.DeleteOptions{}).Return(nil)
+		doguRestartInterfaceMock.EXPECT().Delete(testCtx, fmt.Sprintf("%s-2", doguName), metav1.DeleteOptions{}).Return(nil)
+		doguRestartInterfaceMock.EXPECT().Delete(testCtx, fmt.Sprintf("%s-4", doguName), metav1.DeleteOptions{}).Return(nil)
+
+		sut := DoguRestartGarbageCollector{doguRestartInterface: doguRestartInterfaceMock}
+
+		// when
+		err := sut.DoGarbageCollection(testCtx, doguName)
+
+		// then
+		require.NoError(t, err)
+	})
+}
+
+func TestDoguRestartGarbageCollector_DoGarbageCollection_alreadyDeleted(t *testing.T) {
+	t.Run("should ignore restarts that are already deleted", func(t *testing.T) {
+		// given
+		t.Setenv("DOGU_RESTART_SUCCESSFUL_HISTORY_LIMIT", "0")
+		doguName := "ldap"
+		doguRestartInterfaceMock := newMockDoguRestartInterface(t)
+		restartList := &v2.DoguRestartList{Items: []v2.DoguRestart{
+			getDoguRestartWithCreationTimestamp(doguName, "1", v2.RestartStatusPhaseCompleted, time.Now()),
+		}}
+		doguRestartInterfaceMock.EXPECT().List(testCtx, metav1.ListOptions{}).Return(restartList, nil)
+		doguRestartInterfaceMock.EXPECT().Delete(testCtx, "ldap-1", metav1.DeleteOptions{}).
+			Return(apierrors.NewNotFound(schema.GroupResource{}, "ldap-1"))
+
+		sut := DoguRestartGarbageCollector{doguRestartInterface: doguRestartInterfaceMock}
+
+		// when
+		err := sut.DoGarbageCollection(testCtx, doguName)
+
+		// then
+		require.NoError(t, err)
+	})
+}
+
+func getV3DoguRestartWithCreationTimestamp(doguName string, resourceSuffix string, readyStatus metav1.ConditionStatus, readyReason string, time time.Time) v2.DoguRestart {
+	restart := getDoguRestartWithCreationTimestamp(doguName, resourceSuffix, v2.RestartStatusPhaseNew, time)
+	restart.Status.Conditions = []metav1.Condition{{Type: v2.DoguRestartConditionReady, Status: readyStatus, Reason: readyReason}}
+	return restart
 }
 
 func getDoguRestartWithCreationTimestamp(doguName string, resourceSuffix string, phase v2.RestartStatusPhase, time time.Time) v2.DoguRestart {

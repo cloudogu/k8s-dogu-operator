@@ -5,6 +5,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Added
+- [#358] Support `DoguRestart` for dogu v3.
+
+### Changed
+- [#358] Update mockery to v3.8.1 to support Go 1.27.2.
 
 ## [v3.32.0] - 2026-10-12
 ### Added
