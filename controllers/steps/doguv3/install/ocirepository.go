@@ -79,6 +79,8 @@ func (eor *EnsureOCIRepositoryStep) Run(ctx context.Context, doguResource *v3bet
 			},
 			Interval:  metav1.Duration{Duration: time.Hour * 6},
 			SecretRef: &meta.LocalObjectReference{Name: containerRegistrySecret},
+			Provider:  flux.GenericOCIProvider,
+			Timeout:   &metav1.Duration{Duration: 60 * time.Second},
 		}
 
 		return controllerutil.SetControllerReference(doguResource, repository, eor.k8sClient.Scheme())
