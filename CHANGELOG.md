@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v3.33.0] - 2026-10-15
+### Added
+- [#349] Add steps to dogu v3 deletion
+
 ## [v3.32.0] - 2026-10-12
 ### Added
 - [#350] Map the flux `HelmRelease` status to dogu v3 conditions.
@@ -20,7 +24,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - [#339] Add step to validate values and template of a dogu helm chart
 - [#339] Add mock for dcc v3
-
 
 ### Changed
 - Update go to 1.27.2
