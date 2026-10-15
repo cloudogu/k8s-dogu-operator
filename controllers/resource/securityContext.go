@@ -31,24 +31,24 @@ func (s *securityContextGenerator) Generate(ctx context.Context, dogu *core.Dogu
 	fsGroup, fsGroupChangePolicy := fsGroupAndChangePolicy(ctx, dogu)
 
 	return &corev1.PodSecurityContext{
-			RunAsNonRoot:        &runAsNonRoot,
-			SELinuxOptions:      seLinuxOptions,
-			AppArmorProfile:     appArmorProfile,
-			SeccompProfile:      seccompProfile,
-			FSGroup:             fsGroup,
-			FSGroupChangePolicy: fsGroupChangePolicy,
-		}, &corev1.SecurityContext{
-			Capabilities: &corev1.Capabilities{
-				Drop: []corev1.Capability{"ALL"},
-				Add:  effectiveCapabilities(dogu, doguResource),
-			},
-			ReadOnlyRootFilesystem: &readOnlyRootFS,
-			RunAsNonRoot:           &runAsNonRoot,
-			SELinuxOptions:         seLinuxOptions,
-			AppArmorProfile:        appArmorProfile,
-			SeccompProfile:         seccompProfile,
-			Privileged:             &privileged,
-		}
+		RunAsNonRoot:        &runAsNonRoot,
+		SELinuxOptions:      seLinuxOptions,
+		AppArmorProfile:     appArmorProfile,
+		SeccompProfile:      seccompProfile,
+		FSGroup:             fsGroup,
+		FSGroupChangePolicy: fsGroupChangePolicy,
+	}, &corev1.SecurityContext{
+		Capabilities: &corev1.Capabilities{
+			Drop: []corev1.Capability{"ALL"},
+			Add:  effectiveCapabilities(dogu, doguResource),
+		},
+		ReadOnlyRootFilesystem: &readOnlyRootFS,
+		RunAsNonRoot:           &runAsNonRoot,
+		SELinuxOptions:         seLinuxOptions,
+		AppArmorProfile:        appArmorProfile,
+		SeccompProfile:         seccompProfile,
+		Privileged:             &privileged,
+	}
 }
 
 func fsGroupAndChangePolicy(ctx context.Context, dogu *core.Dogu) (*int64, *corev1.PodFSGroupChangePolicy) {
