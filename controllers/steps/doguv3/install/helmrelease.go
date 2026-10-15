@@ -134,13 +134,25 @@ func combineValues(ctx context.Context, dogu *doguv3.Dogu, doguMetadataValueSvc 
 		return nil, fmt.Errorf("failed to retrieve dogu metadata values: %w", err)
 	}
 
-	values, err := valueAssembler.Assemble(ctx, dogu, metaValues)
+	patchTemplate, found, err := doguMetadataValueSvc.ChartPatchTemplate(ctx, dogu)
+	if err != nil {
+		return nil, fmt.Errorf("failed to retrieve chart patch template: %w", err)
+	}
+	if !found {
+		patchTemplate = nil
+	} else if patchTemplate == nil {
+		patchTemplate = []byte{}
+	}
+
+	values, err := valueAssembler.Assemble(ctx, dogu, metaValues, patchTemplate)
 	if err != nil {
 		return nil, fmt.Errorf("failed to assemble dogu values: %w", err)
 	}
 
-	// this case the error is probably unreachable because the assembler has already pushed the values object into a YAML parser.
-	bytes, _ := json.Marshal(values)
+	bytes, err := json.Marshal(values)
+	if err != nil {
+		return nil, fmt.Errorf("failed to serialize dogu values: %w", err)
+	}
 
 	return &apiext.JSON{Raw: bytes}, nil
 }

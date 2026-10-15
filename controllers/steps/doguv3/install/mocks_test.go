@@ -159,6 +159,80 @@ func (_m *MockChartService) EXPECT() *MockChartService_Expecter {
 	return &MockChartService_Expecter{mock: &_m.Mock}
 }
 
+// ChartPatchTemplate provides a mock function for the type MockChartService
+func (_mock *MockChartService) ChartPatchTemplate(ctx context.Context, doguResource *v3beta1.Dogu) ([]byte, bool, error) {
+	ret := _mock.Called(ctx, doguResource)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ChartPatchTemplate")
+	}
+
+	var r0 []byte
+	var r1 bool
+	var r2 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *v3beta1.Dogu) ([]byte, bool, error)); ok {
+		return returnFunc(ctx, doguResource)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *v3beta1.Dogu) []byte); ok {
+		r0 = returnFunc(ctx, doguResource)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]byte)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, *v3beta1.Dogu) bool); ok {
+		r1 = returnFunc(ctx, doguResource)
+	} else {
+		r1 = ret.Get(1).(bool)
+	}
+	if returnFunc, ok := ret.Get(2).(func(context.Context, *v3beta1.Dogu) error); ok {
+		r2 = returnFunc(ctx, doguResource)
+	} else {
+		r2 = ret.Error(2)
+	}
+	return r0, r1, r2
+}
+
+// MockChartService_ChartPatchTemplate_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ChartPatchTemplate'
+type MockChartService_ChartPatchTemplate_Call struct {
+	*mock.Call
+}
+
+// ChartPatchTemplate is a helper method to define mock.On call
+//   - ctx context.Context
+//   - doguResource *v3beta1.Dogu
+func (_e *MockChartService_Expecter) ChartPatchTemplate(ctx any, doguResource any) *MockChartService_ChartPatchTemplate_Call {
+	return &MockChartService_ChartPatchTemplate_Call{Call: _e.mock.On("ChartPatchTemplate", ctx, doguResource)}
+}
+
+func (_c *MockChartService_ChartPatchTemplate_Call) Run(run func(ctx context.Context, doguResource *v3beta1.Dogu)) *MockChartService_ChartPatchTemplate_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 *v3beta1.Dogu
+		if args[1] != nil {
+			arg1 = args[1].(*v3beta1.Dogu)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockChartService_ChartPatchTemplate_Call) Return(bytes []byte, b bool, err error) *MockChartService_ChartPatchTemplate_Call {
+	_c.Call.Return(bytes, b, err)
+	return _c
+}
+
+func (_c *MockChartService_ChartPatchTemplate_Call) RunAndReturn(run func(ctx context.Context, doguResource *v3beta1.Dogu) ([]byte, bool, error)) *MockChartService_ChartPatchTemplate_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // DoguMetaValues provides a mock function for the type MockChartService
 func (_mock *MockChartService) DoguMetaValues(ctx context.Context, doguResource *v3beta1.Dogu) ([]byte, bool, error) {
 	ret := _mock.Called(ctx, doguResource)
@@ -407,8 +481,8 @@ func (_m *MockValueAssembler) EXPECT() *MockValueAssembler_Expecter {
 }
 
 // Assemble provides a mock function for the type MockValueAssembler
-func (_mock *MockValueAssembler) Assemble(ctx context.Context, cr *v3beta1.Dogu, valuesMeta []byte) (values.Values, error) {
-	ret := _mock.Called(ctx, cr, valuesMeta)
+func (_mock *MockValueAssembler) Assemble(ctx context.Context, cr *v3beta1.Dogu, valuesMeta []byte, patchTemplate []byte) (values.Values, error) {
+	ret := _mock.Called(ctx, cr, valuesMeta, patchTemplate)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Assemble")
@@ -416,18 +490,18 @@ func (_mock *MockValueAssembler) Assemble(ctx context.Context, cr *v3beta1.Dogu,
 
 	var r0 values.Values
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, *v3beta1.Dogu, []byte) (values.Values, error)); ok {
-		return returnFunc(ctx, cr, valuesMeta)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *v3beta1.Dogu, []byte, []byte) (values.Values, error)); ok {
+		return returnFunc(ctx, cr, valuesMeta, patchTemplate)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, *v3beta1.Dogu, []byte) values.Values); ok {
-		r0 = returnFunc(ctx, cr, valuesMeta)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *v3beta1.Dogu, []byte, []byte) values.Values); ok {
+		r0 = returnFunc(ctx, cr, valuesMeta, patchTemplate)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(values.Values)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, *v3beta1.Dogu, []byte) error); ok {
-		r1 = returnFunc(ctx, cr, valuesMeta)
+	if returnFunc, ok := ret.Get(1).(func(context.Context, *v3beta1.Dogu, []byte, []byte) error); ok {
+		r1 = returnFunc(ctx, cr, valuesMeta, patchTemplate)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -443,11 +517,12 @@ type MockValueAssembler_Assemble_Call struct {
 //   - ctx context.Context
 //   - cr *v3beta1.Dogu
 //   - valuesMeta []byte
-func (_e *MockValueAssembler_Expecter) Assemble(ctx any, cr any, valuesMeta any) *MockValueAssembler_Assemble_Call {
-	return &MockValueAssembler_Assemble_Call{Call: _e.mock.On("Assemble", ctx, cr, valuesMeta)}
+//   - patchTemplate []byte
+func (_e *MockValueAssembler_Expecter) Assemble(ctx any, cr any, valuesMeta any, patchTemplate any) *MockValueAssembler_Assemble_Call {
+	return &MockValueAssembler_Assemble_Call{Call: _e.mock.On("Assemble", ctx, cr, valuesMeta, patchTemplate)}
 }
 
-func (_c *MockValueAssembler_Assemble_Call) Run(run func(ctx context.Context, cr *v3beta1.Dogu, valuesMeta []byte)) *MockValueAssembler_Assemble_Call {
+func (_c *MockValueAssembler_Assemble_Call) Run(run func(ctx context.Context, cr *v3beta1.Dogu, valuesMeta []byte, patchTemplate []byte)) *MockValueAssembler_Assemble_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -461,10 +536,15 @@ func (_c *MockValueAssembler_Assemble_Call) Run(run func(ctx context.Context, cr
 		if args[2] != nil {
 			arg2 = args[2].([]byte)
 		}
+		var arg3 []byte
+		if args[3] != nil {
+			arg3 = args[3].([]byte)
+		}
 		run(
 			arg0,
 			arg1,
 			arg2,
+			arg3,
 		)
 	})
 	return _c
@@ -475,7 +555,7 @@ func (_c *MockValueAssembler_Assemble_Call) Return(values1 values.Values, err er
 	return _c
 }
 
-func (_c *MockValueAssembler_Assemble_Call) RunAndReturn(run func(ctx context.Context, cr *v3beta1.Dogu, valuesMeta []byte) (values.Values, error)) *MockValueAssembler_Assemble_Call {
+func (_c *MockValueAssembler_Assemble_Call) RunAndReturn(run func(ctx context.Context, cr *v3beta1.Dogu, valuesMeta []byte, patchTemplate []byte) (values.Values, error)) *MockValueAssembler_Assemble_Call {
 	_c.Call.Return(run)
 	return _c
 }
