@@ -27,7 +27,6 @@ const (
 	messagePVCResizeInProgress  = "HelmRelease reconciliation is suspended while a PVC resize is in progress"
 	messageDoguStopped          = "HelmRelease reconciliation is suspended because the Dogu is stopped"
 	messageReconciliationPaused = "HelmRelease reconciliation is suspended because spec.pauseReconciliation is set"
-	messageSuspended            = "HelmRelease reconciliation is suspended"
 )
 
 // SuspendHelmReleaseStep ensures the HelmRelease is suspended under certain conditions.
