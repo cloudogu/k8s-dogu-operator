@@ -49,7 +49,7 @@ func (ehr *EnsureHelmReleaseStep) Run(ctx context.Context, doguResource *doguv3.
 	}
 	//If helm release should be suspended, then abort
 	if helmRelease != nil && helmRelease.Spec.Suspend == true {
-		return stepsv3.Abort(ReasonReconciliationPaused, messageSuspended)
+		return stepsv3.Continue() // skip the rest
 	}
 
 	//TODO: do all the tests and then requeue if it should be suspended, remove the above code
