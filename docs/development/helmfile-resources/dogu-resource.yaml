@@ -8,4 +8,4 @@ metadata:
   namespace: ecosystem
 spec:
   name: internal/opendesk
-  version: 1.18.2-1
+  version: 1.18.2-2

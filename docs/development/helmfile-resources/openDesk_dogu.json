@@ -1,6 +1,6 @@
 {
   "Name": "internal/opendesk",
-  "Version": "1.18.2-1",
+  "Version": "1.18.2-2",
   "DisplayName": "openDesk",
   "Description": "openDesk is the customisable office and collaboration suite designed specifically for your needs in public administration.",
   "Url": "https://www.opendesk.eu",
@@ -9,7 +9,8 @@
   "Tags": [
     "experimental",
     "office",
-    "collaboration"
+    "collaboration",
+    "warp"
   ],
   "Dependencies": [
     {

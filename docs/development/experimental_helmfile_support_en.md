@@ -77,6 +77,14 @@ kubectl create configmap -n ecosystem opendesk-domain --from-literal domain=your
 kubectl apply -n ecosystem -f helmfile-resources/dogu-resource.yaml
 ```
 
+## Uninstalling a Helmfile dogu
+
+Delete the Dogu resource to uninstall the Helmfile releases:
+
+```shell
+kubectl delete dogu opendesk -n ecosystem
+```
+
 ## Debugging
 
 Since the dogu operator image is distro-less, we have to rely on an ephemeral debug container.
