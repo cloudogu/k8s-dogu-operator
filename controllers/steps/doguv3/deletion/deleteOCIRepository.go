@@ -6,10 +6,10 @@ import (
 
 	"github.com/cloudogu/k8s-dogu-lib/v3/api/v3beta1"
 	stepsv3 "github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv3"
+	"github.com/cloudogu/k8s-dogu-operator/v3/internal/logging"
 	flux "github.com/fluxcd/source-controller/api/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 // DeleteOCIRepositoryStep actively deletes the OCIRepository and waits (via requeue) until it is fully gone.
@@ -27,7 +27,7 @@ func (s *DeleteOCIRepositoryStep) Run(ctx context.Context, doguResource *v3beta1
 	err := s.client.Get(ctx, client.ObjectKey{Namespace: doguResource.Namespace, Name: doguResource.Spec.Name}, repository)
 	if apierrors.IsNotFound(err) {
 		// The OCIRepository is gone - either flux deleted it or it never existed.
-		log.FromContext(ctx).Info("OCIRepository is gone, continuing deletion")
+		logging.Info(ctx, "OCIRepository is gone, continuing deletion")
 		return stepsv3.Continue()
 	}
 	if err != nil {
@@ -43,7 +43,7 @@ func (s *DeleteOCIRepositoryStep) Run(ctx context.Context, doguResource *v3beta1
 			return failDeletion(s.eventRecorder, doguResource, fmt.Errorf("failed to delete OCIRepository %q: %w", repository.Name, dErr))
 		}
 
-		log.FromContext(ctx).Info("issued deletion for OCIRepository", "name", repository.Name)
+		logging.Info(ctx, "issued deletion for OCIRepository", "name", repository.Name)
 	}
 
 	return waitForDeletion("OCIRepository", repository.Name)

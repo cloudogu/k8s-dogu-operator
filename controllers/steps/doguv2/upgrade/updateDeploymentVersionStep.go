@@ -15,11 +15,11 @@ import (
 	steps "github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv2"
 	appsv1 "k8s.io/client-go/kubernetes/typed/apps/v1"
 
+	"github.com/cloudogu/k8s-dogu-operator/v3/internal/logging"
 	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 const requeueAfterUpdateDeployment = time.Second * 3
@@ -57,7 +57,7 @@ func NewUpdateDeploymentVersionStep(
 }
 
 func (uds *UpdateDeploymentVersionStep) Run(ctx context.Context, doguResource *v2.Dogu) steps.StepResult {
-	logger := log.FromContext(ctx).
+	logger := logging.FromContext(ctx).
 		WithName("update deployment version step").
 		WithValues("dogu", doguResource.Name)
 
@@ -197,7 +197,7 @@ func (uds *UpdateDeploymentVersionStep) applyPreUpgradeScriptToOlderDogu(
 	toDoguResource *v2.Dogu,
 	preUpgradeCmd *core.ExposedCommand,
 ) error {
-	logger := log.FromContext(ctx)
+	logger := logging.FromContext(ctx)
 	logger.Info("applying pre-upgrade script to old dogu")
 
 	preUpgradeScriptPath := filepath.Join(preUpgradeScriptDir, filepath.Base(preUpgradeCmd.Command))

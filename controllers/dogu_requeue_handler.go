@@ -6,8 +6,8 @@ import (
 	"time"
 
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
+	"github.com/cloudogu/k8s-dogu-operator/v3/internal/logging"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	doguv2 "github.com/cloudogu/k8s-dogu-lib/v3/api/v2"
 	doguClientV2 "github.com/cloudogu/k8s-dogu-lib/v3/client/typed/api/v2"
@@ -48,7 +48,7 @@ func (d *doguRequeueHandler) Handle(ctx context.Context, doguResource *doguv2.Do
 }
 
 func (d *doguRequeueHandler) handleRequeueTime(ctx context.Context, doguResource *doguv2.Dogu, result *ctrl.Result) {
-	logger := log.FromContext(ctx)
+	logger := logging.FromContext(ctx)
 
 	// A Get on an empty dogu would lead to "resource name may not be empty". Prevent by skipping.
 	emptyDogu := &doguv2.Dogu{}

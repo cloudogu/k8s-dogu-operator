@@ -7,7 +7,7 @@ import (
 
 	"github.com/cloudogu/cesapp-lib/core"
 	k8sv2 "github.com/cloudogu/k8s-dogu-lib/v3/api/v2"
-	"sigs.k8s.io/controller-runtime/pkg/log"
+	"github.com/cloudogu/k8s-dogu-operator/v3/internal/logging"
 )
 
 const doguCustomK8sResourceDirectory = "/k8s/"
@@ -24,7 +24,7 @@ func NewPodFileExtractor(factory ExecPodFactory) FileExtractor {
 // ExtractK8sResourcesFromExecPod enumerates K8s resources and returns them in a map filename->content. The map will be
 // empty if there are no files.
 func (fe *podFileExtractor) ExtractK8sResourcesFromExecPod(ctx context.Context, doguResource *k8sv2.Dogu, dogu *core.Dogu) (map[string]string, error) {
-	logger := log.FromContext(ctx)
+	logger := logging.FromContext(ctx)
 
 	lsCommand := NewShellCommand("/bin/sh", "-c", "/bin/ls /k8s/ || true")
 	fileListBuf, err := fe.factory.Exec(ctx, doguResource, dogu, lsCommand)

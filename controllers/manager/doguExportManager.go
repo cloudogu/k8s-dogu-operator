@@ -11,10 +11,10 @@ import (
 	appsv1 "k8s.io/client-go/kubernetes/typed/apps/v1"
 	v1 "k8s.io/client-go/kubernetes/typed/core/v1"
 
+	"github.com/cloudogu/k8s-dogu-operator/v3/internal/logging"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
-	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 type exportModeNotYetChangedError struct {
@@ -74,7 +74,7 @@ func (dem *doguExportManager) shouldUpdateExportMode(ctx context.Context, doguRe
 
 // UpdateExportMode activates/deactivates the export mode for the dogu
 func (dem *doguExportManager) UpdateExportMode(ctx context.Context, doguResource *doguv2.Dogu) error {
-	logger := log.FromContext(ctx)
+	logger := logging.FromContext(ctx)
 
 	shouldUpdate, err := dem.shouldUpdateExportMode(ctx, doguResource)
 	if err != nil {
@@ -97,7 +97,7 @@ func (dem *doguExportManager) UpdateExportMode(ctx context.Context, doguResource
 }
 
 func (dem *doguExportManager) updateExportMode(ctx context.Context, doguResource *doguv2.Dogu) error {
-	logger := log.FromContext(ctx)
+	logger := logging.FromContext(ctx)
 
 	updateNeeded, err := dem.deploymentUpdateNeeded(ctx, doguResource)
 	if err != nil {

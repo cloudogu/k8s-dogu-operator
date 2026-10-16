@@ -11,12 +11,12 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/cesregistry"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/resource"
+	"github.com/cloudogu/k8s-dogu-operator/v3/internal/logging"
 	"github.com/cloudogu/retry-lib/retry"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	appsv1client "k8s.io/client-go/kubernetes/typed/apps/v1"
-	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 const (
@@ -51,7 +51,7 @@ func NewDoguAdditionalMountManager(
 }
 
 func (m *doguAdditionalMountManager) AdditionalMountsChanged(ctx context.Context, doguResource *v2.Dogu) (bool, error) {
-	logger := log.FromContext(ctx)
+	logger := logging.FromContext(ctx)
 	logger.Info(fmt.Sprintf("Determine if additional mounts changed from dogu resource %s", doguResource.Name))
 	deployment, err := m.getDoguDeployment(ctx, doguResource)
 	if err != nil {
@@ -122,7 +122,7 @@ func (m *doguAdditionalMountManager) createAdditionalMountInitContainer(ctx cont
 }
 
 func (m *doguAdditionalMountManager) UpdateAdditionalMounts(ctx context.Context, doguResource *v2.Dogu) error {
-	logger := log.FromContext(ctx)
+	logger := logging.FromContext(ctx)
 	logger.Info(fmt.Sprintf("Update additional mounts for dogu resource %s...", doguResource.Name))
 	dogu, err := m.localDoguFetcher.FetchInstalled(ctx, cescommons.SimpleName(doguResource.Name))
 	if err != nil {

@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/cloudogu/k8s-dogu-lib/v3/api/v3beta1"
+	"github.com/cloudogu/k8s-dogu-operator/v3/internal/logging"
 	"github.com/go-logr/logr"
 	"gopkg.in/yaml.v3"
 	"helm.sh/helm/v3/pkg/chartutil"
@@ -13,7 +14,6 @@ import (
 	coreV1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 const (
@@ -49,7 +49,7 @@ func NewAssembler(k8s client.Client) *Assembler {
 }
 
 func (a Assembler) Assemble(ctx context.Context, cr *v3beta1.Dogu, valuesMeta []byte) (Values, error) {
-	logger := log.FromContext(ctx)
+	logger := logging.FromContext(ctx)
 
 	crValues, err := getDoguCRValues(cr)
 	if err != nil {

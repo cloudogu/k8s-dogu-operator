@@ -6,12 +6,12 @@ import (
 
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/cesregistry"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/resource"
+	"github.com/cloudogu/k8s-dogu-operator/v3/internal/logging"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/cloudogu/cesapp-lib/core"
 	doguv2 "github.com/cloudogu/k8s-dogu-lib/v3/api/v2"
@@ -48,7 +48,7 @@ func NewDoguSupportManager(client client.Client, fetcher cesregistry.LocalDoguFe
 // HandleSupportMode handles the support flag in the dogu spec and returns whether the support modes changed during the
 // last operation. If any action failed a non-requeue-able error will be returned.
 func (dsm *doguSupportManager) HandleSupportMode(ctx context.Context, doguResource *doguv2.Dogu) (bool, error) {
-	logger := log.FromContext(ctx)
+	logger := logging.FromContext(ctx)
 
 	deployment := &appsv1.Deployment{}
 	err := dsm.client.Get(ctx, doguResource.GetObjectKey(), deployment)
@@ -76,7 +76,7 @@ func (dsm *doguSupportManager) HandleSupportMode(ctx context.Context, doguResour
 }
 
 func (dsm *doguSupportManager) updateDeployment(ctx context.Context, doguResource *doguv2.Dogu, deployment *appsv1.Deployment) error {
-	logger := log.FromContext(ctx)
+	logger := logging.FromContext(ctx)
 
 	dogu, err := dsm.doguFetcher.FetchInstalled(ctx, doguResource.GetSimpleDoguName())
 	if err != nil {
