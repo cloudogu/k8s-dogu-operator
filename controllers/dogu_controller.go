@@ -11,6 +11,7 @@ import (
 	"github.com/cloudogu/k8s-dogu-lib/v3/api/v3beta1"
 	doguClientV2 "github.com/cloudogu/k8s-dogu-lib/v3/client/typed/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv2/helmfile"
 	expositionv1 "github.com/cloudogu/k8s-exposition-lib/api/v1"
 	warpmenuentryv1 "github.com/cloudogu/k8s-warp-menu-entry-lib/api/v1"
 	helmv2 "github.com/fluxcd/helm-controller/api/v2"
@@ -29,7 +30,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
-	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
@@ -224,8 +224,9 @@ func (r *DoguReconciler) setupWithManager(mgr ctrlManager) error {
 		return err
 	}
 
+	// use the helmfile.LifecyclePredicate to differentiate between Helmfile and normal Dogus
 	controllerBuilder := ctrl.NewControllerManagedBy(mgr).
-		For(&doguv2.Dogu{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
+		For(&doguv2.Dogu{}, builder.WithPredicates(helmfile.LifecyclePredicate{})).
 		Owns(&coreV1.ConfigMap{}).
 		Owns(&coreV1.Secret{}).
 		Owns(&coreV1.Service{}).
