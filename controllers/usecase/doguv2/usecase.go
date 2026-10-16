@@ -17,6 +17,7 @@ type DoguUseCase struct {
 
 func NewDoguDeleteUseCase(
 	statusStep *deletion.StatusStep,
+	experimentalHelmfileStep *deletion.ExperimentalHelmfileStep,
 	authRegistrationRemoverStep *deletion.AuthRegistrationRemoverStep,
 	expositionRemoverStep *deletion.ExpositionRemoverStep,
 	serviceAccountRemoverStep *deletion.ServiceAccountRemoverStep,
@@ -27,6 +28,7 @@ func NewDoguDeleteUseCase(
 	return &DoguUseCase{
 		steps: []Step{
 			statusStep,
+			experimentalHelmfileStep,
 			authRegistrationRemoverStep,
 			expositionRemoverStep,
 			serviceAccountRemoverStep,
@@ -136,6 +138,9 @@ func (duc *DoguUseCase) HandleUntilApplied(ctx context.Context, doguResource *v2
 		result := s.Run(ctx, doguResource)
 		if result.Err != nil || result.RequeueAfter != 0 {
 			return result.RequeueAfter, false, result.Err
+		}
+		if result.Completed {
+			return 0, true, nil
 		}
 		if !result.Continue {
 			return 0, false, nil
