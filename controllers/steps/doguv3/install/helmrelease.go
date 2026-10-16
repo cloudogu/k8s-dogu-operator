@@ -43,17 +43,6 @@ func NewEnsureHelmReleaseStep(k8sClient K8sClient, operatorConfig *config.Operat
 
 func (ehr *EnsureHelmReleaseStep) Run(ctx context.Context, doguResource *doguv3.Dogu) stepsv3.StepResult {
 
-	helmRelease, hrErr := ehr.existingHelmRelease(ctx, doguResource)
-	if hrErr != nil {
-		return stepsv3.RequeueWithError(hrErr, doguv3.ReasonInstalling)
-	}
-	//If helm release should be suspended, then abort
-	if helmRelease != nil && helmRelease.Spec.Suspend == true {
-		return stepsv3.Continue() // skip the rest
-	}
-
-	//TODO: do all the tests and then requeue if it should be suspended, remove the above code
-
 	templateAsm := values3.NewAssembler(ehr.k8sClient)
 	combinedValues, err := combineValues(ctx, doguResource, ehr.chartService, templateAsm)
 	if err != nil {
@@ -151,6 +140,11 @@ func configureHelmRelease(release *flux.HelmRelease, doguResource *doguv3.Dogu, 
 				resource.CommonLabelKeyPartOf:  resource.LabelValueCes,
 			},
 		},
+	}
+	// the default of suspended is nil, so we only set it, if wanted
+	// PVC resize, as the third possible reason for a suspension, is handled in earlier steps
+	if doguResource.Spec.Stopped || doguResource.Spec.PauseReconciliation {
+		release.Spec.Suspend = true
 	}
 }
 

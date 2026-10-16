@@ -20,7 +20,6 @@ import (
 	"github.com/stretchr/testify/require"
 	core "k8s.io/api/core/v1"
 	apiext "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -266,9 +265,6 @@ func TestEnsureHelmReleaseStep_Run(t *testing.T) {
 			name: "should retry on failing value assembling",
 			setupMocks: func(*testing.T) (K8sClient, ChartService, EventRecorder) {
 				k8sClient := NewMockK8sClient(t)
-				k8sClient.EXPECT().
-					Get(mock.Anything, mock.Anything, mock.Anything).
-					Return(apierrors.NewNotFound(fluxhelm.GroupVersion.WithResource("helmreleases").GroupResource(), doguResource.Spec.Name))
 				metaValueService := NewMockChartService(t)
 				metaValueService.EXPECT().DoguMetaValues(mock.Anything, doguResource).Return(nil, false, assert.AnError)
 				return k8sClient, metaValueService, nil
@@ -327,21 +323,6 @@ func TestEnsureHelmReleaseStep_Run(t *testing.T) {
 				recorder := NewMockEventRecorder(t)
 				recorder.EXPECT().Event(doguResource, core.EventTypeNormal, doguv3.ConditionChartAvailable, "HelmRelease updated")
 				return k8sClient, service, recorder
-			},
-			want: v3steps.Continue(),
-		},
-		{
-			name: "should abort when existing helm release is suspended",
-			setupMocks: func(t *testing.T) (K8sClient, ChartService, EventRecorder) {
-				release := fluxhelm.HelmRelease{
-					Name:      "dogu",
-					Namespace: "namespace",
-					Spec: fluxhelm.HelmReleaseSpec{
-						Suspend: true,
-					},
-				}
-				k8sClient := fake.NewClientBuilder().WithScheme(testScheme).WithObjects(&globalConfig, &release).Build()
-				return k8sClient, NewMockChartService(t), nil
 			},
 			want: v3steps.Continue(),
 		},
