@@ -35,7 +35,7 @@ func TestSuspendHelmReleaseStep_Run(t *testing.T) {
 			name:            "suspend for paused Dogu",
 			existingRelease: true,
 			doguPaused:      true,
-			wantResult:      stepsv3.RequeueAfter(0, ReasonReconciliationPaused, messageReconciliationPaused),
+			wantResult:      stepsv3.RequeueAfter(defaultRequeueAfter, ReasonReconciliationPaused, messageReconciliationPaused),
 			wantSuspended:   true,
 			wantCondition:   ReasonReconciliationPaused,
 		},
@@ -43,7 +43,7 @@ func TestSuspendHelmReleaseStep_Run(t *testing.T) {
 			name:            "suspend for stopped Dogu",
 			existingRelease: true,
 			doguStopped:     true,
-			wantResult:      stepsv3.RequeueAfter(0, ReasonDoguStopped, messageDoguStopped),
+			wantResult:      stepsv3.RequeueAfter(defaultRequeueAfter, ReasonDoguStopped, messageDoguStopped),
 			wantSuspended:   true,
 			wantCondition:   ReasonDoguStopped,
 		},
@@ -51,7 +51,7 @@ func TestSuspendHelmReleaseStep_Run(t *testing.T) {
 			name:             "suspend for PVC resize",
 			existingRelease:  true,
 			resizeInProgress: true,
-			wantResult:       stepsv3.RequeueAfter(0, ReasonPVCResizeInProgress, messagePVCResizeInProgress),
+			wantResult:       stepsv3.RequeueAfter(defaultRequeueAfter, ReasonPVCResizeInProgress, messagePVCResizeInProgress),
 			wantSuspended:    true,
 			wantCondition:    ReasonPVCResizeInProgress,
 		},
@@ -59,7 +59,7 @@ func TestSuspendHelmReleaseStep_Run(t *testing.T) {
 			name:             "resume when suspension reason has disappeared",
 			existingRelease:  true,
 			alreadySuspended: true,
-			wantResult:       stepsv3.RequeueAfter(0, ReasonNotSuspended, messageNotSuspended),
+			wantResult:       stepsv3.RequeueAfter(defaultRequeueAfter, ReasonNotSuspended, messageNotSuspended),
 			wantCondition:    ReasonNotSuspended,
 		},
 		{
@@ -112,6 +112,7 @@ func runSuspendHelmReleaseCase(t *testing.T, test suspendHelmReleaseRunCase) {
 	assembler := values3.NewAssembler(k8sClient) // easier to use this here, that to mock the result
 	checker := newSuspendRunResizeChecker(test.resizeInProgress)
 	step := NewSuspendHelmReleaseStep(k8sClient, chartService, assembler, checker, nil)
+
 	result := step.Run(t.Context(), dogu)
 
 	assert.Equal(t, test.wantResult, result)
@@ -279,7 +280,7 @@ func TestSuspendHelmReleaseStep_ChangeSuspendValueOfHelmRelease(t *testing.T) {
 				k8sClient := newSuspendTestClient(t, release)
 				step := NewSuspendHelmReleaseStep(k8sClient, nil, nil, nil, nil)
 
-				err := step.ChangeSuspendValueOfHelmRelease(t.Context(), release, test.desired)
+				_, err := step.setSuspendValueOfHelmRelease(t.Context(), release, test.desired)
 
 				require.NoError(t, err)
 				updated := &flux.HelmRelease{}
@@ -303,7 +304,7 @@ func TestSuspendHelmReleaseStep_ChangeSuspendValueOfHelmRelease(t *testing.T) {
 			Build()
 		step := NewSuspendHelmReleaseStep(clientWithError, nil, nil, nil, nil)
 
-		err := step.ChangeSuspendValueOfHelmRelease(t.Context(), &flux.HelmRelease{
+		_, err := step.setSuspendValueOfHelmRelease(t.Context(), &flux.HelmRelease{
 			Name: dogu.Spec.Name, Namespace: dogu.Namespace,
 		}, true)
 
@@ -382,15 +383,15 @@ func TestSuspendHelmReleaseStep_suspensionReason(t *testing.T) {
 			}
 			step := NewSuspendHelmReleaseStep(nil, chartService, nil, checker, nil)
 
-			reason, message, err := step.suspensionReason(t.Context(), dogu, values)
+			targetState, err := step.suspensionReason(t.Context(), dogu, values)
 
 			if test.wantErrorText != "" {
 				require.ErrorContains(t, err, test.wantErrorText)
 				return
 			}
 			require.NoError(t, err)
-			assert.Equal(t, test.wantReason, reason)
-			assert.Equal(t, test.wantMessage, message)
+			assert.Equal(t, test.wantReason, targetState.reason)
+			assert.Equal(t, test.wantMessage, targetState.message)
 			if !test.pause && !test.stopped {
 				assert.Equal(t, dogu.Namespace, checker.namespace)
 			}
@@ -424,8 +425,13 @@ func TestSuspendHelmReleaseStep_setSuspendedConditionOnDoguCR(t *testing.T) {
 			dogu := newSuspendTestDogu()
 			k8sClient := newSuspendTestClient(t, dogu)
 			step := NewSuspendHelmReleaseStep(k8sClient, nil, nil, nil, nil)
+			targetState := desiredState{
+				suspendHelmRelease: test.status == metav1.ConditionTrue,
+				reason:             test.reason,
+				message:            test.message,
+			}
 
-			err := step.setSuspendedConditionOnDoguCR(t.Context(), dogu, test.reason, test.message)
+			err := step.setSuspendedConditionOnDoguCR(t.Context(), dogu, targetState)
 
 			require.NoError(t, err)
 			assertSuspendTestConditionWithStatus(t, k8sClient, dogu, test.reason, test.status, test.message)
@@ -446,7 +452,7 @@ func TestSuspendHelmReleaseStep_setSuspendedConditionOnDoguCR(t *testing.T) {
 			Build()
 		step := NewSuspendHelmReleaseStep(k8sClient, nil, nil, nil, nil)
 
-		err := step.setSuspendedConditionOnDoguCR(t.Context(), dogu, ReasonDoguStopped, messageDoguStopped)
+		err := step.setSuspendedConditionOnDoguCR(t.Context(), dogu, desiredState{suspendHelmRelease: true, reason: ReasonDoguStopped, message: messageDoguStopped})
 
 		require.ErrorContains(t, err, "failed to update Dogu suspended condition")
 	})
