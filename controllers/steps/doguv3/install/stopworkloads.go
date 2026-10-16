@@ -38,25 +38,18 @@ func (s *StopWorkloadsStep) Run(ctx context.Context, dogu *v3beta1.Dogu) stepsv3
 		return stepsv3.Continue()
 	}
 
+	// Record pending changes before waiting for Flux or fetching the desired chart.
 	release := &flux.HelmRelease{}
 	err := s.k8sClient.Get(ctx, client.ObjectKey{Namespace: dogu.Namespace, Name: dogu.Spec.Name}, release)
 	releaseMissing := apierrors.IsNotFound(err)
 	if err != nil && !releaseMissing {
 		return stepsv3.RequeueWithError(err, v3beta1.ReasonStopping)
 	}
-	// Record a known version change even when the new chart cannot be fetched.
-	pending := meta.FindStatusCondition(dogu.Status.Conditions, v3beta1.ConditionUpdatePending)
 	versionOrInstallPending := releaseMissing || release.Labels[v3beta1.DoguLabelVersion] != dogu.Spec.Version
-	alreadyReported := pending != nil && pending.Status == metav1.ConditionTrue && pending.ObservedGeneration == dogu.Generation
-	if versionOrInstallPending && !alreadyReported {
-		if err := updatePending(ctx, s.k8sClient, dogu, metav1.ConditionTrue, "A chart version or installation is pending until the dogu starts"); err != nil {
-			return stepsv3.RequeueWithError(err, v3beta1.ReasonStopping)
-		}
-	} else if pending == nil || pending.ObservedGeneration != dogu.Generation {
-		if err := updatePending(ctx, s.k8sClient, dogu, metav1.ConditionUnknown, "The desired release has not been compared yet"); err != nil {
-			return stepsv3.RequeueWithError(err, v3beta1.ReasonStopping)
-		}
+	if err := s.recordPendingBeforeStop(ctx, dogu, versionOrInstallPending); err != nil {
+		return stepsv3.RequeueWithError(err, v3beta1.ReasonStopping)
 	}
+
 	if !releaseMissing && !release.Spec.Suspend {
 		return stepsv3.RequeueAfter(defaultRequeueAfter, v3beta1.ReasonStopping, "Waiting for HelmRelease suspension before stopping workloads")
 	}
@@ -100,6 +93,8 @@ func (s *StopWorkloadsStep) Run(ctx context.Context, dogu *v3beta1.Dogu) stepsv3
 		}
 		waiting = waiting || workloadWaiting
 	}
+
+	// Zero replicas are not enough; wait until the associated Pods are gone.
 	if len(owners) > 0 {
 		podsRemain, err := s.podsRemain(ctx, dogu.Namespace, owners, found.Deployments)
 		if err != nil {
@@ -108,7 +103,24 @@ func (s *StopWorkloadsStep) Run(ctx context.Context, dogu *v3beta1.Dogu) stepsv3
 		waiting = waiting || podsRemain
 	}
 
-	// Zero desired replicas alone do not confirm a stop; the associated Pods must also be gone.
+	return s.reportStopProgress(ctx, dogu, waiting)
+}
+
+// recordPendingBeforeStop preserves known changes even if the later chart fetch fails.
+func (s *StopWorkloadsStep) recordPendingBeforeStop(ctx context.Context, dogu *v3beta1.Dogu, versionOrInstallPending bool) error {
+	pending := meta.FindStatusCondition(dogu.Status.Conditions, v3beta1.ConditionUpdatePending)
+	alreadyReported := pending != nil && pending.Status == metav1.ConditionTrue && pending.ObservedGeneration == dogu.Generation
+	if versionOrInstallPending && !alreadyReported {
+		return updatePending(ctx, s.k8sClient, dogu, metav1.ConditionTrue, "A chart version or installation is pending until the dogu starts")
+	}
+	if pending == nil || pending.ObservedGeneration != dogu.Generation {
+		return updatePending(ctx, s.k8sClient, dogu, metav1.ConditionUnknown, "The desired release has not been compared yet")
+	}
+	return nil
+}
+
+// reportStopProgress saves the stop status and requests another pass while work remains.
+func (s *StopWorkloadsStep) reportStopProgress(ctx context.Context, dogu *v3beta1.Dogu, waiting bool) stepsv3.StepResult {
 	status, reason, message := metav1.ConditionTrue, v3beta1.ReasonSucceeded, "All dogu workloads are stopped"
 	if waiting {
 		status, reason, message = metav1.ConditionFalse, v3beta1.ReasonPartiallyStopped, "Waiting for all dogu workloads and Pods to stop"
