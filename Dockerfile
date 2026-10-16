@@ -32,6 +32,10 @@ RUN mkdir /tmp/dogu-registry-cache
 RUN go mod vendor
 RUN make compile-generic
 
+# add shell and yq for experimental Helmfile support
+FROM busybox:1.37.0-musl AS shell
+FROM mikefarah/yq:4 AS yq
+
 # Use distroless as minimal base image to package the manager binary
 # Refer to https://github.com/GoogleContainerTools/distroless for more details
 FROM gcr.io/distroless/static:nonroot
@@ -42,6 +46,10 @@ LABEL maintainer="hello@cloudogu.com" \
 WORKDIR /
 COPY --from=builder /workspace/target/k8s-dogu-operator .
 COPY --from=builder --chown=65532:65532 /tmp/dogu-registry-cache /tmp/dogu-registry-cache
+
+# copy shell and yq for experimental Helmfile support
+COPY --from=shell /bin/busybox /bin/sh
+COPY --from=yq /usr/bin/yq /usr/bin/yq
 
 # the linter has a problem with the valid colon-syntax
 # dockerfile_lint - ignore
