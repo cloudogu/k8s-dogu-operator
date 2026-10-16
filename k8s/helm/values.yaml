@@ -22,7 +22,8 @@ controllerManager:
     stage: development
     authRegistrationEnabled: false
     expositionEnabled: false
-    warpMenuEntryEnabled: false
+    warpMenuEntryEnabled: true
+    warpMenuDisabledV2Dogus: [] # List of simple dogu names without dogu namespaces e.g. ["grafana", "..."]
     doguV3Enabled: false
     disablePostfixDependencyCheck: false
     doguStartupProbeTimeout: 1
