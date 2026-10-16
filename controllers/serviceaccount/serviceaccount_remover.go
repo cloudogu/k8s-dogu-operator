@@ -13,10 +13,10 @@ import (
 	cescommons "github.com/cloudogu/ces-commons-lib/dogu"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/cesregistry"
 	opConfig "github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
+	"github.com/cloudogu/k8s-dogu-operator/v3/internal/logging"
 	"github.com/cloudogu/k8s-registry-lib/config"
 	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/cloudogu/cesapp-lib/core"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/exec"
@@ -58,7 +58,7 @@ func NewRemover(
 
 // RemoveAll removes all service accounts for a given dogu
 func (r *remover) RemoveAll(ctx context.Context, dogu *core.Dogu) error {
-	logger := log.FromContext(ctx)
+	logger := logging.FromContext(ctx)
 
 	sensitiveConfig, err := r.sensitiveDoguRepo.Get(ctx, cescommons.SimpleName(dogu.GetSimpleName()))
 	if err != nil {
@@ -95,7 +95,7 @@ func (r *remover) RemoveAll(ctx context.Context, dogu *core.Dogu) error {
 
 // RemoveAllFromComponents removes all service accounts for a given dogu's components'
 func (r *remover) RemoveAllFromComponents(ctx context.Context, dogu *core.Dogu) error {
-	logger := log.FromContext(ctx)
+	logger := logging.FromContext(ctx)
 
 	sensitiveConfig, err := r.sensitiveDoguRepo.Get(ctx, cescommons.SimpleName(dogu.GetSimpleName()))
 	if err != nil {
@@ -119,7 +119,7 @@ func (r *remover) RemoveAllFromComponents(ctx context.Context, dogu *core.Dogu) 
 }
 
 func (r *remover) removeDoguServiceAccount(ctx context.Context, dogu *core.Dogu, serviceAccount core.ServiceAccount, senDoguCfg *config.DoguConfig) error {
-	logger := log.FromContext(ctx)
+	logger := logging.FromContext(ctx)
 	registryCredentialPath := "sa-" + serviceAccount.Type
 
 	if exists := serviceAccountExists(registryCredentialPath, *senDoguCfg); !exists {

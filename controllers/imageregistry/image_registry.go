@@ -10,12 +10,12 @@ import (
 	"time"
 
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
+	"github.com/cloudogu/k8s-dogu-operator/v3/internal/logging"
 	"github.com/cloudogu/retry-lib/retry"
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/crane"
 	imagev1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
-	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 var (
@@ -52,7 +52,7 @@ func newImageConfigCache(size int) *lruImageConfigCache {
 // repeatedly (e.g. across reconcile retries or by several reconcile steps). The cached config must not be mutated by
 // callers, as it is shared across all consumers of a cache hit.
 func (i *craneContainerImageRegistry) PullImageConfig(ctx context.Context, image string) (*imagev1.ConfigFile, error) {
-	logger := log.FromContext(ctx)
+	logger := logging.FromContext(ctx)
 
 	if i.cache != nil {
 		if cachedConfig, ok := i.cache.Get(image); ok {

@@ -6,8 +6,8 @@ import (
 
 	"github.com/cloudogu/k8s-dogu-lib/v3/api/v3beta1"
 	stepsv3 "github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv3"
+	"github.com/cloudogu/k8s-dogu-operator/v3/internal/logging"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 // CreateFinalizerStep ensures the dogu cr carries the cleanup finalizer so the operator can remove
@@ -30,6 +30,6 @@ func (fs *CreateFinalizerStep) Run(ctx context.Context, doguResource *v3beta1.Do
 		return stepsv3.RequeueWithError(fmt.Errorf("failed to add finalizer to dogu %q: %w", doguResource.Name, err), v3beta1.ReasonInstalling)
 	}
 
-	log.FromContext(ctx).Info("added cleanup finalizer to dogu", "name", doguResource.Name)
+	logging.Info(ctx, "added cleanup finalizer to dogu", "name", doguResource.Name)
 	return stepsv3.Continue()
 }

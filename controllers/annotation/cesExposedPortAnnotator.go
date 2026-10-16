@@ -6,7 +6,7 @@ import (
 
 	"github.com/cloudogu/cesapp-lib/core"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/serviceaccess"
-	"github.com/sirupsen/logrus"
+	"github.com/cloudogu/k8s-dogu-operator/v3/internal/logging"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -35,7 +35,7 @@ func appendAnnotations(service *corev1.Service, exposedPorts []serviceaccess.Exp
 		removeAnnotation(service)
 	}
 	if len(exposedPorts) < 1 {
-		logrus.Infof("no exposed ports existing. No annotations are added to the service [%s]", service.GetName())
+		logging.Log().Info("no exposed ports existing, no annotations are added to the service", "service", service.GetName())
 		return nil
 	}
 

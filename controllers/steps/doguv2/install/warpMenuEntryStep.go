@@ -7,7 +7,7 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
 	steps "github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/warpmenuentry"
-	"sigs.k8s.io/controller-runtime/pkg/log"
+	"github.com/cloudogu/k8s-dogu-operator/v3/internal/logging"
 )
 
 type WarpMenuEntryStep struct {
@@ -23,7 +23,7 @@ func NewWarpMenuEntryStep(warpmenuEntryManager warpmenuentry.Manager, operatorCo
 }
 
 func (ws *WarpMenuEntryStep) Run(ctx context.Context, doguResource *v2.Dogu) steps.StepResult {
-	logger := log.FromContext(ctx).WithName("warpMenuEntryStep")
+	logger := logging.FromContext(ctx).WithName("warpMenuEntryStep")
 	if !ws.warpMenuEntryEnabled {
 		logger.Info("WarpMenuEntry is disabled, skipping warpMenuEntry")
 		return steps.Continue()

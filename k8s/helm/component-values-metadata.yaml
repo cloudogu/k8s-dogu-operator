@@ -7,7 +7,7 @@ metavalues:
     keys:
       - path: controllerManager.env.logLevel
         mapping:
-          debug: trace
+          debug: debug
           info: info
           warn: warn
           error: error

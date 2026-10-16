@@ -6,9 +6,9 @@ import (
 
 	"github.com/cloudogu/k8s-dogu-lib/v3/api/v3beta1"
 	stepsv3 "github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv3"
+	"github.com/cloudogu/k8s-dogu-operator/v3/internal/logging"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 // RemoveFinalizerStep removes the cleanup finalizer as the last deletion step, after the flux
@@ -36,7 +36,7 @@ func (rf *RemoveFinalizerStep) Run(ctx context.Context, doguResource *v3beta1.Do
 		return stepsv3.RequeueWithError(fmt.Errorf("failed to remove finalizer from dogu %q: %w", doguResource.Name, uErr), v3beta1.ReasonDeletionFailed)
 	}
 
-	log.FromContext(ctx).Info("removed cleanup finalizer from dogu", "name", doguResource.Name)
+	logging.Info(ctx, "removed cleanup finalizer from dogu", "name", doguResource.Name)
 
 	return stepsv3.Continue()
 }

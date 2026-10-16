@@ -9,13 +9,13 @@ import (
 	"github.com/cloudogu/cesapp-lib/core"
 	k8sv2 "github.com/cloudogu/k8s-dogu-lib/v3/api/v2"
 	doguClientV2 "github.com/cloudogu/k8s-dogu-lib/v3/client/typed/api/v2"
+	"github.com/cloudogu/k8s-dogu-operator/v3/internal/logging"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 // doguOperatorClient references the k8s-dogu-operator as a client for the creation of a resource.
@@ -580,7 +580,7 @@ func doguHasVolumesWithBackup(dogu *core.Dogu) bool {
 
 // SetCurrentDataVolumeSize set the current DataVolumeSize within the status of the dogu
 func SetCurrentDataVolumeSize(ctx context.Context, doguInterface doguClientV2.DoguInterface, client client.Client, doguResource *k8sv2.Dogu, pvc *corev1.PersistentVolumeClaim) error {
-	logger := log.FromContext(ctx)
+	logger := logging.FromContext(ctx)
 
 	// Check min size condition
 	condition := metav1.Condition{

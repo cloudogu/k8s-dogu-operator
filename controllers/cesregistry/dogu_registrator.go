@@ -6,7 +6,7 @@ import (
 
 	cescommons "github.com/cloudogu/ces-commons-lib/dogu"
 
-	"sigs.k8s.io/controller-runtime/pkg/log"
+	"github.com/cloudogu/k8s-dogu-operator/v3/internal/logging"
 
 	"github.com/cloudogu/cesapp-lib/core"
 	k8sv2 "github.com/cloudogu/k8s-dogu-lib/v3/api/v2"
@@ -32,7 +32,7 @@ func NewCESDoguRegistrator(doguVersionRegistry cescommons.VersionRegistry, doguD
 // RegisterNewDogu registers a completely new dogu in a cluster. Use RegisterDoguVersion() for upgrades of an existing
 // dogu.
 func (c *CesDoguRegistrator) RegisterNewDogu(ctx context.Context, _ *k8sv2.Dogu, dogu *core.Dogu) error {
-	logger := log.FromContext(ctx)
+	logger := logging.FromContext(ctx)
 
 	enabled, err := checkDoguVersionEnabled(ctx, c.versionRegistry, cescommons.SimpleName(dogu.GetSimpleName()))
 	if err != nil {

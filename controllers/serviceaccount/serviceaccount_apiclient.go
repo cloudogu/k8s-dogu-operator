@@ -8,7 +8,8 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"sigs.k8s.io/controller-runtime/pkg/log"
+
+	"github.com/cloudogu/k8s-dogu-operator/v3/internal/logging"
 )
 
 const apiKeyHeader = "X-CES-SA-API-KEY"
@@ -96,7 +97,7 @@ func (ac *apiClient) deleteServiceAccount(ctx context.Context, baseUrl string, a
 }
 
 func closeBody(ctx context.Context, c io.Closer) {
-	logger := log.FromContext(ctx)
+	logger := logging.FromContext(ctx)
 	if err := c.Close(); err != nil {
 		logger.Error(err, "closed http body with error")
 	}

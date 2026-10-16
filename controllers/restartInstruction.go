@@ -7,11 +7,11 @@ import (
 	"time"
 
 	doguv2 "github.com/cloudogu/k8s-dogu-lib/v3/api/v2"
+	"github.com/cloudogu/k8s-dogu-operator/v3/internal/logging"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 type RestartOperation string
@@ -63,7 +63,7 @@ type restartInstruction struct {
 }
 
 func (r *restartInstruction) execute(ctx context.Context) (ctrl.Result, error) {
-	logger := log.FromContext(ctx).
+	logger := logging.FromContext(ctx).
 		WithName("restartInstruction.execute").
 		WithValues("doguRestart", r.req.NamespacedName)
 	switch r.op {
@@ -103,7 +103,7 @@ func (r *restartInstruction) checkStarted(ctx context.Context) (ctrl.Result, err
 }
 
 func (r *restartInstruction) checkStartStop(ctx context.Context, shouldBeStopped bool) (ctrl.Result, error) {
-	logger := log.FromContext(ctx).
+	logger := logging.FromContext(ctx).
 		WithName("DoguRestartReconciler.checkStartStop").
 		WithValues("doguRestart", r.req.NamespacedName).
 		WithValues("dogu", r.dogu.Name)
@@ -150,7 +150,7 @@ func (r *restartInstruction) handleStart(ctx context.Context) (ctrl.Result, erro
 }
 
 func (r *restartInstruction) handleStartStop(ctx context.Context, shouldStop bool) (ctrl.Result, error) {
-	logger := log.FromContext(ctx).
+	logger := logging.FromContext(ctx).
 		WithName("DoguRestartReconciler.handleStartStop").
 		WithValues("doguRestart", r.req.NamespacedName).
 		WithValues("dogu", r.dogu.Name)
@@ -209,7 +209,7 @@ func getHandleStartStopAttributes(stopped bool) (eventMessage, eventInitMessage,
 }
 
 func (r *restartInstruction) handleGetDoguFailed(ctx context.Context) (ctrl.Result, error) {
-	logger := log.FromContext(ctx).
+	logger := logging.FromContext(ctx).
 		WithName("DoguRestartReconciler.handleDoguNotFound").
 		WithValues("doguRestart", r.req.NamespacedName)
 	r.recorder.Event(r.restart, v1.EventTypeWarning, "FailedGetDogu", "Could not get ressource of dogu to restart.")
@@ -224,7 +224,7 @@ func (r *restartInstruction) handleGetDoguFailed(ctx context.Context) (ctrl.Resu
 }
 
 func (r *restartInstruction) handleDoguNotFound(ctx context.Context) (ctrl.Result, error) {
-	logger := log.FromContext(ctx).
+	logger := logging.FromContext(ctx).
 		WithName("DoguRestartReconciler.handleDoguNotFound").
 		WithValues("doguRestart", r.req.NamespacedName)
 	r.recorder.Event(r.restart, v1.EventTypeWarning, "DoguNotFound", "Dogu to restart was not found.")

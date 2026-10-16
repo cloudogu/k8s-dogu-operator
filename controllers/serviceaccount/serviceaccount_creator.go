@@ -10,10 +10,10 @@ import (
 	cescommons "github.com/cloudogu/ces-commons-lib/dogu"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/cesregistry"
 	opConfig "github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
+	"github.com/cloudogu/k8s-dogu-operator/v3/internal/logging"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	regLibErr "github.com/cloudogu/ces-commons-lib/errors"
 	"github.com/cloudogu/cesapp-lib/core"
@@ -65,7 +65,7 @@ func NewCreator(
 
 // CreateAll creates all service accounts for a given dogu. Existing service accounts will be skipped.
 func (c *creator) CreateAll(ctx context.Context, dogu *core.Dogu) error {
-	logger := log.FromContext(ctx)
+	logger := logging.FromContext(ctx)
 
 	sensitiveConfig, err := c.sensitiveDoguRepo.Get(ctx, cescommons.SimpleName(dogu.GetSimpleName()))
 	if err != nil {
@@ -99,7 +99,7 @@ func (c *creator) CreateAll(ctx context.Context, dogu *core.Dogu) error {
 
 func (c *creator) createDoguServiceAccount(ctx context.Context, dogu *core.Dogu, senDoguCfg *config.DoguConfig,
 	serviceAccount core.ServiceAccount, registryCredentialPath string) error {
-	logger := log.FromContext(ctx)
+	logger := logging.FromContext(ctx)
 
 	skip := c.shouldSkipLegacyCASServiceAccount(serviceAccount)
 	if skip {

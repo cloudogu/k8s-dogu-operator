@@ -3,13 +3,14 @@ package serviceaccount
 import (
 	"context"
 	"fmt"
+
 	"github.com/cloudogu/cesapp-lib/core"
+	"github.com/cloudogu/k8s-dogu-operator/v3/internal/logging"
 	"github.com/cloudogu/k8s-registry-lib/config"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	v1 "k8s.io/client-go/kubernetes/typed/core/v1"
-	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 const saLabelProviderSvc = "ces.cloudogu.com/serviceaccount-provider"
@@ -19,7 +20,7 @@ const saAnnotationSecretName = "ces.cloudogu.com/serviceaccount-secret-name"
 const saAnnotationSecretKey = "ces.cloudogu.com/serviceaccount-secret-key"
 
 func (c *creator) createComponentServiceAccount(ctx context.Context, dogu *core.Dogu, senDoguCfg *config.DoguConfig, serviceAccount core.ServiceAccount, registryCredentialPath string) error {
-	logger := log.FromContext(ctx)
+	logger := logging.FromContext(ctx)
 
 	if skip := serviceAccountExists(registryCredentialPath, *senDoguCfg); skip {
 		return nil
@@ -120,7 +121,7 @@ func getAnnotationOrDefault(pod *corev1.Service, name string, defaultValue strin
 }
 
 func (r *remover) removeComponentServiceAccount(ctx context.Context, dogu *core.Dogu, serviceAccount core.ServiceAccount, senDoguCfg *config.DoguConfig) error {
-	logger := log.FromContext(ctx)
+	logger := logging.FromContext(ctx)
 	registryCredentialPath := "sa-" + serviceAccount.Type
 
 	if exists := serviceAccountExists(registryCredentialPath, *senDoguCfg); !exists {
