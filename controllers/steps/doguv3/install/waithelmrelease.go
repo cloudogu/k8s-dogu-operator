@@ -43,6 +43,9 @@ func (hrs *HelmReleaseStatusStep) Run(ctx context.Context, doguResource *v3beta1
 	if err != nil {
 		return stepsv3.RequeueWithError(fmt.Errorf("failed to get HelmRelease: %w", err), v3beta1.ReasonInstalling)
 	}
+	if release.Spec.Suspend {
+		return stepsv3.RequeueAfter(defaultRequeueAfter, v3beta1.ReasonStarting, "Waiting for the suspension step to release the prepared HelmRelease")
+	}
 
 	desired := fluxstate.NewDesiredRelease(doguResource.Spec.Version, release)
 
@@ -77,16 +80,12 @@ func (hrs *HelmReleaseStatusStep) stepResultForRelease(state fluxstate.ReleaseSt
 
 // stepResultForDeployed derives the Ready condition of a deployed dogu from its Healthy condition.
 func stepResultForDeployed(doguResource *v3beta1.Dogu) stepsv3.StepResult {
-	if doguResource.Status.Stopped {
-		return stepsv3.Continue()
-	}
-
 	healthy := metautil.FindStatusCondition(doguResource.Status.Conditions, v3beta1.ConditionHealthy)
 	if healthy == nil {
 		return stepsv3.RequeueAfter(longWaitRequeueAfter, v3beta1.ReasonWorkloadsNotReady, "Waiting for the health check of the dogu")
 	}
 
-	if healthy.Status != metav1.ConditionTrue {
+	if healthy.Status != metav1.ConditionTrue || healthy.ObservedGeneration < doguResource.Generation {
 		return stepsv3.RequeueAfter(longWaitRequeueAfter, v3beta1.ReasonWorkloadsNotReady, healthy.Message)
 	}
 

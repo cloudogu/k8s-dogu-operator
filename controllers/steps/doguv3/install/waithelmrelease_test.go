@@ -99,6 +99,20 @@ func TestHelmReleaseStatusStep_Run(t *testing.T) {
 
 		assert.Equal(t, stepsv3.Continue(), result)
 	})
+	t.Run("old stopped status and stale healthy condition do not complete a start", func(t *testing.T) {
+		deployed := release.DeepCopy()
+		deployed.Status.History = fluxhelm.Snapshots{{Version: 1, Status: "deployed", ChartVersion: testVersion}}
+		dogu := testDoguResource.DeepCopy()
+		dogu.Generation = 2
+		dogu.Status.Stopped = true
+		dogu.Status.Conditions = []metav1.Condition{healthyCondition(metav1.ConditionTrue, "old health")}
+		dogu.Status.Conditions[0].ObservedGeneration = 1
+		k8s := fake.NewClientBuilder().WithScheme(helmScheme).WithObjects(deployed).Build()
+		result := NewHelmReleaseStatusStep(k8s, nil).Run(t.Context(), dogu)
+		require.NoError(t, result.Err)
+		assert.False(t, result.Continue)
+		assert.Positive(t, result.RequeueAfter)
+	})
 }
 
 func healthyCondition(status metav1.ConditionStatus, message string) metav1.Condition {

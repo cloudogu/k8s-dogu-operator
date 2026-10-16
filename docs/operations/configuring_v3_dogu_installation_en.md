@@ -21,3 +21,15 @@ In addition there are some configuration options to configure how the Helm insta
 
 Both intervals are given as a number with a time unit, e.g. "20s" (for 20 seconds), "2m" (for 2 minutes), 
 or "1h" (for 1 hour). Combinations like "1h20m" (for 1 hour and 20 minutes) are also possible.
+
+## Stopping and Starting
+
+- **Stop:** `spec.stopped: true` scales Deployments and StatefulSets to zero replicas and protects StatefulSet PVCs from deletion.
+  `Stopped=True` is set only after the associated Pods have disappeared. DaemonSets are not supported.
+- **Defer changes:** While stopped, the HelmRelease remains unchanged. `UpdatePending` indicates pending changes:
+  `True` when differences exist, `False` when none exist, and `Unknown` when comparison is not yet possible.
+- **Start:** `spec.stopped: false` validates the chart and values and updates the existing HelmRelease.
+  Once reconciliation resumes, Flux restores the workloads. Starting completes after a successful release and a current `Healthy=True` condition.
+
+Stopping requires a suspended HelmRelease acknowledged by Flux. The stop/start flow does not change `spec.suspend` itself.
+Global configuration changes alone do not trigger reconciliation for v3 dogus; they are considered during the next reconciliation.

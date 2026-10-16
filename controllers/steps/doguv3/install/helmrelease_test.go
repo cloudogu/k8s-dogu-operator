@@ -20,6 +20,8 @@ import (
 	"github.com/stretchr/testify/require"
 	core "k8s.io/api/core/v1"
 	apiext "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -120,6 +122,7 @@ func Test_configureHelmRelease(t *testing.T) {
 				Failures:           5,
 			},
 			Spec: fluxhelm.HelmReleaseSpec{
+				Suspend: true,
 				ChartRef: &fluxhelm.CrossNamespaceSourceReference{
 					APIVersion: "v7",
 					Kind:       "FunnyKind",
@@ -159,6 +162,7 @@ func Test_configureHelmRelease(t *testing.T) {
 
 		// existing label should be retained
 		assert.Equal(t, "my.value", release.Labels["my.label"])
+		assert.True(t, release.Spec.Suspend, "suspension must remain owned by its separate step")
 
 		// existing status should be unchanged
 		originalStatus := fluxhelm.HelmReleaseStatus{
@@ -335,6 +339,56 @@ func TestEnsureHelmReleaseStep_Run(t *testing.T) {
 			result := step.Run(t.Context(), doguResource)
 
 			assert.Equal(t, test.want, result)
+		})
+	}
+}
+
+func TestEnsureHelmReleaseStep_Stopped(t *testing.T) {
+	for _, tc := range []struct {
+		name       string
+		liveValues string
+		version    string
+		missing    bool
+		want       metav1.ConditionStatus
+	}{
+		{name: "unchanged despite JSON formatting", liveValues: `{ "number": 3, "global": {"cesConfig": {}}, "mode":"old" }`, version: "1.2.3", want: metav1.ConditionFalse},
+		{name: "values changed", liveValues: `{"global":{"cesConfig":{}},"mode":"new","number":3}`, version: "1.2.3", want: metav1.ConditionTrue},
+		{name: "version changed", liveValues: `{"global":{"cesConfig":{}},"mode":"old","number":3}`, version: "1.2.2", want: metav1.ConditionTrue},
+		{name: "first installation remains deferred", missing: true, want: metav1.ConditionTrue},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			dogu, k8s := stoppedDoguClient(t)
+			dogu.Spec.Values = apiext.JSON{Raw: []byte(`{"mode":"old","number":3}`)}
+			global := &core.ConfigMap{ObjectMeta: metav1.ObjectMeta{Name: "global-config", Namespace: dogu.Namespace}, Data: map[string]string{"config.yaml": "{}"}}
+			require.NoError(t, k8s.Create(t.Context(), global))
+			service := NewMockChartService(t)
+			service.EXPECT().DoguMetaValues(mock.Anything, dogu).Return(nil, false, nil)
+			step := NewEnsureHelmReleaseStep(k8s, &config.OperatorConfig{}, service, nil)
+			release := &fluxhelm.HelmRelease{ObjectMeta: metav1.ObjectMeta{Name: dogu.Spec.Name, Namespace: dogu.Namespace}}
+			configureHelmRelease(release, dogu, &apiext.JSON{Raw: []byte(tc.liveValues)}, &step.retryInterval, &step.helmReconcileInterval)
+			release.Labels[doguv3.DoguLabelVersion] = tc.version
+			release.Spec.Suspend = true
+			if !tc.missing {
+				require.NoError(t, k8s.Create(t.Context(), release))
+				require.NoError(t, k8s.Get(t.Context(), client.ObjectKeyFromObject(release), release))
+			}
+
+			result := step.Run(t.Context(), dogu)
+			require.NoError(t, result.Err)
+			assert.True(t, result.Continue)
+			condition := meta.FindStatusCondition(dogu.Status.Conditions, doguv3.ConditionUpdatePending)
+			require.NotNil(t, condition)
+			assert.Equal(t, tc.want, condition.Status)
+			assert.Equal(t, dogu.Generation, condition.ObservedGeneration)
+			actual := &fluxhelm.HelmRelease{}
+			err := k8s.Get(t.Context(), client.ObjectKeyFromObject(release), actual)
+			if tc.missing {
+				assert.True(t, apierrors.IsNotFound(err))
+			} else {
+				require.NoError(t, err)
+				assert.Equal(t, release.Spec, actual.Spec, "stopped releases must not be changed")
+				assert.Equal(t, tc.version, actual.Labels[doguv3.DoguLabelVersion])
+			}
 		})
 	}
 }

@@ -24,3 +24,15 @@ wie die Helm-Installation gehandhabt wird:
 
 Beide Intervalle werden als Zahl mit einer Zeiteinheit angegeben, z. B. „20s“ (für 20 Sekunden), „2m“ (für 2 Minuten)
 oder „1h“ (für 1 Stunde). Kombinationen wie „1h20m“ (für 1 Stunde und 20 Minuten) sind ebenfalls möglich.
+
+## Stoppen und Starten
+
+- **Stoppen:** `spec.stopped: true` skaliert Deployments und StatefulSets auf null Replikate und schützt StatefulSet-PVCs vor dem Löschen.
+  Erst wenn die zugehörigen Pods verschwunden sind, wird `Stopped=True` gesetzt. DaemonSets werden nicht unterstützt.
+- **Änderungen zurückhalten:** Während des Stopps bleibt das HelmRelease unverändert. `UpdatePending` zeigt ausstehende Änderungen:
+  `True` bei Unterschieden, `False` ohne Unterschiede und `Unknown`, wenn der Vergleich noch nicht möglich ist.
+- **Starten:** `spec.stopped: false` validiert Chart und Values und aktualisiert das bestehende HelmRelease.
+  Nach dem Freigeben der Reconciliation stellt Flux die Workloads wieder her. Der Start ist bei erfolgreichem Release und aktuellem `Healthy=True` abgeschlossen.
+
+Zum Stoppen muss das HelmRelease suspendiert und dieser Zustand von Flux bestätigt sein. Der Stop-/Start-Ablauf ändert `spec.suspend` nicht selbst.
+Änderungen allein an der globalen Konfiguration lösen für v3-Dogus keinen erneuten Abgleich aus; sie werden beim nächsten Abgleich berücksichtigt.

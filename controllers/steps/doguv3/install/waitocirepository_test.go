@@ -529,3 +529,15 @@ func TestNewWaitForOCIRepositoryReadyStep(t *testing.T) {
 	assert.Equal(t, clientMock, sut.k8sClient)
 	assert.Equal(t, recorderMock, sut.eventRecorder)
 }
+
+func TestWaitForOCIRepositoryReadyStep_RejectsStaleReady(t *testing.T) {
+	repository := readyRepository.DeepCopy()
+	repository.Generation = 3
+	repository.Status.Conditions[0].ObservedGeneration = 2
+	k8s := fake.NewClientBuilder().WithScheme(testScheme).WithObjects(repository).Build()
+	step := NewWaitForOCIRepositoryReadyStep(k8s, nil)
+	result := step.Run(t.Context(), testDoguResource.DeepCopy())
+	require.NoError(t, result.Err)
+	assert.False(t, result.Continue)
+	assert.Positive(t, result.RequeueAfter)
+}
