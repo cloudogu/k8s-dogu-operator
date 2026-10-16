@@ -74,6 +74,17 @@ func TestDoguUseCase_HandleUntilApplied(t *testing.T) {
 			wantErr:          assert.NoError,
 		},
 		{
+			name: "should complete successfully without running subsequent steps",
+			stepsFn: func(t *testing.T) []Step {
+				step := NewMockStep(t)
+				step.EXPECT().Run(testCtx, mock.Anything).Return(steps.Complete())
+				return []Step{step, NewMockStep(t)}
+			},
+			doguResource: &v2.Dogu{ObjectMeta: v1.ObjectMeta{Name: "opendesk"}},
+			wantContinue: true,
+			wantErr:      assert.NoError,
+		},
+		{
 			name: "should abort after step",
 			stepsFn: func(t *testing.T) []Step {
 				step := NewMockStep(t)
@@ -115,6 +126,7 @@ func TestNewDoguDeleteUseCase(t *testing.T) {
 
 		got := NewDoguDeleteUseCase(
 			statusStep,
+			&deletion.ExperimentalHelmfileStep{},
 			authRegistrationRemoverStep,
 			expositionRemoverStep,
 			serviceAccountRemoverStep,
@@ -125,6 +137,7 @@ func TestNewDoguDeleteUseCase(t *testing.T) {
 
 		wantTypes := []string{
 			"*deletion.StatusStep",
+			"*deletion.ExperimentalHelmfileStep",
 			"*deletion.AuthRegistrationRemoverStep",
 			"*deletion.ExpositionRemoverStep",
 			"*deletion.ServiceAccountRemoverStep",

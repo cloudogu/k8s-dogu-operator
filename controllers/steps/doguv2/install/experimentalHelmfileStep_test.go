@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -13,20 +14,30 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
+	cescommons "github.com/cloudogu/ces-commons-lib/dogu"
 	"github.com/cloudogu/cesapp-lib/core"
 	doguv2 "github.com/cloudogu/k8s-dogu-lib/v3/api/v2"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/cesregistry"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
+	steps "github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv2"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv2/helmfile"
+	reg "github.com/cloudogu/k8s-registry-lib/dogu"
+	"github.com/go-logr/logr/funcr"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/schema"
+	k8sfake "k8s.io/client-go/kubernetes/fake"
+	k8stesting "k8s.io/client-go/testing"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
-	"sigs.k8s.io/yaml"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 func helmfileArchive(t *testing.T, headers []tar.Header, contents []string) []byte {
@@ -52,267 +63,262 @@ func helmfileTestStep(t *testing.T) *ExperimentalHelmfileStep {
 	t.Helper()
 	scheme := runtime.NewScheme()
 	require.NoError(t, corev1.AddToScheme(scheme))
-	return &ExperimentalHelmfileStep{
-		helmfileGlobalConfig: config.HelmfileGlobalConfig{
+	require.NoError(t, appsv1.AddToScheme(scheme))
+	require.NoError(t, doguv2.AddToScheme(scheme))
+	step := &ExperimentalHelmfileStep{helmfileRuntime: &helmfile.Runtime{
+		OperatorNamespace: "ecosystem",
+		GlobalConfig: config.HelmfileGlobalConfig{
 			HelmfileUnpackDir: t.TempDir(), HelmfileBin: "/bin/helmfile", HelmBin: "/bin/helm",
 			HelmPluginHome: "/plugins", HelmCacheHome: "/cache", HelmConfigHome: "/config", HelmDataHome: "/data",
 		},
-		openDeskDoguConfig: config.HelmfileOpenDeskConfig{
+		OpenDeskConfig: config.HelmfileOpenDeskConfig{
 			Namespace: "ecosystem", Environment: "prod", ValuesFilePath: "helmfile/environments/prod/values.yaml.gotmpl",
 			DomainConfigMap: config.K8sConfigRef{Name: "domain", Key: "domain"},
 			MasterkeySecret: config.K8sConfigRef{Name: "password", Key: "masterkey"},
 		},
-		client: fake.NewClientBuilder().WithScheme(scheme).WithObjects(&corev1.ConfigMap{
+		Client: fake.NewClientBuilder().WithScheme(scheme).WithObjects(&corev1.ConfigMap{
 			Name: "domain", Namespace: "ecosystem",
 			Data: map[string]string{"domain": "office.example.org"},
 		}).Build(),
-	}
+	}}
+	step.helmfileRuntime.APIReader = step.helmfileRuntime.Client
+	configMaps := k8sfake.NewClientset().CoreV1().ConfigMaps("ecosystem")
+	repository := reg.NewLocalDoguDescriptorRepository(configMaps)
+	versions := reg.NewDoguVersionRegistry(configMaps)
+	step.localDoguFetcher = cesregistry.NewLocalDoguFetcher(versions, repository)
+	step.doguRegistrator = cesregistry.NewCESDoguRegistrator(versions, repository)
+	step.descriptorOwnerReferenceStep = NewOwnerReferenceStep(repository, scheme)
+	return step
 }
 
 func TestExperimentalHelmfileRunCapturesFailureOutput(t *testing.T) {
-	ctx := context.Background()
+	var logs strings.Builder
+	ctx := log.IntoContext(context.Background(), funcr.New(func(_, message string) {
+		logs.WriteString(message)
+	}, funcr.Options{}))
 	step := helmfileTestStep(t)
 	step.isEnabled = true
 	resource := &doguv2.Dogu{Name: "opendesk"}
+	require.NoError(t, step.helmfileRuntime.Client.Create(ctx, resource))
 	fetcher := newMockResourceDoguFetcher(t)
 	fetcher.EXPECT().FetchWithResource(ctx, resource).Return(&core.Dogu{
+		Name: "internal/opendesk", Version: "1.18.2-1",
 		Properties: map[string]string{"kind": "Helmfile"},
 	}, nil, nil)
 	step.doguFetcher = fetcher
+
+	doguClient := newMockDoguInterface(t)
+	doguClient.EXPECT().UpdateStatusWithRetry(ctx, resource, mock.Anything, metav1.UpdateOptions{}).
+		RunAndReturn(func(_ context.Context, dogu *doguv2.Dogu, modify func(doguv2.DoguStatus) doguv2.DoguStatus, _ metav1.UpdateOptions) (*doguv2.Dogu, error) {
+			updated := dogu.DeepCopy()
+			updated.Status = modify(updated.Status)
+			assert.Equal(t, doguv2.DoguStatusInstalling, updated.Status.Status)
+			return updated, nil
+		}).Once()
+	step.doguInterface = doguClient
 
 	archive := helmfileArchive(t, []tar.Header{
 		{Name: "opendesk/helmfile.yaml", Typeflag: tar.TypeReg},
 	}, []string{"releases: []"})
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, doguv2.DoguStatusInstalling, resource.Status.Status, "status must be set before preparing and executing Helmfile")
 		_, err := w.Write(archive)
 		assert.NoError(t, err)
 	}))
 	defer server.Close()
-	step.openDeskDoguConfig.HelmfileSource = server.URL
-	step.helmfileGlobalConfig.HelmfileBin = filepath.Join(t.TempDir(), "helmfile")
-	require.NoError(t, os.WriteFile(step.helmfileGlobalConfig.HelmfileBin, []byte(
-		"#!/bin/sh\nprintf 'stdout diagnostic\\n'\nprintf 'stderr diagnostic\\n' >&2\nexit 1\n",
+	step.helmfileRuntime.OpenDeskConfig.HelmfileSource = server.URL
+	step.helmfileRuntime.GlobalConfig.HelmfileBin = filepath.Join(t.TempDir(), "helmfile")
+	require.NoError(t, os.WriteFile(step.helmfileRuntime.GlobalConfig.HelmfileBin, []byte(
+		"#!/bin/sh\ni=0\nwhile [ \"$i\" -lt 4000 ]; do printf 'comparison noise\\n'; i=$((i + 1)); done\nprintf 'stdout diagnostic\\n'\nprintf 'stderr diagnostic\\n' >&2\nexit 1\n",
 	), 0755))
 
 	result := step.Run(ctx, resource)
 	require.Error(t, result.Err)
+	assert.Contains(t, resource.Finalizers, helmfile.Finalizer, "failed installations still need cleanup")
 	assert.False(t, result.Continue)
 	assert.ErrorContains(t, result.Err, "failed to apply helmfile of opendesk")
-	assert.ErrorContains(t, result.Err, "stdout diagnostic")
-	assert.ErrorContains(t, result.Err, "stderr diagnostic")
+	assert.NotContains(t, result.Err.Error(), "stdout diagnostic")
+	assert.NotContains(t, result.Err.Error(), "stderr diagnostic")
+	assert.NotContains(t, result.Err.Error(), "comparison noise")
+	assert.Less(t, len(result.Err.Error()), 1024)
+	assert.Contains(t, logs.String(), "stdout diagnostic")
+	assert.Contains(t, logs.String(), "stderr diagnostic")
+	assert.Contains(t, logs.String(), `"outputTruncated"=true`)
+	assert.Less(t, logs.Len(), 8192)
 	var exitError *exec.ExitError
 	require.ErrorAs(t, result.Err, &exitError)
 	assert.Equal(t, 1, exitError.ExitCode())
+	assert.Equal(t, doguv2.DoguStatusInstalling, resource.Status.Status)
 }
 
-func TestExperimentalHelmfilePreparation(t *testing.T) {
+func TestExperimentalHelmfileInstallingStatusFailurePreventsApply(t *testing.T) {
 	ctx := context.Background()
 	step := helmfileTestStep(t)
-	archive := helmfileArchive(t, []tar.Header{
-		{Name: "opendesk-v1/helmfile/helmfile.yaml.gotmpl", Typeflag: tar.TypeReg},
-		{Name: "opendesk-v1/helmfile/environments/prod/values.yaml.gotmpl", Typeflag: tar.TypeReg},
-	}, []string{"releases: []", "{{ old template }}"})
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		_, err := w.Write(archive)
-		assert.NoError(t, err)
-	}))
-	defer server.Close()
-	step.openDeskDoguConfig.HelmfileSource = server.URL
-	step.openDeskDoguConfig.ExtraValues = map[string]any{
-		"global": map[string]any{"domain": "ignored", "other": "retained"},
-		"nested": map[string]any{"enabled": true},
-	}
-	step.openDeskDoguConfig.ExtraEnvVars = map[string]string{"MASTER_PASSWORD": "ignored", "EXTRA": "value"}
-	t.Setenv("MASTER_PASSWORD", "inherited")
-	options, err := step.extractAndConfigureHelmfile(ctx, "opendesk")
-	require.NoError(t, err)
-	data, err := os.ReadFile(filepath.Join(step.helmfileGlobalConfig.HelmfileUnpackDir, "opendesk", step.openDeskDoguConfig.ValuesFilePath))
-	require.NoError(t, err)
-	var values map[string]any
-	require.NoError(t, yaml.Unmarshal(data, &values))
-	assert.Equal(t, map[string]any{"domain": "office.example.org", "other": "retained"}, values["global"])
-	assert.Equal(t, map[string]any{"enabled": true}, values["nested"])
-	assert.Equal(t, "ignored", step.openDeskDoguConfig.ExtraValues["global"].(map[string]any)["domain"])
-	var secret corev1.Secret
-	require.NoError(t, step.client.Get(ctx, client.ObjectKey{Namespace: "ecosystem", Name: "password"}, &secret))
-	password := string(secret.Data["masterkey"])
-	assert.Len(t, password, 64)
-	assert.Equal(t, corev1.SecretTypeOpaque, secret.Type)
-	assert.Equal(t, []string{"EXTRA=value", "MASTER_PASSWORD=" + password}, options.envVars)
-	cmd := options.command(ctx)
-	assert.Equal(t, filepath.Join(step.helmfileGlobalConfig.HelmfileUnpackDir, "opendesk", "helmfile"), cmd.Dir)
-	assert.Equal(t, []string{"/bin/helmfile", "apply", "--environment", "prod", "--namespace", "ecosystem", "--helm-binary", "/bin/helm", "--quiet", "--no-color"}, cmd.Args)
-	assert.Contains(t, cmd.Env, "HELM_PLUGINS=/plugins")
-	assert.Contains(t, cmd.Env, "HELM_CACHE_HOME=/cache")
-	assert.Contains(t, cmd.Env, "HELM_CONFIG_HOME=/config")
-	assert.Contains(t, cmd.Env, "HELM_DATA_HOME=/data")
-	assert.Greater(t, strings.LastIndex(strings.Join(cmd.Env, "\n"), "MASTER_PASSWORD="+password), strings.Index(strings.Join(cmd.Env, "\n"), "MASTER_PASSWORD=inherited"))
-	// Re-extraction must remove stale files and preserve the persisted password.
-	require.NoError(t, os.WriteFile(filepath.Join(cmd.Dir, "stale"), []byte("old"), 0644))
-	second, err := step.extractAndConfigureHelmfile(ctx, "opendesk")
-	require.NoError(t, err)
-	assert.Equal(t, options.envVars, second.envVars)
-	_, err = os.Stat(filepath.Join(cmd.Dir, "stale"))
-	assert.ErrorIs(t, err, os.ErrNotExist)
+	step.isEnabled = true
+	resource := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "opendesk", Namespace: "ecosystem"}}
+	require.NoError(t, step.helmfileRuntime.Client.Create(ctx, resource))
+	fetcher := newMockResourceDoguFetcher(t)
+	fetcher.EXPECT().FetchWithResource(ctx, resource).Return(&core.Dogu{
+		Name: "internal/opendesk", Version: "1.18.2-1", Properties: map[string]string{"kind": "Helmfile"},
+	}, nil, nil)
+	step.doguFetcher = fetcher
+	failure := errors.New("status update failed")
+	doguClient := newMockDoguInterface(t)
+	doguClient.EXPECT().UpdateStatusWithRetry(ctx, resource, mock.Anything, metav1.UpdateOptions{}).Return(nil, failure).Once()
+	step.doguInterface = doguClient
+
+	// No Helmfile source is configured. Preparing or executing Helmfile would yield a different error.
+	result := step.Run(ctx, resource)
+	require.ErrorIs(t, result.Err, failure)
+	assert.ErrorContains(t, result.Err, "failed to set helmfile dogu status to installing")
+	assert.False(t, result.Completed)
+	assert.False(t, result.Continue)
 }
 
-func TestExtractHelmfileArchive(t *testing.T) {
-	for _, position := range []int{0, 1} {
-		name := "global PAX header before files"
-		if position == 1 {
-			name = "global PAX header between files"
-		}
-		t.Run(name, func(t *testing.T) {
-			globalHeader := tar.Header{
-				Name: "pax_global_header", Typeflag: tar.TypeXGlobalHeader,
-				Format: tar.FormatPAX, PAXRecords: map[string]string{"comment": "source revision"},
-			}
-			headers := []tar.Header{
-				{Name: "root/helmfile.yaml", Typeflag: tar.TypeReg},
-				{Name: "root/values.yaml", Typeflag: tar.TypeReg},
-			}
-			contents := []string{"releases: []", "global: {}"}
-			if position == 0 {
-				headers = append([]tar.Header{globalHeader}, headers...)
-				contents = append([]string{""}, contents...)
-			} else {
-				headers = []tar.Header{headers[0], globalHeader, headers[1]}
-				contents = []string{contents[0], "", contents[1]}
-			}
-			destination := t.TempDir()
-			require.NoError(t, extractHelmfileArchive(context.Background(), bytes.NewReader(helmfileArchive(t, headers, contents)), destination))
-			for path, expected := range map[string]string{"helmfile.yaml": "releases: []", "values.yaml": "global: {}"} {
-				actual, err := os.ReadFile(filepath.Join(destination, path))
-				require.NoError(t, err)
-				assert.Equal(t, expected, string(actual))
-			}
-			_, err := os.Stat(filepath.Join(destination, "pax_global_header"))
-			assert.ErrorIs(t, err, os.ErrNotExist)
-		})
-	}
-	for _, tc := range []struct {
-		name     string
-		headers  []tar.Header
-		contents []string
-	}{
-		{"traversal", []tar.Header{{Name: "root/../escape", Typeflag: tar.TypeReg}}, []string{"bad"}},
-		{"absolute", []tar.Header{{Name: "/escape", Typeflag: tar.TypeReg}}, []string{"bad"}},
-		{"symlink", []tar.Header{{Name: "root/link", Typeflag: tar.TypeSymlink, Linkname: "/tmp"}}, []string{""}},
-		{"multiple roots", []tar.Header{{Name: "one/a", Typeflag: tar.TypeReg}, {Name: "two/b", Typeflag: tar.TypeReg}}, []string{"a", "b"}},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			assert.Error(t, extractHelmfileArchive(context.Background(), bytes.NewReader(helmfileArchive(t, tc.headers, tc.contents)), t.TempDir()))
-		})
-	}
-	data := helmfileArchive(t, []tar.Header{{Name: "root/helmfile.yaml", Typeflag: tar.TypeReg}}, []string{"releases: []"})
-	t.Run("invalid gzip", func(t *testing.T) {
-		assert.Error(t, extractHelmfileArchive(context.Background(), strings.NewReader("invalid"), t.TempDir()))
-	})
-	t.Run("truncated gzip", func(t *testing.T) {
-		assert.Error(t, extractHelmfileArchive(context.Background(), bytes.NewReader(data[:len(data)-5]), t.TempDir()))
-	})
-	t.Run("cancelled", func(t *testing.T) {
-		ctx, cancel := context.WithCancel(context.Background())
-		cancel()
-		assert.ErrorIs(t, extractHelmfileArchive(ctx, bytes.NewReader(data), t.TempDir()), context.Canceled)
-	})
-	t.Run("filesystem failure", func(t *testing.T) {
-		destination := filepath.Join(t.TempDir(), "file")
-		require.NoError(t, os.WriteFile(destination, nil, 0644))
-		assert.Error(t, extractHelmfileArchive(context.Background(), bytes.NewReader(data), destination))
-	})
-	t.Run("root preferred", func(t *testing.T) {
-		destination := t.TempDir()
-		require.NoError(t, extractHelmfileArchive(context.Background(), bytes.NewReader(data), destination))
-		directory, err := helmfileWorkingDir(destination)
-		require.NoError(t, err)
-		assert.Equal(t, ".", directory)
-	})
-}
-
-func TestHelmfileMasterPassword(t *testing.T) {
+func TestExperimentalHelmfileFinalizerFailurePreventsDownload(t *testing.T) {
 	ctx := context.Background()
-	for _, value := range []string{"persisted", ""} {
-		t.Run("existing "+value, func(t *testing.T) {
-			step := helmfileTestStep(t)
-			require.NoError(t, step.client.Create(ctx, &corev1.Secret{
-				Name: "password", Namespace: "ecosystem", Data: map[string][]byte{"masterkey": []byte(value)},
-			}))
-			password, err := step.masterPassword(ctx)
-			if value == "" {
-				assert.ErrorContains(t, err, "missing or empty key")
-			} else {
-				require.NoError(t, err)
-				assert.Equal(t, value, password)
-			}
-		})
-	}
-	t.Run("creation race", func(t *testing.T) {
-		step := helmfileTestStep(t)
-		step.client = interceptor.NewClient(step.client.(client.WithWatch), interceptor.Funcs{
-			Create: func(ctx context.Context, c client.WithWatch, obj client.Object, opts ...client.CreateOption) error {
-				winner := obj.(*corev1.Secret).DeepCopy()
-				winner.Data["masterkey"] = []byte("winner")
-				require.NoError(t, c.Create(ctx, winner, opts...))
-				return apierrors.NewAlreadyExists(schema.GroupResource{Resource: "secrets"}, obj.GetName())
-			},
-		})
-		password, err := step.masterPassword(ctx)
-		require.NoError(t, err)
-		assert.Equal(t, "winner", password)
+	step := helmfileTestStep(t)
+	step.isEnabled = true
+	resource := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "opendesk"}}
+	require.NoError(t, step.helmfileRuntime.Client.Create(ctx, resource))
+	fetcher := newMockResourceDoguFetcher(t)
+	fetcher.EXPECT().FetchWithResource(ctx, resource).Return(&core.Dogu{Properties: map[string]string{"kind": "Helmfile"}}, nil, nil)
+	step.doguFetcher = fetcher
+	failure := errors.New("unable to persist finalizer")
+	step.helmfileRuntime.Client = interceptor.NewClient(step.helmfileRuntime.Client.(client.WithWatch), interceptor.Funcs{
+		Patch: func(context.Context, client.WithWatch, client.Object, client.Patch, ...client.PatchOption) error {
+			return failure
+		},
 	})
-	for _, operation := range []string{"get", "create"} {
-		t.Run(operation+" failure", func(t *testing.T) {
+	// No Helmfile source is configured. A download attempt would return a different error.
+	result := step.Run(ctx, resource)
+	require.ErrorIs(t, result.Err, failure)
+	assert.False(t, result.Completed)
+}
+
+func TestExperimentalHelmfileRegistersAppliedDogu(t *testing.T) {
+	for _, previousVersion := range []string{"", "1.18.1-1", "1.18.2-1"} {
+		t.Run("previous version "+previousVersion, func(t *testing.T) {
+			ctx := context.Background()
 			step := helmfileTestStep(t)
-			failure := errors.New("API unavailable")
-			funcs := interceptor.Funcs{}
-			if operation == "get" {
-				funcs.Get = func(context.Context, client.WithWatch, client.ObjectKey, client.Object, ...client.GetOption) error {
-					return failure
-				}
-			} else {
-				funcs.Create = func(context.Context, client.WithWatch, client.Object, ...client.CreateOption) error { return failure }
+			step.isEnabled = true
+			resource := &doguv2.Dogu{
+				ObjectMeta: metav1.ObjectMeta{Name: "opendesk", Namespace: "ecosystem", UID: "opendesk-uid", Generation: 1},
+				Spec:       doguv2.DoguSpec{Name: "internal/opendesk", Version: "1.18.2-1"},
+				Status: doguv2.DoguStatus{Conditions: []metav1.Condition{{
+					Type: conditionHelmfileApplied, Status: metav1.ConditionTrue, ObservedGeneration: 1,
+				}}},
 			}
-			step.client = interceptor.NewClient(step.client.(client.WithWatch), funcs)
-			_, err := step.masterPassword(ctx)
-			assert.ErrorIs(t, err, failure)
+			require.NoError(t, step.helmfileRuntime.Client.Create(ctx, resource))
+			descriptor := &core.Dogu{Name: resource.Spec.Name, Version: resource.Spec.Version, Properties: map[string]string{"kind": "Helmfile"}}
+			fetcher := newMockResourceDoguFetcher(t)
+			fetcher.EXPECT().FetchWithResource(ctx, resource).Return(descriptor, nil, nil)
+			step.doguFetcher = fetcher
+
+			clientset := k8sfake.NewClientset()
+			configMaps := clientset.CoreV1().ConfigMaps(resource.Namespace)
+			repository := reg.NewLocalDoguDescriptorRepository(configMaps)
+			versions := reg.NewDoguVersionRegistry(configMaps)
+			registrator := cesregistry.NewCESDoguRegistrator(versions, repository)
+			if previousVersion != "" {
+				previous := *descriptor
+				previous.Version = previousVersion
+				require.NoError(t, registrator.RegisterNewDogu(ctx, resource, &previous))
+			}
+			step.localDoguFetcher = cesregistry.NewLocalDoguFetcher(versions, repository)
+			step.doguRegistrator = registrator
+			step.descriptorOwnerReferenceStep = NewOwnerReferenceStep(repository, step.helmfileRuntime.Client.Scheme())
+
+			// No Helmfile source is configured: an unintended apply would fail.
+			for range 2 {
+				result := step.Run(ctx, resource)
+				require.NoError(t, result.Err)
+				assert.Equal(t, 10*time.Second, result.RequeueAfter, "registration must not bypass readiness")
+				assert.False(t, result.Continue, "normal Dogu installation must not run")
+				assert.False(t, result.Completed)
+
+				cm, err := configMaps.Get(ctx, "dogu-spec-opendesk", metav1.GetOptions{})
+				require.NoError(t, err)
+				assert.Equal(t, descriptor.Version, cm.Data["current"])
+				var registered core.Dogu
+				require.NoError(t, json.Unmarshal([]byte(cm.Data[descriptor.Version]), &registered))
+				assert.Equal(t, *descriptor, registered)
+				require.Len(t, cm.OwnerReferences, 1)
+				assert.Equal(t, resource.UID, cm.OwnerReferences[0].UID)
+				assert.Equal(t, resource.Name, cm.OwnerReferences[0].Name)
+				assert.Equal(t, "k8s.cloudogu.com/v2", cm.OwnerReferences[0].APIVersion)
+				assert.Equal(t, "Dogu", cm.OwnerReferences[0].Kind)
+				assert.True(t, *cm.OwnerReferences[0].Controller)
+				assert.True(t, *cm.OwnerReferences[0].BlockOwnerDeletion)
+				current, err := versions.GetCurrentOfAll(ctx)
+				require.NoError(t, err)
+				require.Len(t, current, 1, "Admin's backend must discover the registration")
+				assert.Equal(t, cescommons.SimpleName("opendesk"), current[0].Name)
+				assert.Equal(t, descriptor.Version, current[0].Version.Raw)
+			}
+
+			// Ready Helmfiles still terminate the use case instead of running normal Dogu steps.
+			deployment := &appsv1.Deployment{
+				ObjectMeta: metav1.ObjectMeta{Name: "office", Namespace: resource.Namespace},
+				Status:     appsv1.DeploymentStatus{Replicas: 1, UpdatedReplicas: 1, ReadyReplicas: 1, AvailableReplicas: 1},
+			}
+			require.NoError(t, step.helmfileRuntime.Client.Create(ctx, deployment))
+			doguClient := newMockDoguInterface(t)
+			doguClient.EXPECT().UpdateStatusWithRetry(ctx, resource, mock.Anything, metav1.UpdateOptions{}).
+				RunAndReturn(func(_ context.Context, dogu *doguv2.Dogu, modify func(doguv2.DoguStatus) doguv2.DoguStatus, _ metav1.UpdateOptions) (*doguv2.Dogu, error) {
+					updated := dogu.DeepCopy()
+					updated.Status = modify(updated.Status)
+					return updated, nil
+				})
+			step.doguInterface = doguClient
+			assert.Equal(t, steps.Complete(), step.Run(ctx, resource))
+			assert.Equal(t, doguv2.DoguStatusInstalled, resource.Status.Status)
 		})
 	}
 }
 
-func TestHelmfilePreparationFailures(t *testing.T) {
-	archive := helmfileArchive(t, []tar.Header{{Name: "root/helmfile.yaml", Typeflag: tar.TypeReg}}, []string{"releases: []"})
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/failure" {
-			w.WriteHeader(http.StatusServiceUnavailable)
-			return
-		}
-		_, _ = w.Write(archive)
-	}))
-	defer server.Close()
-	for _, scenario := range []string{"HTTP", "missing ConfigMap", "empty domain", "global type", "values path", "cancelled"} {
-		t.Run(scenario, func(t *testing.T) {
-			step := helmfileTestStep(t)
-			step.openDeskDoguConfig.HelmfileSource = server.URL
+func TestExperimentalHelmfileRegistrationFailurePreventsApply(t *testing.T) {
+	for _, failureStage := range []string{"read registry", "write descriptor", "enable version", "set owner reference"} {
+		t.Run(failureStage, func(t *testing.T) {
 			ctx := context.Background()
-			switch scenario {
-			case "HTTP":
-				step.openDeskDoguConfig.HelmfileSource += "/failure"
-			case "missing ConfigMap":
-				step.openDeskDoguConfig.DomainConfigMap.Name = "missing"
-			case "empty domain":
-				step.openDeskDoguConfig.DomainConfigMap.Key = "missing"
-			case "global type":
-				step.openDeskDoguConfig.ExtraValues = map[string]any{"global": "invalid"}
-			case "values path":
-				step.openDeskDoguConfig.ValuesFilePath = "../escape"
-			case "cancelled":
-				var cancel context.CancelFunc
-				ctx, cancel = context.WithCancel(ctx)
-				cancel()
+			step := helmfileTestStep(t)
+			step.isEnabled = true
+			resource := &doguv2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "opendesk", Namespace: "ecosystem"}}
+			require.NoError(t, step.helmfileRuntime.Client.Create(ctx, resource))
+			descriptor := &core.Dogu{Name: "internal/opendesk", Version: "1.18.2-1", Properties: map[string]string{"kind": "Helmfile"}}
+			fetcher := newMockResourceDoguFetcher(t)
+			fetcher.EXPECT().FetchWithResource(ctx, resource).Return(descriptor, nil, nil)
+			step.doguFetcher = fetcher
+			clientset := k8sfake.NewClientset()
+			configMaps := clientset.CoreV1().ConfigMaps(resource.Namespace)
+			repository := reg.NewLocalDoguDescriptorRepository(configMaps)
+			versions := reg.NewDoguVersionRegistry(configMaps)
+			step.localDoguFetcher = cesregistry.NewLocalDoguFetcher(versions, repository)
+			step.doguRegistrator = cesregistry.NewCESDoguRegistrator(versions, repository)
+			owner := NewMockLocalDoguDescriptorOwnerReferenceStep(t)
+			step.descriptorOwnerReferenceStep = owner
+			failure := errors.New("registry unavailable")
+			switch failureStage {
+			case "set owner reference":
+				owner.EXPECT().Run(ctx, resource).Return(steps.RequeueWithError(failure))
+			default:
+				verb := "update"
+				if failureStage == "read registry" {
+					verb = "get"
+				}
+				clientset.PrependReactor(verb, "configmaps", func(action k8stesting.Action) (bool, runtime.Object, error) {
+					if failureStage == "enable version" && action.(k8stesting.UpdateAction).GetObject().(*corev1.ConfigMap).Data["current"] == "" {
+						return false, nil, nil
+					}
+					return true, nil, failure
+				})
 			}
-			_, err := step.extractAndConfigureHelmfile(ctx, "opendesk")
-			assert.Error(t, err)
+			// No source is configured. If apply were attempted, a different error would result.
+			result := step.Run(ctx, resource)
+			require.ErrorIs(t, result.Err, failure)
+			assert.False(t, result.Continue)
+			assert.False(t, result.Completed)
+			assert.Contains(t, resource.Finalizers, helmfile.Finalizer)
 		})
 	}
 }
