@@ -7,7 +7,6 @@ import (
 
 	doguv3 "github.com/cloudogu/k8s-dogu-lib/v3/api/v3beta1"
 	stepsv3 "github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv3"
-	"github.com/cloudogu/k8s-dogu-operator/v3/internal/dogu/pvc"
 	"github.com/cloudogu/k8s-dogu-operator/v3/internal/logging"
 	flux "github.com/fluxcd/helm-controller/api/v2"
 	apiext "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
@@ -35,10 +34,10 @@ type SuspendHelmReleaseStep struct {
 	eventRecorder EventRecorder
 	chartService  ChartService
 	assembler     ValueAssembler
-	resizeChecker pvc.ResizeChecker
+	resizeChecker ResizeChecker
 }
 
-func NewSuspendHelmReleaseStep(k8sClient K8sClient, chartService ChartService, assembler ValueAssembler, resizeChecker pvc.ResizeChecker, recorder EventRecorder) *SuspendHelmReleaseStep {
+func NewSuspendHelmReleaseStep(k8sClient K8sClient, chartService ChartService, assembler ValueAssembler, resizeChecker ResizeChecker, recorder EventRecorder) *SuspendHelmReleaseStep {
 	return &SuspendHelmReleaseStep{
 		k8sClient:     k8sClient,
 		eventRecorder: recorder,

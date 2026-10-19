@@ -3,6 +3,7 @@ package install
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 
 	doguv3 "github.com/cloudogu/k8s-dogu-lib/v3/api/v3beta1"
@@ -18,7 +19,6 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	apimeta "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -50,6 +50,7 @@ func TestSuspendHelmReleaseStep_Run(t *testing.T) {
 		{
 			name:             "suspend for PVC resize",
 			existingRelease:  true,
+			resizeRelevant:   true,
 			resizeInProgress: true,
 			wantResult:       stepsv3.RequeueAfter(defaultRequeueAfter, ReasonPVCResizeInProgress, messagePVCResizeInProgress),
 			wantSuspended:    true,
@@ -59,6 +60,7 @@ func TestSuspendHelmReleaseStep_Run(t *testing.T) {
 			name:             "resume when suspension reason has disappeared",
 			existingRelease:  true,
 			alreadySuspended: true,
+			resizeRelevant:   true,
 			wantResult:       stepsv3.RequeueAfter(defaultRequeueAfter, ReasonNotSuspended, messageNotSuspended),
 			wantCondition:    ReasonNotSuspended,
 		},
@@ -75,6 +77,7 @@ func TestSuspendHelmReleaseStep_Run(t *testing.T) {
 			name:             "continue when already suspended for PVC resize",
 			existingRelease:  true,
 			alreadySuspended: true,
+			resizeRelevant:   true,
 			resizeInProgress: true,
 			wantResult:       stepsv3.Continue(),
 			wantSuspended:    true,
@@ -96,6 +99,7 @@ type suspendHelmReleaseRunCase struct {
 	doguPaused       bool
 	doguStopped      bool
 	resizeInProgress bool
+	resizeRelevant   bool
 	wantResult       stepsv3.StepResult
 	wantSuspended    bool
 	wantCondition    string
@@ -110,7 +114,7 @@ func runSuspendHelmReleaseCase(t *testing.T, test suspendHelmReleaseRunCase) {
 	k8sClient := newSuspendRunTestClient(t, dogu, test.existingRelease, test.alreadySuspended)
 	chartService := newSuspendRunChartService(t, dogu, test)
 	assembler := values3.NewAssembler(k8sClient) // easier to use this here, that to mock the result
-	checker := newSuspendRunResizeChecker(test.resizeInProgress)
+	checker := newSuspendRunResizeChecker(t, test.resizeInProgress, test.resizeRelevant)
 	step := NewSuspendHelmReleaseStep(k8sClient, chartService, assembler, checker, nil)
 
 	result := step.Run(t.Context(), dogu)
@@ -142,10 +146,18 @@ func newSuspendRunChartService(t *testing.T, dogu *doguv3.Dogu, test suspendHelm
 	return chartService
 }
 
-func newSuspendRunResizeChecker(resizeInProgress bool) *suspendTestResizeChecker {
-	checker := &suspendTestResizeChecker{}
-	if resizeInProgress {
-		checker.result = pvc.CheckResult{ResizeRequests: []pvc.ResizeRequest{{PVC: client.ObjectKey{Name: "data"}}}}
+func newSuspendRunResizeChecker(t *testing.T, resizeInProgress bool, shouldBeCalled bool) ResizeChecker {
+	checker := NewMockResizeChecker(t)
+	if shouldBeCalled {
+		var checkResult pvc.CheckResult
+		if resizeInProgress {
+			checker.EXPECT().Check(mock.Anything, mock.Anything, mock.Anything).Return(pvc.CheckResult{
+				ResizeRequests: []pvc.ResizeRequest{{PVC: client.ObjectKey{Name: "data"}}},
+			}, nil)
+		} else {
+			checkResult = pvc.CheckResult{}
+		}
+		checker.EXPECT().Check(mock.Anything, mock.Anything, mock.Anything).Return(checkResult, nil)
 	}
 	return checker
 }
@@ -194,7 +206,7 @@ func TestSuspendHelmReleaseStep_RunErrors(t *testing.T) {
 		chartService := NewMockChartService(t)
 		chartService.EXPECT().DoguMetaValues(mock.Anything, dogu).Return(nil, false, errors.New("metadata failed"))
 
-		result := NewSuspendHelmReleaseStep(k8sClient, chartService, nil, &suspendTestResizeChecker{}, nil).Run(t.Context(), dogu)
+		result := NewSuspendHelmReleaseStep(k8sClient, chartService, nil, NewMockResizeChecker(t), nil).Run(t.Context(), dogu)
 
 		require.Error(t, result.Err)
 		assert.Equal(t, doguv3.ReasonReconciliationPaused, result.ReadyReason)
@@ -210,7 +222,8 @@ func TestSuspendHelmReleaseStep_RunErrors(t *testing.T) {
 		chartService := NewMockChartService(t)
 		chartService.EXPECT().DoguMetaValues(mock.Anything, dogu).Return(nil, false, nil)
 		chartService.EXPECT().Render(mock.Anything, dogu, mock.Anything).Return(nil, nil)
-		checker := &suspendTestResizeChecker{err: errors.New("resize check failed")}
+		checker := NewMockResizeChecker(t)
+		checker.EXPECT().Check(mock.Anything, mock.Anything, mock.Anything).Return(pvc.CheckResult{}, fmt.Errorf("resize check failed"))
 
 		result := NewSuspendHelmReleaseStep(k8sClient, chartService, assembler, checker, nil).Run(t.Context(), dogu)
 
@@ -314,29 +327,32 @@ func TestSuspendHelmReleaseStep_ChangeSuspendValueOfHelmRelease(t *testing.T) {
 
 func TestSuspendHelmReleaseStep_suspensionReason(t *testing.T) {
 	tests := []struct {
-		name          string
-		pause         bool
-		stopped       bool
-		checkResult   pvc.CheckResult
-		checkError    error
-		renderError   error
-		values        *apiext.JSON
-		wantReason    string
-		wantMessage   string
-		wantErrorText string
+		name            string
+		pause           bool
+		stopped         bool
+		checkResult     pvc.CheckResult
+		noCheckExpected bool
+		checkError      error
+		renderError     error
+		values          *apiext.JSON
+		wantReason      string
+		wantMessage     string
+		wantErrorText   string
 	}{
 		{
-			name:        "pause takes precedence",
-			pause:       true,
-			stopped:     true,
-			wantReason:  ReasonReconciliationPaused,
-			wantMessage: messageReconciliationPaused,
+			name:            "pause takes precedence",
+			pause:           true,
+			stopped:         true,
+			noCheckExpected: true,
+			wantReason:      ReasonReconciliationPaused,
+			wantMessage:     messageReconciliationPaused,
 		},
 		{
-			name:        "stopped Dogu",
-			stopped:     true,
-			wantReason:  ReasonDoguStopped,
-			wantMessage: messageDoguStopped,
+			name:            "stopped Dogu",
+			stopped:         true,
+			noCheckExpected: true,
+			wantReason:      ReasonDoguStopped,
+			wantMessage:     messageDoguStopped,
 		},
 		{
 			name:        "PVC resize in progress",
@@ -350,14 +366,16 @@ func TestSuspendHelmReleaseStep_suspensionReason(t *testing.T) {
 			wantMessage: messageNotSuspended,
 		},
 		{
-			name:          "invalid JSON values",
-			values:        &apiext.JSON{Raw: []byte("{")},
-			wantErrorText: "failed to decode assembled chart values",
+			name:            "invalid JSON values",
+			noCheckExpected: true,
+			values:          &apiext.JSON{Raw: []byte("{")},
+			wantErrorText:   "failed to decode assembled chart values",
 		},
 		{
-			name:          "chart rendering fails",
-			renderError:   errors.New("render failed"),
-			wantErrorText: "failed to render chart",
+			name:            "chart rendering fails",
+			noCheckExpected: true,
+			renderError:     errors.New("render failed"),
+			wantErrorText:   "failed to render chart",
 		},
 		{
 			name:          "PVC resize check fails",
@@ -377,7 +395,10 @@ func TestSuspendHelmReleaseStep_suspensionReason(t *testing.T) {
 			}
 
 			chartService := NewMockChartService(t)
-			checker := &suspendTestResizeChecker{result: test.checkResult, err: test.checkError}
+			checker := NewMockResizeChecker(t)
+			if !test.noCheckExpected {
+				checker.EXPECT().Check(mock.Anything, dogu.Namespace, mock.Anything).Return(test.checkResult, test.checkError)
+			}
 			if !test.pause && !test.stopped && test.wantErrorText != "failed to decode assembled chart values" {
 				chartService.EXPECT().Render(mock.Anything, dogu, map[string]any{}).Return(nil, test.renderError)
 			}
@@ -392,9 +413,6 @@ func TestSuspendHelmReleaseStep_suspensionReason(t *testing.T) {
 			require.NoError(t, err)
 			assert.Equal(t, test.wantReason, targetState.reason)
 			assert.Equal(t, test.wantMessage, targetState.message)
-			if !test.pause && !test.stopped {
-				assert.Equal(t, dogu.Namespace, checker.namespace)
-			}
 		})
 	}
 }
@@ -456,17 +474,6 @@ func TestSuspendHelmReleaseStep_setSuspendedConditionOnDoguCR(t *testing.T) {
 
 		require.ErrorContains(t, err, "failed to update Dogu suspended condition")
 	})
-}
-
-type suspendTestResizeChecker struct {
-	result    pvc.CheckResult
-	err       error
-	namespace string
-}
-
-func (checker *suspendTestResizeChecker) Check(_ context.Context, namespace string, _ []*unstructured.Unstructured) (pvc.CheckResult, error) {
-	checker.namespace = namespace
-	return checker.result, checker.err
 }
 
 func newSuspendTestDogu() *doguv3.Dogu {
@@ -531,5 +538,3 @@ func assertSuspendTestConditionWithStatus(t *testing.T, k8sClient client.Client,
 	assert.Equal(t, message, condition.Message)
 	assert.Equal(t, dogu.Generation, condition.ObservedGeneration)
 }
-
-var _ pvc.ResizeChecker = (*suspendTestResizeChecker)(nil)
