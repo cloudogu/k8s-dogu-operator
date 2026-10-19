@@ -13,10 +13,10 @@ import (
 	cescommons "github.com/cloudogu/ces-commons-lib/dogu"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/cesregistry"
 	opConfig "github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
+	"github.com/cloudogu/k8s-dogu-operator/v3/internal/logging"
 	"github.com/cloudogu/k8s-registry-lib/config"
 	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/cloudogu/cesapp-lib/core"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/exec"
@@ -58,12 +58,10 @@ func NewRemover(
 
 // RemoveAll removes all service accounts for a given dogu
 func (r *remover) RemoveAll(ctx context.Context, dogu *core.Dogu) error {
-	logger := log.FromContext(ctx)
-
 	sensitiveConfig, err := r.sensitiveDoguRepo.Get(ctx, cescommons.SimpleName(dogu.GetSimpleName()))
 	if err != nil {
 		if cloudoguerrors.IsNotFoundError(err) {
-			logger.Info(fmt.Sprintf("skipping service account removal because %s sensitive dogu config is not found", dogu.GetSimpleName()))
+			logging.Info(ctx, fmt.Sprintf("skipping service account removal because %s sensitive dogu config is not found", dogu.GetSimpleName()))
 			return nil
 		}
 		return fmt.Errorf("unable to get sensitive config for dogu %s: %w", dogu.GetSimpleName(), err)
@@ -85,7 +83,7 @@ func (r *remover) RemoveAll(ctx context.Context, dogu *core.Dogu) error {
 				allProblems = errors.Join(allProblems, fmt.Errorf("unable to remove service account for component %s: %w", serviceAccount.Type, lErr))
 			}
 		default:
-			logger.Error(fmt.Errorf("unknown service account kind: %s", serviceAccount.Kind), "skipping service account deletion")
+			logging.Error(ctx, fmt.Errorf("unknown service account kind: %s", serviceAccount.Kind), "skipping service account deletion")
 			continue
 		}
 	}
@@ -95,12 +93,10 @@ func (r *remover) RemoveAll(ctx context.Context, dogu *core.Dogu) error {
 
 // RemoveAllFromComponents removes all service accounts for a given dogu's components'
 func (r *remover) RemoveAllFromComponents(ctx context.Context, dogu *core.Dogu) error {
-	logger := log.FromContext(ctx)
-
 	sensitiveConfig, err := r.sensitiveDoguRepo.Get(ctx, cescommons.SimpleName(dogu.GetSimpleName()))
 	if err != nil {
 		if cloudoguerrors.IsNotFoundError(err) {
-			logger.Info(fmt.Sprintf("skipping service account removal because %s sensitive dogu config is not found", dogu.GetSimpleName()))
+			logging.Info(ctx, fmt.Sprintf("skipping service account removal because %s sensitive dogu config is not found", dogu.GetSimpleName()))
 			return nil
 		}
 		return fmt.Errorf("unable to get sensitive config for dogu %s: %w", dogu.GetSimpleName(), err)
@@ -119,11 +115,10 @@ func (r *remover) RemoveAllFromComponents(ctx context.Context, dogu *core.Dogu) 
 }
 
 func (r *remover) removeDoguServiceAccount(ctx context.Context, dogu *core.Dogu, serviceAccount core.ServiceAccount, senDoguCfg *config.DoguConfig) error {
-	logger := log.FromContext(ctx)
 	registryCredentialPath := "sa-" + serviceAccount.Type
 
 	if exists := serviceAccountExists(registryCredentialPath, *senDoguCfg); !exists {
-		logger.Info(fmt.Sprintf("skipping removal of service account '%s' because it does not exist", registryCredentialPath))
+		logging.Info(ctx, fmt.Sprintf("skipping removal of service account '%s' because it does not exist", registryCredentialPath))
 
 		return nil
 	}
@@ -133,7 +128,7 @@ func (r *remover) removeDoguServiceAccount(ctx context.Context, dogu *core.Dogu,
 		return fmt.Errorf("failed to check if dogu %s is enabled: %w", serviceAccount.Type, err)
 	}
 	if !enabled {
-		logger.Info("skipping removal of service account because dogu is not enabled")
+		logging.Info(ctx, "skipping removal of service account because dogu is not enabled")
 		return nil
 	}
 

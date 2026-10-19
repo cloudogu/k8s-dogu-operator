@@ -6,10 +6,10 @@ import (
 
 	"github.com/cloudogu/k8s-dogu-lib/v3/api/v3beta1"
 	stepsv3 "github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv3"
+	"github.com/cloudogu/k8s-dogu-operator/v3/internal/logging"
 	flux "github.com/fluxcd/helm-controller/api/v2"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 // UnsuspendHelmReleaseStep clears a HelmRelease's suspend flag before deletion. A suspended
@@ -45,6 +45,6 @@ func (s *UnsuspendHelmReleaseStep) Run(ctx context.Context, doguResource *v3beta
 		return failDeletion(s.eventRecorder, doguResource, fmt.Errorf("failed to unsuspend HelmRelease %q: %w", release.Name, uErr))
 	}
 
-	log.FromContext(ctx).Info("unsuspended HelmRelease for deletion", "name", release.Name)
+	logging.Info(ctx, "unsuspended HelmRelease for deletion", "name", release.Name)
 	return stepsv3.Continue()
 }

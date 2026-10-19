@@ -8,6 +8,7 @@ import (
 
 	"github.com/cloudogu/k8s-dogu-lib/v3/api/v3beta1"
 	stepsv3 "github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv3"
+	"github.com/cloudogu/k8s-dogu-operator/v3/internal/logging"
 	"github.com/fluxcd/pkg/apis/meta"
 	flux "github.com/fluxcd/source-controller/api/v1"
 	v1 "k8s.io/api/core/v1"
@@ -15,7 +16,6 @@ import (
 	metautil "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 const (
@@ -57,7 +57,7 @@ func (wor *WaitForOCIRepositoryReadyStep) Run(ctx context.Context, doguResource 
 
 	if stepResult, success := wor.updateDoguResourceStatus(ctx, doguResource, "failed to update oci success condition"); success {
 		wor.eventRecorder.Event(doguResource, v1.EventTypeNormal, v3beta1.ConditionChartAvailable, successMessage)
-		log.FromContext(ctx).Info(successMessage)
+		logging.Info(ctx, successMessage)
 		return stepsv3.Continue()
 	} else {
 		return stepResult

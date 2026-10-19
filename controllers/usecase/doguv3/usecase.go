@@ -11,11 +11,11 @@ import (
 	v3 "github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv3"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv3/deletion"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv3/install"
+	"github.com/cloudogu/k8s-dogu-operator/v3/internal/logging"
 	coreV1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 const (
@@ -96,7 +96,7 @@ func (duc *DoguUseCase) HandleUntilApplied(ctx context.Context, doguResource *v3
 	for _, s := range duc.steps {
 		// Name the logger after the step type so every log line carries the step that produced it
 		// (e.g. "logger":"DeleteHelmReleaseStep"), without each step having to name itself.
-		stepCtx := log.IntoContext(ctx, log.FromContext(ctx).WithName(stepName(s)))
+		stepCtx := logging.IntoContext(ctx, logging.FromContext(ctx).WithName(stepName(s)))
 		result := s.Run(stepCtx, doguResource)
 
 		// Abort, requeue or error
@@ -122,7 +122,7 @@ func (duc *DoguUseCase) HandleUntilApplied(ctx context.Context, doguResource *v3
 		return 0, err
 	}
 	duc.eventRecorder.Event(doguResource, coreV1.EventTypeNormal, ReasonReconcileSuccess, successMessage)
-	log.FromContext(ctx).Info(successMessage)
+	logging.Info(ctx, successMessage)
 
 	return 0, nil
 }
@@ -139,10 +139,9 @@ func stepName(s Step) string {
 
 func (duc *DoguUseCase) stopStepExecution(ctx context.Context, doguResource *v3beta1.Dogu, result v3.StepResult) (time.Duration, error) {
 	reason, msg := deriveReasonAndMessage(result)
-	logger := log.FromContext(ctx)
 	if err := duc.updateReadyCondition(ctx, doguResource, metav1.ConditionFalse, reason, msg); err != nil {
 		if apierrors.IsConflict(err) {
-			logger.V(1).Info("requeueing due to conflict", "dogu", doguResource.Name)
+			logging.Debug(ctx, "requeueing due to conflict", "dogu", doguResource.Name)
 			return 5 * time.Second, nil
 		}
 
@@ -150,14 +149,14 @@ func (duc *DoguUseCase) stopStepExecution(ctx context.Context, doguResource *v3b
 	}
 	// Only send events on abort and do not send events on requeues because this would flood the apiserver.
 	if result.Err == nil && result.RequeueAfter == 0 {
-		logger.Error(errors.New(result.ReadyMessage), "dogu reconciliation aborted")
+		logging.Error(ctx, errors.New(result.ReadyMessage), "dogu reconciliation aborted")
 		duc.eventRecorder.Event(doguResource, coreV1.EventTypeWarning, result.ReadyReason, result.ReadyMessage)
 	}
 
 	if result.Err != nil {
-		logger.Error(result.Err, "dogu reconciliation failed")
+		logging.Error(ctx, result.Err, "dogu reconciliation failed")
 	} else {
-		logger.V(1).Info("requeueing dogu reconciliation", "reason", reason, "requeueAfter", result.RequeueAfter)
+		logging.Debug(ctx, "requeueing dogu reconciliation", "reason", reason, "requeueAfter", result.RequeueAfter)
 	}
 
 	return result.RequeueAfter, result.Err

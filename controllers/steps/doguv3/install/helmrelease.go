@@ -10,6 +10,7 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/resource"
 	stepsv3 "github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv3"
+	"github.com/cloudogu/k8s-dogu-operator/v3/internal/logging"
 	flux "github.com/fluxcd/helm-controller/api/v2"
 	fluxoci "github.com/fluxcd/source-controller/api/v1"
 	core "k8s.io/api/core/v1"
@@ -18,7 +19,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 // EnsureHelmReleaseStep ensures the HelmRelease resource.
@@ -67,15 +67,15 @@ func (ehr *EnsureHelmReleaseStep) Run(ctx context.Context, doguResource *doguv3.
 	switch result {
 	case controllerutil.OperationResultCreated:
 		ehr.eventRecorder.Event(doguResource, core.EventTypeNormal, doguv3.ConditionChartAvailable, "HelmRelease created")
-		log.FromContext(ctx).Info("created HelmRelease", "name", release.Name)
+		logging.Info(ctx, "created HelmRelease", "name", release.Name)
 	case controllerutil.OperationResultUpdated:
 		ehr.eventRecorder.Event(doguResource, core.EventTypeNormal, doguv3.ConditionChartAvailable, "HelmRelease updated")
-		log.FromContext(ctx).Info("updated HelmRelease", "name", release.Name)
+		logging.Info(ctx, "updated HelmRelease", "name", release.Name)
 	case controllerutil.OperationResultNone:
 		// nothing changed - HelmRelease already was exactly as desired
 	default:
 		// should not happen, as we never make changes to the HelmRelease's Status
-		log.FromContext(ctx).Info("found unexpected operation result for helm release upsert", "result", result, "helm-release", release.Name)
+		logging.Info(ctx, "found unexpected operation result for helm release upsert", "result", result, "helm-release", release.Name)
 	}
 
 	return stepsv3.Continue()

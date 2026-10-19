@@ -5,9 +5,9 @@ import (
 
 	v2 "github.com/cloudogu/k8s-dogu-lib/v3/api/v2"
 	doguv2 "github.com/cloudogu/k8s-dogu-lib/v3/client/typed/api/v2"
+	"github.com/cloudogu/k8s-dogu-operator/v3/internal/logging"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/event"
-	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 )
 
@@ -32,8 +32,7 @@ func NewStartupHandler(manager manager.Manager, doguInterface doguv2.DoguInterfa
 }
 
 func (s *StartupHandler) Start(ctx context.Context) error {
-	logger := log.FromContext(ctx)
-	logger.WithName("health startup handler").Info("updating health of all dogus on startup")
+	logging.FromContext(ctx).WithName("health startup handler").Info("updating health of all dogus on startup")
 
 	list, err := s.doguInterface.List(ctx, metav1.ListOptions{})
 	if err != nil {
