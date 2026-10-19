@@ -8,6 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - [#365] Add new option to disable warp menu entries for v2 dogus
   - See `controllerManager.env.warpMenuDisabledV2Dogus` in `values.yaml`
+### Changed
+- [#362] Replace the logrus based logger with zap, which is the standard logging backend for operators built on controller-runtime.
+  - The log output is now JSON by default. The new environment variable `LOG_FORMAT` switches between `json` and `text`.
+  - `LOG_LEVEL` now defaults to `info` instead of `error`.
+  - Log calls of the cesapp-lib and the k8s-apply-lib keep their log level instead of being logged as info.
+  - The lifecycle logging of fx is logged in the same format as all other logs.
+- [#362] Move the logging package to `internal/logging` and log via its `Info`, `Debug` and `Error` functions instead of `log.FromContext`.
 
 ## [v3.33.0] - 2026-10-15
 ### Added

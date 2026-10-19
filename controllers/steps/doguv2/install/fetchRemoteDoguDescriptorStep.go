@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"sigs.k8s.io/controller-runtime/pkg/log"
+	"github.com/cloudogu/k8s-dogu-operator/v3/internal/logging"
 
 	dogu2 "github.com/cloudogu/ces-commons-lib/dogu"
 	cloudoguerrors "github.com/cloudogu/ces-commons-lib/errors"
@@ -27,7 +27,7 @@ func NewFetchRemoteDoguDescriptorStep(client client.Client, localDoguDescriptorR
 }
 
 func (f *FetchRemoteDoguDescriptorStep) Run(ctx context.Context, resource *v2.Dogu) steps.StepResult {
-	logger := log.FromContext(ctx).WithName("fetchRemoteDoguDescriptorStep")
+	logger := logging.FromContext(ctx).WithName("fetchRemoteDoguDescriptorStep")
 
 	version, err := resource.GetSimpleNameVersion()
 	if err != nil {

@@ -12,12 +12,12 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/exec"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/resource"
 	steps "github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv2"
+	"github.com/cloudogu/k8s-dogu-operator/v3/internal/logging"
 	v1 "k8s.io/api/apps/v1"
 	coreV1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	appsv1 "k8s.io/client-go/kubernetes/typed/apps/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 const requeueAfterRevertStartupProbe = time.Second * 3
@@ -62,7 +62,7 @@ func NewPostUpgradeStep(
 //5.6. requeue
 
 func (rsps *PostUpgradeStep) Run(ctx context.Context, doguResource *v2.Dogu) steps.StepResult {
-	logger := log.FromContext(ctx).WithName("post-upgrade step").WithValues("dogu", doguResource.Name)
+	logger := logging.FromContext(ctx).WithName("post-upgrade step").WithValues("dogu", doguResource.Name)
 
 	toDogu, err := rsps.localDoguFetcher.FetchForResource(ctx, doguResource)
 	if err != nil {

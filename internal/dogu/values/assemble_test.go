@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/cloudogu/k8s-dogu-lib/v3/api/v3beta1"
-	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	coreV1 "k8s.io/api/core/v1"
@@ -15,10 +14,6 @@ import (
 )
 
 const testNamespace = "ecosystem"
-
-func testDiscardLogger() logr.Logger {
-	return logr.Discard()
-}
 
 // newTestDogu builds a Dogu CR with the given namespace, raw spec values and mapped values.
 func newTestDogu(namespace string, rawValues []byte, mappedValues map[string]string) *v3beta1.Dogu {
@@ -253,7 +248,7 @@ metavalues:
 		t.Run(tt.name, func(t *testing.T) {
 			cr := newTestDogu(testNamespace, nil, tt.mappedValues)
 
-			got, err := getDoguMetaValues(cr, tt.patchTpl, testDiscardLogger())
+			got, err := getDoguMetaValues(t.Context(), cr, tt.patchTpl)
 
 			if tt.wantErr != "" {
 				require.Error(t, err)

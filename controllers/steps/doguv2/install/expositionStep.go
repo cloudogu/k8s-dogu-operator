@@ -8,9 +8,9 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/exposition"
 	steps "github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv2"
+	"github.com/cloudogu/k8s-dogu-operator/v3/internal/logging"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1 "k8s.io/client-go/kubernetes/typed/core/v1"
-	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 type ExpositionStep struct {
@@ -28,7 +28,7 @@ func NewExpositionStep(expositionManager exposition.Manager, serviceInterface v1
 }
 
 func (es *ExpositionStep) Run(ctx context.Context, doguResource *v2.Dogu) steps.StepResult {
-	logger := log.FromContext(ctx).WithName("expositionStep")
+	logger := logging.FromContext(ctx).WithName("expositionStep")
 
 	if !es.expositionEnabled {
 		logger.Info("Exposition is disabled, skipping exposition")
