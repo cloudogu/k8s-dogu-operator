@@ -24,6 +24,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
@@ -349,12 +350,10 @@ func TestEnsureHelmReleaseStep_Stopped(t *testing.T) {
 		liveValues string
 		version    string
 		missing    bool
-		want       metav1.ConditionStatus
 	}{
-		{name: "unchanged despite JSON formatting", liveValues: `{ "number": 3, "global": {"cesConfig": {}}, "mode":"old" }`, version: "1.2.3", want: metav1.ConditionFalse},
-		{name: "values changed", liveValues: `{"global":{"cesConfig":{}},"mode":"new","number":3}`, version: "1.2.3", want: metav1.ConditionTrue},
-		{name: "version changed", liveValues: `{"global":{"cesConfig":{}},"mode":"old","number":3}`, version: "1.2.2", want: metav1.ConditionTrue},
-		{name: "first installation remains deferred", missing: true, want: metav1.ConditionTrue},
+		{name: "values changed", liveValues: `{"mode":"new","number":3}`, version: "1.2.3"},
+		{name: "version changed", liveValues: `{"mode":"old","number":3}`, version: "1.2.2"},
+		{name: "first installation is created suspended", missing: true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			dogu, k8s := stoppedDoguClient(t)
@@ -363,7 +362,7 @@ func TestEnsureHelmReleaseStep_Stopped(t *testing.T) {
 			require.NoError(t, k8s.Create(t.Context(), global))
 			service := NewMockChartService(t)
 			service.EXPECT().DoguMetaValues(mock.Anything, dogu).Return(nil, false, nil)
-			step := NewEnsureHelmReleaseStep(k8s, &config.OperatorConfig{}, service, nil)
+			step := NewEnsureHelmReleaseStep(k8s, &config.OperatorConfig{}, service, record.NewFakeRecorder(5))
 			release := &fluxhelm.HelmRelease{ObjectMeta: metav1.ObjectMeta{Name: dogu.Spec.Name, Namespace: dogu.Namespace}}
 			configureHelmRelease(release, dogu, &apiext.JSON{Raw: []byte(tc.liveValues)}, &step.retryInterval, &step.helmReconcileInterval)
 			release.Labels[doguv3.DoguLabelVersion] = tc.version
@@ -376,19 +375,22 @@ func TestEnsureHelmReleaseStep_Stopped(t *testing.T) {
 			result := step.Run(t.Context(), dogu)
 			require.NoError(t, result.Err)
 			assert.True(t, result.Continue)
-			condition := meta.FindStatusCondition(dogu.Status.Conditions, doguv3.ConditionUpdatePending)
-			require.NotNil(t, condition)
-			assert.Equal(t, tc.want, condition.Status)
-			assert.Equal(t, dogu.Generation, condition.ObservedGeneration)
+			assert.Nil(t, meta.FindStatusCondition(dogu.Status.Conditions, doguv3.ConditionUpdatePending), "upsert does not own pending status")
 			actual := &fluxhelm.HelmRelease{}
-			err := k8s.Get(t.Context(), client.ObjectKeyFromObject(release), actual)
-			if tc.missing {
-				assert.True(t, apierrors.IsNotFound(err))
-			} else {
-				require.NoError(t, err)
-				assert.Equal(t, release.Spec, actual.Spec, "stopped releases must not be changed")
-				assert.Equal(t, tc.version, actual.Labels[doguv3.DoguLabelVersion])
-			}
+			require.NoError(t, k8s.Get(t.Context(), client.ObjectKeyFromObject(release), actual))
+			assert.True(t, actual.Spec.Suspend)
+			assert.Equal(t, dogu.Spec.Version, actual.Labels[doguv3.DoguLabelVersion])
+			assert.JSONEq(t, `{"global":{"cesConfig":{}},"mode":"old","number":3}`, string(actual.Spec.Values.Raw))
 		})
 	}
+}
+
+func TestEnsureHelmReleaseStep_Paused(t *testing.T) {
+	dogu, k8s := stoppedDoguClient(t)
+	dogu.Spec.PauseReconciliation = true
+	step := NewEnsureHelmReleaseStep(k8s, &config.OperatorConfig{}, NewMockChartService(t), nil)
+	result := step.Run(t.Context(), dogu)
+	assert.Equal(t, doguv3.ReasonPauseReconciliation, result.ReadyReason)
+	release := &fluxhelm.HelmRelease{}
+	assert.True(t, apierrors.IsNotFound(k8s.Get(t.Context(), client.ObjectKeyFromObject(dogu), release)))
 }

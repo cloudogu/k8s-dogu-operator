@@ -31,6 +31,7 @@ func NewStopWorkloadsStep(k8sClient client.Client) *StopWorkloadsStep {
 }
 
 func (s *StopWorkloadsStep) Run(ctx context.Context, dogu *v3beta1.Dogu) stepsv3.StepResult {
+	// A pause also prevents this step from changing live workloads.
 	if dogu.Spec.PauseReconciliation {
 		return stepsv3.Abort(v3beta1.ReasonPauseReconciliation, "Dogu reconciliation is paused")
 	}
@@ -38,18 +39,14 @@ func (s *StopWorkloadsStep) Run(ctx context.Context, dogu *v3beta1.Dogu) stepsv3
 		return stepsv3.Continue()
 	}
 
-	// Record pending changes before waiting for Flux or fetching the desired chart.
 	release := &flux.HelmRelease{}
 	err := s.k8sClient.Get(ctx, client.ObjectKey{Namespace: dogu.Namespace, Name: dogu.Spec.Name}, release)
 	releaseMissing := apierrors.IsNotFound(err)
 	if err != nil && !releaseMissing {
 		return stepsv3.RequeueWithError(err, v3beta1.ReasonStopping)
 	}
-	versionOrInstallPending := releaseMissing || release.Labels[v3beta1.DoguLabelVersion] != dogu.Spec.Version
-	if err := s.recordPendingBeforeStop(ctx, dogu, versionOrInstallPending); err != nil {
-		return stepsv3.RequeueWithError(err, v3beta1.ReasonStopping)
-	}
 
+	// Flux must stop applying the release before we scale its workloads down.
 	if !releaseMissing && !release.Spec.Suspend {
 		return stepsv3.RequeueAfter(defaultRequeueAfter, v3beta1.ReasonStopping, "Waiting for HelmRelease suspension before stopping workloads")
 	}
@@ -59,6 +56,7 @@ func (s *StopWorkloadsStep) Run(ctx context.Context, dogu *v3beta1.Dogu) stepsv3
 		return stepsv3.RequeueAfter(defaultRequeueAfter, v3beta1.ReasonStopping, "Waiting for Flux to acknowledge the suspended HelmRelease generation")
 	}
 
+	// Find the Deployments and StatefulSets belonging to this dogu.
 	found, err := s.discovery.Workloads(ctx, dogu.Namespace, dogu.Spec.Name)
 	if err != nil {
 		return stepsv3.RequeueWithError(err, v3beta1.ReasonStopping)
@@ -68,6 +66,7 @@ func (s *StopWorkloadsStep) Run(ctx context.Context, dogu *v3beta1.Dogu) stepsv3
 		return stepsv3.RequeueAfter(defaultRequeueAfter, v3beta1.ReasonStopping, "Waiting for a suspended HelmRelease for existing workloads")
 	}
 
+	// Track workload UIDs so we can check their Pods after scaling down.
 	owners := make(map[types.UID]bool)
 	waiting := false
 	// scale deployments
@@ -106,19 +105,6 @@ func (s *StopWorkloadsStep) Run(ctx context.Context, dogu *v3beta1.Dogu) stepsv3
 	return s.reportStopProgress(ctx, dogu, waiting)
 }
 
-// recordPendingBeforeStop preserves known changes even if the later chart fetch fails.
-func (s *StopWorkloadsStep) recordPendingBeforeStop(ctx context.Context, dogu *v3beta1.Dogu, versionOrInstallPending bool) error {
-	pending := meta.FindStatusCondition(dogu.Status.Conditions, v3beta1.ConditionUpdatePending)
-	alreadyReported := pending != nil && pending.Status == metav1.ConditionTrue && pending.ObservedGeneration == dogu.Generation
-	if versionOrInstallPending && !alreadyReported {
-		return updatePending(ctx, s.k8sClient, dogu, metav1.ConditionTrue, "A chart version or installation is pending until the dogu starts")
-	}
-	if pending == nil || pending.ObservedGeneration != dogu.Generation {
-		return updatePending(ctx, s.k8sClient, dogu, metav1.ConditionUnknown, "The desired release has not been compared yet")
-	}
-	return nil
-}
-
 // reportStopProgress saves the stop status and requests another pass while work remains.
 func (s *StopWorkloadsStep) reportStopProgress(ctx context.Context, dogu *v3beta1.Dogu, waiting bool) stepsv3.StepResult {
 	status, reason, message := metav1.ConditionTrue, v3beta1.ReasonSucceeded, "All dogu workloads are stopped"
@@ -136,6 +122,7 @@ func (s *StopWorkloadsStep) reportStopProgress(ctx context.Context, dogu *v3beta
 		Message:            message,
 		ObservedGeneration: dogu.Generation,
 	})
+	// Save changes to either the Stopped flag or its condition.
 	if stoppedChanged || conditionChanged {
 		if err := s.k8sClient.Status().Update(ctx, dogu); err != nil {
 			return stepsv3.RequeueWithError(err, v3beta1.ReasonStopping)
@@ -150,6 +137,7 @@ func (s *StopWorkloadsStep) reportStopProgress(ctx context.Context, dogu *v3beta
 // stopStatefulSet protects claims before scaling. A true result requires another
 // reconciliation; Pod termination is checked separately by the caller.
 func (s *StopWorkloadsStep) stopStatefulSet(ctx context.Context, statefulSet *appsv1.StatefulSet) (waiting bool, err error) {
+	// Retain PVCs on scale-down without changing what happens when the StatefulSet is deleted.
 	if policy := statefulSet.Spec.PersistentVolumeClaimRetentionPolicy; policy != nil && policy.WhenScaled == appsv1.DeletePersistentVolumeClaimRetentionPolicyType {
 		before := statefulSet.DeepCopy()
 		statefulSet.Spec.PersistentVolumeClaimRetentionPolicy.WhenScaled = appsv1.RetainPersistentVolumeClaimRetentionPolicyType
@@ -161,6 +149,7 @@ func (s *StopWorkloadsStep) stopStatefulSet(ctx context.Context, statefulSet *ap
 	if ptr.Equal(statefulSet.Spec.Replicas, ptr.To[int32](0)) {
 		return false, nil
 	}
+	// Check that PVCs are safe before reducing the replica count.
 	safe, err := s.claimsRetained(ctx, statefulSet)
 	if err != nil {
 		return false, err
@@ -185,16 +174,19 @@ func (s *StopWorkloadsStep) claimsRetained(ctx context.Context, statefulSet *app
 	}
 	for _, claim := range claims.Items {
 		for _, template := range statefulSet.Spec.VolumeClaimTemplates {
+			// Generated PVC names follow <claim-template>-<statefulset>-<ordinal>.
 			ordinal, found := strings.CutPrefix(claim.Name, template.Name+"-"+statefulSet.Name+"-")
 			if !found {
 				continue
 			}
+			// Only accept a regular Pod ordinal, such as 0 or 12, not 01 or another suffix.
 			if n, err := strconv.ParseUint(ordinal, 10, 32); err != nil || fmt.Sprint(n) != ordinal {
 				continue
 			}
 			if !claim.DeletionTimestamp.IsZero() {
 				return false, fmt.Errorf("PVC %s/%s is already being deleted", claim.Namespace, claim.Name)
 			}
+			// Wait until the StatefulSet controller removes ownership by Pods that will be deleted.
 			for _, owner := range claim.OwnerReferences {
 				if owner.APIVersion == "v1" && owner.Kind == "Pod" {
 					return false, nil
@@ -213,6 +205,7 @@ func (s *StopWorkloadsStep) podsRemain(ctx context.Context, namespace string, ow
 		return false, err
 	}
 	knownReplicaSets := make(map[types.UID]bool, len(replicaSets.Items))
+	// Deployment Pods belong to ReplicaSets, so include those owned by our workloads.
 	for _, replicaSet := range replicaSets.Items {
 		knownReplicaSets[replicaSet.UID] = true
 		if owner := metav1.GetControllerOf(&replicaSet); owner != nil && owners[owner.UID] {
