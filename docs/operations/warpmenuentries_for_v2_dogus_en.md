@@ -2,32 +2,44 @@
 
 This feature controls how the `k8s-dogu-operator` creates `WarpMenuEntry` custom resources for v2 Dogus.
 
-## Behavior 
+## Behavior
 
-The operator creates/updates/deletes `WarpMenuEntry` CR with the same name as the Dogu(V2) during the regular reconciliation flow.
+The operator creates/updates/deletes `WarpMenuEntry` CR with the same name as the Dogu (V2) during the regular
+reconciliation flow.
 
 For a dogu to be visible in the warp menu, `WarpMenuEntry` CR should exist.
 
 Earlier, k8s-ces-asserts (warpmenu) operator used to create the warp menu based on the dogu.json.
-The k8s-ces-asserts (warpmenu) operator no longer creates the warp menu based on the dogu.json, but solely based on `WarpMenuEntry` CRs . 
-So we need to create/update/delete a `WarpMenuEntry` CR with the same name as the Dogu during the k8s-dogu-operator regular reconciliation flow.
+The k8s-ces-asserts (warpmenu) operator no longer creates the warp menu based on the dogu.json, but solely based on
+`WarpMenuEntry` CRs .
+So we need to create/update/delete a `WarpMenuEntry` CR with the same name as the Dogu during the k8s-dogu-operator
+regular reconciliation flow.
 
 Note that the `WarpMenuEntry` CR will only be created if there is a warp tag in dogu.json,
 else, the reconcile process would ensure that there is no warp menu entry with the dogu name.
-If a `WarpMenuEntry` CR exists, but there is a change in the display name, category or path, the `WarpMenuEntry` CR will be updated during the reconciliation.
+If a `WarpMenuEntry` CR exists, but there is a change in the display name, category or path, the `WarpMenuEntry` CR will
+be updated during the reconciliation.
 
 ## WARP_MENU_ENTRY_ENABLED
 
 The WarpMenuEntry-CR is created only if `WARP_MENU_ENTRY_ENABLED=true` .
 If `WARP_MENU_ENTRY_ENABLED=false` (or not set), WarpMenuEntry-CR is not created.
 
+## WARP_MENU_DISABLED_V2_DOGUS
+
+The attribute `controllerManager.env.warpMenuDisabledV2Dogus` in the `values.yaml` sets the environment variable
+`WARP_MENU_DISABLED_V2_DOGUS` for the dogu operator. It is a list of simple Dogu names without a Dogu namespace. 
+Dogus specified in this list are hidden in the Warp menu. This is only possible for V2 Dogus. For V3 Dogus, the 
+configuration must be performed in the “Values” section of the respective Dogu.
+
 ## Format of warp menu entry to be created
 
 ### For dogus that have a warp tag
 
-If the dogu does have a warp tag (ex: jenkins dogu),  a `WarpMenuEntry` CR should be created
+If the dogu does have a warp tag (ex: jenkins dogu), a `WarpMenuEntry` CR should be created
 
- dogu.json:
+dogu.json:
+
 ```json
 {
   "Name": "official/jenkins",
@@ -62,6 +74,7 @@ spec:
 If the dogu does not have a warp tag (ex: ldap dogu), there will be no `WarpMenuEntry` CR created:
 
 dogu.json
+
 ```json
 {
   "Name": "official/ldap",
@@ -78,6 +91,7 @@ dogu.json
 ## Configuration and code flow
 
 ### Configuraiton
+
 The dogu operator has to reconcile a few resources and hence has been broken down to multiple steps.
 In order to summarize the list of all configurations/code changes that need to be done,
 here is a diagram of the packages/files that need to be configured/created for the warp menu entry:
@@ -85,6 +99,7 @@ here is a diagram of the packages/files that need to be configured/created for t
 ![Configuration](../development/figures/configure_warp_menu_reconcile.png)
 
 ### Code Flow
+
 Here is a depiction of the reconciliation flow for the warp menu.
 Note that we have only highlighted the part that reconciles the `WarpMenuEntry` CR.
 The main.go file configures other steps during a dogu reconciliation process.

@@ -22,6 +22,13 @@ Wenn ein `WarpMenuEntry`-CR existiert, sich jedoch der Anzeigename, die Kategori
 Diese WarpMenuEntry wird nur erzeugt, wenn `WARP_MENU_ENTRY_ENABLED=true` ist. 
 Wenn `WARP_MENU_ENTRY_ENABLED=false` ist, erstellt der Operator keine WarpMenuEntry-CRs
 
+## WARP_MENU_DISBALED_V2_DOGUS
+
+Das Attribut `controllerManager.env.warpMenuDisabledV2Dogus` in der `values.yaml` setzt die Umgebungsvariable 
+`WARP_MENU_DISBALED_V2_DOGUS`des Dogu-Operators. Es ist eine Liste von simplen Dogu-Namen ohne Dogu-Namespace.
+Gesetzte Dogus in dieser Liste werden im Warp-Menü ausgeblendet. Dies ist nur für V2-Dogus möglich. Bei V3-Dogus muss 
+in den Values des jeweiligen Dogus die Konfiguration durchgeführt werden.
+
 ## Format des zu erstellenden WarpMenuEntry
 
 ### Für Dogus, die ein Warp-Tag haben
