@@ -1,5 +1,9 @@
 ARG HELMFILE_VERSION=v1.8.1
+ARG BUSYBOX_VERSION=1.37.0-musl
+ARG YQ_VERSION=4.54.1
 FROM ghcr.io/helmfile/helmfile:${HELMFILE_VERSION} AS helmfile
+FROM busybox:${BUSYBOX_VERSION} AS shell
+FROM mikefarah/yq:${YQ_VERSION} AS yq
 
 FROM golang:1.27.1 AS builder
 
@@ -20,7 +24,13 @@ FROM scratch
 
 USER 65532:65532
 
-COPY --from=helmfile --chown=65532:65532 /usr/local/bin/helmfile /
-COPY --from=builder --chown=65532:65532 /workspace /
-COPY --from=builder --chown=65532:65532 /helm_plugins/helm-diff/bin /helm_plugins/helm-diff/bin
-COPY --from=builder --chown=65532:65532 /helm_plugins/helm-diff/plugin.yaml /helm_plugins/helm-diff/
+COPY --from=helmfile /usr/local/bin/helmfile /
+COPY --from=shell /bin/busybox /
+COPY --from=yq /usr/bin/yq /
+COPY --from=builder /workspace /
+# we only need bin/ and plugin.yaml
+# copying the entire helm_plugins folder would include the plugin source as well
+COPY --from=builder /helm_plugins/helm-diff/bin /helm_plugins/helm-diff/bin
+COPY --from=builder /helm_plugins/helm-diff/plugin.yaml /helm_plugins/helm-diff/
+
+ENTRYPOINT ["/busybox", "sh"]
