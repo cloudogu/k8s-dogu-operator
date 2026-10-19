@@ -274,9 +274,10 @@ func TestNewEnsureHelmReleaseStep(t *testing.T) {
 		DoguHelmReconciliationInterval: 2 * time.Minute,
 	}
 	valueService := NewMockChartService(t)
+	assembler := NewMockValueAssembler(t)
 	recorder := NewMockEventRecorder(t)
 
-	step := NewEnsureHelmReleaseStep(k8sClient, operatorConfig, valueService, recorder)
+	step := NewEnsureHelmReleaseStep(k8sClient, operatorConfig, valueService, assembler, recorder)
 
 	assert.NotNil(t, step)
 	assert.Equal(t, k8sClient, step.k8sClient)
@@ -383,7 +384,7 @@ func TestEnsureHelmReleaseStep_Run(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			k8sClient, metaValueService, recorder := test.setupMocks(t)
-			step := &EnsureHelmReleaseStep{k8sClient: k8sClient, chartService: metaValueService, eventRecorder: recorder}
+			step := &EnsureHelmReleaseStep{k8sClient: k8sClient, chartService: metaValueService, eventRecorder: recorder, assembler: values3.NewAssembler(k8sClient)}
 
 			result := step.Run(t.Context(), doguResource)
 

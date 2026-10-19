@@ -10,7 +10,6 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/resource"
 	stepsv3 "github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv3"
-	values3 "github.com/cloudogu/k8s-dogu-operator/v3/internal/dogu/values"
 	flux "github.com/fluxcd/helm-controller/api/v2"
 	fluxoci "github.com/fluxcd/source-controller/api/v1"
 	core "k8s.io/api/core/v1"
@@ -29,22 +28,22 @@ type EnsureHelmReleaseStep struct {
 	helmReconcileInterval metav1.Duration
 	retryInterval         metav1.Duration
 	chartService          ChartService
+	assembler             ValueAssembler
 }
 
-func NewEnsureHelmReleaseStep(k8sClient K8sClient, operatorConfig *config.OperatorConfig, chartService ChartService, recorder EventRecorder) *EnsureHelmReleaseStep {
+func NewEnsureHelmReleaseStep(k8sClient K8sClient, operatorConfig *config.OperatorConfig, chartService ChartService, assembler ValueAssembler, recorder EventRecorder) *EnsureHelmReleaseStep {
 	return &EnsureHelmReleaseStep{
 		k8sClient:             k8sClient,
 		eventRecorder:         recorder,
 		helmReconcileInterval: metav1.Duration{Duration: operatorConfig.DoguHelmReconciliationInterval},
 		retryInterval:         metav1.Duration{Duration: operatorConfig.DoguHelmRetryInterval},
 		chartService:          chartService,
+		assembler:             assembler,
 	}
 }
 
 func (ehr *EnsureHelmReleaseStep) Run(ctx context.Context, doguResource *doguv3.Dogu) stepsv3.StepResult {
-
-	templateAsm := values3.NewAssembler(ehr.k8sClient)
-	combinedValues, err := combineValues(ctx, doguResource, ehr.chartService, templateAsm)
+	combinedValues, err := combineValues(ctx, doguResource, ehr.chartService, ehr.assembler)
 	if err != nil {
 		return stepsv3.RequeueWithError(err, doguv3.ReasonInstalling)
 	}
