@@ -15,9 +15,7 @@ import (
 	fluxoci "github.com/fluxcd/source-controller/api/v1"
 	core "k8s.io/api/core/v1"
 	apiext "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
@@ -79,18 +77,6 @@ func (ehr *EnsureHelmReleaseStep) Run(ctx context.Context, doguResource *doguv3.
 	}
 
 	return stepsv3.Continue()
-}
-
-func (ehr *EnsureHelmReleaseStep) existingHelmRelease(ctx context.Context, doguResource *doguv3.Dogu) (*flux.HelmRelease, error) {
-	release := &flux.HelmRelease{}
-	err := ehr.k8sClient.Get(ctx, client.ObjectKey{Namespace: doguResource.Namespace, Name: doguResource.Spec.Name}, release)
-	if apierrors.IsNotFound(err) {
-		return nil, nil
-	}
-	if err != nil {
-		return release, fmt.Errorf("failed to get HelmRelease %q : %w", doguResource.Spec.Name, err)
-	}
-	return release, nil
 }
 
 func configureHelmRelease(release *flux.HelmRelease, doguResource *doguv3.Dogu, values *apiext.JSON, retryInterval *metav1.Duration, helmReconcileInterval *metav1.Duration) {
