@@ -17,6 +17,7 @@ rules:
       - get
       - watch
       - patch
+      - delete
   - apiGroups:
       - "source.toolkit.fluxcd.io"
     resources:
@@ -34,6 +35,7 @@ rules:
       - get
       - watch
       - patch
+      - delete
   - apiGroups:
       - "helm.toolkit.fluxcd.io"
     resources:

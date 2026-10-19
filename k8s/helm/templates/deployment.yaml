@@ -49,6 +49,8 @@ spec:
               value: {{ quote .Values.controllerManager.env.stage | default "production" }}
             - name: LOG_LEVEL
               value: {{ quote .Values.controllerManager.env.logLevel | default "info" }}
+            - name: LOG_FORMAT
+              value: {{ quote .Values.controllerManager.env.logFormat | default "json" }}
             - name: NAMESPACE
               valueFrom:
                 fieldRef:

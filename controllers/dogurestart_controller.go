@@ -6,11 +6,11 @@ import (
 
 	doguv2 "github.com/cloudogu/k8s-dogu-lib/v3/api/v2"
 	doguClientV2 "github.com/cloudogu/k8s-dogu-lib/v3/client/typed/api/v2"
+	"github.com/cloudogu/k8s-dogu-operator/v3/internal/logging"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 )
 
@@ -72,7 +72,7 @@ func (r *DoguRestartReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 }
 
 func (r *DoguRestartReconciler) createRestartInstruction(ctx context.Context, req ctrl.Request) (instruction restartInstruction) {
-	logger := log.FromContext(ctx).
+	logger := logging.FromContext(ctx).
 		WithName("DoguRestartReconciler.createRestartInstruction").
 		WithValues("doguRestart", req.NamespacedName)
 

@@ -8,6 +8,7 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
 	"github.com/cloudogu/k8s-dogu-operator/v3/internal/dogu/health"
 	"github.com/cloudogu/k8s-dogu-operator/v3/internal/dogu/workloads"
+	"github.com/cloudogu/k8s-dogu-operator/v3/internal/logging"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -19,7 +20,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
-	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -158,7 +158,7 @@ func newDoguRequestMapper(k8s client.Reader) handler.MapFunc {
 		dogus := &v3beta1.DoguList{}
 		if err := k8s.List(ctx, dogus, client.InNamespace(workload.GetNamespace())); err != nil {
 			// a map function cannot return an error; the event for this workload is lost
-			log.FromContext(ctx).Error(err, "failed to list dogus to map workload", "workload", workload.GetName(), "dogu", doguName)
+			logging.Error(ctx, err, "failed to list dogus to map workload", "workload", workload.GetName(), "dogu", doguName)
 			return nil
 		}
 
