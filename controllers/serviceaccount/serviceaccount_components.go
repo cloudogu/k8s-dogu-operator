@@ -20,8 +20,6 @@ const saAnnotationSecretName = "ces.cloudogu.com/serviceaccount-secret-name"
 const saAnnotationSecretKey = "ces.cloudogu.com/serviceaccount-secret-key"
 
 func (c *creator) createComponentServiceAccount(ctx context.Context, dogu *core.Dogu, senDoguCfg *config.DoguConfig, serviceAccount core.ServiceAccount, registryCredentialPath string) error {
-	logger := logging.FromContext(ctx)
-
 	if skip := serviceAccountExists(registryCredentialPath, *senDoguCfg); skip {
 		return nil
 	}
@@ -33,7 +31,7 @@ func (c *creator) createComponentServiceAccount(ctx context.Context, dogu *core.
 	servicesClient := c.clientSet.CoreV1().Services(c.namespace)
 	service, err := getServiceForLabels(ctx, servicesClient, labelSelector)
 	if err != nil && saIsOptional {
-		logger.Info("Skipping creation of service account % because the service was not found and the service account is optional", serviceAccount.Type)
+		logging.Info(ctx, "Skipping creation of service account % because the service was not found and the service account is optional", serviceAccount.Type)
 		return nil
 	}
 	if err != nil && !saIsOptional {
@@ -121,11 +119,10 @@ func getAnnotationOrDefault(pod *corev1.Service, name string, defaultValue strin
 }
 
 func (r *remover) removeComponentServiceAccount(ctx context.Context, dogu *core.Dogu, serviceAccount core.ServiceAccount, senDoguCfg *config.DoguConfig) error {
-	logger := logging.FromContext(ctx)
 	registryCredentialPath := "sa-" + serviceAccount.Type
 
 	if exists := serviceAccountExists(registryCredentialPath, *senDoguCfg); !exists {
-		logger.Info("skipping removal of service account because it does not exists")
+		logging.Info(ctx, "skipping removal of service account because it does not exists")
 
 		return nil
 	}

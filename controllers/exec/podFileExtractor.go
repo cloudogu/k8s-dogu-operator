@@ -24,8 +24,6 @@ func NewPodFileExtractor(factory ExecPodFactory) FileExtractor {
 // ExtractK8sResourcesFromExecPod enumerates K8s resources and returns them in a map filename->content. The map will be
 // empty if there are no files.
 func (fe *podFileExtractor) ExtractK8sResourcesFromExecPod(ctx context.Context, doguResource *k8sv2.Dogu, dogu *core.Dogu) (map[string]string, error) {
-	logger := logging.FromContext(ctx)
-
 	lsCommand := NewShellCommand("/bin/sh", "-c", "/bin/ls /k8s/ || true")
 	fileListBuf, err := fe.factory.Exec(ctx, doguResource, dogu, lsCommand)
 	if err != nil {
@@ -33,17 +31,17 @@ func (fe *podFileExtractor) ExtractK8sResourcesFromExecPod(ctx context.Context, 
 	}
 
 	fileList := fileListBuf.String()
-	logger.Info(fmt.Sprintf("ExecPod file list results in '%s'", fileListBuf))
+	logging.Info(ctx, fmt.Sprintf("ExecPod file list results in '%s'", fileListBuf))
 
 	resultDocs := make(map[string]string)
 	if fileList == "" || strings.Contains(fileList, "No such file or directory") || strings.Contains(fileList, "total 0") {
-		logger.Info("No custom K8s resource files found")
+		logging.Info(ctx, "No custom K8s resource files found")
 		return resultDocs, nil
 	}
 
 	for file := range strings.SplitSeq(fileList, " ") {
 		trimmedFile := doguCustomK8sResourceDirectory + strings.TrimSpace(file)
-		logger.Info("Reading k8s resource " + trimmedFile)
+		logging.Info(ctx, "Reading k8s resource "+trimmedFile)
 
 		catCommand := NewShellCommand("/bin/cat", trimmedFile)
 		fileContent, err := fe.factory.Exec(ctx, doguResource, dogu, catCommand)

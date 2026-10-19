@@ -142,9 +142,8 @@ func needsPVCs(dogu *core.Dogu) bool {
 
 // UpsertDoguNetworkPolicies generates the network policies for a dogu
 func (u *upserter) UpsertDoguNetworkPolicies(ctx context.Context, doguResource *k8sv2.Dogu, dogu *core.Dogu, hasIngress bool) error {
-	logger := logging.FromContext(ctx)
 	if !u.networkPoliciesEnabled {
-		logger.Info("Do not create network policies as they are disabled by configuration; deleting previously applied network policies")
+		logging.Info(ctx, "Do not create network policies as they are disabled by configuration; deleting previously applied network policies")
 
 		err := u.client.DeleteAllOf(ctx,
 			&netv1.NetworkPolicy{},
@@ -184,8 +183,7 @@ func (u *upserter) UpsertDoguNetworkPolicies(ctx context.Context, doguResource *
 	}
 
 	if multiErr != nil {
-		logger := logging.FromContext(ctx)
-		logger.Error(multiErr, fmt.Sprintf("failed to create some network policies for dogu %s", dogu.GetSimpleName()))
+		logging.Error(ctx, multiErr, fmt.Sprintf("failed to create some network policies for dogu %s", dogu.GetSimpleName()))
 		return multiErr
 	}
 

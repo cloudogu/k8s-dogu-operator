@@ -137,7 +137,6 @@ func stepName(s Step) string {
 
 func (duc *DoguUseCase) stopStepExecution(ctx context.Context, doguResource *v3beta1.Dogu, result v3.StepResult) (time.Duration, error) {
 	reason, msg := deriveReasonAndMessage(result)
-	logger := logging.FromContext(ctx)
 	if err := duc.updateReadyCondition(ctx, doguResource, metav1.ConditionFalse, reason, msg); err != nil {
 		if apierrors.IsConflict(err) {
 			logging.Debug(ctx, "requeueing due to conflict", "dogu", doguResource.Name)
@@ -148,12 +147,12 @@ func (duc *DoguUseCase) stopStepExecution(ctx context.Context, doguResource *v3b
 	}
 	// Only send events on abort and do not send events on requeues because this would flood the apiserver.
 	if result.Err == nil && result.RequeueAfter == 0 {
-		logger.Error(errors.New(result.ReadyMessage), "dogu reconciliation aborted")
+		logging.Error(ctx, errors.New(result.ReadyMessage), "dogu reconciliation aborted")
 		duc.eventRecorder.Event(doguResource, coreV1.EventTypeWarning, result.ReadyReason, result.ReadyMessage)
 	}
 
 	if result.Err != nil {
-		logger.Error(result.Err, "dogu reconciliation failed")
+		logging.Error(ctx, result.Err, "dogu reconciliation failed")
 	} else {
 		logging.Debug(ctx, "requeueing dogu reconciliation", "reason", reason, "requeueAfter", result.RequeueAfter)
 	}

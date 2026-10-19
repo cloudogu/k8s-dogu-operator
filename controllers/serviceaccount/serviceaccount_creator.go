@@ -65,8 +65,6 @@ func NewCreator(
 
 // CreateAll creates all service accounts for a given dogu. Existing service accounts will be skipped.
 func (c *creator) CreateAll(ctx context.Context, dogu *core.Dogu) error {
-	logger := logging.FromContext(ctx)
-
 	sensitiveConfig, err := c.sensitiveDoguRepo.Get(ctx, cescommons.SimpleName(dogu.GetSimpleName()))
 	if err != nil {
 		return fmt.Errorf("unable to get sensitive config for dogu %s: %w", dogu.GetSimpleName(), err)
@@ -89,7 +87,7 @@ func (c *creator) CreateAll(ctx context.Context, dogu *core.Dogu) error {
 				return fmt.Errorf("unable to create service account for component %s: %w", serviceAccount.Type, lErr)
 			}
 		default:
-			logger.Info(fmt.Sprintf("unknown service account kind: %s", serviceAccount.Kind), "skipping service account creation")
+			logging.Info(ctx, fmt.Sprintf("unknown service account kind: %s", serviceAccount.Kind), "skipping service account creation")
 			continue
 		}
 	}
@@ -99,11 +97,9 @@ func (c *creator) CreateAll(ctx context.Context, dogu *core.Dogu) error {
 
 func (c *creator) createDoguServiceAccount(ctx context.Context, dogu *core.Dogu, senDoguCfg *config.DoguConfig,
 	serviceAccount core.ServiceAccount, registryCredentialPath string) error {
-	logger := logging.FromContext(ctx)
-
 	skip := c.shouldSkipLegacyCASServiceAccount(serviceAccount)
 	if skip {
-		logger.Info("skipping legacy CAS service account creation because auth registration is enabled")
+		logging.Info(ctx, "skipping legacy CAS service account creation because auth registration is enabled")
 		return nil
 	}
 
@@ -117,7 +113,7 @@ func (c *creator) createDoguServiceAccount(ctx context.Context, dogu *core.Dogu,
 	}
 
 	if !enabled && c.isOptionalServiceAccount(dogu, serviceAccount.Type) {
-		logger.Info(fmt.Sprintf("skipping optional service account creation for %s, because the dogu is not installed", serviceAccount.Type))
+		logging.Info(ctx, fmt.Sprintf("skipping optional service account creation for %s, because the dogu is not installed", serviceAccount.Type))
 		return nil
 	}
 

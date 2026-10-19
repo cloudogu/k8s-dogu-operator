@@ -180,16 +180,15 @@ func (r *DoguReconciler) handleDoguV2(ctx context.Context, req ctrl.Request, dog
 }
 
 func (r *DoguReconciler) handleDoguV3(ctx context.Context, _ ctrl.Request, doguResource *doguv2.Dogu) (ctrl.Result, error) {
-	logger := logging.FromContext(ctx)
 	if !r.doguV3Enabled {
-		logger.Info("dogu v3 feature flag is disabled, skipping reconciliation")
+		logging.Info(ctx, "dogu v3 feature flag is disabled, skipping reconciliation")
 		return ctrl.Result{}, nil
 	}
 
 	v3Dogu := &v3beta1.Dogu{}
 	err := doguResource.ConvertTo(v3Dogu)
 	if err != nil {
-		logger.Error(err, "failed to convert v2 dogu to v3 dogu", "dogu", doguResource.Spec.Name)
+		logging.Error(ctx, err, "failed to convert v2 dogu to v3 dogu", "dogu", doguResource.Spec.Name)
 		// do not reconcile, end here and have your admin look into the problem
 		return ctrl.Result{}, nil
 	}
@@ -258,7 +257,6 @@ func (r *DoguReconciler) setupWithManager(mgr ctrlManager) error {
 }
 
 func (r *DoguReconciler) setReadyCondition(ctx context.Context, doguResource *doguv2.Dogu, status metav1.ConditionStatus, reason, message string) error {
-	logger := logging.FromContext(ctx)
 	condition := metav1.Condition{
 		Type:               doguv2.ConditionReady,
 		Status:             status,
@@ -273,11 +271,11 @@ func (r *DoguReconciler) setReadyCondition(ctx context.Context, doguResource *do
 		return status
 	}, metav1.UpdateOptions{})
 	if err != nil {
-		logger.Error(err, "Failed to update dogu resource")
+		logging.Error(ctx, err, "Failed to update dogu resource")
 		return err
 	}
 	*doguResource = *updatedDoguResource
-	logger.Info("Updated dogu resource successfully!")
+	logging.Info(ctx, "Updated dogu resource successfully!")
 	return nil
 }
 

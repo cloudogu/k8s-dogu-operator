@@ -48,8 +48,6 @@ func NewDoguSupportManager(client client.Client, fetcher cesregistry.LocalDoguFe
 // HandleSupportMode handles the support flag in the dogu spec and returns whether the support modes changed during the
 // last operation. If any action failed a non-requeue-able error will be returned.
 func (dsm *doguSupportManager) HandleSupportMode(ctx context.Context, doguResource *doguv2.Dogu) (bool, error) {
-	logger := logging.FromContext(ctx)
-
 	deployment := &appsv1.Deployment{}
 	err := dsm.client.Get(ctx, doguResource.GetObjectKey(), deployment)
 	if err != nil {
@@ -60,7 +58,7 @@ func (dsm *doguSupportManager) HandleSupportMode(ctx context.Context, doguResour
 		return false, fmt.Errorf("failed to get deployment of dogu %s: %w", doguResource.Name, err)
 	}
 
-	logger.Info(fmt.Sprintf("Check if support mode is currently active for dogu %s...", doguResource.Name))
+	logging.Info(ctx, fmt.Sprintf("Check if support mode is currently active for dogu %s...", doguResource.Name))
 	active := isDeploymentInSupportMode(deployment)
 	if !supportModeChanged(doguResource, active) {
 		return false, nil
@@ -76,8 +74,6 @@ func (dsm *doguSupportManager) HandleSupportMode(ctx context.Context, doguResour
 }
 
 func (dsm *doguSupportManager) updateDeployment(ctx context.Context, doguResource *doguv2.Dogu, deployment *appsv1.Deployment) error {
-	logger := logging.FromContext(ctx)
-
 	dogu, err := dsm.doguFetcher.FetchInstalled(ctx, doguResource.GetSimpleDoguName())
 	if err != nil {
 		return fmt.Errorf("failed to get dogu descriptor of dogu %s: %w", doguResource.Name, err)
@@ -93,7 +89,7 @@ func (dsm *doguSupportManager) updateDeployment(ctx context.Context, doguResourc
 	}
 
 	deployment.Spec.Template = *podTemplate
-	logger.Info(fmt.Sprintf("Update deployment for dogu %s...", doguResource.Name))
+	logging.Info(ctx, fmt.Sprintf("Update deployment for dogu %s...", doguResource.Name))
 	err = dsm.client.Update(ctx, deployment)
 	if err != nil {
 		return fmt.Errorf("failed to update dogu deployment %s: %w", doguResource.Name, err)

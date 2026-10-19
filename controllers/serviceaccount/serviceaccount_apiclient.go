@@ -97,8 +97,7 @@ func (ac *apiClient) deleteServiceAccount(ctx context.Context, baseUrl string, a
 }
 
 func closeBody(ctx context.Context, c io.Closer) {
-	logger := logging.FromContext(ctx)
 	if err := c.Close(); err != nil {
-		logger.Error(err, "closed http body with error")
+		logging.Error(ctx, err, "closed http body with error")
 	}
 }

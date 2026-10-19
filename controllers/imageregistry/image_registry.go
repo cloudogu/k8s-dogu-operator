@@ -52,18 +52,16 @@ func newImageConfigCache(size int) *lruImageConfigCache {
 // repeatedly (e.g. across reconcile retries or by several reconcile steps). The cached config must not be mutated by
 // callers, as it is shared across all consumers of a cache hit.
 func (i *craneContainerImageRegistry) PullImageConfig(ctx context.Context, image string) (*imagev1.ConfigFile, error) {
-	logger := logging.FromContext(ctx)
-
 	if i.cache != nil {
 		if cachedConfig, ok := i.cache.Get(image); ok {
-			logger.Info(fmt.Sprintf("Using cached image config for image: [%s]", image))
+			logging.Info(ctx, fmt.Sprintf("Using cached image config for image: [%s]", image))
 			return cachedConfig, nil
 		}
 	}
 
 	ctxOpt := crane.WithContext(ctx)
 
-	logger.Info(fmt.Sprintf("Try to pull image manifest from image: [%s]", image))
+	logging.Info(ctx, fmt.Sprintf("Try to pull image manifest from image: [%s]", image))
 
 	transport := remote.DefaultTransport
 	proxyURL, found := os.LookupEnv("PROXY_URL")
@@ -82,7 +80,7 @@ func (i *craneContainerImageRegistry) PullImageConfig(ctx context.Context, image
 
 	stage, err := config.GetStage()
 	if err != nil {
-		logger.Info(fmt.Sprintf("failed to get env var stage: %v", err))
+		logging.Info(ctx, fmt.Sprintf("failed to get env var stage: %v", err))
 	}
 
 	var img imagev1.Image
@@ -95,7 +93,7 @@ func (i *craneContainerImageRegistry) PullImageConfig(ctx context.Context, image
 		}
 
 		if err != nil {
-			logger.Error(err, "error on image pull: retry")
+			logging.Error(ctx, err, "error on image pull: retry")
 			return err
 		}
 

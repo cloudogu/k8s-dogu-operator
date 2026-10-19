@@ -48,8 +48,6 @@ func (d *doguRequeueHandler) Handle(ctx context.Context, doguResource *doguv2.Do
 }
 
 func (d *doguRequeueHandler) handleRequeueTime(ctx context.Context, doguResource *doguv2.Dogu, result *ctrl.Result) {
-	logger := logging.FromContext(ctx)
-
 	// A Get on an empty dogu would lead to "resource name may not be empty". Prevent by skipping.
 	emptyDogu := &doguv2.Dogu{}
 	if reflect.DeepEqual(doguResource, emptyDogu) || !doguResource.DeletionTimestamp.IsZero() {
@@ -63,7 +61,7 @@ func (d *doguRequeueHandler) handleRequeueTime(ctx context.Context, doguResource
 			return
 		}
 		result.RequeueAfter = d.requeueTime
-		logger.Error(err, "failed to get doguResource for setting requeue time")
+		logging.Error(ctx, err, "failed to get doguResource for setting requeue time")
 		return
 	}
 	// check deletionTimestamp again to catch the race condition that the dogu was deleted in the meantime
@@ -77,7 +75,7 @@ func (d *doguRequeueHandler) handleRequeueTime(ctx context.Context, doguResource
 	}, metav1.UpdateOptions{})
 	if err != nil {
 		result.RequeueAfter = d.requeueTime
-		logger.Error(err, "failed to set requeue time")
+		logging.Error(ctx, err, "failed to set requeue time")
 		return
 	}
 	*doguResource = *updatedDoguResource
