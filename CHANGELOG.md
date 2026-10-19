@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Log calls of the cesapp-lib and the k8s-apply-lib keep their log level instead of being logged as info.
   - The lifecycle logging of fx is logged in the same format as all other logs.
 - [#362] Move the logging package to `internal/logging` and log via its `Info`, `Debug` and `Error` functions instead of `log.FromContext`.
+- [#354] The `HelmRelease` for a dogu is now suspended, if either Stop or PauseReconciliation is set for it, or a PVC resize has to be done.
 
 ## [v3.33.0] - 2026-10-15
 ### Added
