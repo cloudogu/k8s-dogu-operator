@@ -6,13 +6,13 @@ import (
 
 	"github.com/cloudogu/k8s-dogu-lib/v3/api/v3beta1"
 	stepsv3 "github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv3"
+	"github.com/cloudogu/k8s-dogu-operator/v3/internal/logging"
 	flux "github.com/fluxcd/helm-controller/api/v2"
 	fluxmeta "github.com/fluxcd/pkg/apis/meta"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metautil "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 // DeleteHelmReleaseStep actively deletes the HelmRelease and waits (via requeue) until it is fully
@@ -32,7 +32,7 @@ func (s *DeleteHelmReleaseStep) Run(ctx context.Context, doguResource *v3beta1.D
 	err := s.client.Get(ctx, client.ObjectKey{Namespace: doguResource.Namespace, Name: doguResource.Spec.Name}, release)
 	if apierrors.IsNotFound(err) {
 		// The HelmRelease is gone - either flux finished the uninstall or it never existed.
-		log.FromContext(ctx).Info("HelmRelease is gone, continuing deletion")
+		logging.Info(ctx, "HelmRelease is gone, continuing deletion")
 		return stepsv3.Continue()
 	}
 	if err != nil {
@@ -50,7 +50,7 @@ func (s *DeleteHelmReleaseStep) Run(ctx context.Context, doguResource *v3beta1.D
 			return failDeletion(s.eventRecorder, doguResource, fmt.Errorf("failed to delete HelmRelease %q: %w", release.Name, dErr))
 		}
 
-		log.FromContext(ctx).Info("issued deletion for HelmRelease", "name", release.Name)
+		logging.Info(ctx, "issued deletion for HelmRelease", "name", release.Name)
 	}
 
 	// If flux reports the uninstall as stalled/failed, escalate (event + condition) but keep waiting:

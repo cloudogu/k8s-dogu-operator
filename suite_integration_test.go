@@ -10,7 +10,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bombsimon/logrusr/v2"
 	"github.com/cloudogu/ces-commons-lib/dogu"
 	doguscheme "github.com/cloudogu/k8s-dogu-lib/v3/client/scheme"
 	doguv2 "github.com/cloudogu/k8s-dogu-lib/v3/client/typed/api/v2"
@@ -18,8 +17,8 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/exec"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/imageregistry"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/initfx"
+	"github.com/cloudogu/k8s-dogu-operator/v3/internal/logging"
 	flux "github.com/fluxcd/source-controller/api/v1"
-	"github.com/sirupsen/logrus"
 	"go.uber.org/fx/fxtest"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -113,7 +112,7 @@ var _ = ginkgo.BeforeSuite(func() {
 	config.Stage = config.StageProduction
 
 	ginkgo.By("bootstrapping test environment")
-	logf.SetLogger(logrusr.New(logrus.New()))
+	logf.SetLogger(logging.NewLogger(logging.NewZapLogger()))
 	testEnv = &envtest.Environment{
 		CRDDirectoryPaths: []string{
 			filepath.Join("vendor", "github.com", "cloudogu", "k8s-dogu-lib", "v3", "crds"),

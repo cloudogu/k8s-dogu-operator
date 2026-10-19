@@ -11,10 +11,10 @@ import (
 	appsv1 "k8s.io/client-go/kubernetes/typed/apps/v1"
 	v1 "k8s.io/client-go/kubernetes/typed/core/v1"
 
+	"github.com/cloudogu/k8s-dogu-operator/v3/internal/logging"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
-	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 type exportModeNotYetChangedError struct {
@@ -74,16 +74,14 @@ func (dem *doguExportManager) shouldUpdateExportMode(ctx context.Context, doguRe
 
 // UpdateExportMode activates/deactivates the export mode for the dogu
 func (dem *doguExportManager) UpdateExportMode(ctx context.Context, doguResource *doguv2.Dogu) error {
-	logger := log.FromContext(ctx)
-
 	shouldUpdate, err := dem.shouldUpdateExportMode(ctx, doguResource)
 	if err != nil {
-		logger.Error(err, "error while checking export-mode.")
+		logging.Error(ctx, err, "error while checking export-mode.")
 		return exportModeNotYetChangedError{doguName: doguResource.Name, desiredExportModeState: doguResource.Spec.ExportMode, err: err}
 	}
 
 	if !shouldUpdate {
-		logger.Info(fmt.Sprintf("The export-mode of dogu %q has changed to its desired state: %v", doguResource.Name, doguResource.Spec.ExportMode))
+		logging.Info(ctx, fmt.Sprintf("The export-mode of dogu %q has changed to its desired state: %v", doguResource.Name, doguResource.Spec.ExportMode))
 		return dem.updateStatus(ctx, doguResource, doguv2.DoguStatusInstalled, doguResource.Spec.ExportMode)
 	}
 
@@ -97,15 +95,13 @@ func (dem *doguExportManager) UpdateExportMode(ctx context.Context, doguResource
 }
 
 func (dem *doguExportManager) updateExportMode(ctx context.Context, doguResource *doguv2.Dogu) error {
-	logger := log.FromContext(ctx)
-
 	updateNeeded, err := dem.deploymentUpdateNeeded(ctx, doguResource)
 	if err != nil {
 		return fmt.Errorf("failed to check if deployment update is needed for dogu %q: %w", doguResource.Name, err)
 	}
 
 	if !updateNeeded {
-		logger.Info("Deployment Spec for dogu is already set up for export-mode.", "dogu", doguResource.Name, "exportMode", doguResource.Spec.ExportMode)
+		logging.Info(ctx, "Deployment Spec for dogu is already set up for export-mode.", "dogu", doguResource.Name, "exportMode", doguResource.Spec.ExportMode)
 		return nil
 	}
 
@@ -113,13 +109,13 @@ func (dem *doguExportManager) updateExportMode(ctx context.Context, doguResource
 		return err
 	}
 
-	logger.Info("Getting local dogu descriptor...")
+	logging.Info(ctx, "Getting local dogu descriptor...")
 	dogu, err := dem.doguFetcher.FetchInstalled(ctx, doguResource.GetSimpleDoguName())
 	if err != nil {
 		return fmt.Errorf("failed to get local descriptor for dogu %q: %w", doguResource.Name, err)
 	}
 
-	logger.Info("Upserting deployment...")
+	logging.Info(ctx, "Upserting deployment...")
 	_, err = dem.resourceUpserter.UpsertDoguDeployment(ctx, doguResource, dogu, nil)
 	if err != nil {
 		return fmt.Errorf("failed to upsert deployment for export-mode change for dogu %q: %w", doguResource.Name, err)

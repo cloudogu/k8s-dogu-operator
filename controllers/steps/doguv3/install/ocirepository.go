@@ -10,12 +10,12 @@ import (
 	"github.com/cloudogu/k8s-dogu-lib/v3/api/v3beta1"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/resource"
 	stepsv3 "github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv3"
+	"github.com/cloudogu/k8s-dogu-operator/v3/internal/logging"
 	"github.com/fluxcd/pkg/apis/meta"
 	flux "github.com/fluxcd/source-controller/api/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 const (
@@ -93,10 +93,10 @@ func (eor *EnsureOCIRepositoryStep) Run(ctx context.Context, doguResource *v3bet
 	switch result {
 	case controllerutil.OperationResultCreated:
 		eor.eventRecorder.Event(doguResource, v1.EventTypeNormal, v3beta1.ConditionChartAvailable, "OCIRepository created")
-		log.FromContext(ctx).Info("created OCIRepository", "name", repository.Name)
+		logging.Info(ctx, "created OCIRepository", "name", repository.Name)
 	case controllerutil.OperationResultUpdated:
 		eor.eventRecorder.Event(doguResource, v1.EventTypeNormal, v3beta1.ConditionChartAvailable, "OCIRepository updated")
-		log.FromContext(ctx).Info("updated OCIRepository", "name", repository.Name)
+		logging.Info(ctx, "updated OCIRepository", "name", repository.Name)
 
 	}
 

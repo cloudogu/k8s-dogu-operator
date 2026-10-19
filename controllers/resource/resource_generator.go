@@ -8,12 +8,12 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/cloudogu/k8s-dogu-operator/v3/internal/logging"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/cloudogu/cesapp-lib/core"
 	imagev1 "github.com/google/go-containerregistry/pkg/v1"
@@ -317,7 +317,7 @@ func getUIDAndGIDFromDogu(ctx context.Context, dogu *core.Dogu) (*int64, *int64)
 }
 
 func logInvalidVolumePropertyError(ctx context.Context, err error, property, doguName, value string) {
-	log.FromContext(ctx).Error(err, fmt.Sprintf("dogu-descriptor %q: failed to convert %s %q in volume to int", property, doguName, value))
+	logging.Error(ctx, err, fmt.Sprintf("dogu-descriptor %q: failed to convert %s %q in volume to int", property, doguName, value))
 }
 
 // prepareAdditionalMountsAndArgs generates volume mounts and command arguments for the dogu additional mount init container.
@@ -510,7 +510,7 @@ func getStartupProbeTimeout() int32 {
 		var err error
 		timeoutSeconds, err = strconv.Atoi(timeoutSecondsStr)
 		if err != nil {
-			log.Log.Error(err, fmt.Sprintf("failed to convert dogu startup probe timeout %q to int: defaulting to %d", timeoutSecondsStr, defaultStartupProbeTimeout))
+			logging.Log().Error(err, fmt.Sprintf("failed to convert dogu startup probe timeout %q to int: defaulting to %d", timeoutSecondsStr, defaultStartupProbeTimeout))
 			timeoutSeconds = 1
 		}
 	}
