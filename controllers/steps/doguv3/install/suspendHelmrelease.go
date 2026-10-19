@@ -8,13 +8,13 @@ import (
 	doguv3 "github.com/cloudogu/k8s-dogu-lib/v3/api/v3beta1"
 	stepsv3 "github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv3"
 	"github.com/cloudogu/k8s-dogu-operator/v3/internal/dogu/pvc"
+	"github.com/cloudogu/k8s-dogu-operator/v3/internal/logging"
 	flux "github.com/fluxcd/helm-controller/api/v2"
 	apiext "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	apimeta "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 const (
@@ -56,7 +56,7 @@ type desiredState struct {
 
 func (shr *SuspendHelmReleaseStep) Run(ctx context.Context, doguResource *doguv3.Dogu) stepsv3.StepResult {
 	// get Helm release if it exists
-	log.FromContext(ctx).Info("Entering SuspendHelmReleaseStep.Run", "dogu", doguResource.Name)
+	logging.Debug(ctx, "Entering SuspendHelmReleaseStep.Run", "dogu", doguResource.Name)
 	helmRelease, err := shr.existingHelmRelease(ctx, doguResource)
 	if err != nil {
 		return stepsv3.RequeueWithError(err, doguv3.ReasonInstalling)
@@ -83,13 +83,13 @@ func (shr *SuspendHelmReleaseStep) suspendOrRelease(ctx context.Context, doguRes
 	var result stepsv3.StepResult
 	if modified {
 		if targetState.suspendHelmRelease {
-			log.FromContext(ctx).Info("Suspended HelmRelease for dogu", "name", doguResource.Name)
+			logging.Info(ctx, "Suspended HelmRelease for dogu", "name", doguResource.Name)
 		} else {
-			log.FromContext(ctx).Info("Released suspension on HelmRelease for dogu", "name", doguResource.Name)
+			logging.Info(ctx, "Released suspension on HelmRelease for dogu", "name", doguResource.Name)
 		}
 		result = stepsv3.RequeueAfter(defaultRequeueAfter, targetState.reason, targetState.message)
 	} else {
-		log.FromContext(ctx).Info("Leaving HelmRelease for dogu unchanged", "name", doguResource.Name)
+		logging.Debug(ctx, "Leaving HelmRelease for dogu unchanged", "name", doguResource.Name)
 		result = stepsv3.Continue()
 	}
 	if err := shr.setSuspendedConditionOnDoguCR(ctx, doguResource, targetState); err != nil {
