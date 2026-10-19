@@ -72,9 +72,9 @@ func (r *DoguRestartReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 }
 
 func (r *DoguRestartReconciler) createRestartInstruction(ctx context.Context, req ctrl.Request) (instruction restartInstruction) {
-	logger := logging.FromContext(ctx).
+	ctx = logging.IntoContext(ctx, logging.FromContext(ctx).
 		WithName("DoguRestartReconciler.createRestartInstruction").
-		WithValues("doguRestart", req.NamespacedName)
+		WithValues("doguRestart", req.NamespacedName))
 
 	instruction.req = req
 	instruction.doguRestartInterface = r.doguRestartInterface
@@ -87,13 +87,14 @@ func (r *DoguRestartReconciler) createRestartInstruction(ctx context.Context, re
 		instruction.err = err
 		return
 	}
-	logger.Info("dogu restart ressource has been found")
+
+	logging.Debug(ctx, "dogu restart ressource has been found")
 	instruction.restart = doguRestart
 
 	// restarts with conditions belong to v3 dogus. This is checked before loading the dogu, so that the
 	// DoguRestartV3Reconciler handles a deleted dogu of a started restart and not this reconciler.
 	if len(doguRestart.Status.Conditions) > 0 {
-		logger.Info("restart has conditions and belongs to the DoguRestartV3Reconciler, ignoring")
+		logging.Debug(ctx, "restart has conditions and belongs to the DoguRestartV3Reconciler, ignoring")
 		instruction.op = ignore
 		return
 	}
@@ -117,7 +118,7 @@ func (r *DoguRestartReconciler) createRestartInstruction(ctx context.Context, re
 
 	if !dogu.IsV2() {
 		// new restarts of v3 dogus have no conditions yet; without this check the dogu would be stopped like a v2 dogu
-		logger.Info("dogu is not a v2 dogu, restart belongs to the DoguRestartV3Reconciler, ignoring")
+		logging.Debug(ctx, "dogu is not a v2 dogu, restart belongs to the DoguRestartV3Reconciler, ignoring")
 		instruction.op = ignore
 		return
 	}
