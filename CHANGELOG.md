@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [v3.34.0] - 2026-10-19
 ### Added
 - [#365] Add new option to disable warp menu entries for v2 dogus
   - See `controllerManager.env.warpMenuDisabledV2Dogus` in `values.yaml`
