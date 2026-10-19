@@ -7,6 +7,7 @@ import (
 
 	cesappcore "github.com/cloudogu/cesapp-lib/core"
 	v2 "github.com/cloudogu/k8s-dogu-lib/v3/api/v2"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
 	warpMenuEntryV1 "github.com/cloudogu/k8s-warp-menu-entry-lib/api/v1"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -27,7 +28,7 @@ func TestNewManager(t *testing.T) {
 	t.Run("Should Create new test manager", func(t *testing.T) {
 		var manager Manager
 
-		manager = *NewWarpMenuEntryManager(nil, nil)
+		manager = *NewWarpMenuEntryManager(nil, nil, &config.OperatorConfig{})
 		require.NotNil(t, manager)
 	})
 }
@@ -272,9 +273,7 @@ func newNotFoundError() *errors2.StatusError {
 
 func newDoguResource() *v2.Dogu {
 	return &v2.Dogu{
-		ObjectMeta: v1.ObjectMeta{
-			Name: doguName,
-		},
+		Name: doguName,
 	}
 }
 
@@ -291,18 +290,15 @@ func newDoguDescriptor(withWarpTag bool) *cesappcore.Dogu {
 	}
 }
 
-func newWarpMenuEntry(doguResource *v2.Dogu) *warpMenuEntryV1.WarpMenuEntry {
-
+func newWarpMenuEntryWithDisabledFlag(doguResource *v2.Dogu, disabled bool) *warpMenuEntryV1.WarpMenuEntry {
 	return &warpMenuEntryV1.WarpMenuEntry{
-		ObjectMeta: v1.ObjectMeta{
-			OwnerReferences: []v1.OwnerReference{
-				*v1.NewControllerRef(doguResource, v2.GroupVersion.WithKind("Dogu")),
-			},
-			Name: doguName,
-			Labels: map[string]string{
-				"app":       "ces",
-				"dogu.name": doguName,
-			},
+		OwnerReferences: []v1.OwnerReference{
+			*v1.NewControllerRef(doguResource, v2.GroupVersion.WithKind("Dogu")),
+		},
+		Name: doguName,
+		Labels: map[string]string{
+			"app":       "ces",
+			"dogu.name": doguName,
 		},
 		Spec: warpMenuEntryV1.WarpMenuEntrySpec{
 			DisplayName: warpMenuEntryV1.DisplayName{
@@ -311,7 +307,54 @@ func newWarpMenuEntry(doguResource *v2.Dogu) *warpMenuEntryV1.WarpMenuEntry {
 			},
 			Category: category,
 			Path:     path,
-			Disabled: false,
+			Disabled: disabled,
 		},
+	}
+}
+
+func newWarpMenuEntry(doguResource *v2.Dogu) *warpMenuEntryV1.WarpMenuEntry {
+	return newWarpMenuEntryWithDisabledFlag(doguResource, false)
+}
+
+func TestWarpMenuEntryManager_buildNewWarpMenuEntry(t *testing.T) {
+	type fields struct {
+		disabledDogus []string
+	}
+	type args struct {
+		dogu           *v2.Dogu
+		doguDescriptor *cesappcore.Dogu
+	}
+	tests := []struct {
+		name   string
+		fields fields
+		args   args
+		want   *warpMenuEntryV1.WarpMenuEntry
+	}{
+		{
+			name:   "should create disabled entry if dogu simple name is in disabled slice",
+			fields: fields{disabledDogus: []string{"testdogu"}},
+			args: args{
+				dogu:           newDoguResource(),
+				doguDescriptor: newDoguDescriptor(true),
+			},
+			want: newWarpMenuEntryWithDisabledFlag(newDoguResource(), true),
+		},
+		{
+			name:   "should create enabled entry if dogu simple name is not in disabled slice",
+			fields: fields{disabledDogus: []string{"other"}},
+			args: args{
+				dogu:           newDoguResource(),
+				doguDescriptor: newDoguDescriptor(true),
+			},
+			want: newWarpMenuEntryWithDisabledFlag(newDoguResource(), false),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			w := WarpMenuEntryManager{
+				disabledDogus: tt.fields.disabledDogus,
+			}
+			assert.Equalf(t, tt.want, w.buildNewWarpMenuEntry(tt.args.dogu, tt.args.doguDescriptor), "buildNewWarpMenuEntry(%v, %v)", tt.args.dogu, tt.args.doguDescriptor)
+		})
 	}
 }

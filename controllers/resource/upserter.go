@@ -15,13 +15,13 @@ import (
 	opConfig "github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
 	imagev1 "github.com/google/go-containerregistry/pkg/v1"
 
+	"github.com/cloudogu/k8s-dogu-operator/v3/internal/logging"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	netv1 "k8s.io/api/networking/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/cloudogu/cesapp-lib/core"
 	k8sv2 "github.com/cloudogu/k8s-dogu-lib/v3/api/v2"
@@ -142,9 +142,8 @@ func needsPVCs(dogu *core.Dogu) bool {
 
 // UpsertDoguNetworkPolicies generates the network policies for a dogu
 func (u *upserter) UpsertDoguNetworkPolicies(ctx context.Context, doguResource *k8sv2.Dogu, dogu *core.Dogu, hasIngress bool) error {
-	logger := log.FromContext(ctx)
 	if !u.networkPoliciesEnabled {
-		logger.Info("Do not create network policies as they are disabled by configuration; deleting previously applied network policies")
+		logging.Info(ctx, "Do not create network policies as they are disabled by configuration; deleting previously applied network policies")
 
 		err := u.client.DeleteAllOf(ctx,
 			&netv1.NetworkPolicy{},
@@ -184,8 +183,7 @@ func (u *upserter) UpsertDoguNetworkPolicies(ctx context.Context, doguResource *
 	}
 
 	if multiErr != nil {
-		logger := log.FromContext(ctx)
-		logger.Error(multiErr, fmt.Sprintf("failed to create some network policies for dogu %s", dogu.GetSimpleName()))
+		logging.Error(ctx, multiErr, fmt.Sprintf("failed to create some network policies for dogu %s", dogu.GetSimpleName()))
 		return multiErr
 	}
 
@@ -321,7 +319,7 @@ func (u *upserter) waitForExistingPVCToBeTerminated(ctx context.Context, pvcObje
 			return fmt.Errorf("failed to get pvc %s: %w", pvcObjectKey.Name, err)
 		}
 
-		log.FromContext(ctx).Info(fmt.Sprintf("wait for pvc %s to be terminated", pvcObjectKey.Name))
+		logging.Info(ctx, fmt.Sprintf("wait for pvc %s to be terminated", pvcObjectKey.Name))
 		return fmt.Errorf("pvc %s still exists", pvcObjectKey.Name)
 	})
 

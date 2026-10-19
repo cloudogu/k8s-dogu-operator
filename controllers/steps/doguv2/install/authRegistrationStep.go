@@ -7,7 +7,7 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/authregistration"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
 	steps "github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv2"
-	"sigs.k8s.io/controller-runtime/pkg/log"
+	"github.com/cloudogu/k8s-dogu-operator/v3/internal/logging"
 )
 
 // AuthRegistrationStep creates/updates AuthRegistration resources for a dogu.
@@ -24,7 +24,7 @@ func NewAuthRegistrationStep(authRegistrationManager authregistration.Manager, o
 }
 
 func (ars *AuthRegistrationStep) Run(ctx context.Context, doguResource *v2.Dogu) steps.StepResult {
-	logger := log.FromContext(ctx).WithName("authRegistrationStep")
+	logger := logging.FromContext(ctx).WithName("authRegistrationStep")
 
 	if !ars.authRegistrationEnabled {
 		logger.Info("Auth registration is disabled, skipping auth registration")

@@ -12,6 +12,7 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/resource"
 	"github.com/cloudogu/retry-lib/retry"
 
+	"github.com/cloudogu/k8s-dogu-operator/v3/internal/logging"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	quantity "k8s.io/apimachinery/pkg/api/resource"
@@ -19,7 +20,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 // deprecated
@@ -161,24 +161,22 @@ func (ep *execPodFactory) createPod(doguResource *k8sv2.Dogu, dogu *core.Dogu) (
 
 // deprecated
 func (ep *execPodFactory) waitForPodToSpawn(ctx context.Context, doguResource *k8sv2.Dogu, dogu *core.Dogu) error {
-	logger := log.FromContext(ctx)
-
 	err := retry.OnErrorWithLimit(maxWaitDuration, retry.TestableRetryFunc, func() error {
 		pod, err := ep.getPod(ctx, doguResource, dogu)
 		if err != nil {
-			logger.Error(err, fmt.Sprintf("Error while finding exec pod %s. Trying again...", execPodName(dogu)))
+			logging.Error(ctx, err, fmt.Sprintf("Error while finding exec pod %s. Trying again...", execPodName(dogu)))
 			return &retry.TestableRetrierError{Err: err}
 		}
 
 		podStatus := pod.Status.Phase
 		switch podStatus {
 		case corev1.PodRunning:
-			logger.Info("Found a ready exec pod " + pod.Name)
+			logging.Info(ctx, "Found a ready exec pod "+pod.Name)
 			return nil
 		case corev1.PodFailed, corev1.PodSucceeded:
 			return fmt.Errorf("quitting dogu installation because exec pod %s failed with status %s or did not come up in time", execPodName(dogu), podStatus)
 		default:
-			logger.Info(fmt.Sprintf("Found exec pod %s but with status phase %+v. Trying again...", execPodName(dogu), podStatus))
+			logging.Info(ctx, fmt.Sprintf("Found exec pod %s but with status phase %+v. Trying again...", execPodName(dogu), podStatus))
 			return &retry.TestableRetrierError{Err: fmt.Errorf("found exec pod %s but with status phase %+v", pod.Name, podStatus)}
 		}
 	})
