@@ -43,6 +43,8 @@ spec:
               value: {{ quote .Values.controllerManager.env.doguV3Enabled | default false }}
             - name: WARP_MENU_ENTRY_ENABLED
               value: {{ quote .Values.controllerManager.env.warpMenuEntryEnabled | default false }}
+            - name: WARP_MENU_DISBALED_V2_DOGUS
+              value: {{ .Values.controllerManager.env.warpMenuDisabledV2Dogus | toJson | quote }}
             - name: DISABLE_POSTFIX_DEPENDENCY_CHECK
               value: {{ quote .Values.controllerManager.env.disablePostfixDependencyCheck | default false }}
             - name: STAGE
