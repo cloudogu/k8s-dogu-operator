@@ -32,7 +32,6 @@ func TestFacade(t *testing.T) {
 	t.Run("logs debug on debug level", func(t *testing.T) {
 		ctx, observedLogs := contextWithObservedLogger(zapcore.DebugLevel)
 
-		assert.True(t, DebugEnabled(ctx))
 		Debug(ctx, "requeueing dogu", "dogu", "nexus")
 
 		entries := observedLogs.All()
@@ -44,7 +43,6 @@ func TestFacade(t *testing.T) {
 	t.Run("discards debug on info level", func(t *testing.T) {
 		ctx, observedLogs := contextWithObservedLogger(zapcore.InfoLevel)
 
-		assert.False(t, DebugEnabled(ctx))
 		Debug(ctx, "requeueing dogu")
 
 		assert.Empty(t, observedLogs.All())

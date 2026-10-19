@@ -16,8 +16,7 @@ func FromContext(ctx context.Context) logr.Logger {
 	return log.FromContext(ctx)
 }
 
-// Log returns the root logger of the operator. Use it only in code that has no context at hand,
-// everywhere else the context logger carries the values of the current reconciliation.
+// Log returns the root logger of the operator.
 func Log() logr.Logger {
 	return log.Log
 }
@@ -32,19 +31,12 @@ func Info(ctx context.Context, message string, keysAndValues ...any) {
 	FromContext(ctx).Info(message, keysAndValues...)
 }
 
-// Debug logs a message that generally should not be visible within a production environment but is
-// useful when trying to pinpoint error situations.
+// Debug logs a message that generally should not be visible within a production environment.
 func Debug(ctx context.Context, message string, keysAndValues ...any) {
 	FromContext(ctx).V(debugVerbosity).Info(message, keysAndValues...)
 }
 
-// DebugEnabled returns true if debug logging is enabled.
-// Use it to avoid building expensive log arguments that would be discarded anyway.
-func DebugEnabled(ctx context.Context) bool {
-	return FromContext(ctx).V(debugVerbosity).Enabled()
-}
-
-// Error logs an error that may jeopardize the success during the run-time.
+// Error logs a failure that needs attention.
 func Error(ctx context.Context, err error, message string, keysAndValues ...any) {
 	FromContext(ctx).Error(err, message, keysAndValues...)
 }
