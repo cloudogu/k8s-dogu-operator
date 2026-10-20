@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v3.35.0] - 2026-10-20
+### Added
+- [#341] Experimental helmfile support
+
 ## [v3.34.0] - 2026-10-19
 ### Added
 - [#365] Add new option to disable warp menu entries for v2 dogus
