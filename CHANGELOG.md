@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- [#360] Stop v3 dogu workloads while preserving StatefulSet claims, defer chart and values changes, and prepare current input on start.
+- [#360] Stop v3 dogu workloads while preserving StatefulSet claims.
 
 ## [v3.33.0] - 2026-10-15
 ### Added

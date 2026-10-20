@@ -27,12 +27,15 @@ oder „1h“ (für 1 Stunde). Kombinationen wie „1h20m“ (für 1 Stunde und 
 
 ## Stoppen und Starten
 
-- **Stoppen:** `spec.stopped: true` skaliert Deployments und StatefulSets auf null Replikate und schützt StatefulSet-PVCs vor dem Löschen.
-  Erst wenn die zugehörigen Pods verschwunden sind, wird `Stopped=True` gesetzt. DaemonSets werden nicht unterstützt.
-- **Änderungen zurückhalten:** Während des Stopps bleibt das HelmRelease unverändert. `UpdatePending` zeigt ausstehende Änderungen:
-  `True` bei Unterschieden, `False` ohne Unterschiede und `Unknown`, wenn der Vergleich noch nicht möglich ist.
-- **Starten:** `spec.stopped: false` validiert Chart und Values und aktualisiert das bestehende HelmRelease.
-  Nach dem Freigeben der Reconciliation stellt Flux die Workloads wieder her. Der Start ist bei erfolgreichem Release und aktuellem `Healthy=True` abgeschlossen.
+- **Stoppen:** `spec.stopped: true` skaliert Deployments und StatefulSets auf null und erhält StatefulSet-PVCs beim Herunterskalieren.
+  `Stopped=True` bestätigt, dass die zugehörigen Pods entfernt sind. DaemonSets werden nicht unterstützt.
+- **Änderungen:** OCIRepository und HelmRelease werden auch im Stopp aktualisiert, aber noch nicht ausgerollt.
+- **Starten:** `spec.stopped: false` bereitet den aktuellen Sollstand vor. Nach Aufheben der Suspendierung rollt Flux ihn aus;
+  erfolgreiches Release und aktuelles `Healthy=True` bestätigen den Start.
+- **Pausieren:** `spec.pauseReconciliation: true` pausiert Ressourcenänderungen durch den Dogu-Operator, nicht die Pending-Prüfung.
+  Gegen Korrekturen durch Flux muss auch das HelmRelease suspendiert sein.
+- **UpdatePending:** `True` bedeutet noch nicht angewendete Änderungen, `False` keine Unterschiede und `Unknown` einen unvollständigen Vergleich.
+  Wegen der noch fehlenden Chart-Quellenprüfung bleibt der Status derzeit ohne erkannten Unterschied auf `Unknown`.
 
-Zum Stoppen muss das HelmRelease suspendiert und dieser Zustand von Flux bestätigt sein. Der Stop-/Start-Ablauf ändert `spec.suspend` nicht selbst.
-Änderungen allein an der globalen Konfiguration lösen für v3-Dogus keinen erneuten Abgleich aus; sie werden beim nächsten Abgleich berücksichtigt.
+Voraussetzung zum Stoppen ist ein von Flux bestätigtes `spec.suspend: true` am HelmRelease; zum Starten muss es separat auf `false` gesetzt werden.
+Bei initial gestoppten Dogus wird das HelmRelease suspendiert angelegt. Globale Konfigurationsänderungen werden erst beim nächsten Abgleich berücksichtigt.

@@ -24,12 +24,15 @@ or "1h" (for 1 hour). Combinations like "1h20m" (for 1 hour and 20 minutes) are 
 
 ## Stopping and Starting
 
-- **Stop:** `spec.stopped: true` scales Deployments and StatefulSets to zero replicas and protects StatefulSet PVCs from deletion.
-  `Stopped=True` is set only after the associated Pods have disappeared. DaemonSets are not supported.
-- **Defer changes:** While stopped, the HelmRelease remains unchanged. `UpdatePending` indicates pending changes:
-  `True` when differences exist, `False` when none exist, and `Unknown` when comparison is not yet possible.
-- **Start:** `spec.stopped: false` validates the chart and values and updates the existing HelmRelease.
-  Once reconciliation resumes, Flux restores the workloads. Starting completes after a successful release and a current `Healthy=True` condition.
+- **Stop:** `spec.stopped: true` scales Deployments and StatefulSets to zero and retains StatefulSet PVCs during scale-down.
+  `Stopped=True` confirms that the associated Pods are gone. DaemonSets are not supported.
+- **Changes:** The OCIRepository and HelmRelease are updated while stopped, but changes are not rolled out yet.
+- **Start:** `spec.stopped: false` prepares the current desired state. After suspension is lifted, Flux rolls it out;
+  a successful release and a current `Healthy=True` confirm the start.
+- **Pause:** `spec.pauseReconciliation: true` pauses resource changes by the dogu operator, but pending checks continue.
+  The HelmRelease must also be suspended to prevent corrections by Flux.
+- **UpdatePending:** `True` means unapplied changes, `False` no differences, and `Unknown` an incomplete comparison.
+  The chart source check is not implemented yet, so the status remains `Unknown` unless a difference is detected.
 
-Stopping requires a suspended HelmRelease acknowledged by Flux. The stop/start flow does not change `spec.suspend` itself.
-Global configuration changes alone do not trigger reconciliation for v3 dogus; they are considered during the next reconciliation.
+Stopping requires Flux to acknowledge `spec.suspend: true` on the HelmRelease; starting requires it to be set to `false` separately.
+For initially stopped dogus, the HelmRelease is created suspended. Global configuration changes are considered during the next reconciliation.
