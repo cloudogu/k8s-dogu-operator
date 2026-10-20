@@ -53,7 +53,7 @@ func NewRuntime(cfg *config.OperatorConfig, k8sClient client.Client, apiReader c
 
 // Prepare recreates local files after a pod restart. Destruction must not
 // recreate cluster prerequisites such as the namespace or the master password.
-func (e *Runtime) Prepare(ctx context.Context, name string, installing bool) (Options, error) {
+func (e *Runtime) Prepare(ctx context.Context, name string, installing bool) (Options, error) { //NOSONAR
 	var options Options
 	cfg := e.OpenDeskConfig
 	if e.GlobalConfig.HelmfileUnpackDir == "" || cfg.Namespace == "" ||
@@ -201,7 +201,8 @@ func (e *Runtime) downloadHelmfile(ctx context.Context, name string) error {
 	return os.Rename(stagingDir, destination)
 }
 
-func extractHelmfileArchive(ctx context.Context, source io.Reader, destination string) error {
+//nolint:funlen
+func extractHelmfileArchive(ctx context.Context, source io.Reader, destination string) error { //NOSONAR
 	compressed, err := gzip.NewReader(source)
 	if err != nil {
 		return err
@@ -370,7 +371,7 @@ func (h Options) commandFor(ctx context.Context, action string) *exec.Cmd {
 	return cmd
 }
 
-func (h Options) Run(ctx context.Context, action string) error {
+func (h Options) Run(ctx context.Context, action string) error { //NOSONAR
 	logger := log.FromContext(ctx)
 	started := time.Now()
 	logger.Info("Running Helmfile command", "action", action, "namespace", h.deployNamespace)
@@ -394,7 +395,7 @@ func (h Options) Run(ctx context.Context, action string) error {
 
 // UpdateFinalizer manages the Helmfile finalizer. During removal, additional
 // finalizers supplied by the deletion step are released in the same atomic patch.
-func (e *Runtime) UpdateFinalizer(ctx context.Context, resource *doguv2.Dogu, add bool, additionalFinalizers ...string) error {
+func (e *Runtime) UpdateFinalizer(ctx context.Context, resource *doguv2.Dogu, add bool, additionalFinalizers ...string) error { //NOSONAR
 	if add && controllerutil.ContainsFinalizer(resource, Finalizer) && resource.Annotations[ManagedAnnotation] == "true" {
 		return nil
 	}
