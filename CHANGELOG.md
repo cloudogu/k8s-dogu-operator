@@ -5,9 +5,43 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [v3.34.0] - 2026-10-19
+### Added
+- [#365] Add new option to disable warp menu entries for v2 dogus
+  - See `controllerManager.env.warpMenuDisabledV2Dogus` in `values.yaml`
+### Changed
+- [#362] Replace the logrus based logger with zap, which is the standard logging backend for operators built on controller-runtime.
+  - The log output is now JSON by default. The new environment variable `LOG_FORMAT` switches between `json` and `text`.
+  - `LOG_LEVEL` now defaults to `info` instead of `error`.
+  - Log calls of the cesapp-lib and the k8s-apply-lib keep their log level instead of being logged as info.
+  - The lifecycle logging of fx is logged in the same format as all other logs.
+- [#362] Move the logging package to `internal/logging` and log via its `Info`, `Debug` and `Error` functions instead of `log.FromContext`.
+
+## [v3.33.0] - 2026-10-15
+### Added
+- [#349] Add steps to dogu v3 deletion
+
+## [v3.32.0] - 2026-10-12
+### Added
+- [#350] Map the flux `HelmRelease` status to dogu v3 conditions.
+- [#350] Add a health controller that keeps the `Healthy` condition of dogu v3 in sync with its workloads.
+- [#350] Set the conditions of dogu v3 to `Unknown` on operator shutdown.
+
+## [v3.31.2] - 2026-10-12
+### Fixed
+- [#342] Exclude the export container for a Dogu from the security context update.
+  - This prevents an infinite loop of pod termination and creation during export mode.
+
 ### Added
 - [#339] Add step to validate values and template of a dogu helm chart
 - [#339] Add mock for dcc v3
+
+### Changed
+- Update go to 1.27.2
+
+### Security
+- Fix GO-CVEs: GO-2026-6603, GO-2026-6610, GO-2026-6611, GO-2026-6612, GO-2026-6617
 
 ## [v3.31.1] - 2026-10-06
 ### Added

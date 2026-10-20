@@ -82,7 +82,7 @@ func NewControllerManager(
 	}))
 	lc.Append(fx.StopHook(func(ctx context.Context) {
 		defer cancelFunc()
-		err := handler.Handle(ctx)
+		err := handler.Handle(ctx, controllerManager.GetClient())
 		if err != nil {
 			return
 		}

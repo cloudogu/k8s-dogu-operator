@@ -60,6 +60,7 @@ const (
 	envVarAuthRegistrationEnabled                 = "AUTH_REGISTRATION_ENABLED"
 	envVarExpositionEnabled                       = "EXPOSITION_ENABLED"
 	envVarWarpMenuEntryEnabled                    = "WARP_MENU_ENTRY_ENABLED"
+	envVarWarpMenuDisabledV2Dogus                 = "WARP_MENU_DISBALED_V2_DOGUS"
 	envVarDoguV3Enabled                           = "DOGU_V3_ENABLED"
 	envVarDisablePostfixDependencyCheck           = "DISABLE_POSTFIX_DEPENDENCY_CHECK"
 	envVarRequeueTimeForDoguResourceInNanoseconds = "REQUEUE_TIME_FOR_DOGU_RESOURCE_IN_NANOSECONDS"
@@ -103,6 +104,8 @@ type OperatorConfig struct {
 	DoguV3Enabled bool `json:"dogu_v3_enabled"`
 	// WarpMenuEntryEnabled defines whether the operator should manage WarpMenuEntry CRs for v2 dogus.
 	WarpMenuEntryEnabled bool `json:"warpmenuentry_enabled"`
+	// WarpMenuDisabledV2Dogus defines dogu names (without the dogu namespace) to hide in the warp menu.
+	WarpMenuDisabledV2Dogus []string `json:"warpmenu_disabled_v2_dogus"`
 	// DisablePostfixDependencyCheck defines whether the operator should validate dependencies on postfix.
 	// If set to false, the operator will assume that postfix is installed as a normal dogu and will validate the dependencies accordingly.
 	// If set to true, the operator will assume that postfix is installed as a component and will not validate the dependencies.
@@ -176,6 +179,7 @@ func NewOperatorConfig(version Version) (*OperatorConfig, error) {
 		AuthRegistrationEnabled:        getAuthRegistrationEnabled(),
 		ExpositionEnabled:              getExpositionEnabled(),
 		WarpMenuEntryEnabled:           getWarpMenuEntryEnabled(),
+		WarpMenuDisabledV2Dogus:        getWarpMenuDisabledV2Dogus(),
 		DoguV3Enabled:                  getDoguV3Enabled(),
 		DisablePostfixDependencyCheck:  getDisablePostfixDependencyCheck(),
 		RequeueTimeForDoguReconciler:   doguReconcilerRequeueTime,
@@ -552,10 +556,26 @@ func getExpositionEnabled() bool {
 	return expositionEnabled
 }
 
+func getWarpMenuDisabledV2Dogus() []string {
+	var result []string
+	env, found := os.LookupEnv(envVarWarpMenuDisabledV2Dogus)
+	if !found {
+		log.Info(fmt.Sprintf("Environment variable %s not set. No v2 dogus are disabled in warp menu", envVarWarpMenuDisabledV2Dogus))
+		return result
+	}
+
+	err := json.Unmarshal([]byte(env), &result)
+	if err != nil {
+		log.Error(fmt.Errorf(errMsgFailedToParseEnvVarValue, envVarWarpMenuDisabledV2Dogus, err), "No v2 dogus are disabled in warp menu")
+	}
+
+	return result
+}
+
 func getWarpMenuEntryEnabled() bool {
 	warpMenuEntryEnabledStr, found := os.LookupEnv(envVarWarpMenuEntryEnabled)
 	if !found {
-		log.Info(fmt.Sprintf("Environment variable %s not set. Disabling warpMenuEntry by default", warpMenuEntryEnabledStr))
+		log.Info(fmt.Sprintf("Environment variable %s not set. Disabling warpMenuEntry by default", envVarWarpMenuEntryEnabled))
 		return false
 	}
 
