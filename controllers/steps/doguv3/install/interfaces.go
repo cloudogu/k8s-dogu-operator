@@ -6,6 +6,7 @@ import (
 	"github.com/cloudogu/dogu-lib/doguv3"
 	"github.com/cloudogu/k8s-dogu-lib/v3/api/v3beta1"
 	doguv3steps "github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv3"
+	"github.com/cloudogu/k8s-dogu-operator/v3/internal/dogu/pvc"
 	"github.com/cloudogu/k8s-dogu-operator/v3/internal/dogu/values"
 	"github.com/cloudogu/k8s-dogu-operator/v3/internal/dogu/workloads"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -25,6 +26,10 @@ type ChartService interface {
 
 type ValueAssembler interface {
 	Assemble(ctx context.Context, cr *v3beta1.Dogu, valuesMeta []byte) (values.Values, error)
+}
+
+type ResizeChecker interface {
+	Check(ctx context.Context, targetNamespace string, renderedObjects []*unstructured.Unstructured) (pvc.CheckResult, error)
 }
 
 type VolumeDiscovery interface {

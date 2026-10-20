@@ -9,7 +9,7 @@ require (
 	github.com/cloudogu/dogu-lib v1.2.0
 	github.com/cloudogu/k8s-apply-lib v0.5.0
 	github.com/cloudogu/k8s-auth-registration-lib v1.0.0
-	github.com/cloudogu/k8s-dogu-lib/v3 v3.1.1-0.20261013111458-27f663668fe7
+	github.com/cloudogu/k8s-dogu-lib/v3 v3.1.1-0.20261015092446-da961c9a23e2
 	github.com/cloudogu/k8s-exposition-lib v1.0.0
 	github.com/cloudogu/k8s-host-change v0.8.1
 	github.com/cloudogu/k8s-registry-lib v1.0.0
