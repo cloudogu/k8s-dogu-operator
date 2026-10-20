@@ -20,7 +20,6 @@ import (
 	"github.com/stretchr/testify/require"
 	core "k8s.io/api/core/v1"
 	apiext "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -383,14 +382,4 @@ func TestEnsureHelmReleaseStep_Stopped(t *testing.T) {
 			assert.JSONEq(t, `{"global":{"cesConfig":{}},"mode":"old","number":3}`, string(actual.Spec.Values.Raw))
 		})
 	}
-}
-
-func TestEnsureHelmReleaseStep_Paused(t *testing.T) {
-	dogu, k8s := stoppedDoguClient(t)
-	dogu.Spec.PauseReconciliation = true
-	step := NewEnsureHelmReleaseStep(k8s, &config.OperatorConfig{}, NewMockChartService(t), nil)
-	result := step.Run(t.Context(), dogu)
-	assert.Equal(t, doguv3.ReasonPauseReconciliation, result.ReadyReason)
-	release := &fluxhelm.HelmRelease{}
-	assert.True(t, apierrors.IsNotFound(k8s.Get(t.Context(), client.ObjectKeyFromObject(dogu), release)))
 }

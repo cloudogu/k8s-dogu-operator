@@ -31,10 +31,6 @@ func NewStopWorkloadsStep(k8sClient client.Client) *StopWorkloadsStep {
 }
 
 func (s *StopWorkloadsStep) Run(ctx context.Context, dogu *v3beta1.Dogu) stepsv3.StepResult {
-	// A pause also prevents this step from changing live workloads.
-	if dogu.Spec.PauseReconciliation {
-		return stepsv3.Abort(v3beta1.ReasonPauseReconciliation, "Dogu reconciliation is paused")
-	}
 	if !dogu.Spec.Stopped {
 		return stepsv3.Continue()
 	}

@@ -11,6 +11,8 @@ import (
 	v3 "github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv3"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv3/deletion"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv3/install"
+	"github.com/cloudogu/k8s-dogu-operator/v3/internal/dogu/pending"
+	flux "github.com/fluxcd/helm-controller/api/v2"
 	coreV1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -23,11 +25,13 @@ const (
 )
 
 // DoguUseCase is a controlling structure responsible for handling all those actions that occur within the dogu's lifecycle phase.
-// The step factory selects the steps to execute based on the desired Dogu state.
 type DoguUseCase struct {
-	stepFactory   StepFactory
-	k8sClient     K8sClient
-	eventRecorder EventRecorder
+	steps                 []Step
+	k8sClient             K8sClient
+	eventRecorder         EventRecorder
+	ociStep               *install.EnsureOCIRepositoryStep
+	helmReleaseStep       *install.EnsureHelmReleaseStep
+	helmReleaseStatusStep *install.HelmReleaseStatusStep
 }
 
 func NewDoguDeleteUseCase(
@@ -37,7 +41,7 @@ func NewDoguDeleteUseCase(
 	removeFinalizerStep *deletion.RemoveFinalizerStep,
 	client K8sClient, recorder EventRecorder) *DoguUseCase {
 	return &DoguUseCase{
-		stepFactory: StepFactory{deletionSteps: []Step{
+		steps: []Step{
 			// Unsuspend first so a suspended HelmRelease is actually processed (and thus uninstalled)
 			// by flux once we delete it. Then delete the HelmRelease and wait for flux to finish the
 			// uninstall, delete the chart source, and finally drop the finalizer so the dogu cr is removed.
@@ -45,14 +49,13 @@ func NewDoguDeleteUseCase(
 			deleteHelmReleaseStep,
 			deleteOCIRepositoryStep,
 			removeFinalizerStep,
-		}},
+		},
 		k8sClient:     client,
 		eventRecorder: recorder,
 	}
 }
 
 // NewDoguInstallOrChangeUseCase creates a new DoguUseCase instance with the given steps.
-// The step factory defines their execution order for running and stopped Dogus.
 func NewDoguInstallOrChangeUseCase(
 	finalizerStep *install.CreateFinalizerStep,
 	ociStep *install.EnsureOCIRepositoryStep,
@@ -63,33 +66,31 @@ func NewDoguInstallOrChangeUseCase(
 	client K8sClient, recorder EventRecorder) *DoguUseCase {
 	stopStep := install.NewStopWorkloadsStep(client)
 	return &DoguUseCase{
-		stepFactory:   NewStepFactory(finalizerStep, stopStep, ociStep, waitOCIStep, validateChartStep, helmReleaseStep, helmReleaseStatusStep),
-		k8sClient:     client,
-		eventRecorder: recorder,
+		steps:                 []Step{finalizerStep, stopStep, ociStep, waitOCIStep, validateChartStep, helmReleaseStep, helmReleaseStatusStep},
+		k8sClient:             client,
+		eventRecorder:         recorder,
+		ociStep:               ociStep,
+		helmReleaseStep:       helmReleaseStep,
+		helmReleaseStatusStep: helmReleaseStatusStep,
 	}
 }
 
-// HandleUntilApplied acts as the core control function which runs all use-case steps, independently of the dogu at hand. This function will wait until the Step was fully executed, resulting in either
-//   - continuing to the next step (if any),
-//   - a requeue if a step needs more time or errored in a way that might be handled programmatically
-//   - an abortion of the dogus reconciliation
-//
-// If the dogu executed all steps successfully, the duration and the error will contain null values indicating the dogu phase is done.
+// HandleUntilApplied runs the selected chain until a step stops execution or all steps complete.
+// It returns any retry delay and error to the controller rather than waiting here.
 func (duc *DoguUseCase) HandleUntilApplied(ctx context.Context, doguResource *v3beta1.Dogu) (time.Duration, error) {
-	releaseCompared := false
-	for _, s := range duc.stepFactory.StepsFor(doguResource) {
-		// Name the logger after the step type so every log line carries the step that produced it
-		// (e.g. "logger":"DeleteHelmReleaseStep"), without each step having to name itself.
-		stepCtx := log.IntoContext(ctx, log.FromContext(ctx).WithName(stepName(s)))
-		result := s.Run(stepCtx, doguResource)
-
-		// Abort, requeue or error
-		if !result.Continue {
-			return duc.stopStepExecution(ctx, doguResource, result, releaseCompared)
+	result := duc.runSteps(ctx, doguResource)
+	// Pending describes desired input even if chart validation or another step stopped execution.
+	if doguResource.GetDeletionTimestamp().IsZero() && duc.helmReleaseStatusStep != nil {
+		if err := duc.updatePending(ctx, doguResource); err != nil {
+			if apierrors.IsConflict(err) && result.Err == nil {
+				return 5 * time.Second, nil
+			}
+			result.Err = errors.Join(result.Err, err)
+			result.Continue = false
 		}
-		if _, comparesRelease := s.(*install.EnsureHelmReleaseStep); comparesRelease {
-			releaseCompared = true
-		}
+	}
+	if !result.Continue {
+		return duc.stopStepExecution(ctx, doguResource, result)
 	}
 
 	// During deletion the final step removes the finalizer, after which the dogu cr is gone. There is
@@ -102,7 +103,7 @@ func (duc *DoguUseCase) HandleUntilApplied(ctx context.Context, doguResource *v3
 	// success
 	successMessage := "Dogu reconciliation completed successfully"
 	if doguResource.Spec.Stopped {
-		successMessage = "Dogu workloads are stopped; release changes remain deferred"
+		successMessage = "Dogu workloads are stopped; the desired HelmRelease is prepared"
 	}
 
 	stoppedChanged := clearStoppedStatusAfterStart(doguResource) // Save Stopped status changes even if Ready is unchanged.
@@ -123,6 +124,45 @@ func (duc *DoguUseCase) HandleUntilApplied(ctx context.Context, doguResource *v3
 	return 0, nil
 }
 
+func (duc *DoguUseCase) runSteps(ctx context.Context, dogu *v3beta1.Dogu) v3.StepResult {
+	if dogu.GetDeletionTimestamp().IsZero() && dogu.Spec.PauseReconciliation {
+		return v3.Abort(v3beta1.ReasonPauseReconciliation, "Dogu reconciliation is paused")
+	}
+	for _, step := range duc.steps {
+		stepCtx := log.IntoContext(ctx, log.FromContext(ctx).WithName(stepName(step)))
+		if result := step.Run(stepCtx, dogu); !result.Continue {
+			return result
+		}
+	}
+	return v3.Continue()
+}
+
+// updatePending combines fresh source and release comparisons, never a previous aggregate condition.
+func (duc *DoguUseCase) updatePending(ctx context.Context, dogu *v3beta1.Dogu) error {
+	sourceChange, sourceErr := duc.ociStep.PendingChange(ctx, dogu)
+	var desired *flux.HelmRelease
+	var valuesErr error
+	// A paused source may still contain the old chart's metadata. Only assemble against current input.
+	if sourceChange.Status == metav1.ConditionFalse {
+		desired, valuesErr = duc.helmReleaseStep.DesiredRelease(ctx, dogu)
+	}
+	releaseChange, releaseErr := duc.helmReleaseStatusStep.PendingChange(ctx, dogu, desired)
+	change := pending.CombinePendingChanges(sourceChange, releaseChange)
+	reason := v3beta1.ReasonReconciliationEnabled
+	if dogu.Spec.Stopped {
+		reason = v3beta1.ReasonStopped
+	}
+	if dogu.Spec.PauseReconciliation {
+		reason = v3beta1.ReasonPauseReconciliation
+	}
+	changed := meta.SetStatusCondition(&dogu.Status.Conditions, change.ToCondition(reason, dogu.Generation))
+	var statusErr error
+	if changed {
+		statusErr = duc.saveStatus(ctx, dogu)
+	}
+	return errors.Join(sourceErr, valuesErr, releaseErr, statusErr)
+}
+
 // stepName derives a human-readable logger name from a step's concrete type (e.g. "DeleteHelmReleaseStep").
 // The pointer guard keeps a value-type step from panicking on Elem().
 func stepName(s Step) string {
@@ -133,13 +173,12 @@ func stepName(s Step) string {
 	return t.Name()
 }
 
-func (duc *DoguUseCase) stopStepExecution(ctx context.Context, doguResource *v3beta1.Dogu, result v3.StepResult, releaseCompared bool) (time.Duration, error) {
+func (duc *DoguUseCase) stopStepExecution(ctx context.Context, doguResource *v3beta1.Dogu, result v3.StepResult) (time.Duration, error) {
 	reason, msg := deriveReasonAndMessage(result)
 	logger := log.FromContext(ctx)
-	pendingChanged := markPendingComparisonUnknown(doguResource, releaseCompared)
 	readyChanged := setReadyCondition(doguResource, metav1.ConditionFalse, reason, msg)
 	var statusErr error
-	if pendingChanged || readyChanged {
+	if readyChanged {
 		statusErr = duc.saveStatus(ctx, doguResource)
 	}
 	if apierrors.IsConflict(statusErr) {
@@ -184,31 +223,6 @@ func clearStoppedStatusAfterStart(dogu *v3beta1.Dogu) bool {
 		ObservedGeneration: dogu.Generation,
 	})
 	return stoppedChanged || conditionChanged
-}
-
-// markPendingComparisonUnknown invalidates an incomplete comparison, preserving current True or Unknown results, and reports any change.
-func markPendingComparisonUnknown(dogu *v3beta1.Dogu, releaseCompared bool) bool {
-	if !dogu.Spec.Stopped || releaseCompared {
-		return false
-	}
-	if dogu.Spec.PauseReconciliation || !dogu.GetDeletionTimestamp().IsZero() {
-		return false
-	}
-
-	pending := meta.FindStatusCondition(dogu.Status.Conditions, v3beta1.ConditionUpdatePending)
-	if pending != nil && pending.ObservedGeneration == dogu.Generation &&
-		(pending.Status == metav1.ConditionTrue || pending.Status == metav1.ConditionUnknown) {
-		return false
-	}
-
-	// Global inputs can change without advancing the Dogu generation.
-	return meta.SetStatusCondition(&dogu.Status.Conditions, metav1.Condition{
-		Type:               v3beta1.ConditionUpdatePending,
-		Status:             metav1.ConditionUnknown,
-		Reason:             v3beta1.ReasonStopped,
-		Message:            "The desired release cannot yet be fully compared",
-		ObservedGeneration: dogu.Generation,
-	})
 }
 
 // setReadyCondition updates Ready in memory and reports whether it changed.

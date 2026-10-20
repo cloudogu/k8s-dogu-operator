@@ -52,9 +52,6 @@ func (ehr *EnsureHelmReleaseStep) DesiredRelease(ctx context.Context, dogu *dogu
 }
 
 func (ehr *EnsureHelmReleaseStep) Run(ctx context.Context, doguResource *doguv3.Dogu) stepsv3.StepResult {
-	if doguResource.Spec.PauseReconciliation {
-		return stepsv3.Abort(doguv3.ReasonPauseReconciliation, "Dogu reconciliation is paused")
-	}
 	desired, err := ehr.DesiredRelease(ctx, doguResource)
 	if err != nil {
 		return stepsv3.RequeueWithError(err, doguv3.ReasonInstalling)
