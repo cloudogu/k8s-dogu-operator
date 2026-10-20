@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"slices"
 	"time"
 
 	doguv2 "github.com/cloudogu/k8s-dogu-lib/v3/api/v2"
@@ -32,18 +31,6 @@ const doguRestartV3ControllerName = "dogu-v3-restart"
 // rolloutRequeueInterval re-checks a rollout that produces no further workload events, e.g. when the new pods
 // never become ready and the workload status stops changing. Without it such a restart would wait forever.
 const rolloutRequeueInterval = 30 * time.Second
-
-// busyDoguReasons are the reasons of the Ready condition of a v3 dogu while an operation is in progress.
-// A restart waits for these operations to finish, so that it does not roll out the workloads in the middle of them.
-var busyDoguReasons = []string{
-	v3beta1.ReasonInstalling,
-	v3beta1.ReasonUpgrading,
-	v3beta1.ReasonResizingPVC,
-	v3beta1.ReasonChangingExportMode,
-	v3beta1.ReasonStarting,
-	v3beta1.ReasonStopping,
-	v3beta1.ReasonDeleting,
-}
 
 // doguRestarter restarts the workloads of a dogu.
 type doguRestarter interface {
@@ -381,7 +368,7 @@ func isDoguIdle(dogu *v3beta1.Dogu) bool {
 		return true
 	}
 
-	if slices.Contains(busyDoguReasons, ready.Reason) {
+	if v3beta1.IsOperationInProgress(ready.Reason) {
 		return false
 	}
 
