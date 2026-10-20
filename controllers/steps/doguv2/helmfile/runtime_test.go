@@ -15,6 +15,7 @@ import (
 
 	doguv2 "github.com/cloudogu/k8s-dogu-lib/v3/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
+	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
@@ -147,7 +148,7 @@ func TestExtractHelmfileArchive(t *testing.T) {
 				contents = []string{contents[0], "", contents[1]}
 			}
 			destination := t.TempDir()
-			require.NoError(t, extractHelmfileArchive(context.Background(), bytes.NewReader(helmfileArchive(t, headers, contents)), destination))
+			require.NoError(t, extractHelmfileArchive(context.Background(), bytes.NewReader(helmfileArchive(t, headers, contents)), destination, logr.Discard()))
 			for path, expected := range map[string]string{"helmfile.yaml": "releases: []", "values.yaml": "global: {}"} {
 				actual, err := os.ReadFile(filepath.Join(destination, path))
 				require.NoError(t, err)
@@ -168,29 +169,29 @@ func TestExtractHelmfileArchive(t *testing.T) {
 		{"multiple roots", []tar.Header{{Name: "one/a", Typeflag: tar.TypeReg}, {Name: "two/b", Typeflag: tar.TypeReg}}, []string{"a", "b"}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			assert.Error(t, extractHelmfileArchive(context.Background(), bytes.NewReader(helmfileArchive(t, tc.headers, tc.contents)), t.TempDir()))
+			assert.Error(t, extractHelmfileArchive(context.Background(), bytes.NewReader(helmfileArchive(t, tc.headers, tc.contents)), t.TempDir(), logr.Discard()))
 		})
 	}
 	data := helmfileArchive(t, []tar.Header{{Name: "root/helmfile.yaml", Typeflag: tar.TypeReg}}, []string{"releases: []"})
 	t.Run("invalid gzip", func(t *testing.T) {
-		assert.Error(t, extractHelmfileArchive(context.Background(), strings.NewReader("invalid"), t.TempDir()))
+		assert.Error(t, extractHelmfileArchive(context.Background(), strings.NewReader("invalid"), t.TempDir(), logr.Discard()))
 	})
 	t.Run("truncated gzip", func(t *testing.T) {
-		assert.Error(t, extractHelmfileArchive(context.Background(), bytes.NewReader(data[:len(data)-5]), t.TempDir()))
+		assert.Error(t, extractHelmfileArchive(context.Background(), bytes.NewReader(data[:len(data)-5]), t.TempDir(), logr.Discard()))
 	})
 	t.Run("cancelled", func(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		cancel()
-		assert.ErrorIs(t, extractHelmfileArchive(ctx, bytes.NewReader(data), t.TempDir()), context.Canceled)
+		assert.ErrorIs(t, extractHelmfileArchive(ctx, bytes.NewReader(data), t.TempDir(), logr.Discard()), context.Canceled)
 	})
 	t.Run("filesystem failure", func(t *testing.T) {
 		destination := filepath.Join(t.TempDir(), "file")
 		require.NoError(t, os.WriteFile(destination, nil, 0644))
-		assert.Error(t, extractHelmfileArchive(context.Background(), bytes.NewReader(data), destination))
+		assert.Error(t, extractHelmfileArchive(context.Background(), bytes.NewReader(data), destination, logr.Discard()))
 	})
 	t.Run("root preferred", func(t *testing.T) {
 		destination := t.TempDir()
-		require.NoError(t, extractHelmfileArchive(context.Background(), bytes.NewReader(data), destination))
+		require.NoError(t, extractHelmfileArchive(context.Background(), bytes.NewReader(data), destination, logr.Discard()))
 		directory, err := helmfileWorkingDir(destination)
 		require.NoError(t, err)
 		assert.Equal(t, ".", directory)
