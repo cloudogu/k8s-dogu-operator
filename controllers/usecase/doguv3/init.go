@@ -37,7 +37,8 @@ func NewDoguV3UseCases(
 		return nil, nil, fmt.Errorf("failed to discover chart capabilities: %w", err)
 	}
 
-	chartService := charts.NewService(charts.NewChartProvider(k8sClient, charts.NewHTTPClient()), restConfig, capabilities, flux.NewHelmReleaseReader(k8sClient))
+	releaseReader := flux.NewHelmReleaseReader(k8sClient, clientSet)
+	chartService := charts.NewService(charts.NewChartProvider(k8sClient, charts.NewHTTPClient()), restConfig, capabilities, releaseReader)
 	assembler := values.NewAssembler(k8sClient)
 
 	finalizerStep := install.NewCreateFinalizerStep(k8sClient)
@@ -45,7 +46,7 @@ func NewDoguV3UseCases(
 	waitStep := install.NewWaitForOCIRepositoryReadyStep(k8sClient, recorder)
 	validateStep := install.NewValidateChartStep(chartService, assembler, k8sClient)
 	helmReleaseStep := install.NewEnsureHelmReleaseStep(k8sClient, operatorConfig, chartService, recorder)
-	helmReleaseStatusStep := install.NewHelmReleaseStatusStep(k8sClient, recorder)
+	helmReleaseStatusStep := install.NewHelmReleaseStatusStep(k8sClient, releaseReader, recorder)
 
 	unsuspendStep := deletion.NewUnsuspendHelmReleaseStep(k8sClient, recorder)
 	deleteHelmReleaseStep := deletion.NewDeleteHelmReleaseStep(k8sClient, recorder)

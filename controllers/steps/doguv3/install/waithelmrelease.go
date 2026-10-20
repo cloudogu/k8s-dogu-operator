@@ -7,6 +7,7 @@ import (
 
 	"github.com/cloudogu/k8s-dogu-lib/v3/api/v3beta1"
 	stepsv3 "github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv3"
+	"github.com/cloudogu/k8s-dogu-operator/v3/internal/dogu/pending"
 	fluxstate "github.com/cloudogu/k8s-dogu-operator/v3/internal/flux"
 	flux "github.com/fluxcd/helm-controller/api/v2"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -22,17 +23,45 @@ const longWaitRequeueAfter = 5 * time.Minute
 // HelmReleaseStatusStep translates the state of the dogu's HelmRelease and its workloads into the conditions of the dogu resource.
 type HelmReleaseStatusStep struct {
 	k8sClient     K8sClient
+	releaseReader *fluxstate.HelmReleaseReader
 	eventRecorder EventRecorder
 }
 
-func NewHelmReleaseStatusStep(k8sClient K8sClient, recorder EventRecorder) *HelmReleaseStatusStep {
+func NewHelmReleaseStatusStep(k8sClient K8sClient, releaseReader *fluxstate.HelmReleaseReader, recorder EventRecorder) *HelmReleaseStatusStep {
 	return &HelmReleaseStatusStep{
 		k8sClient:     k8sClient,
+		releaseReader: releaseReader,
 		eventRecorder: recorder,
 	}
 }
 
+// PendingChange compares the desired release with Flux and Helm data without changing resources.
+func (hrs *HelmReleaseStatusStep) PendingChange(ctx context.Context, dogu *v3beta1.Dogu, desired *flux.HelmRelease) (pending.PendingChange, error) {
+	release := &flux.HelmRelease{}
+	err := hrs.k8sClient.Get(ctx, client.ObjectKey{Namespace: dogu.Namespace, Name: dogu.Spec.Name}, release)
+	if errors.IsNotFound(err) {
+		return pending.PendingReleaseChange(nil, desired, nil, dogu.Spec.Version), nil
+	}
+	if err != nil {
+		return pending.PendingChange{Status: metav1.ConditionUnknown, Message: "The HelmRelease could not be read"}, fmt.Errorf("failed to read HelmRelease for pending changes: %w", err)
+	}
+	// Detect known differences before reading Helm's release secret.
+	change := pending.PendingReleaseChange(release, desired, nil, dogu.Spec.Version)
+	if change.Status != metav1.ConditionUnknown || desired == nil {
+		return change, nil
+	}
+	// Complete the comparison with the values and manifest stored by Helm.
+	stored, err := hrs.releaseReader.StoredRelease(release)
+	if err != nil {
+		return change, err
+	}
+	return pending.PendingReleaseChange(release, desired, stored, dogu.Spec.Version), nil
+}
+
 func (hrs *HelmReleaseStatusStep) Run(ctx context.Context, doguResource *v3beta1.Dogu) stepsv3.StepResult {
+	if doguResource.Spec.PauseReconciliation {
+		return stepsv3.Abort(v3beta1.ReasonPauseReconciliation, "Dogu reconciliation is paused")
+	}
 	// Get the HelmRelease
 	release := &flux.HelmRelease{}
 	err := hrs.k8sClient.Get(ctx, client.ObjectKey{Namespace: doguResource.Namespace, Name: doguResource.Spec.Name}, release)
@@ -44,7 +73,16 @@ func (hrs *HelmReleaseStatusStep) Run(ctx context.Context, doguResource *v3beta1
 		return stepsv3.RequeueWithError(fmt.Errorf("failed to get HelmRelease: %w", err), v3beta1.ReasonInstalling)
 	}
 	if release.Spec.Suspend {
+		// A confirmed stop does not need a rollout; the release stays suspended.
+		if doguResource.Spec.Stopped && doguResource.Status.Stopped {
+			return stepsv3.Continue()
+		}
+		// Starting requires the separate suspension step to let Flux apply the prepared release.
 		return stepsv3.RequeueAfter(defaultRequeueAfter, v3beta1.ReasonStarting, "Waiting for the suspension step to release the prepared HelmRelease")
+	}
+	// Do not confirm a stop while Flux can still apply the release.
+	if doguResource.Spec.Stopped {
+		return stepsv3.RequeueAfter(defaultRequeueAfter, v3beta1.ReasonStopping, "Waiting for HelmRelease suspension")
 	}
 
 	desired := fluxstate.NewDesiredRelease(doguResource.Spec.Version, release)
