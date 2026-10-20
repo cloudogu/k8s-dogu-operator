@@ -15,6 +15,7 @@ type StepResult struct {
 	RequeueAfter time.Duration
 	Err          error
 	Continue     bool
+	Completed    bool
 }
 
 func RequeueAfter(requeueAfter time.Duration) StepResult {
@@ -33,6 +34,11 @@ func Abort() StepResult {
 	return StepResult{
 		Continue: false,
 	}
+}
+
+// Complete ends the use case successfully without running subsequent steps.
+func Complete() StepResult {
+	return StepResult{Completed: true}
 }
 
 func RequeueWithError(err error) StepResult {
