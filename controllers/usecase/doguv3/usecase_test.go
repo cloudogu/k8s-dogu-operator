@@ -12,6 +12,7 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv3"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv3/deletion"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv3/install"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv3/migration"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -78,6 +79,32 @@ func TestNewDoguInstallOrChangeUseCase(t *testing.T) {
 		"*install.ValidateChartStep",
 		"*install.EnsureHelmReleaseStep",
 		"*install.HelmReleaseStatusStep",
+	}
+
+	assert.NotNil(t, got)
+	assert.Equal(t, clientMock, got.k8sClient)
+	assert.Equal(t, recorderMock, got.eventRecorder)
+	require.True(t,
+		slices.Equal(typesOf(got.steps), wantTypes),
+		"order mismatch: got=%v want=%v",
+		typesOf(got.steps), wantTypes,
+	)
+}
+
+func TestNewDoguMigrationUseCase(t *testing.T) {
+	clientMock := NewMockK8sClient(t)
+	recorderMock := NewMockEventRecorder(t)
+
+	got := NewDoguMigrationUseCase(
+		&install.CreateFinalizerStep{},
+		&migration.MigrationPendingStep{},
+		clientMock,
+		recorderMock,
+	)
+
+	wantTypes := []string{
+		"*install.CreateFinalizerStep",
+		"*migration.MigrationPendingStep",
 	}
 
 	assert.NotNil(t, got)
