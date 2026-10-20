@@ -14,7 +14,10 @@ import (
 	"github.com/fluxcd/pkg/apis/meta"
 	flux "github.com/fluxcd/source-controller/api/v1"
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
+	metautil "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
@@ -63,6 +66,11 @@ func (eor *EnsureOCIRepositoryStep) Run(ctx context.Context, doguResource *v3bet
 		Name:      doguResource.Spec.Name,
 	}
 
+	if doguResource.Spec.PauseReconciliation {
+		// if PauseReconciliation is set, we don't want to create/update the repository resource, but exit here
+		return eor.checkForPendingChanges(ctx, dogu, repository, doguResource)
+	}
+
 	// Use patch because the repository resource will be updated from the source-controller.
 	// CreateOrUpdate would produce conflict errors and increase the number of reconciles.
 	result, err := controllerutil.CreateOrPatch(ctx, eor.k8sClient, repository, func() error {
@@ -100,5 +108,43 @@ func (eor *EnsureOCIRepositoryStep) Run(ctx context.Context, doguResource *v3bet
 
 	}
 
+	return stepsv3.Continue()
+}
+
+func (eor *EnsureOCIRepositoryStep) checkForPendingChanges(ctx context.Context, dogu *doguv3.Dogu, repository *flux.OCIRepository, doguResource *v3beta1.Dogu) stepsv3.StepResult {
+	found := true
+	err := eor.k8sClient.Get(ctx, client.ObjectKey{Namespace: repository.Namespace, Name: repository.Name}, repository)
+	if err != nil {
+		if !errors.IsNotFound(err) {
+			return stepsv3.RequeueWithError(err, ReasonReconciliationPaused)
+		}
+		found = false
+	}
+
+	urlChanged := !found || repository.Spec.URL != dogu.Chart
+	versionChanged := !found || repository.Spec.Reference.Tag != dogu.Version
+	if urlChanged || versionChanged {
+		if metautil.SetStatusCondition(&doguResource.Status.Conditions, metav1.Condition{
+			Type:    v3beta1.ConditionUpdatePending,
+			Status:  metav1.ConditionTrue,
+			Reason:  v3beta1.ReasonReconciliationPaused,
+			Message: "Updates to dogu resources pending, because PauseReconciliation is set",
+		}) {
+			err := eor.k8sClient.Status().Update(ctx, doguResource)
+			if err != nil {
+				if errors.IsConflict(err) {
+					return stepsv3.RequeueAfter(defaultRequeueAfter, v3beta1.ReasonInstalling, err.Error())
+				}
+				return stepsv3.RequeueWithError(err, ReasonReconciliationPaused)
+			}
+			if urlChanged {
+				eor.eventRecorder.Event(doguResource, v1.EventTypeNormal, v3beta1.ConditionUpdatePending, "Change to chart URL not propagated to OCIRepository, because dogu reconciliation is paused")
+			}
+			if versionChanged {
+				eor.eventRecorder.Event(doguResource, v1.EventTypeNormal, v3beta1.ConditionUpdatePending, "Change to chart version not propagated to OCIRepository, because dogu reconciliation is paused")
+			}
+			return stepsv3.Continue()
+		}
+	}
 	return stepsv3.Continue()
 }

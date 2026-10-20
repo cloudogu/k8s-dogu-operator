@@ -16,6 +16,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -29,7 +30,7 @@ const (
 	testVersion       = "1.0.0"
 	testDoguName      = "nexus"
 	testDoguNamespace = "testing"
-	testChartURL      = "oci://localhost:5000/testing/nexus/1.0.0"
+	testChartURL      = "oci://localhost:5000/testing/nexus"
 )
 
 var (
@@ -59,6 +60,16 @@ var (
 		Namespace: testNamespace,
 		Name:      testDoguName,
 	}
+	testRepository = flux.OCIRepository{
+		Namespace: testNamespace,
+		Name:      testDoguName,
+		Spec: flux.OCIRepositorySpec{
+			URL: testChartURL,
+			Reference: &flux.OCIRepositoryRef{
+				Tag: testVersion,
+			},
+		},
+	}
 	testStepResultContinue = doguv3.StepResult{Continue: true}
 	testScheme             = runtime.NewScheme()
 	_                      = v3beta1.AddToScheme(testScheme)
@@ -86,43 +97,15 @@ func TestEnsureOCIRepositoryStep_Run(t *testing.T) {
 
 				return c, doguRegistryMock, recorderMock, doguResource
 			},
-			want: testStepResultContinue,
-			assertFn: func(t *testing.T, client K8sClient) {
-				repo := &flux.OCIRepository{}
-				err := client.Get(testCtx, testNamespacedName, repo)
-
-				require.NoError(t, err)
-				require.NotNil(t, repo.Labels)
-				assert.Equal(t, resource.LabelValueCes, repo.Labels[labelKeyFluxSharding])
-				assert.Equal(t, testDoguName, repo.Labels[v3beta1.DoguLabelName])
-				assert.Equal(t, testVersion, repo.Labels[v3beta1.DoguLabelVersion])
-				assert.Equal(t, testDoguName, repo.Name)
-				assert.Equal(t, testNamespace, repo.Namespace)
-				assert.Equal(t, testChartURL, repo.Spec.URL)
-				assert.Equal(t, testVersion, repo.Spec.Reference.Tag)
-				assert.Equal(t, time.Hour*6, repo.Spec.Interval.Duration)
-				assert.Equal(t, "ces-container-registries", repo.Spec.SecretRef.Name)
-				assert.NotNil(t, repo.OwnerReferences)
-				assert.Len(t, repo.OwnerReferences, 1)
-				assert.Equal(t, testDoguName, repo.OwnerReferences[0].Name)
-				assert.True(t, *repo.OwnerReferences[0].Controller)
-				assert.True(t, *repo.OwnerReferences[0].BlockOwnerDeletion)
-			},
+			want:     testStepResultContinue,
+			assertFn: checkExpectedRepositoryValues,
 		},
 		{
 			name: "should continue on success and update if repository already exists",
 			setup: func(t *testing.T) (K8sClient, DoguRegistryReader, EventRecorder, *v3beta1.Dogu) {
 				doguResource := testDoguResource.DeepCopy()
-				existingRepository := &flux.OCIRepository{
-					Namespace: testNamespace,
-					Name:      testDoguName,
-					Spec: flux.OCIRepositorySpec{
-						URL: "oci://localhost:5000/testing/nexus/0.9.0",
-						Reference: &flux.OCIRepositoryRef{
-							Tag: "0.9.0",
-						},
-					},
-				}
+				existingRepository := testRepository.DeepCopy()
+				existingRepository.Spec.Reference.Tag = "0.9.0"
 				c := fake.NewClientBuilder().WithScheme(testScheme).WithObjects(doguResource, existingRepository).Build()
 
 				doguRegistryMock := NewMockDoguRegistryReader(t)
@@ -133,28 +116,8 @@ func TestEnsureOCIRepositoryStep_Run(t *testing.T) {
 
 				return c, doguRegistryMock, recorderMock, doguResource
 			},
-			want: testStepResultContinue,
-			assertFn: func(t *testing.T, client K8sClient) {
-				repo := &flux.OCIRepository{}
-				err := client.Get(testCtx, testNamespacedName, repo)
-
-				require.NoError(t, err)
-				require.NotNil(t, repo.Labels)
-				assert.Equal(t, resource.LabelValueCes, repo.Labels[labelKeyFluxSharding])
-				assert.Equal(t, testDoguName, repo.Labels[v3beta1.DoguLabelName])
-				assert.Equal(t, testVersion, repo.Labels[v3beta1.DoguLabelVersion])
-				assert.Equal(t, testDoguName, repo.Name)
-				assert.Equal(t, testNamespace, repo.Namespace)
-				assert.Equal(t, testChartURL, repo.Spec.URL)
-				assert.Equal(t, testVersion, repo.Spec.Reference.Tag)
-				assert.Equal(t, time.Hour*6, repo.Spec.Interval.Duration)
-				assert.Equal(t, "ces-container-registries", repo.Spec.SecretRef.Name)
-				assert.NotNil(t, repo.OwnerReferences)
-				assert.Len(t, repo.OwnerReferences, 1)
-				assert.Equal(t, testDoguName, repo.OwnerReferences[0].Name)
-				assert.True(t, *repo.OwnerReferences[0].Controller)
-				assert.True(t, *repo.OwnerReferences[0].BlockOwnerDeletion)
-			},
+			want:     testStepResultContinue,
+			assertFn: checkExpectedRepositoryValues,
 		},
 		{
 			name: "should abort on unrecoverable dogu registry error",
@@ -190,16 +153,8 @@ func TestEnsureOCIRepositoryStep_Run(t *testing.T) {
 			name: "should requeue with error on error patching repository",
 			setup: func(t *testing.T) (K8sClient, DoguRegistryReader, EventRecorder, *v3beta1.Dogu) {
 				doguResource := testDoguResource.DeepCopy()
-				existingRepository := &flux.OCIRepository{
-					Namespace: testNamespace,
-					Name:      testDoguName,
-					Spec: flux.OCIRepositorySpec{
-						URL: "oci://localhost:5000/testing/nexus/0.9.0",
-						Reference: &flux.OCIRepositoryRef{
-							Tag: "0.9.0",
-						},
-					},
-				}
+				existingRepository := testRepository.DeepCopy()
+				existingRepository.Spec.Reference.Tag = "0.9.0"
 				c := fake.NewClientBuilder().WithScheme(testScheme).WithObjects(doguResource, existingRepository).WithInterceptorFuncs(interceptor.Funcs{
 					Patch: func(ctx context.Context, c client.WithWatch, obj client.Object, patch client.Patch, opts ...client.PatchOption) error {
 						return assert.AnError
@@ -216,6 +171,81 @@ func TestEnsureOCIRepositoryStep_Run(t *testing.T) {
 				return doguv3.RequeueWithError(wrappedErr, v3beta1.ReasonInstalling)
 			}(),
 		},
+		{
+			name: "Should skip creating OCIRepository, if PauseReconciliation is set",
+			setup: func(t *testing.T) (K8sClient, DoguRegistryReader, EventRecorder, *v3beta1.Dogu) {
+				doguResource := testDoguResource.DeepCopy()
+				doguResource.Spec.PauseReconciliation = true
+				c := fake.NewClientBuilder().WithScheme(testScheme).WithObjects(doguResource).WithStatusSubresource(doguResource).Build()
+
+				doguRegistryMock := NewMockDoguRegistryReader(t)
+				doguRegistryMock.EXPECT().Get(testCtx, testIdentifier).Return(testDoguDescriptor, nil)
+
+				recorder := NewMockEventRecorder(t)
+				recorder.EXPECT().Event(doguResource, v1.EventTypeNormal, v3beta1.ConditionUpdatePending, "Change to chart URL not propagated to OCIRepository, because dogu reconciliation is paused")
+				recorder.EXPECT().Event(doguResource, v1.EventTypeNormal, v3beta1.ConditionUpdatePending, "Change to chart version not propagated to OCIRepository, because dogu reconciliation is paused")
+
+				return c, doguRegistryMock, recorder, doguResource
+			},
+			want: testStepResultContinue,
+			assertFn: func(t *testing.T, client K8sClient) {
+				repo := &flux.OCIRepository{}
+				err := client.Get(t.Context(), types.NamespacedName{Name: testDoguResource.Name, Namespace: testDoguResource.Namespace}, repo)
+				assert.True(t, errors.IsNotFound(err))
+			},
+		},
+		{
+			name: "Should skip updating OCIRepository, if PauseReconciliation is set and nothing changed in the dogu",
+			setup: func(t *testing.T) (K8sClient, DoguRegistryReader, EventRecorder, *v3beta1.Dogu) {
+				doguResource := testDoguResource.DeepCopy()
+				doguResource.Spec.PauseReconciliation = true
+				existingRepo := testRepository.DeepCopy()
+				c := fake.NewClientBuilder().WithScheme(testScheme).WithObjects(doguResource, existingRepo).WithStatusSubresource(doguResource).Build()
+
+				doguRegistryMock := NewMockDoguRegistryReader(t)
+				doguRegistryMock.EXPECT().Get(testCtx, testIdentifier).Return(testDoguDescriptor, nil)
+
+				recorder := NewMockEventRecorder(t)
+
+				return c, doguRegistryMock, recorder, doguResource
+			},
+			want: testStepResultContinue,
+			assertFn: func(t *testing.T, client K8sClient) {
+				repo := &flux.OCIRepository{}
+				err := client.Get(t.Context(), types.NamespacedName{Name: testDoguResource.Name, Namespace: testDoguResource.Namespace}, repo)
+				assert.NoError(t, err)
+				// spec should be unchanged
+				assert.Equal(t, testChartURL, repo.Spec.URL)
+				assert.Equal(t, testVersion, repo.Spec.Reference.Tag)
+			},
+		},
+		{
+			name: "Should skip updating OCIRepository, if PauseReconciliation is set, but dogu version changed",
+			setup: func(t *testing.T) (K8sClient, DoguRegistryReader, EventRecorder, *v3beta1.Dogu) {
+				doguResource := testDoguResource.DeepCopy()
+				doguResource.Spec.PauseReconciliation = true
+				existingRepo := testRepository.DeepCopy()
+				existingRepo.Spec.Reference.Tag = "1.2.3-different"
+				c := fake.NewClientBuilder().WithScheme(testScheme).WithObjects(doguResource, existingRepo).WithStatusSubresource(doguResource).Build()
+
+				doguRegistryMock := NewMockDoguRegistryReader(t)
+				doguRegistryMock.EXPECT().Get(testCtx, testIdentifier).Return(testDoguDescriptor, nil)
+
+				recorder := NewMockEventRecorder(t)
+				recorder.EXPECT().Event(doguResource, v1.EventTypeNormal, v3beta1.ConditionUpdatePending, "Change to chart version not propagated to OCIRepository, because dogu reconciliation is paused")
+
+				return c, doguRegistryMock, recorder, doguResource
+			},
+			want: testStepResultContinue,
+			assertFn: func(t *testing.T, client K8sClient) {
+				repo := &flux.OCIRepository{}
+				err := client.Get(t.Context(), types.NamespacedName{Name: testDoguResource.Name, Namespace: testDoguResource.Namespace}, repo)
+				assert.NoError(t, err)
+				// spec should be unchanged
+				assert.Equal(t, testChartURL, repo.Spec.URL)
+				assert.Equal(t, "1.2.3-different", repo.Spec.Reference.Tag)
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -231,6 +261,28 @@ func TestEnsureOCIRepositoryStep_Run(t *testing.T) {
 			}
 		})
 	}
+}
+
+func checkExpectedRepositoryValues(t *testing.T, client K8sClient) {
+	repo := &flux.OCIRepository{}
+	err := client.Get(testCtx, testNamespacedName, repo)
+
+	require.NoError(t, err)
+	require.NotNil(t, repo.Labels)
+	assert.Equal(t, resource.LabelValueCes, repo.Labels[labelKeyFluxSharding])
+	assert.Equal(t, testDoguName, repo.Labels[v3beta1.DoguLabelName])
+	assert.Equal(t, testVersion, repo.Labels[v3beta1.DoguLabelVersion])
+	assert.Equal(t, testDoguName, repo.Name)
+	assert.Equal(t, testNamespace, repo.Namespace)
+	assert.Equal(t, testChartURL, repo.Spec.URL)
+	assert.Equal(t, testVersion, repo.Spec.Reference.Tag)
+	assert.Equal(t, time.Hour*6, repo.Spec.Interval.Duration)
+	assert.Equal(t, "ces-container-registries", repo.Spec.SecretRef.Name)
+	assert.NotNil(t, repo.OwnerReferences)
+	assert.Len(t, repo.OwnerReferences, 1)
+	assert.Equal(t, testDoguName, repo.OwnerReferences[0].Name)
+	assert.True(t, *repo.OwnerReferences[0].Controller)
+	assert.True(t, *repo.OwnerReferences[0].BlockOwnerDeletion)
 }
 
 func TestNewEnsureOCIRepositoryStep(t *testing.T) {
