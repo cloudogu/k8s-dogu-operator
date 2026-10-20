@@ -64,24 +64,12 @@ func PendingReleaseChange(actual, desired *helmflux.HelmRelease, stored *sdk.Rel
 	if desired == nil {
 		return unknown
 	}
-	// Check whether Flux points to the desired chart source.
-	if !reflect.DeepEqual(desired.Spec.ChartRef, actual.Spec.ChartRef) {
-		return changed
-	}
-	// Check whether Flux has the desired install and upgrade settings.
-	if !reflect.DeepEqual(desired.Spec.Install, actual.Spec.Install) || !reflect.DeepEqual(desired.Spec.Upgrade, actual.Spec.Upgrade) {
-		return changed
-	}
-	// Check whether the HelmRelease contains the desired shared labels and annotations.
-	if !reflect.DeepEqual(desired.Spec.CommonMetadata, actual.Spec.CommonMetadata) {
-		return changed
-	}
-	// Check whether the HelmRelease contains the desired values.
-	valuesEqual, err := equalValues(desired.GetValues(), actual.GetValues())
+	// Check whether Flux has the desired chart reference, settings, metadata and values.
+	inputMatches, err := releaseInputMatches(actual, desired)
 	if err != nil {
 		return unknown
 	}
-	if !valuesEqual {
+	if !inputMatches {
 		return changed
 	}
 	// Without the stored Helm release, we cannot check what Helm has applied.
@@ -89,7 +77,7 @@ func PendingReleaseChange(actual, desired *helmflux.HelmRelease, stored *sdk.Rel
 		return unknown
 	}
 	// The HelmRelease may already contain new values while Helm still has the old ones.
-	valuesEqual, err = equalValues(desired.GetValues(), stored.Config)
+	valuesEqual, err := equalValues(desired.GetValues(), stored.Config)
 	if err != nil {
 		return unknown
 	}
@@ -114,6 +102,20 @@ func PendingReleaseChange(actual, desired *helmflux.HelmRelease, stored *sdk.Rel
 	}
 	// All checks passed: the desired release is deployed and no changes are pending.
 	return PendingChange{Status: metav1.ConditionFalse, Message: "The desired HelmRelease is deployed"}
+}
+
+// releaseInputMatches compares the requested HelmRelease input, not what Helm has applied.
+func releaseInputMatches(actual, desired *helmflux.HelmRelease) (bool, error) {
+	if !reflect.DeepEqual(desired.Spec.ChartRef, actual.Spec.ChartRef) {
+		return false, nil
+	}
+	if !reflect.DeepEqual(desired.Spec.Install, actual.Spec.Install) || !reflect.DeepEqual(desired.Spec.Upgrade, actual.Spec.Upgrade) {
+		return false, nil
+	}
+	if !reflect.DeepEqual(desired.Spec.CommonMetadata, actual.Spec.CommonMetadata) {
+		return false, nil
+	}
+	return equalValues(desired.GetValues(), actual.GetValues())
 }
 
 // equalValues compares JSON values independent of map key order and treats nil and empty maps as equal.
@@ -150,17 +152,18 @@ func commonMetadataApplied(manifest string, metadata *helmflux.CommonMetadata) (
 		if len(resource.Object) == 0 {
 			continue
 		}
-		// Check the requested labels; additional labels are allowed.
-		for key, value := range metadata.Labels {
-			if resource.GetLabels()[key] != value {
-				return false, nil
-			}
-		}
-		// Check the requested annotations; additional annotations are allowed.
-		for key, value := range metadata.Annotations {
-			if resource.GetAnnotations()[key] != value {
-				return false, nil
-			}
+		// Check requested labels and annotations; additional entries are allowed.
+		if !containsMetadata(resource.GetLabels(), metadata.Labels) || !containsMetadata(resource.GetAnnotations(), metadata.Annotations) {
+			return false, nil
 		}
 	}
+}
+
+func containsMetadata(actual, desired map[string]string) bool {
+	for key, value := range desired {
+		if actual[key] != value {
+			return false
+		}
+	}
+	return true
 }

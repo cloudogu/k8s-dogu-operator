@@ -62,6 +62,24 @@ func (s *StopWorkloadsStep) Run(ctx context.Context, dogu *v3beta1.Dogu) stepsv3
 		return stepsv3.RequeueAfter(defaultRequeueAfter, v3beta1.ReasonStopping, "Waiting for a suspended HelmRelease for existing workloads")
 	}
 
+	owners, waiting, err := s.scaleWorkloads(ctx, found)
+	if err != nil {
+		return stepsv3.RequeueWithError(err, v3beta1.ReasonStopping)
+	}
+	// Zero replicas are not enough; wait until the associated Pods are gone.
+	if len(owners) > 0 {
+		podsRemain, err := s.podsRemain(ctx, dogu.Namespace, owners, found.Deployments)
+		if err != nil {
+			return stepsv3.RequeueWithError(err, v3beta1.ReasonStopping)
+		}
+		waiting = waiting || podsRemain
+	}
+
+	return s.reportStopProgress(ctx, dogu, waiting)
+}
+
+// scaleWorkloads requests zero replicas and tracks the owners whose Pods must disappear.
+func (s *StopWorkloadsStep) scaleWorkloads(ctx context.Context, found workloads.Workloads) (map[types.UID]bool, bool, error) {
 	// Track workload UIDs so we can check their Pods after scaling down.
 	owners := make(map[types.UID]bool)
 	waiting := false
@@ -73,7 +91,7 @@ func (s *StopWorkloadsStep) Run(ctx context.Context, dogu *v3beta1.Dogu) stepsv3
 			before := deployment.DeepCopy()
 			deployment.Spec.Replicas = ptr.To[int32](0)
 			if err := s.k8sClient.Patch(ctx, deployment, client.MergeFromWithOptions(before, client.MergeFromWithOptimisticLock{})); err != nil {
-				return stepsv3.RequeueWithError(err, v3beta1.ReasonStopping)
+				return nil, false, err
 			}
 			waiting = true
 		}
@@ -84,21 +102,11 @@ func (s *StopWorkloadsStep) Run(ctx context.Context, dogu *v3beta1.Dogu) stepsv3
 		owners[statefulSet.UID] = true
 		workloadWaiting, err := s.stopStatefulSet(ctx, statefulSet)
 		if err != nil {
-			return stepsv3.RequeueWithError(err, v3beta1.ReasonStopping)
+			return nil, false, err
 		}
 		waiting = waiting || workloadWaiting
 	}
-
-	// Zero replicas are not enough; wait until the associated Pods are gone.
-	if len(owners) > 0 {
-		podsRemain, err := s.podsRemain(ctx, dogu.Namespace, owners, found.Deployments)
-		if err != nil {
-			return stepsv3.RequeueWithError(err, v3beta1.ReasonStopping)
-		}
-		waiting = waiting || podsRemain
-	}
-
-	return s.reportStopProgress(ctx, dogu, waiting)
+	return owners, waiting, nil
 }
 
 // reportStopProgress saves the stop status and requests another pass while work remains.
@@ -169,28 +177,35 @@ func (s *StopWorkloadsStep) claimsRetained(ctx context.Context, statefulSet *app
 		return false, err
 	}
 	for _, claim := range claims.Items {
-		for _, template := range statefulSet.Spec.VolumeClaimTemplates {
-			// Generated PVC names follow <claim-template>-<statefulset>-<ordinal>.
-			ordinal, found := strings.CutPrefix(claim.Name, template.Name+"-"+statefulSet.Name+"-")
-			if !found {
-				continue
-			}
-			// Only accept a regular Pod ordinal, such as 0 or 12, not 01 or another suffix.
-			if n, err := strconv.ParseUint(ordinal, 10, 32); err != nil || fmt.Sprint(n) != ordinal {
-				continue
-			}
-			if !claim.DeletionTimestamp.IsZero() {
-				return false, fmt.Errorf("PVC %s/%s is already being deleted", claim.Namespace, claim.Name)
-			}
-			// Wait until the StatefulSet controller removes ownership by Pods that will be deleted.
-			for _, owner := range claim.OwnerReferences {
-				if owner.APIVersion == "v1" && owner.Kind == "Pod" {
-					return false, nil
-				}
+		if !isStatefulSetClaim(claim.Name, statefulSet) {
+			continue
+		}
+		if !claim.DeletionTimestamp.IsZero() {
+			return false, fmt.Errorf("PVC %s/%s is already being deleted", claim.Namespace, claim.Name)
+		}
+		// Wait until the StatefulSet controller removes ownership by Pods that will be deleted.
+		for _, owner := range claim.OwnerReferences {
+			if owner.APIVersion == "v1" && owner.Kind == "Pod" {
+				return false, nil
 			}
 		}
 	}
 	return true, nil
+}
+
+func isStatefulSetClaim(name string, statefulSet *appsv1.StatefulSet) bool {
+	for _, template := range statefulSet.Spec.VolumeClaimTemplates {
+		// Generated PVC names follow <claim-template>-<statefulset>-<ordinal>.
+		ordinal, found := strings.CutPrefix(name, template.Name+"-"+statefulSet.Name+"-")
+		if !found {
+			continue
+		}
+		// Only accept a regular Pod ordinal, such as 0 or 12, not 01 or another suffix.
+		if n, err := strconv.ParseUint(ordinal, 10, 32); err == nil && fmt.Sprint(n) == ordinal {
+			return true
+		}
+	}
+	return false
 }
 
 // podsRemain checks whether any Pods still belong to the workloads, including terminating Pods.
@@ -221,23 +236,29 @@ func (s *StopWorkloadsStep) podsRemain(ctx context.Context, namespace string, ow
 		return false, err
 	}
 	for _, pod := range pods.Items {
-		owner := metav1.GetControllerOf(&pod)
-		if owner == nil {
-			continue
-		}
-		if owners[owner.UID] {
+		if podBelongsToWorkloads(&pod, owners, knownReplicaSets, selectors) {
 			return true, nil
-		}
-		// Keep waiting for terminating Pods even if their ReplicaSet has already been deleted.
-		// In that case, use Deployment selectors to identify them.
-		// Never use matching labels to override an existing ReplicaSet owned by another Deployment.
-		if owner.APIVersion == "apps/v1" && owner.Kind == "ReplicaSet" && !knownReplicaSets[owner.UID] {
-			for _, selector := range selectors {
-				if selector.Matches(labels.Set(pod.Labels)) {
-					return true, nil
-				}
-			}
 		}
 	}
 	return false, nil
+}
+
+func podBelongsToWorkloads(pod *corev1.Pod, owners, knownReplicaSets map[types.UID]bool, selectors []labels.Selector) bool {
+	owner := metav1.GetControllerOf(pod)
+	if owner == nil {
+		return false
+	}
+	if owners[owner.UID] {
+		return true
+	}
+	// Labels identify Pods whose ReplicaSet has disappeared, but never override an existing foreign owner.
+	if owner.APIVersion != "apps/v1" || owner.Kind != "ReplicaSet" || knownReplicaSets[owner.UID] {
+		return false
+	}
+	for _, selector := range selectors {
+		if selector.Matches(labels.Set(pod.Labels)) {
+			return true
+		}
+	}
+	return false
 }

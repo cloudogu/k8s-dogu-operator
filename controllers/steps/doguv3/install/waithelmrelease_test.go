@@ -10,8 +10,13 @@ import (
 	fluxhelm "github.com/fluxcd/helm-controller/api/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	sdk "helm.sh/helm/v3/pkg/release"
+	"helm.sh/helm/v3/pkg/storage"
+	"helm.sh/helm/v3/pkg/storage/driver"
+	apiext "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	kubernetesfake "k8s.io/client-go/kubernetes/fake"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
@@ -33,6 +38,75 @@ func TestNewHelmReleaseStatusStep(t *testing.T) {
 	assert.NotNil(t, step)
 	assert.Equal(t, k8sClient, step.k8sClient)
 	assert.Equal(t, recorder, step.eventRecorder)
+}
+
+func TestHelmReleaseStatusStep_PendingChange(t *testing.T) {
+	for _, tc := range []struct {
+		name       string
+		missing    bool
+		getErr     error
+		version    string
+		storedMode string
+		want       metav1.ConditionStatus
+		wantErr    string
+	}{
+		{name: "missing release needs installation", missing: true, want: metav1.ConditionTrue},
+		{name: "read failure cannot confirm deployment", getErr: assert.AnError, want: metav1.ConditionUnknown, wantErr: "failed to read HelmRelease"},
+		{name: "version change is known without a stored release", version: "1.0.0", want: metav1.ConditionTrue},
+		{name: "missing Helm secret cannot confirm deployment", version: "2.0.0", want: metav1.ConditionUnknown, wantErr: "failed to read stored Helm release"},
+		{name: "stored values differ despite current HelmRelease input", version: "2.0.0", storedMode: "old", want: metav1.ConditionTrue},
+		{name: "matching stored revision confirms deployment", version: "2.0.0", storedMode: "new", want: metav1.ConditionFalse},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			dogu := &v3beta1.Dogu{
+				ObjectMeta: metav1.ObjectMeta{Name: "scm", Namespace: "ecosystem"},
+				Spec:       v3beta1.DoguSpec{Name: "scm", Version: "2.0.0"},
+			}
+			desired := &fluxhelm.HelmRelease{
+				Spec: fluxhelm.HelmReleaseSpec{Values: &apiext.JSON{Raw: []byte(`{"mode":"new"}`)}},
+			}
+			actual := desired.DeepCopy()
+			actual.Name, actual.Namespace = dogu.Spec.Name, dogu.Namespace
+			// The comparison must use the revision referenced by Flux, not just the CR's current values.
+			actual.Status = fluxhelm.HelmReleaseStatus{
+				History:    fluxhelm.Snapshots{{Name: "installed-scm", Version: 3, ChartVersion: tc.version, Status: "deployed"}},
+				Conditions: []metav1.Condition{{Type: fluxhelm.ReleasedCondition, Status: metav1.ConditionTrue}},
+			}
+			builder := fake.NewClientBuilder().WithScheme(helmStatusScheme())
+			if !tc.missing {
+				builder.WithObjects(actual)
+			}
+			if tc.getErr != nil {
+				builder.WithInterceptorFuncs(interceptor.Funcs{
+					Get: func(context.Context, client.WithWatch, client.ObjectKey, client.Object, ...client.GetOption) error {
+						return tc.getErr
+					},
+				})
+			}
+			k8s := builder.Build()
+			helmClient := kubernetesfake.NewClientset()
+			if tc.storedMode != "" {
+				store := storage.Init(driver.NewSecrets(helmClient.CoreV1().Secrets(dogu.Namespace)))
+				require.NoError(t, store.Create(&sdk.Release{
+					Name: "installed-scm", Namespace: dogu.Namespace, Version: 3,
+					Config: map[string]any{"mode": tc.storedMode}, Info: &sdk.Info{Status: sdk.StatusDeployed},
+				}))
+			}
+			step := NewHelmReleaseStatusStep(k8s, fluxstate.NewHelmReleaseReader(k8s, helmClient), nil)
+
+			change, err := step.PendingChange(t.Context(), dogu, desired)
+
+			if tc.wantErr != "" {
+				require.ErrorContains(t, err, tc.wantErr)
+			} else {
+				require.NoError(t, err)
+			}
+			if tc.getErr != nil {
+				assert.ErrorIs(t, err, tc.getErr)
+			}
+			assert.Equal(t, tc.want, change.Status)
+		})
+	}
 }
 
 func TestHelmReleaseStatusStep_Run(t *testing.T) {
