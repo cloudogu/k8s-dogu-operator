@@ -182,8 +182,7 @@ func TestEnsureOCIRepositoryStep_Run(t *testing.T) {
 				doguRegistryMock.EXPECT().Get(testCtx, testIdentifier).Return(testDoguDescriptor, nil)
 
 				recorder := NewMockEventRecorder(t)
-				recorder.EXPECT().Event(doguResource, v1.EventTypeNormal, v3beta1.ConditionUpdatePending, "Change to chart URL not propagated to OCIRepository, because dogu reconciliation is paused")
-				recorder.EXPECT().Event(doguResource, v1.EventTypeNormal, v3beta1.ConditionUpdatePending, "Change to chart version not propagated to OCIRepository, because dogu reconciliation is paused")
+				recorder.EXPECT().Event(doguResource, v1.EventTypeNormal, v3beta1.ConditionUpdatePending, "Changes not propagated to OCIRepository, because dogu reconciliation is paused")
 
 				return c, doguRegistryMock, recorder, doguResource
 			},
@@ -200,6 +199,13 @@ func TestEnsureOCIRepositoryStep_Run(t *testing.T) {
 				doguResource := testDoguResource.DeepCopy()
 				doguResource.Spec.PauseReconciliation = true
 				existingRepo := testRepository.DeepCopy()
+				existingRepo.Labels = map[string]string{
+					labelKeyFluxSharding:     resource.LabelValueCes,
+					v3beta1.DoguLabelName:    testDoguName,
+					v3beta1.DoguLabelVersion: testVersion,
+					"custom.label":           "anything",
+				}
+
 				c := fake.NewClientBuilder().WithScheme(testScheme).WithObjects(doguResource, existingRepo).WithStatusSubresource(doguResource).Build()
 
 				doguRegistryMock := NewMockDoguRegistryReader(t)
@@ -232,7 +238,7 @@ func TestEnsureOCIRepositoryStep_Run(t *testing.T) {
 				doguRegistryMock.EXPECT().Get(testCtx, testIdentifier).Return(testDoguDescriptor, nil)
 
 				recorder := NewMockEventRecorder(t)
-				recorder.EXPECT().Event(doguResource, v1.EventTypeNormal, v3beta1.ConditionUpdatePending, "Change to chart version not propagated to OCIRepository, because dogu reconciliation is paused")
+				recorder.EXPECT().Event(doguResource, v1.EventTypeNormal, v3beta1.ConditionUpdatePending, "Changes not propagated to OCIRepository, because dogu reconciliation is paused")
 
 				return c, doguRegistryMock, recorder, doguResource
 			},
