@@ -10,17 +10,20 @@ import (
 	v2 "github.com/cloudogu/k8s-dogu-lib/v3/api/v2"
 	"github.com/cloudogu/k8s-dogu-lib/v3/api/v3beta1"
 	opConfig "github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
+	helmv2 "github.com/fluxcd/helm-controller/api/v2"
 	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	v3 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/meta"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	controllerruntime "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 	"sigs.k8s.io/controller-runtime/pkg/config"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
@@ -567,4 +570,183 @@ func Test_doguReconcilePredicate_Update(t *testing.T) {
 			assert.Equal(t, tt.want, got)
 		})
 	}
+}
+
+func TestDoguReconciler_Reconcile_Downgrade(t *testing.T) {
+	testRequest := controllerruntime.Request{Name: testDoguName, Namespace: testNamespace}
+
+	t.Run("should refuse a v2 dogu that has been installed as v3 dogu", func(t *testing.T) {
+		dogu := &v2.Dogu{Name: testDoguName, Namespace: testNamespace, Spec: v2.DoguSpec{Name: "official/" + testDoguName}}
+		helmRelease := &helmv2.HelmRelease{Name: testDoguName, Namespace: testNamespace}
+		updatedDogu := dogu.DeepCopy()
+		expectedMessage := "The dogu has been installed as v3 dogu, a downgrade to v2 is not allowed."
+
+		k8sClient := downgradeTestClient(t, dogu, helmRelease)
+
+		recorder := newMockEventRecorder(t)
+		recorder.EXPECT().Event(mock.AnythingOfType("*v2.Dogu"), v3.EventTypeNormal, ReasonReconcileStarted, "reconciliation started")
+		recorder.EXPECT().Event(mock.AnythingOfType("*v2.Dogu"), v3.EventTypeWarning, ReasonDowngradeNotAllowed, expectedMessage)
+
+		doguClient := newMockDoguInterface(t)
+		var readyCondition *v1.Condition
+		doguClient.EXPECT().UpdateStatusWithRetry(testCtx, mock.AnythingOfType("*v2.Dogu"), mock.Anything, v1.UpdateOptions{}).
+			Run(func(_ context.Context, _ *v2.Dogu, modifyStatusFn func(v2.DoguStatus) v2.DoguStatus, _ v1.UpdateOptions) {
+				status := modifyStatusFn(v2.DoguStatus{})
+				readyCondition = meta.FindStatusCondition(status.Conditions, v2.ConditionReady)
+			}).
+			Return(updatedDogu, nil)
+
+		r := &DoguReconciler{
+			client:            k8sClient,
+			doguChangeHandler: NewMockDoguUsecase(t),
+			doguInterface:     doguClient,
+			eventRecorder:     recorder,
+			doguV3Enabled:     true,
+		}
+
+		got, err := r.Reconcile(testCtx, testRequest)
+
+		require.NoError(t, err)
+		assert.Equal(t, controllerruntime.Result{}, got)
+		require.NotNil(t, readyCondition)
+		assert.Equal(t, v1.ConditionFalse, readyCondition.Status)
+		assert.Equal(t, ReasonDowngradeNotAllowed, readyCondition.Reason)
+		assert.Equal(t, expectedMessage, readyCondition.Message)
+	})
+
+	t.Run("should reconcile a v2 dogu without HelmRelease", func(t *testing.T) {
+		dogu := &v2.Dogu{Name: testDoguName, Namespace: testNamespace, Spec: v2.DoguSpec{Name: "official/" + testDoguName}}
+		updatedDogu := dogu.DeepCopy()
+
+		k8sClient := downgradeTestClient(t, dogu)
+
+		recorder := newMockEventRecorder(t)
+		recorder.EXPECT().Event(mock.AnythingOfType("*v2.Dogu"), v3.EventTypeNormal, ReasonReconcileStarted, "reconciliation started")
+
+		changeHandler := NewMockDoguUsecase(t)
+		changeHandler.EXPECT().HandleUntilApplied(testCtx, mock.AnythingOfType("*v2.Dogu")).Return(0, true, nil)
+
+		doguClient := newMockDoguInterface(t)
+		doguClient.EXPECT().UpdateStatusWithRetry(testCtx, mock.AnythingOfType("*v2.Dogu"), mock.Anything, v1.UpdateOptions{}).Return(updatedDogu, nil)
+
+		requeueHandler := NewMockRequeueHandlerV2(t)
+		requeueHandler.EXPECT().Handle(testCtx, mock.AnythingOfType("*v2.Dogu"), nil, time.Duration(0)).Return(controllerruntime.Result{}, nil)
+
+		r := &DoguReconciler{
+			client:            k8sClient,
+			doguChangeHandler: changeHandler,
+			doguInterface:     doguClient,
+			requeueHandlerV2:  requeueHandler,
+			eventRecorder:     recorder,
+			doguV3Enabled:     true,
+		}
+
+		got, err := r.Reconcile(testCtx, testRequest)
+
+		require.NoError(t, err)
+		assert.Equal(t, controllerruntime.Result{}, got)
+	})
+
+	t.Run("should not look for a HelmRelease if dogu v3 is disabled", func(t *testing.T) {
+		dogu := &v2.Dogu{Name: testDoguName, Namespace: testNamespace, Spec: v2.DoguSpec{Name: "official/" + testDoguName}}
+		helmRelease := &helmv2.HelmRelease{Name: testDoguName, Namespace: testNamespace}
+		updatedDogu := dogu.DeepCopy()
+
+		k8sClient := downgradeTestClient(t, dogu, helmRelease)
+
+		recorder := newMockEventRecorder(t)
+		recorder.EXPECT().Event(mock.AnythingOfType("*v2.Dogu"), v3.EventTypeNormal, ReasonReconcileStarted, "reconciliation started")
+
+		changeHandler := NewMockDoguUsecase(t)
+		changeHandler.EXPECT().HandleUntilApplied(testCtx, mock.AnythingOfType("*v2.Dogu")).Return(0, true, nil)
+
+		doguClient := newMockDoguInterface(t)
+		doguClient.EXPECT().UpdateStatusWithRetry(testCtx, mock.AnythingOfType("*v2.Dogu"), mock.Anything, v1.UpdateOptions{}).Return(updatedDogu, nil)
+
+		requeueHandler := NewMockRequeueHandlerV2(t)
+		requeueHandler.EXPECT().Handle(testCtx, mock.AnythingOfType("*v2.Dogu"), nil, time.Duration(0)).Return(controllerruntime.Result{}, nil)
+
+		r := &DoguReconciler{
+			client:            k8sClient,
+			doguChangeHandler: changeHandler,
+			doguInterface:     doguClient,
+			requeueHandlerV2:  requeueHandler,
+			eventRecorder:     recorder,
+		}
+
+		got, err := r.Reconcile(testCtx, testRequest)
+
+		require.NoError(t, err)
+		assert.Equal(t, controllerruntime.Result{}, got)
+	})
+
+	t.Run("should delete a v2 dogu that has been installed as v3 dogu", func(t *testing.T) {
+		dogu := &v2.Dogu{Name: testDoguName, Namespace: testNamespace, Spec: v2.DoguSpec{Name: "official/" + testDoguName}}
+		dogu.DeletionTimestamp = new(v1.Now())
+		dogu.Finalizers = []string{"k8s.cloudogu.com/dogu-cleanup"}
+		helmRelease := &helmv2.HelmRelease{Name: testDoguName, Namespace: testNamespace}
+
+		k8sClient := downgradeTestClient(t, dogu, helmRelease)
+
+		recorder := newMockEventRecorder(t)
+		recorder.EXPECT().Event(mock.AnythingOfType("*v2.Dogu"), v3.EventTypeNormal, ReasonReconcileStarted, "reconciliation started")
+
+		deleteHandler := NewMockDoguUsecase(t)
+		deleteHandler.EXPECT().HandleUntilApplied(testCtx, mock.AnythingOfType("*v2.Dogu")).Return(0, true, nil)
+
+		r := &DoguReconciler{
+			client:            k8sClient,
+			doguDeleteHandler: deleteHandler,
+			eventRecorder:     recorder,
+			doguV3Enabled:     true,
+		}
+
+		got, err := r.Reconcile(testCtx, testRequest)
+
+		require.NoError(t, err)
+		assert.Equal(t, controllerruntime.Result{}, got)
+	})
+
+	t.Run("should return error if the HelmRelease cannot be read", func(t *testing.T) {
+		dogu := &v2.Dogu{Name: testDoguName, Namespace: testNamespace, Spec: v2.DoguSpec{Name: "official/" + testDoguName}}
+
+		scheme := runtime.NewScheme()
+		require.NoError(t, v2.AddToScheme(scheme))
+		require.NoError(t, helmv2.AddToScheme(scheme))
+
+		failingHelmReleaseGet := interceptor.Funcs{
+			Get: func(ctx context.Context, c client.WithWatch, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
+				if _, ok := obj.(*helmv2.HelmRelease); ok {
+					return assert.AnError
+				}
+				return c.Get(ctx, key, obj, opts...)
+			},
+		}
+
+		k8sClient := fake.NewClientBuilder().WithScheme(scheme).WithObjects(dogu).WithInterceptorFuncs(failingHelmReleaseGet).Build()
+
+		recorder := newMockEventRecorder(t)
+		recorder.EXPECT().Event(mock.AnythingOfType("*v2.Dogu"), v3.EventTypeNormal, ReasonReconcileStarted, "reconciliation started")
+
+		r := &DoguReconciler{
+			client:            k8sClient,
+			doguChangeHandler: NewMockDoguUsecase(t),
+			eventRecorder:     recorder,
+			doguV3Enabled:     true,
+		}
+
+		got, err := r.Reconcile(testCtx, testRequest)
+
+		assert.ErrorIs(t, err, assert.AnError)
+		assert.ErrorContains(t, err, `failed to get HelmRelease of dogu "test"`)
+		assert.Equal(t, controllerruntime.Result{}, got)
+	})
+}
+
+func downgradeTestClient(t *testing.T, objects ...client.Object) client.Client {
+	t.Helper()
+	scheme := runtime.NewScheme()
+	require.NoError(t, v2.AddToScheme(scheme))
+	require.NoError(t, helmv2.AddToScheme(scheme))
+	return fake.NewClientBuilder().WithScheme(scheme).WithObjects(objects...).Build()
 }
