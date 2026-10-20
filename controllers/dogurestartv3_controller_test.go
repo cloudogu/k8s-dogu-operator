@@ -19,7 +19,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/record"
-	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
@@ -62,7 +61,7 @@ var failStatusUpdate = interceptor.Funcs{
 	},
 }
 
-func v3Restart(conditions ...metav1.Condition) *doguv2.DoguRestart {
+func doguV3Restart(conditions ...metav1.Condition) *doguv2.DoguRestart {
 	return &doguv2.DoguRestart{
 		Name: v3RestartName, Namespace: testNamespace, CreationTimestamp: v3RestartCreatedAt, Generation: 1,
 		Spec:   doguv2.DoguRestartSpec{DoguName: testDoguName},
@@ -90,7 +89,7 @@ type restartV3Test struct {
 	sut       *DoguRestartV3Reconciler
 }
 
-// newRestartV3Test creates the reconciler with a restarter mock, which fails the test on any call that is not expected.
+// newRestartV3Test creates the reconciler with a restarter mock, that expects no calls at all
 func newRestartV3Test(t *testing.T, objects ...client.Object) restartV3Test {
 	return newRestartV3TestWithFuncs(t, interceptor.Funcs{}, objects...)
 }
@@ -157,7 +156,7 @@ func TestNewDoguRestartV3Reconciler(t *testing.T) {
 		managerMock := newMockCtrlManager(t)
 		managerMock.EXPECT().GetClient().Return(nil)
 		// controller names are validated process-wide, so registering in several tests would fail
-		managerMock.EXPECT().GetControllerOptions().Return(config.Controller{SkipNameValidation: ptr.To(true)})
+		managerMock.EXPECT().GetControllerOptions().Return(config.Controller{SkipNameValidation: new(true)})
 		managerMock.EXPECT().GetScheme().Return(restartV3TestScheme())
 		managerMock.EXPECT().GetLogger().Return(logr.Logger{})
 		managerMock.EXPECT().Add(mock.Anything).Return(nil)
@@ -190,7 +189,7 @@ func TestDoguRestartV3Reconciler_Reconcile(t *testing.T) {
 	})
 
 	t.Run("should ignore restarts that are handled with a phase", func(t *testing.T) {
-		r := v3Restart()
+		r := doguV3Restart()
 		r.Status.Phase = doguv2.RestartStatusPhaseStopping
 		// the restarter mock fails the test if the dogu is restarted
 		rt := newRestartV3Test(t, r, v3Dogu(v3DoguReadyCondition))
@@ -202,10 +201,10 @@ func TestDoguRestartV3Reconciler_Reconcile(t *testing.T) {
 		assert.Empty(t, rt.persistedRestart(t).Status.Conditions)
 	})
 
-	t.Run("should only collect garbage for terminal restarts", func(t *testing.T) {
+	t.Run("should collect garbage for terminal restarts", func(t *testing.T) {
 		// e.g. the workload was recreated without the annotation; the restarter mock fails the test if a terminal restart restarts again
 		rt := newRestartV3Test(t,
-			v3Restart(condition(doguv2.DoguRestartConditionRestarted, metav1.ConditionTrue, doguv2.DoguRestartReasonSucceeded),
+			doguV3Restart(condition(doguv2.DoguRestartConditionRestarted, metav1.ConditionTrue, doguv2.DoguRestartReasonSucceeded),
 				condition(doguv2.DoguRestartConditionReady, metav1.ConditionTrue, doguv2.DoguRestartReasonSucceeded)),
 			v3Dogu(v3DoguReadyCondition))
 		rt.gc.EXPECT().DoGarbageCollection(testCtx, testDoguName).Return(nil)
@@ -220,7 +219,7 @@ func TestDoguRestartV3Reconciler_Reconcile(t *testing.T) {
 	t.Run("should leave new restarts of missing dogus to the v2 controller but check again", func(t *testing.T) {
 		// the dogu may be missing only in the cache, while the v2 controller already sees it as v3 dogu and ignores the restart;
 		// the requeue ends once the cache contains the dogu or the v2 controller has set a phase
-		rt := newRestartV3Test(t, v3Restart())
+		rt := newRestartV3Test(t, doguV3Restart())
 
 		result, err := rt.sut.Reconcile(testCtx, v3RestartRequest)
 
@@ -231,7 +230,7 @@ func TestDoguRestartV3Reconciler_Reconcile(t *testing.T) {
 
 	t.Run("should fail permanently if the dogu of a started restart was deleted", func(t *testing.T) {
 		rt := newRestartV3Test(t,
-			v3Restart(condition(doguv2.DoguRestartConditionReady, metav1.ConditionFalse, doguv2.DoguRestartReasonDoguNotIdle)))
+			doguV3Restart(condition(doguv2.DoguRestartConditionReady, metav1.ConditionFalse, doguv2.DoguRestartReasonDoguNotIdle)))
 		rt.gc.EXPECT().DoGarbageCollection(testCtx, testDoguName).Return(nil)
 
 		result, err := rt.sut.Reconcile(testCtx, v3RestartRequest)
@@ -248,7 +247,7 @@ func TestDoguRestartV3Reconciler_Reconcile(t *testing.T) {
 		dogu := v3Dogu(v3DoguReadyCondition)
 		dogu.Spec.DoguApiVersion = v3beta1.DoguApiVersionV2
 		// the restarter mock fails the test if the dogu is restarted
-		rt := newRestartV3Test(t, v3Restart(), dogu)
+		rt := newRestartV3Test(t, doguV3Restart(), dogu)
 
 		result, err := rt.sut.Reconcile(testCtx, v3RestartRequest)
 
@@ -284,11 +283,11 @@ func TestDoguRestartV3Reconciler_Reconcile(t *testing.T) {
 				dogu.Generation = 2
 				if tt.deleting {
 					// the fake client only accepts objects with a deletion timestamp if they have a finalizer
-					dogu.DeletionTimestamp = ptr.To(metav1.Now())
+					dogu.DeletionTimestamp = new(metav1.Now())
 					dogu.Finalizers = []string{"test"}
 				}
 				// the restarter mock fails the test if the dogu is restarted
-				rt := newRestartV3Test(t, v3Restart(), dogu)
+				rt := newRestartV3Test(t, doguV3Restart(), dogu)
 
 				result, err := rt.sut.Reconcile(testCtx, v3RestartRequest)
 
@@ -302,7 +301,7 @@ func TestDoguRestartV3Reconciler_Reconcile(t *testing.T) {
 	})
 
 	t.Run("should restart a dogu whose last operation failed", func(t *testing.T) {
-		rt := newRestartV3Test(t, v3Restart(),
+		rt := newRestartV3Test(t, doguV3Restart(),
 			v3Dogu(metav1.Condition{Type: v3beta1.ConditionReady, Status: metav1.ConditionFalse, Reason: v3beta1.ReasonUpgradeFailed, ObservedGeneration: 1}))
 		rt.expectApply(false, nil)
 		rt.expectRolledOut(false, "workloads not rolled out: Deployment/test", nil)
@@ -314,26 +313,25 @@ func TestDoguRestartV3Reconciler_Reconcile(t *testing.T) {
 	})
 
 	t.Run("should restart with the creation timestamp and wait for the rollout", func(t *testing.T) {
-		rt := newRestartV3Test(t, v3Restart(), v3Dogu(v3DoguReadyCondition))
+		rt := newRestartV3Test(t, doguV3Restart(), v3Dogu(v3DoguReadyCondition))
 		rt.expectApply(false, nil)
 		rt.expectRolledOut(false, "workloads not rolled out: Deployment/test", nil)
 
 		result, err := rt.sut.Reconcile(testCtx, v3RestartRequest)
 
 		require.NoError(t, err)
-		// workload changes trigger the reconciliation
-		assert.Equal(t, reconcile.Result{}, result)
+		// workload changes trigger the reconciliation, the requeue only catches a rollout that stops emitting them
+		assert.Equal(t, reconcile.Result{RequeueAfter: rolloutRequeueInterval}, result)
 		persisted := rt.persistedRestart(t)
-		assert.Empty(t, persisted.Status.Phase)
 		assertCondition(t, persisted, doguv2.DoguRestartConditionRestarted, metav1.ConditionTrue, doguv2.DoguRestartReasonSucceeded)
 		assertCondition(t, persisted, doguv2.DoguRestartConditionReady, metav1.ConditionFalse, doguv2.DoguRestartReasonRolloutInProgress)
 		assert.Equal(t, "workloads not rolled out: Deployment/test", meta.FindStatusCondition(persisted.Status.Conditions, doguv2.DoguRestartConditionReady).Message)
-		assertEvent(t, rt.recorder, "Normal Restarting")
+		assertEvent(t, rt.recorder, "Normal Restarted")
 	})
 
 	t.Run("should be ready once the workloads are rolled out", func(t *testing.T) {
 		rt := newRestartV3Test(t,
-			v3Restart(condition(doguv2.DoguRestartConditionRestarted, metav1.ConditionTrue, doguv2.DoguRestartReasonSucceeded),
+			doguV3Restart(condition(doguv2.DoguRestartConditionRestarted, metav1.ConditionTrue, doguv2.DoguRestartReasonSucceeded),
 				condition(doguv2.DoguRestartConditionReady, metav1.ConditionFalse, doguv2.DoguRestartReasonRolloutInProgress)),
 			v3Dogu(v3DoguReadyCondition))
 		rt.expectApply(false, nil)
@@ -347,11 +345,11 @@ func TestDoguRestartV3Reconciler_Reconcile(t *testing.T) {
 		persisted := rt.persistedRestart(t)
 		assertCondition(t, persisted, doguv2.DoguRestartConditionRestarted, metav1.ConditionTrue, doguv2.DoguRestartReasonSucceeded)
 		assertCondition(t, persisted, doguv2.DoguRestartConditionReady, metav1.ConditionTrue, doguv2.DoguRestartReasonSucceeded)
-		assertEvent(t, rt.recorder, "Normal Restarted")
+		assertEvent(t, rt.recorder, "Normal Ready")
 	})
 
-	t.Run("should emit the Restarting event only once on repeated reconciliation", func(t *testing.T) {
-		rt := newRestartV3Test(t, v3Restart(), v3Dogu(v3DoguReadyCondition))
+	t.Run("should emit the Restarted event only once on repeated reconciliation", func(t *testing.T) {
+		rt := newRestartV3Test(t, doguV3Restart(), v3Dogu(v3DoguReadyCondition))
 		// the restarter does not change workloads that already carry the restart, so applying it again is safe
 		rt.expectApply(false, nil).Times(2)
 		rt.expectRolledOut(false, "workloads not rolled out: Deployment/test", nil).Times(2)
@@ -361,12 +359,14 @@ func TestDoguRestartV3Reconciler_Reconcile(t *testing.T) {
 		_, err = rt.sut.Reconcile(testCtx, v3RestartRequest)
 		require.NoError(t, err)
 
-		assertEvent(t, rt.recorder, "Normal Restarting")
+		assertEvent(t, rt.recorder, "Normal Restarted")
 		assertNoEvent(t, rt.recorder)
 	})
 
 	t.Run("should be superseded by a newer restart", func(t *testing.T) {
-		rt := newRestartV3Test(t, v3Restart(), v3Dogu(v3DoguReadyCondition))
+		rt := newRestartV3Test(t, doguV3Restart(), v3Dogu(v3DoguReadyCondition))
+		// set superseded to true, which means the restart is superseded by another restart - it is the return value
+		// of the doguRestarter interface
 		rt.expectApply(true, nil)
 		rt.gc.EXPECT().DoGarbageCollection(testCtx, testDoguName).Return(nil)
 
@@ -383,7 +383,7 @@ func TestDoguRestartV3Reconciler_Reconcile(t *testing.T) {
 	t.Run("should restart a stopped dogu without waiting for a rollout", func(t *testing.T) {
 		dogu := v3Dogu(v3DoguReadyCondition)
 		dogu.Spec.Stopped = true
-		rt := newRestartV3Test(t, v3Restart(), dogu)
+		rt := newRestartV3Test(t, doguV3Restart(), dogu)
 		rt.expectApply(false, nil)
 		rt.gc.EXPECT().DoGarbageCollection(testCtx, testDoguName).Return(nil)
 
@@ -397,7 +397,7 @@ func TestDoguRestartV3Reconciler_Reconcile(t *testing.T) {
 	})
 
 	t.Run("should retry if the annotation cannot be set", func(t *testing.T) {
-		rt := newRestartV3Test(t, v3Restart(), v3Dogu(v3DoguReadyCondition))
+		rt := newRestartV3Test(t, doguV3Restart(), v3Dogu(v3DoguReadyCondition))
 		rt.expectApply(false, assert.AnError)
 
 		_, err := rt.sut.Reconcile(testCtx, v3RestartRequest)
@@ -410,7 +410,7 @@ func TestDoguRestartV3Reconciler_Reconcile(t *testing.T) {
 	})
 
 	t.Run("should keep the restart and retry if the rollout cannot be checked", func(t *testing.T) {
-		rt := newRestartV3Test(t, v3Restart(), v3Dogu(v3DoguReadyCondition))
+		rt := newRestartV3Test(t, doguV3Restart(), v3Dogu(v3DoguReadyCondition))
 		rt.expectApply(false, nil)
 		rt.expectRolledOut(false, "", assert.AnError)
 
@@ -429,7 +429,7 @@ func TestDoguRestartV3Reconciler_Reconcile(t *testing.T) {
 			Get: func(ctx context.Context, c client.WithWatch, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
 				return assert.AnError
 			},
-		}, v3Restart())
+		}, doguV3Restart())
 
 		_, err := rt.sut.Reconcile(testCtx, v3RestartRequest)
 
@@ -444,7 +444,7 @@ func TestDoguRestartV3Reconciler_Reconcile(t *testing.T) {
 				}
 				return c.Get(ctx, key, obj, opts...)
 			},
-		}, v3Restart(), v3Dogu(v3DoguReadyCondition))
+		}, doguV3Restart(), v3Dogu(v3DoguReadyCondition))
 
 		_, err := rt.sut.Reconcile(testCtx, v3RestartRequest)
 
@@ -455,7 +455,7 @@ func TestDoguRestartV3Reconciler_Reconcile(t *testing.T) {
 
 	t.Run("should fail if the garbage collection fails", func(t *testing.T) {
 		rt := newRestartV3Test(t,
-			v3Restart(condition(doguv2.DoguRestartConditionRestarted, metav1.ConditionTrue, doguv2.DoguRestartReasonSucceeded),
+			doguV3Restart(condition(doguv2.DoguRestartConditionRestarted, metav1.ConditionTrue, doguv2.DoguRestartReasonSucceeded),
 				condition(doguv2.DoguRestartConditionReady, metav1.ConditionTrue, doguv2.DoguRestartReasonSucceeded)),
 			v3Dogu(v3DoguReadyCondition))
 		rt.gc.EXPECT().DoGarbageCollection(testCtx, testDoguName).Return(assert.AnError)
@@ -468,17 +468,18 @@ func TestDoguRestartV3Reconciler_Reconcile(t *testing.T) {
 
 	t.Run("should fail if the conditions cannot be updated while the dogu is not idle", func(t *testing.T) {
 		// the restarter mock fails the test if the dogu is restarted
-		rt := newRestartV3TestWithFuncs(t, failStatusUpdate, v3Restart(), v3Dogu())
+		rt := newRestartV3TestWithFuncs(t, failStatusUpdate, doguV3Restart(), v3Dogu())
 
 		result, err := rt.sut.Reconcile(testCtx, v3RestartRequest)
 
 		require.ErrorIs(t, err, assert.AnError)
 		assert.ErrorContains(t, err, `failed to update conditions of dogu restart "ecosystem/test-restart"`)
-		assert.Equal(t, reconcile.Result{RequeueAfter: requeueWaitTimeout}, result)
+		// a failing reconciliation requeues with backoff, so no RequeueAfter is set
+		assert.Equal(t, reconcile.Result{}, result)
 	})
 
 	t.Run("should return both errors if the restart and the condition update fail", func(t *testing.T) {
-		rt := newRestartV3TestWithFuncs(t, failStatusUpdate, v3Restart(), v3Dogu(v3DoguReadyCondition))
+		rt := newRestartV3TestWithFuncs(t, failStatusUpdate, doguV3Restart(), v3Dogu(v3DoguReadyCondition))
 		applyErr := errors.New("apply failed")
 		rt.expectApply(false, applyErr)
 
@@ -489,10 +490,10 @@ func TestDoguRestartV3Reconciler_Reconcile(t *testing.T) {
 		assertEvent(t, rt.recorder, "Warning PatchFailed")
 	})
 
-	t.Run("should not check the rollout if the Restarted condition cannot be updated", func(t *testing.T) {
-		// the restarter mock fails the test if the rollout is checked
-		rt := newRestartV3TestWithFuncs(t, failStatusUpdate, v3Restart(), v3Dogu(v3DoguReadyCondition))
+	t.Run("should not emit the Restarted event if the Restarted condition cannot be updated", func(t *testing.T) {
+		rt := newRestartV3TestWithFuncs(t, failStatusUpdate, doguV3Restart(), v3Dogu(v3DoguReadyCondition))
 		rt.expectApply(false, nil)
+		rt.expectRolledOut(false, "workloads not rolled out: Deployment/test", nil)
 
 		_, err := rt.sut.Reconcile(testCtx, v3RestartRequest)
 
@@ -502,7 +503,7 @@ func TestDoguRestartV3Reconciler_Reconcile(t *testing.T) {
 
 	t.Run("should neither emit an event nor collect garbage if the final conditions cannot be updated", func(t *testing.T) {
 		// the garbage collector mock fails the test if garbage is collected
-		rt := newRestartV3TestWithFuncs(t, failStatusUpdate, v3Restart(), v3Dogu(v3DoguReadyCondition))
+		rt := newRestartV3TestWithFuncs(t, failStatusUpdate, doguV3Restart(), v3Dogu(v3DoguReadyCondition))
 		rt.expectApply(true, nil)
 
 		_, err := rt.sut.Reconcile(testCtx, v3RestartRequest)
@@ -514,16 +515,16 @@ func TestDoguRestartV3Reconciler_Reconcile(t *testing.T) {
 
 func TestNewDoguRestartRequestMapper(t *testing.T) {
 	t.Run("should map a workload to the v3 restarts of its dogu that wait for the rollout", func(t *testing.T) {
-		running := v3Restart(condition(doguv2.DoguRestartConditionReady, metav1.ConditionFalse, doguv2.DoguRestartReasonRolloutInProgress))
+		running := doguV3Restart(condition(doguv2.DoguRestartConditionReady, metav1.ConditionFalse, doguv2.DoguRestartReasonRolloutInProgress))
 		running.Name = "running"
-		created := v3Restart()
+		created := doguV3Restart()
 		created.Name = "created"
-		finished := v3Restart(condition(doguv2.DoguRestartConditionReady, metav1.ConditionTrue, doguv2.DoguRestartReasonSucceeded))
+		finished := doguV3Restart(condition(doguv2.DoguRestartConditionReady, metav1.ConditionTrue, doguv2.DoguRestartReasonSucceeded))
 		finished.Name = "finished"
-		v2Restart := v3Restart()
+		v2Restart := doguV3Restart()
 		v2Restart.Name = "v2"
 		v2Restart.Status.Phase = doguv2.RestartStatusPhaseStopping
-		otherDogu := v3Restart()
+		otherDogu := doguV3Restart()
 		otherDogu.Name = "other"
 		otherDogu.Spec.DoguName = "other"
 		c := newRestartV3Client(running, created, finished, v2Restart, otherDogu)
@@ -541,7 +542,7 @@ func TestNewDoguRestartRequestMapper(t *testing.T) {
 	})
 
 	t.Run("should not map a workload without dogu label", func(t *testing.T) {
-		sut := newDoguRestartRequestMapper(newRestartV3Client(v3Restart(condition(doguv2.DoguRestartConditionReady, metav1.ConditionFalse, doguv2.DoguRestartReasonRolloutInProgress))))
+		sut := newDoguRestartRequestMapper(newRestartV3Client(doguV3Restart(condition(doguv2.DoguRestartConditionReady, metav1.ConditionFalse, doguv2.DoguRestartReasonRolloutInProgress))))
 		workload := &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: testDoguName, Namespace: testNamespace}}
 
 		requests := sut(testCtx, workload)

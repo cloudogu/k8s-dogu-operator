@@ -60,7 +60,7 @@ type workload struct {
 
 // Apply sets the restart annotation with restartAt on all workloads of the dogu.
 // A newer restart is never overwritten, so applying an older restart later on does not restart the dogu again.
-// Workloads that already carry restartAt are not changed.
+// Workloads that already carry the current restartAt are not changed.
 // It returns true if the restart is superseded, i.e. all workloads already carry a newer restart.
 func (r *Restarter) Apply(ctx context.Context, namespace, doguName string, restartAt time.Time) (superseded bool, err error) {
 	foundWorkloads, err := r.getWorkloads(ctx, namespace, doguName)

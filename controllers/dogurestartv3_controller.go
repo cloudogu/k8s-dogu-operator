@@ -11,6 +11,7 @@ import (
 	"github.com/cloudogu/k8s-dogu-lib/v3/api/v3beta1"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
 	"github.com/cloudogu/k8s-dogu-operator/v3/internal/dogu/restart"
+	"github.com/cloudogu/k8s-dogu-operator/v3/internal/logging"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -21,13 +22,16 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
-	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
 const doguRestartV3ControllerName = "dogu-v3-restart"
+
+// rolloutRequeueInterval re-checks a rollout that produces no further workload events, e.g. when the new pods
+// never become ready and the workload status stops changing. Without it such a restart would wait forever.
+const rolloutRequeueInterval = 30 * time.Second
 
 // busyDoguReasons are the reasons of the Ready condition of a v3 dogu while an operation is in progress.
 // A restart waits for these operations to finish, so that it does not roll out the workloads in the middle of them.
@@ -108,6 +112,22 @@ func (r *DoguRestartV3Reconciler) setupWithManager(mgr ctrlManager) error {
 		Complete(r)
 }
 
+// restartDecision is what one reconciliation decided for a restart: the conditions to set, the events to emit and
+// when to look again. precheck and restart decide, record applies.
+type restartDecision struct {
+	conditions   []metav1.Condition
+	events       []restartEvent
+	requeueAfter time.Duration
+	err          error
+}
+
+// restartEvent is an event of the restart.
+type restartEvent struct {
+	eventType string
+	reason    string
+	message   string
+}
+
 // Reconcile restarts the workloads of a v3 dogu and tracks the progress in the conditions of the restart.
 func (r *DoguRestartV3Reconciler) Reconcile(ctx context.Context, req reconcile.Request) (reconcile.Result, error) {
 	doguRestart := &doguv2.DoguRestart{}
@@ -120,140 +140,205 @@ func (r *DoguRestartV3Reconciler) Reconcile(ctx context.Context, req reconcile.R
 		return reconcile.Result{}, nil
 	}
 
-	// a terminal restart never changes the workloads again, e.g. if a workload was recreated without the annotation
+	dogu, blocked := r.precheck(ctx, doguRestart)
+	if blocked != nil {
+		if err := r.record(ctx, doguRestart, *blocked); err != nil {
+			return reconcile.Result{}, fmt.Errorf("failed to record restart decision: %w", err)
+		}
+
+		return reconcile.Result{RequeueAfter: blocked.requeueAfter}, nil
+	}
+
+	decision := r.restart(ctx, doguRestart, dogu)
+	if err := r.record(ctx, doguRestart, decision); err != nil {
+		return reconcile.Result{}, fmt.Errorf("failed to record restart decision: %w", err)
+	}
+
+	return reconcile.Result{RequeueAfter: decision.requeueAfter}, nil
+}
+
+// precheck checks whether a dogu needs to be restarted.
+// It returns either the dogu to restart or the decision that ends the reconciliation without a restart.
+// A restart that is finished or belongs to a v2 dogu gets an empty decision, never nil, because nil means go ahead.
+func (r *DoguRestartV3Reconciler) precheck(ctx context.Context, doguRestart *doguv2.DoguRestart) (*v3beta1.Dogu, *restartDecision) {
 	if restart.IsTerminal(doguRestart) {
-		return reconcile.Result{}, r.collectGarbage(ctx, doguRestart)
+		return nil, &restartDecision{}
 	}
 
 	dogu := &v3beta1.Dogu{}
 	if err := r.client.Get(ctx, client.ObjectKey{Namespace: doguRestart.Namespace, Name: doguRestart.Spec.DoguName}, dogu); err != nil {
 		if !apierrors.IsNotFound(err) {
-			return reconcile.Result{}, fmt.Errorf("failed to get dogu %q of dogu restart %q: %w", doguRestart.Spec.DoguName, req.NamespacedName, err)
+			return nil, &restartDecision{err: fmt.Errorf("failed to get dogu %q of dogu restart %q: %w",
+				doguRestart.Spec.DoguName, client.ObjectKeyFromObject(doguRestart), err)}
 		}
 
-		// without a dogu the api version is unknown, so new restarts are left to the DoguRestartReconciler.
-		// The dogu may only be missing in the cache, while the DoguRestartReconciler reads it from the API and ignores
-		// the restart of the v3 dogu. Check again until the cache contains the dogu or the restart has a phase.
-		// TODO when v2 is removed: This relies on the DoguRestartReconciler to set the phase "dogu not found". Without it,
-		//  restarts of missing dogus are requeued forever. Handle this case here instead: confirm the missing dogu with
-		//  an uncached read and set the conditions to DoguNotFound.
-		if len(doguRestart.Status.Conditions) == 0 {
-			return reconcile.Result{RequeueAfter: requeueWaitTimeout}, nil
-		}
-
-		return r.finish(ctx, doguRestart, metav1.ConditionFalse, doguv2.DoguRestartReasonDoguNotFound, "Dogu to restart was not found.")
+		return nil, new(doguNotFound(doguRestart))
 	}
 
+	// restarts of v2 dogus are handled by the DoguRestartReconciler
 	if dogu.Spec.DoguApiVersion != v3beta1.DoguApiVersionV3 {
-		return reconcile.Result{}, nil
+		return nil, &restartDecision{}
 	}
 
 	if !isDoguIdle(dogu) {
-		message := "Waiting for the current operation of the dogu to finish."
-		err := r.updateConditions(ctx, doguRestart,
-			newRestartCondition(doguRestart, doguv2.DoguRestartConditionRestarted, metav1.ConditionFalse, doguv2.DoguRestartReasonDoguNotIdle, message),
-			newRestartCondition(doguRestart, doguv2.DoguRestartConditionReady, metav1.ConditionFalse, doguv2.DoguRestartReasonDoguNotIdle, message))
+		const message = "Waiting for the current operation of the dogu to finish."
 
-		return reconcile.Result{RequeueAfter: requeueWaitTimeout}, err
+		return nil, &restartDecision{
+			conditions: []metav1.Condition{
+				restartedCondition(metav1.ConditionFalse, doguv2.DoguRestartReasonDoguNotIdle, message),
+				readyCondition(metav1.ConditionFalse, doguv2.DoguRestartReasonDoguNotIdle, message),
+			},
+			requeueAfter: requeueWaitTimeout,
+		}
 	}
 
-	return r.restart(ctx, doguRestart, dogu)
+	return dogu, nil
 }
 
-func (r *DoguRestartV3Reconciler) restart(ctx context.Context, doguRestart *doguv2.DoguRestart, dogu *v3beta1.Dogu) (reconcile.Result, error) {
+// doguNotFound decides what happens to a restart whose dogu does not exist.
+func doguNotFound(doguRestart *doguv2.DoguRestart) restartDecision {
+	// Let missing dogus be handled by the DoguRestartReconciler (DoguV2) - it sets the conditions to DoguNotFound.
+	if len(doguRestart.Status.Conditions) == 0 {
+		return restartDecision{requeueAfter: requeueWaitTimeout}
+	}
+
+	const message = "Dogu to restart was not found."
+	ready := readyCondition(metav1.ConditionFalse, doguv2.DoguRestartReasonDoguNotFound, message)
+
+	return restartDecision{
+		conditions: []metav1.Condition{
+			restartedCondition(metav1.ConditionFalse, doguv2.DoguRestartReasonDoguNotFound, message),
+			ready,
+		},
+		events: []restartEvent{terminalEvent(ready)},
+	}
+}
+
+// restart sets the restart annotation on the workloads of the dogu and reports how far the restart got.
+func (r *DoguRestartV3Reconciler) restart(ctx context.Context, doguRestart *doguv2.DoguRestart, dogu *v3beta1.Dogu) restartDecision {
 	// the timestamp is derived from the restart, so reconciling the same restart again never restarts the dogu again
 	restartAt := doguRestart.CreationTimestamp.Time
 
 	superseded, err := r.restarter.Apply(ctx, dogu.Namespace, dogu.Spec.Name, restartAt)
 	if err != nil {
-		r.recorder.Event(doguRestart, corev1.EventTypeWarning, doguv2.DoguRestartReasonPatchFailed, "Failed to restart the workloads of the dogu.")
-		statusErr := r.updateConditions(ctx, doguRestart,
-			newRestartCondition(doguRestart, doguv2.DoguRestartConditionRestarted, metav1.ConditionFalse, doguv2.DoguRestartReasonPatchFailed, err.Error()))
-
-		return reconcile.Result{}, errors.Join(err, statusErr)
+		return restartDecision{
+			conditions: []metav1.Condition{restartedCondition(metav1.ConditionFalse, doguv2.DoguRestartReasonPatchFailed, err.Error())},
+			events:     []restartEvent{{corev1.EventTypeWarning, doguv2.DoguRestartReasonPatchFailed, "Failed to restart the workloads of the dogu."}},
+			err:        err,
+		}
 	}
 
 	if superseded {
-		return r.finish(ctx, doguRestart, metav1.ConditionTrue, doguv2.DoguRestartReasonSuperseded, "The dogu was already restarted by a newer restart.")
+		const message = "The dogu was already restarted by a newer restart."
+		ready := readyCondition(metav1.ConditionTrue, doguv2.DoguRestartReasonSuperseded, message)
+
+		return restartDecision{
+			conditions: []metav1.Condition{
+				restartedCondition(metav1.ConditionTrue, doguv2.DoguRestartReasonSuperseded, message),
+				ready,
+			},
+			events: []restartEvent{terminalEvent(ready)},
+		}
 	}
 
-	// emit the Restarting event only once, when the condition becomes true; later reconciles during the rollout pass here again.
-	// It has to be checked before updateConditions, which changes the conditions in place.
-	firstRestart := !meta.IsStatusConditionTrue(doguRestart.Status.Conditions, doguv2.DoguRestartConditionRestarted)
-
-	// persist Restarted before evaluating the rollout, so it is not lost if the evaluation fails
-	restartedMessage := "The restart annotation is set on all workloads of the dogu."
-	restarted := newRestartCondition(doguRestart, doguv2.DoguRestartConditionRestarted, metav1.ConditionTrue, doguv2.DoguRestartReasonSucceeded, restartedMessage)
-	if uErr := r.updateConditions(ctx, doguRestart, restarted); uErr != nil {
-		return reconcile.Result{}, uErr
+	const restartedMessage = "The restart annotation is set on all workloads of the dogu."
+	decision := restartDecision{
+		conditions: []metav1.Condition{restartedCondition(metav1.ConditionTrue, doguv2.DoguRestartReasonSucceeded, restartedMessage)},
 	}
-	if firstRestart {
-		r.recorder.Event(doguRestart, corev1.EventTypeNormal, "Restarting", restartedMessage)
+
+	// emit the Restarted event only once, when the condition becomes true; later reconciles during the rollout pass
+	// here again. It has to be read before record updates the conditions.
+	if !meta.IsStatusConditionTrue(doguRestart.Status.Conditions, doguv2.DoguRestartConditionRestarted) {
+		decision.events = append(decision.events, restartEvent{corev1.EventTypeNormal, doguv2.DoguRestartConditionRestarted, restartedMessage})
 	}
 
 	if dogu.Spec.Stopped {
-		return r.finishReady(ctx, doguRestart, restarted, doguv2.DoguRestartReasonDoguStopped, "The dogu is stopped. Its workloads use the restart once the dogu is started.")
+		return decision.readyWith(readyCondition(metav1.ConditionTrue, doguv2.DoguRestartReasonDoguStopped,
+			"The dogu is stopped. Its workloads use the restart once the dogu is started."))
 	}
 
 	rolledOut, message, err := r.restarter.RolledOut(ctx, dogu.Namespace, dogu.Spec.Name, restartAt)
 	if err != nil {
-		return reconcile.Result{}, fmt.Errorf("failed to check if workloads are rolled out: %w", err)
+		// the Restarted condition is still recorded, so that it is not lost when the rollout cannot be evaluated
+		decision.err = fmt.Errorf("failed to check if workloads are rolled out: %w", err)
+
+		return decision
 	}
 
 	if !rolledOut {
-		// changes of the workloads trigger the next reconciliation, so no requeue is necessary
-		return reconcile.Result{}, r.updateConditions(ctx, doguRestart, restarted,
-			newRestartCondition(doguRestart, doguv2.DoguRestartConditionReady, metav1.ConditionFalse, doguv2.DoguRestartReasonRolloutInProgress, message))
+		// changes of the workloads trigger the next reconciliation; the requeue is only a safety net for
+		// a rollout that stops producing them
+		decision.conditions = append(decision.conditions,
+			readyCondition(metav1.ConditionFalse, doguv2.DoguRestartReasonRolloutInProgress, message))
+		decision.requeueAfter = rolloutRequeueInterval
+
+		return decision
 	}
 
-	return r.finishReady(ctx, doguRestart, restarted, doguv2.DoguRestartReasonSucceeded, "All workloads of the dogu are rolled out.")
+	return decision.readyWith(readyCondition(metav1.ConditionTrue, doguv2.DoguRestartReasonSucceeded,
+		"All workloads of the dogu are rolled out."))
 }
 
-// finish sets both conditions to the same terminal state.
-func (r *DoguRestartV3Reconciler) finish(ctx context.Context, doguRestart *doguv2.DoguRestart, status metav1.ConditionStatus, reason, message string) (reconcile.Result, error) {
-	restarted := newRestartCondition(doguRestart, doguv2.DoguRestartConditionRestarted, status, reason, message)
-	ready := newRestartCondition(doguRestart, doguv2.DoguRestartConditionReady, status, reason, message)
+// readyWith finishes the decision with a Ready condition and the event that reports it.
+func (d restartDecision) readyWith(ready metav1.Condition) restartDecision {
+	d.conditions = append(d.conditions, ready)
+	d.events = append(d.events, terminalEvent(ready))
 
-	return r.finishWith(ctx, doguRestart, restarted, ready, reason, message)
+	return d
 }
 
-// finishReady sets the Ready condition to true.
-func (r *DoguRestartV3Reconciler) finishReady(ctx context.Context, doguRestart *doguv2.DoguRestart, restarted metav1.Condition, reason, message string) (reconcile.Result, error) {
-	ready := newRestartCondition(doguRestart, doguv2.DoguRestartConditionReady, metav1.ConditionTrue, reason, message)
-	eventReason := reason
-	if reason == doguv2.DoguRestartReasonSucceeded {
-		eventReason = "Restarted"
+// record applies an decision to the cluster: it persists the conditions, emits the events and collects the garbage of
+// a restart that reached a terminal state.
+func (r *DoguRestartV3Reconciler) record(ctx context.Context, doguRestart *doguv2.DoguRestart, decision restartDecision) error {
+	// a failed reconciliation reports its events in any case: the failure happened, whether it can be recorded
+	if decision.err != nil {
+		r.emit(doguRestart, decision.events)
+
+		return errors.Join(decision.err, r.updateConditions(ctx, doguRestart, decision.conditions...))
 	}
 
-	return r.finishWith(ctx, doguRestart, restarted, ready, eventReason, message)
-}
-
-func (r *DoguRestartV3Reconciler) finishWith(ctx context.Context, doguRestart *doguv2.DoguRestart, restarted, ready metav1.Condition, eventReason, message string) (reconcile.Result, error) {
-	if err := r.updateConditions(ctx, doguRestart, restarted, ready); err != nil {
-		return reconcile.Result{}, err
+	if err := r.updateConditions(ctx, doguRestart, decision.conditions...); err != nil {
+		return err
 	}
 
-	eType := corev1.EventTypeNormal
-	if ready.Status != metav1.ConditionTrue {
-		eType = corev1.EventTypeWarning
-	}
+	r.emit(doguRestart, decision.events)
 
-	r.recorder.Event(doguRestart, eType, eventReason, message)
-
-	return reconcile.Result{}, r.collectGarbage(ctx, doguRestart)
-}
-
-func (r *DoguRestartV3Reconciler) collectGarbage(ctx context.Context, doguRestart *doguv2.DoguRestart) error {
-	if err := r.garbageCollector.DoGarbageCollection(ctx, doguRestart.Spec.DoguName); err != nil {
-		return fmt.Errorf("failed to do garbage collection for dogu restart %q: %w", client.ObjectKeyFromObject(doguRestart), err)
+	// a restart that reached a terminal state is not needed any more
+	if restart.IsTerminal(doguRestart) {
+		if err := r.garbageCollector.DoGarbageCollection(ctx, doguRestart.Spec.DoguName); err != nil {
+			return fmt.Errorf("failed to do garbage collection for dogu restart %q: %w", client.ObjectKeyFromObject(doguRestart), err)
+		}
 	}
 
 	return nil
 }
 
+func (r *DoguRestartV3Reconciler) emit(doguRestart *doguv2.DoguRestart, events []restartEvent) {
+	for _, e := range events {
+		r.recorder.Event(doguRestart, e.eventType, e.reason, e.message)
+	}
+}
+
+// terminalEvent reports a finished restart. Its type follows the Ready condition: Normal when the restart
+// succeeded, Warning otherwise.
+func terminalEvent(ready metav1.Condition) restartEvent {
+	eType := corev1.EventTypeNormal
+	if ready.Status != metav1.ConditionTrue {
+		eType = corev1.EventTypeWarning
+	}
+
+	reason := ready.Reason
+	if ready.Reason == doguv2.DoguRestartReasonSucceeded {
+		reason = doguv2.DoguRestartConditionReady
+	}
+
+	return restartEvent{eventType: eType, reason: reason, message: ready.Message}
+}
+
 func (r *DoguRestartV3Reconciler) updateConditions(ctx context.Context, doguRestart *doguv2.DoguRestart, conditions ...metav1.Condition) error {
 	changed := false
 	for _, condition := range conditions {
+		condition.ObservedGeneration = doguRestart.Generation
 		changed = meta.SetStatusCondition(&doguRestart.Status.Conditions, condition) || changed
 	}
 	if !changed {
@@ -264,19 +349,19 @@ func (r *DoguRestartV3Reconciler) updateConditions(ctx context.Context, doguRest
 		return fmt.Errorf("failed to update conditions of dogu restart %q: %w", client.ObjectKeyFromObject(doguRestart), err)
 	}
 
-	log.FromContext(ctx).Info("updated conditions of dogu restart", "doguRestart", client.ObjectKeyFromObject(doguRestart))
+	logging.Debug(ctx, "updated conditions of dogu restart", "doguRestart", client.ObjectKeyFromObject(doguRestart))
 
 	return nil
 }
 
-func newRestartCondition(doguRestart *doguv2.DoguRestart, conditionType string, status metav1.ConditionStatus, reason, message string) metav1.Condition {
-	return metav1.Condition{
-		Type:               conditionType,
-		Status:             status,
-		Reason:             reason,
-		Message:            message,
-		ObservedGeneration: doguRestart.Generation,
-	}
+// restartedCondition builds the Restarted condition, which tells whether the workloads carry the restart.
+func restartedCondition(status metav1.ConditionStatus, reason, message string) metav1.Condition {
+	return metav1.Condition{Type: doguv2.DoguRestartConditionRestarted, Status: status, Reason: reason, Message: message}
+}
+
+// readyCondition builds the Ready condition, which tells whether the restart is finished.
+func readyCondition(status metav1.ConditionStatus, reason, message string) metav1.Condition {
+	return metav1.Condition{Type: doguv2.DoguRestartConditionReady, Status: status, Reason: reason, Message: message}
 }
 
 // isDoguIdle returns false while a change of the dogu is not reconciled yet or an operation of the dogu is in progress.
@@ -304,7 +389,6 @@ func isDoguIdle(dogu *v3beta1.Dogu) bool {
 }
 
 // newDoguRestartRequestMapper creates a mapping from a workload to the restarts of its v3 dogu that wait for the rollout.
-// Other restarts are reconciled on creation or by a requeue, so workload changes are irrelevant for them.
 func newDoguRestartRequestMapper(k8s client.Reader) handler.MapFunc {
 	return func(ctx context.Context, workload client.Object) []reconcile.Request {
 		doguName, ok := workload.GetLabels()[v3beta1.DoguLabelName]
@@ -314,7 +398,7 @@ func newDoguRestartRequestMapper(k8s client.Reader) handler.MapFunc {
 
 		restarts := &doguv2.DoguRestartList{}
 		if err := k8s.List(ctx, restarts, client.InNamespace(workload.GetNamespace())); err != nil {
-			log.FromContext(ctx).Error(err, "failed to list dogu restarts to map workload", "workload", workload.GetName(), "dogu", doguName)
+			logging.Error(ctx, err, "failed to list dogu restarts to map workload", "workload", workload.GetName(), "dogu", doguName)
 
 			return nil
 		}
@@ -332,5 +416,13 @@ func newDoguRestartRequestMapper(k8s client.Reader) handler.MapFunc {
 
 func isWaitingForRollout(doguRestart *doguv2.DoguRestart) bool {
 	ready := meta.FindStatusCondition(doguRestart.Status.Conditions, doguv2.DoguRestartConditionReady)
-	return ready != nil && ready.Status == metav1.ConditionFalse && ready.Reason == doguv2.DoguRestartReasonRolloutInProgress
+	if ready == nil {
+		return false
+	}
+
+	if ready.Status == metav1.ConditionTrue {
+		return false
+	}
+
+	return ready.Reason == doguv2.DoguRestartReasonRolloutInProgress
 }
