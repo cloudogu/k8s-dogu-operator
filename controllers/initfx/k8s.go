@@ -29,6 +29,11 @@ func NewK8sClient(mgr manager.Manager) client.Client {
 	return mgr.GetClient()
 }
 
+// NewAPIReader reads directly from the API server, including namespaces outside the manager cache.
+func NewAPIReader(mgr manager.Manager) client.Reader {
+	return mgr.GetAPIReader()
+}
+
 func NewConfigMapInterface(clientSet kubernetes.Interface, operatorConfig *config.OperatorConfig) v1.ConfigMapInterface {
 	return clientSet.CoreV1().ConfigMaps(operatorConfig.Namespace)
 }
