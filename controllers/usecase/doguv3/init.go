@@ -46,13 +46,14 @@ func NewDoguV3UseCases(
 	validateStep := install.NewValidateChartStep(chartService, assembler, k8sClient)
 	helmReleaseStep := install.NewEnsureHelmReleaseStep(k8sClient, operatorConfig, chartService, recorder)
 	helmReleaseStatusStep := install.NewHelmReleaseStatusStep(k8sClient, recorder)
+	exportModeStep := install.NewExportModeStep(k8sClient, recorder)
 
 	unsuspendStep := deletion.NewUnsuspendHelmReleaseStep(k8sClient, recorder)
 	deleteHelmReleaseStep := deletion.NewDeleteHelmReleaseStep(k8sClient, recorder)
 	deleteOCIRepositoryStep := deletion.NewDeleteOCIRepositoryStep(k8sClient, recorder)
 	removeFinalizerStep := deletion.NewRemoveFinalizerStep(k8sClient)
 
-	installUseCase := NewDoguInstallOrChangeUseCase(finalizerStep, ociStep, waitStep, validateStep, helmReleaseStep, helmReleaseStatusStep, k8sClient, recorder)
+	installUseCase := NewDoguInstallOrChangeUseCase(finalizerStep, ociStep, waitStep, validateStep, helmReleaseStep, helmReleaseStatusStep, exportModeStep, k8sClient, recorder)
 	deleteUseCase := NewDoguDeleteUseCase(unsuspendStep, deleteHelmReleaseStep, deleteOCIRepositoryStep, removeFinalizerStep, k8sClient, recorder)
 
 	return installUseCase, deleteUseCase, nil

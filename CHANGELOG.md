@@ -5,6 +5,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Added
+- [#367] Warning condition and event when activating the export mode for V3 Dogus because is not implemented
+
 ### Changed
 - [#362] Replace the logrus based logger with zap, which is the standard logging backend for operators built on controller-runtime.
   - The log output is now JSON by default. The new environment variable `LOG_FORMAT` switches between `json` and `text`.
