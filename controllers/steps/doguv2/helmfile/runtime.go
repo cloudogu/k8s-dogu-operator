@@ -20,6 +20,7 @@ import (
 	doguv2 "github.com/cloudogu/k8s-dogu-lib/v3/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
 	"github.com/cloudogu/retry-lib/retry"
+	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
@@ -54,6 +55,9 @@ func NewRuntime(cfg *config.OperatorConfig, k8sClient client.Client, apiReader c
 // Prepare recreates local files after a pod restart. Destruction must not
 // recreate cluster prerequisites such as the namespace or the master password.
 func (e *Runtime) Prepare(ctx context.Context, name string, installing bool) (Options, error) { //NOSONAR
+	logger := log.FromContext(ctx).WithName("Prepare Helmfile").
+		WithValues("helmfile", name, "namespace", e.OperatorNamespace, "installing", installing)
+
 	var options Options
 	cfg := e.OpenDeskConfig
 	if e.GlobalConfig.HelmfileUnpackDir == "" || cfg.Namespace == "" ||
@@ -62,7 +66,7 @@ func (e *Runtime) Prepare(ctx context.Context, name string, installing bool) (Op
 		return options, fmt.Errorf("helmfile unpack directory, namespace, ConfigMap and Secret references, and a local values path are required")
 	}
 
-	if err := e.downloadHelmfile(ctx, name); err != nil {
+	if err := e.downloadHelmfile(ctx, name, logger); err != nil {
 		return options, fmt.Errorf("download and extract helmfile: %w", err)
 	}
 
@@ -116,7 +120,12 @@ func (e *Runtime) Prepare(ctx context.Context, name string, installing bool) (Op
 		return options, fmt.Errorf("open helmfile directory: %w", err)
 	}
 
-	defer root.Close()
+	defer func() {
+		err := root.Close()
+		if err != nil {
+			logger.Error(err, "close helmfile directory")
+		}
+	}()
 	if err := root.MkdirAll(filepath.Dir(cfg.ValuesFilePath), 0755); err != nil {
 		return options, fmt.Errorf("create values directory: %w", err)
 	}
@@ -158,7 +167,7 @@ func (e *Runtime) Prepare(ctx context.Context, name string, installing bool) (Op
 	}, nil
 }
 
-func (e *Runtime) downloadHelmfile(ctx context.Context, name string) error {
+func (e *Runtime) downloadHelmfile(ctx context.Context, name string, logger logr.Logger) error {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, e.OpenDeskConfig.HelmfileSource, nil)
 	if err != nil {
 		return err
@@ -169,7 +178,12 @@ func (e *Runtime) downloadHelmfile(ctx context.Context, name string) error {
 		return err
 	}
 
-	defer response.Body.Close()
+	defer func() {
+		err := response.Body.Close()
+		if err != nil {
+			logger.Error(err, "close helmfile response body")
+		}
+	}()
 	if response.StatusCode < 200 || response.StatusCode >= 300 {
 		return fmt.Errorf("unexpected HTTP status %s", response.Status)
 	}
@@ -184,8 +198,13 @@ func (e *Runtime) downloadHelmfile(ctx context.Context, name string) error {
 		return err
 	}
 
-	defer os.RemoveAll(stagingDir)
-	if err := extractHelmfileArchive(ctx, response.Body, stagingDir); err != nil {
+	defer func() {
+		err := os.RemoveAll(stagingDir)
+		if err != nil {
+			logger.Error(err, "remove helmfile staging directory")
+		}
+	}()
+	if err := extractHelmfileArchive(ctx, response.Body, stagingDir, logger); err != nil {
 		return err
 	}
 
@@ -202,13 +221,18 @@ func (e *Runtime) downloadHelmfile(ctx context.Context, name string) error {
 }
 
 //nolint:funlen
-func extractHelmfileArchive(ctx context.Context, source io.Reader, destination string) error { //NOSONAR
+func extractHelmfileArchive(ctx context.Context, source io.Reader, destination string, logger logr.Logger) error { //NOSONAR
 	compressed, err := gzip.NewReader(source)
 	if err != nil {
 		return err
 	}
 
-	defer compressed.Close()
+	defer func() {
+		err := compressed.Close()
+		if err != nil {
+			logger.Error(err, "close helmfile archive")
+		}
+	}()
 	archive := tar.NewReader(compressed)
 	var archiveRoot string
 	for {
@@ -372,9 +396,10 @@ func (h Options) commandFor(ctx context.Context, action string) *exec.Cmd {
 }
 
 func (h Options) Run(ctx context.Context, action string) error { //NOSONAR
-	logger := log.FromContext(ctx)
 	started := time.Now()
-	logger.Info("Running Helmfile command", "action", action, "namespace", h.deployNamespace)
+	logger := log.FromContext(ctx).WithName("Run Helmfile command").
+		WithValues("action", action, "namespace", h.deployNamespace, "started", started)
+	logger.Info("Running Helmfile command")
 	output, err := h.commandFor(ctx, action).CombinedOutput()
 	if err != nil {
 		// Command output belongs in bounded diagnostic logs, not conditions or events.
@@ -383,13 +408,13 @@ func (h Options) Run(ctx context.Context, action string) error { //NOSONAR
 		if outputBytes > maxOutputBytes {
 			output = output[outputBytes-maxOutputBytes:]
 		}
-		logger.Error(err, "Helmfile command failed", "action", action,
+		logger.Error(err, "Helmfile command failed",
 			"outputTail", strings.ToValidUTF8(string(output), ""),
 			"outputBytes", outputBytes, "outputTruncated", outputBytes > maxOutputBytes,
 			"elapsed", time.Since(started).String())
 		return fmt.Errorf("%w (see operator logs for output)", err)
 	}
-	logger.Info("Helmfile command completed", "action", action, "elapsed", time.Since(started).String())
+	logger.Info("Helmfile command completed", "elapsed", time.Since(started).String())
 	return nil
 }
 
