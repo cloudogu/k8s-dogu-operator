@@ -1,4 +1,4 @@
-package flux
+package pending
 
 import (
 	"bytes"
@@ -7,6 +7,7 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/cloudogu/k8s-dogu-lib/v3/api/v3beta1"
 	helmflux "github.com/fluxcd/helm-controller/api/v2"
 	fluxmeta "github.com/fluxcd/pkg/apis/meta"
 	sdk "helm.sh/helm/v3/pkg/release"
@@ -20,6 +21,14 @@ import (
 type PendingChange struct {
 	Status  metav1.ConditionStatus
 	Message string
+}
+
+// ToCondition turns the combined result into the dogu's UpdatePending condition.
+func (change PendingChange) ToCondition(reason string, generation int64) metav1.Condition {
+	return metav1.Condition{
+		Type: v3beta1.ConditionUpdatePending, Status: change.Status, Reason: reason,
+		Message: change.Message, ObservedGeneration: generation,
+	}
 }
 
 // CombinePendingChanges returns True if any change is pending, Unknown if a comparison is incomplete, otherwise False.
@@ -47,7 +56,8 @@ func PendingReleaseChange(actual, desired *helmflux.HelmRelease, stored *sdk.Rel
 	}
 	// If the latest Helm revision uses a different chart version than the dogu requests, an update is pending.
 	latest := actual.Status.History.Latest()
-	if trimBuildMetadata(latest.ChartVersion) != chartVersion {
+	version, _, _ := strings.Cut(latest.ChartVersion, "+")
+	if version != chartVersion {
 		return changed
 	}
 	// Without the desired HelmRelease, we cannot compare the remaining settings.
@@ -87,7 +97,7 @@ func PendingReleaseChange(actual, desired *helmflux.HelmRelease, stored *sdk.Rel
 		return changed
 	}
 	// If the latest install or upgrade did not succeed, some resources may already have changed.
-	if latest.Status != statusDeployed || stored.Info == nil || stored.Info.Status != sdk.StatusDeployed {
+	if latest.Status != string(sdk.StatusDeployed) || stored.Info == nil || stored.Info.Status != sdk.StatusDeployed {
 		return unknown
 	}
 	// Flux must report a completed release with no reconciliation in progress.

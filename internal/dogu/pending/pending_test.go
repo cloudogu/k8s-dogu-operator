@@ -1,14 +1,24 @@
-package flux
+package pending
 
 import (
 	"testing"
 
+	"github.com/cloudogu/k8s-dogu-lib/v3/api/v3beta1"
 	helmflux "github.com/fluxcd/helm-controller/api/v2"
 	"github.com/stretchr/testify/assert"
 	sdk "helm.sh/helm/v3/pkg/release"
 	apiext "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
+
+func TestPendingChange_ToCondition(t *testing.T) {
+	change := PendingChange{Status: metav1.ConditionTrue, Message: "A version update is pending"}
+
+	assert.Equal(t, metav1.Condition{
+		Type: v3beta1.ConditionUpdatePending, Status: metav1.ConditionTrue, Reason: v3beta1.ReasonStopped,
+		Message: "A version update is pending", ObservedGeneration: 7,
+	}, change.ToCondition(v3beta1.ReasonStopped, 7))
+}
 
 func TestPendingReleaseChange(t *testing.T) {
 	values := `{"replicas":1,"feature":true}`
