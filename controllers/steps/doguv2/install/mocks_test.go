@@ -11,7 +11,8 @@ import (
 	"github.com/cloudogu/ces-commons-lib/dogu"
 	"github.com/cloudogu/cesapp-lib/core"
 	"github.com/cloudogu/k8s-dogu-lib/v3/api/v2"
-	v20 "github.com/cloudogu/k8s-dogu-lib/v3/client/typed/api/v2"
+	v20 "github.com/cloudogu/k8s-dogu-lib/v3/applyconfiguration/api/v2"
+	v21 "github.com/cloudogu/k8s-dogu-lib/v3/client/typed/api/v2"
 	"github.com/cloudogu/k8s-dogu-lib/v3/client/typed/api/v3beta1"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/exec"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv2"
@@ -42,7 +43,7 @@ import (
 	v17 "k8s.io/client-go/kubernetes/typed/authorization/v1"
 	v1beta12 "k8s.io/client-go/kubernetes/typed/authorization/v1beta1"
 	v18 "k8s.io/client-go/kubernetes/typed/autoscaling/v1"
-	v21 "k8s.io/client-go/kubernetes/typed/autoscaling/v2"
+	v22 "k8s.io/client-go/kubernetes/typed/autoscaling/v2"
 	v19 "k8s.io/client-go/kubernetes/typed/batch/v1"
 	v1beta13 "k8s.io/client-go/kubernetes/typed/batch/v1beta1"
 	v110 "k8s.io/client-go/kubernetes/typed/certificates/v1"
@@ -3699,6 +3700,154 @@ func (_m *mockDoguInterface) EXPECT() *mockDoguInterface_Expecter {
 	return &mockDoguInterface_Expecter{mock: &_m.Mock}
 }
 
+// Apply provides a mock function for the type mockDoguInterface
+func (_mock *mockDoguInterface) Apply(ctx context.Context, dogu1 *v20.DoguApplyConfiguration, opts v1.ApplyOptions) (*v2.Dogu, error) {
+	ret := _mock.Called(ctx, dogu1, opts)
+
+	if len(ret) == 0 {
+		panic("no return value specified for Apply")
+	}
+
+	var r0 *v2.Dogu
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *v20.DoguApplyConfiguration, v1.ApplyOptions) (*v2.Dogu, error)); ok {
+		return returnFunc(ctx, dogu1, opts)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *v20.DoguApplyConfiguration, v1.ApplyOptions) *v2.Dogu); ok {
+		r0 = returnFunc(ctx, dogu1, opts)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*v2.Dogu)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, *v20.DoguApplyConfiguration, v1.ApplyOptions) error); ok {
+		r1 = returnFunc(ctx, dogu1, opts)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// mockDoguInterface_Apply_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Apply'
+type mockDoguInterface_Apply_Call struct {
+	*mock.Call
+}
+
+// Apply is a helper method to define mock.On call
+//   - ctx context.Context
+//   - dogu1 *v20.DoguApplyConfiguration
+//   - opts v1.ApplyOptions
+func (_e *mockDoguInterface_Expecter) Apply(ctx any, dogu1 any, opts any) *mockDoguInterface_Apply_Call {
+	return &mockDoguInterface_Apply_Call{Call: _e.mock.On("Apply", ctx, dogu1, opts)}
+}
+
+func (_c *mockDoguInterface_Apply_Call) Run(run func(ctx context.Context, dogu1 *v20.DoguApplyConfiguration, opts v1.ApplyOptions)) *mockDoguInterface_Apply_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 *v20.DoguApplyConfiguration
+		if args[1] != nil {
+			arg1 = args[1].(*v20.DoguApplyConfiguration)
+		}
+		var arg2 v1.ApplyOptions
+		if args[2] != nil {
+			arg2 = args[2].(v1.ApplyOptions)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *mockDoguInterface_Apply_Call) Return(result *v2.Dogu, err error) *mockDoguInterface_Apply_Call {
+	_c.Call.Return(result, err)
+	return _c
+}
+
+func (_c *mockDoguInterface_Apply_Call) RunAndReturn(run func(ctx context.Context, dogu1 *v20.DoguApplyConfiguration, opts v1.ApplyOptions) (*v2.Dogu, error)) *mockDoguInterface_Apply_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// ApplyStatus provides a mock function for the type mockDoguInterface
+func (_mock *mockDoguInterface) ApplyStatus(ctx context.Context, dogu1 *v20.DoguApplyConfiguration, opts v1.ApplyOptions) (*v2.Dogu, error) {
+	ret := _mock.Called(ctx, dogu1, opts)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ApplyStatus")
+	}
+
+	var r0 *v2.Dogu
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *v20.DoguApplyConfiguration, v1.ApplyOptions) (*v2.Dogu, error)); ok {
+		return returnFunc(ctx, dogu1, opts)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *v20.DoguApplyConfiguration, v1.ApplyOptions) *v2.Dogu); ok {
+		r0 = returnFunc(ctx, dogu1, opts)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*v2.Dogu)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, *v20.DoguApplyConfiguration, v1.ApplyOptions) error); ok {
+		r1 = returnFunc(ctx, dogu1, opts)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// mockDoguInterface_ApplyStatus_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ApplyStatus'
+type mockDoguInterface_ApplyStatus_Call struct {
+	*mock.Call
+}
+
+// ApplyStatus is a helper method to define mock.On call
+//   - ctx context.Context
+//   - dogu1 *v20.DoguApplyConfiguration
+//   - opts v1.ApplyOptions
+func (_e *mockDoguInterface_Expecter) ApplyStatus(ctx any, dogu1 any, opts any) *mockDoguInterface_ApplyStatus_Call {
+	return &mockDoguInterface_ApplyStatus_Call{Call: _e.mock.On("ApplyStatus", ctx, dogu1, opts)}
+}
+
+func (_c *mockDoguInterface_ApplyStatus_Call) Run(run func(ctx context.Context, dogu1 *v20.DoguApplyConfiguration, opts v1.ApplyOptions)) *mockDoguInterface_ApplyStatus_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 *v20.DoguApplyConfiguration
+		if args[1] != nil {
+			arg1 = args[1].(*v20.DoguApplyConfiguration)
+		}
+		var arg2 v1.ApplyOptions
+		if args[2] != nil {
+			arg2 = args[2].(v1.ApplyOptions)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *mockDoguInterface_ApplyStatus_Call) Return(result *v2.Dogu, err error) *mockDoguInterface_ApplyStatus_Call {
+	_c.Call.Return(result, err)
+	return _c
+}
+
+func (_c *mockDoguInterface_ApplyStatus_Call) RunAndReturn(run func(ctx context.Context, dogu1 *v20.DoguApplyConfiguration, opts v1.ApplyOptions) (*v2.Dogu, error)) *mockDoguInterface_ApplyStatus_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Create provides a mock function for the type mockDoguInterface
 func (_mock *mockDoguInterface) Create(ctx context.Context, dogu1 *v2.Dogu, opts v1.CreateOptions) (*v2.Dogu, error) {
 	ret := _mock.Called(ctx, dogu1, opts)
@@ -4767,19 +4916,19 @@ func (_c *mockDoguClientset_Discovery_Call) RunAndReturn(run func() discovery.Di
 }
 
 // DoguV2 provides a mock function for the type mockDoguClientset
-func (_mock *mockDoguClientset) DoguV2() v20.DoguV2Interface {
+func (_mock *mockDoguClientset) DoguV2() v21.DoguV2Interface {
 	ret := _mock.Called()
 
 	if len(ret) == 0 {
 		panic("no return value specified for DoguV2")
 	}
 
-	var r0 v20.DoguV2Interface
-	if returnFunc, ok := ret.Get(0).(func() v20.DoguV2Interface); ok {
+	var r0 v21.DoguV2Interface
+	if returnFunc, ok := ret.Get(0).(func() v21.DoguV2Interface); ok {
 		r0 = returnFunc()
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(v20.DoguV2Interface)
+			r0 = ret.Get(0).(v21.DoguV2Interface)
 		}
 	}
 	return r0
@@ -4802,12 +4951,12 @@ func (_c *mockDoguClientset_DoguV2_Call) Run(run func()) *mockDoguClientset_Dogu
 	return _c
 }
 
-func (_c *mockDoguClientset_DoguV2_Call) Return(doguV2Interface v20.DoguV2Interface) *mockDoguClientset_DoguV2_Call {
+func (_c *mockDoguClientset_DoguV2_Call) Return(doguV2Interface v21.DoguV2Interface) *mockDoguClientset_DoguV2_Call {
 	_c.Call.Return(doguV2Interface)
 	return _c
 }
 
-func (_c *mockDoguClientset_DoguV2_Call) RunAndReturn(run func() v20.DoguV2Interface) *mockDoguClientset_DoguV2_Call {
+func (_c *mockDoguClientset_DoguV2_Call) RunAndReturn(run func() v21.DoguV2Interface) *mockDoguClientset_DoguV2_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -7401,19 +7550,19 @@ func (_c *mockClientSet_AutoscalingV1_Call) RunAndReturn(run func() v18.Autoscal
 }
 
 // AutoscalingV2 provides a mock function for the type mockClientSet
-func (_mock *mockClientSet) AutoscalingV2() v21.AutoscalingV2Interface {
+func (_mock *mockClientSet) AutoscalingV2() v22.AutoscalingV2Interface {
 	ret := _mock.Called()
 
 	if len(ret) == 0 {
 		panic("no return value specified for AutoscalingV2")
 	}
 
-	var r0 v21.AutoscalingV2Interface
-	if returnFunc, ok := ret.Get(0).(func() v21.AutoscalingV2Interface); ok {
+	var r0 v22.AutoscalingV2Interface
+	if returnFunc, ok := ret.Get(0).(func() v22.AutoscalingV2Interface); ok {
 		r0 = returnFunc()
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(v21.AutoscalingV2Interface)
+			r0 = ret.Get(0).(v22.AutoscalingV2Interface)
 		}
 	}
 	return r0
@@ -7436,12 +7585,12 @@ func (_c *mockClientSet_AutoscalingV2_Call) Run(run func()) *mockClientSet_Autos
 	return _c
 }
 
-func (_c *mockClientSet_AutoscalingV2_Call) Return(autoscalingV2Interface v21.AutoscalingV2Interface) *mockClientSet_AutoscalingV2_Call {
+func (_c *mockClientSet_AutoscalingV2_Call) Return(autoscalingV2Interface v22.AutoscalingV2Interface) *mockClientSet_AutoscalingV2_Call {
 	_c.Call.Return(autoscalingV2Interface)
 	return _c
 }
 
-func (_c *mockClientSet_AutoscalingV2_Call) RunAndReturn(run func() v21.AutoscalingV2Interface) *mockClientSet_AutoscalingV2_Call {
+func (_c *mockClientSet_AutoscalingV2_Call) RunAndReturn(run func() v22.AutoscalingV2Interface) *mockClientSet_AutoscalingV2_Call {
 	_c.Call.Return(run)
 	return _c
 }
