@@ -6,13 +6,12 @@ import (
 	"fmt"
 
 	"github.com/cloudogu/k8s-dogu-lib/v3/api/v3beta1"
-	"github.com/go-logr/logr"
+	"github.com/cloudogu/k8s-dogu-operator/v3/internal/logging"
 	"gopkg.in/yaml.v3"
 	"helm.sh/helm/v3/pkg/strvals"
 	coreV1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 const (
@@ -48,14 +47,12 @@ func NewAssembler(k8s client.Client) *Assembler {
 }
 
 func (a Assembler) Assemble(ctx context.Context, cr *v3beta1.Dogu, valuesMeta, patchTemplate []byte) (Values, error) {
-	logger := log.FromContext(ctx)
-
 	crValues, err := getDoguCRValues(cr)
 	if err != nil {
 		return nil, fmt.Errorf("failed to dogu spec values: %w", err)
 	}
 
-	doguMetaValues, err := getDoguMetaValues(cr, valuesMeta, logger)
+	doguMetaValues, err := getDoguMetaValues(ctx, cr, valuesMeta)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get values from dogu values meta: %w", err)
 	}
@@ -83,7 +80,7 @@ func (a Assembler) Assemble(ctx context.Context, cr *v3beta1.Dogu, valuesMeta, p
 		{"spec.values", crValues},
 		{"spec.mappedValues", doguMetaValues},
 	} {
-		logValueOverlaps(logger, finalValues, source.values, source.name, "")
+		logValueOverlaps(ctx, finalValues, source.values, source.name, "")
 		finalValues = mergeValues(finalValues, source.values)
 	}
 
@@ -91,7 +88,7 @@ func (a Assembler) Assemble(ctx context.Context, cr *v3beta1.Dogu, valuesMeta, p
 }
 
 // Log paths, never configuration contents, when a higher-priority source overrides values.
-func logValueOverlaps(logger logr.Logger, lower, higher Values, source, prefix string) {
+func logValueOverlaps(ctx context.Context, lower, higher Values, source, prefix string) {
 	for key, value := range higher {
 		previous, exists := lower[key]
 		if !exists {
@@ -101,9 +98,9 @@ func logValueOverlaps(logger logr.Logger, lower, higher Values, source, prefix s
 		lowMap, lowOK := previous.(map[string]any)
 		highMap, highOK := value.(map[string]any)
 		if lowOK && highOK {
-			logValueOverlaps(logger, lowMap, highMap, source, path+".")
+			logValueOverlaps(ctx, lowMap, highMap, source, path+".")
 		} else {
-			logger.Info("Values overlap; higher-priority source wins", "path", path, "source", source)
+			logging.Info(ctx, "Values overlap; higher-priority source wins", "path", path, "source", source)
 		}
 	}
 }
@@ -117,7 +114,7 @@ func getDoguCRValues(cr *v3beta1.Dogu) (Values, error) {
 	return doguCRValues, nil
 }
 
-func getDoguMetaValues(cr *v3beta1.Dogu, patchTpl []byte, logger logr.Logger) (Values, error) {
+func getDoguMetaValues(ctx context.Context, cr *v3beta1.Dogu, patchTpl []byte) (Values, error) {
 	mappedValues := make(Values)
 
 	if len(cr.Spec.MappedValues) == 0 {
@@ -135,7 +132,7 @@ func getDoguMetaValues(cr *v3beta1.Dogu, patchTpl []byte, logger logr.Logger) (V
 			continue
 		}
 
-		applyMappedValueKeys(metaValue.Keys, v, mappedValues, logger)
+		applyMappedValueKeys(ctx, metaValue.Keys, v, mappedValues)
 	}
 
 	return mappedValues, nil
@@ -143,7 +140,7 @@ func getDoguMetaValues(cr *v3beta1.Dogu, patchTpl []byte, logger logr.Logger) (V
 
 // applyMappedValueKeys resolves each mapped key for the given CR value and parses the resulting
 // "path=value" expressions into mappedValues. Parsing and lookup errors are logged, not returned.
-func applyMappedValueKeys(keys []Mapping, v string, mappedValues Values, logger logr.Logger) {
+func applyMappedValueKeys(ctx context.Context, keys []Mapping, v string, mappedValues Values) {
 	for _, key := range keys {
 		var mappedValue string
 
@@ -152,14 +149,14 @@ func applyMappedValueKeys(keys []Mapping, v string, mappedValues Values, logger 
 		} else {
 			val, ok := key.Mapping[v]
 			if !ok {
-				logger.Error(errors.New("missing mapping"), "no Mapping found in mapping meta data", "key", v)
+				logging.Error(ctx, errors.New("missing mapping"), "no Mapping found in mapping meta data", "key", v)
 			}
 			mappedValue = val
 		}
 
 		strval := fmt.Sprintf("%s=%s", key.Path, mappedValue)
 		if pErr := strvals.ParseInto(strval, mappedValues); pErr != nil {
-			logger.Error(pErr, "error parsing key path from mapping meta data", "path", key.Path)
+			logging.Error(ctx, pErr, "error parsing key path from mapping meta data", "path", key.Path)
 		}
 	}
 }

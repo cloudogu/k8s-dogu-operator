@@ -6,9 +6,9 @@ import (
 
 	"github.com/cloudogu/k8s-dogu-lib/v3/api/v3beta1"
 	stepsv3 "github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv3"
+	"github.com/cloudogu/k8s-dogu-operator/v3/internal/logging"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 const (
@@ -39,8 +39,6 @@ func NewValidateChartStep(chartService ChartService, assembler ValueAssembler, k
 }
 
 func (vcs *ValidateChartStep) Run(ctx context.Context, doguResource *v3beta1.Dogu) stepsv3.StepResult {
-	logger := log.FromContext(ctx)
-
 	metaValues, _, err := vcs.chartService.DoguMetaValues(ctx, doguResource)
 	if err != nil {
 		return stepsv3.RequeueWithError(fmt.Errorf("failed to get dogu meta values: %w", err), v3beta1.ReasonInstalling)
@@ -70,7 +68,7 @@ func (vcs *ValidateChartStep) Run(ctx context.Context, doguResource *v3beta1.Dog
 			return vcs.abort(ctx, doguResource, v3beta1.ReasonSchemaInvalid, msg)
 		}
 
-		logger.Info("Successfully validated values against schema for dogu", "dogu", doguResource.Spec.Name)
+		logging.Info(ctx, "Successfully validated values against schema for dogu", "dogu", doguResource.Spec.Name)
 	}
 
 	if _, rErr := vcs.chartService.Render(ctx, doguResource, values); rErr != nil {
@@ -78,7 +76,7 @@ func (vcs *ValidateChartStep) Run(ctx context.Context, doguResource *v3beta1.Dog
 		return vcs.abort(ctx, doguResource, ReasonRenderFailed, msg)
 	}
 
-	logger.Info("Successfully rendered dogu helm chart", "dogu", doguResource.Spec.Name)
+	logging.Info(ctx, "Successfully rendered dogu helm chart", "dogu", doguResource.Spec.Name)
 
 	return vcs.succeed(ctx, doguResource)
 }
@@ -139,7 +137,7 @@ func (vcs *ValidateChartStep) setValidCondition(doguResource *v3beta1.Dogu, stat
 
 func (vcs *ValidateChartStep) persistConditions(ctx context.Context, doguResource *v3beta1.Dogu) error {
 	if err := vcs.k8sClient.Status().Update(ctx, doguResource); err != nil {
-		log.FromContext(ctx).Error(err, "failed to update dogu validation conditions", "dogu", doguResource.Name)
+		logging.Error(ctx, err, "failed to update dogu validation conditions", "dogu", doguResource.Name)
 
 		return fmt.Errorf("failed to update dogu validation conditions: %w", err)
 	}

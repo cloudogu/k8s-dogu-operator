@@ -7,6 +7,12 @@ import (
 	"github.com/cloudogu/k8s-dogu-lib/v3/api/v3beta1"
 )
 
+const (
+	// FinalizerName is the finalizer set on a dogu cr so the operator can clean up the resources it
+	// applied (OCIRepository, HelmRelease) before the dogu cr is removed.
+	FinalizerName = "k8s.cloudogu.com/dogu-cleanup"
+)
+
 // Step defines a single aspect in a dogu lifecycle phase which usually ends up in changed side-effects.
 //
 // The sequence of which step is ran by the reconciler is fixed. Anyhow, they are supposed to work in an idempotent fashion,

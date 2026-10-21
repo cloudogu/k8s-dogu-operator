@@ -11,12 +11,11 @@ import (
 	cloudoguerrors "github.com/cloudogu/ces-commons-lib/errors"
 	"github.com/cloudogu/cesapp-lib/core"
 	doguv2 "github.com/cloudogu/k8s-dogu-lib/v3/api/v2"
+	"github.com/cloudogu/k8s-dogu-operator/v3/internal/logging"
 	"github.com/cloudogu/retry-lib/retry"
-	"github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 // localDoguFetcher abstracts the access to dogu structs from the local dogu registry.
@@ -46,7 +45,7 @@ func NewResourceDoguFetcher(client client.Client, doguRemoteRepository remoteDog
 	maxRetriesString, found := os.LookupEnv(doguDescriptorMaxRetriesEnv)
 	maxRetries, err := strconv.Atoi(maxRetriesString)
 	if !found || err != nil {
-		logrus.Warningf("failed to read %s environment variable, using default value of %d", doguDescriptorMaxRetriesEnv, defaultMaxTries)
+		logging.Log().Info("failed to read environment variable, using default value", "environmentVariable", doguDescriptorMaxRetriesEnv, "default", defaultMaxTries)
 		maxRetries = defaultMaxTries
 	}
 	return &resourceDoguFetcher{client: client, doguRemoteRepository: doguRemoteRepository, doguDescriptorMaxRetries: maxRetries}
@@ -104,7 +103,7 @@ func (rdf *resourceDoguFetcher) FetchWithResource(ctx context.Context, doguResou
 	}
 
 	if developmentDoguMap == nil {
-		log.FromContext(ctx).Info("Fetching dogu from remote dogu registry...")
+		logging.Info(ctx, "Fetching dogu from remote dogu registry...")
 		version, err := core.ParseVersion(doguResource.Spec.Version)
 		if err != nil {
 			return nil, nil, fmt.Errorf("failed to parse version: %w", err)
@@ -126,7 +125,7 @@ func (rdf *resourceDoguFetcher) FetchWithResource(ctx context.Context, doguResou
 		return remoteDogu, nil, nil
 	}
 
-	log.FromContext(ctx).Info("Fetching dogu from development dogu map...")
+	logging.Info(ctx, "Fetching dogu from development dogu map...")
 	remoteDogu, err := rdf.getFromDevelopmentDoguMap(developmentDoguMap)
 
 	return remoteDogu, developmentDoguMap, err

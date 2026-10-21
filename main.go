@@ -18,6 +18,8 @@ import (
 	usecasev3 "github.com/cloudogu/k8s-dogu-operator/v3/controllers/usecase/doguv3"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/warpmenuentry"
 	"go.uber.org/fx"
+	"go.uber.org/fx/fxevent"
+	"go.uber.org/zap"
 	"k8s.io/client-go/tools/record"
 
 	authRegClientV1 "github.com/cloudogu/k8s-auth-registration-lib/client/typed/api/v1"
@@ -39,13 +41,14 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/health"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/initfx"
-	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/logging"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/resource"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/serviceaccount"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv2/deletion"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv2/helmfile"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv2/install"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv2/postinstall"
 	upgradeSteps "github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv2/upgrade"
+	"github.com/cloudogu/k8s-dogu-operator/v3/internal/logging"
 	expClientV1 "github.com/cloudogu/k8s-exposition-lib/client/typed/api/v1"
 	"github.com/cloudogu/k8s-registry-lib/repository"
 	warpClientV1 "github.com/cloudogu/k8s-warp-menu-entry-lib/client/typed/api/v1"
@@ -66,7 +69,14 @@ func main() {
 }
 
 func allOptions() fx.Option {
-	return fx.Options(k8sOptions(), v3Options(), v2DependencyOptions(), v2StepOptions(), generalOptions())
+	return fx.Options(loggingOptions(), k8sOptions(), v3Options(), v2DependencyOptions(), v2StepOptions(), generalOptions())
+}
+
+// loggingOptions routes the lifecycle logging of fx into the logger of the operator.
+func loggingOptions() fx.Option {
+	return fx.WithLogger(func(zapLogger *zap.Logger) fxevent.Logger {
+		return &fxevent.ZapLogger{Logger: zapLogger}
+	})
 }
 
 //nolint:funlen
@@ -99,6 +109,7 @@ func k8sOptions() fx.Option {
 			initfx.NewManagerOptions,
 			ctrl.GetConfig,
 			initfx.NewScheme,
+			initfx.NewAPIReader,
 			fx.Annotate(initfx.NewK8sClient, fx.As(new(client.Client)), fx.As(new(installv3.K8sClient)), fx.As(new(usecasev3.K8sClient))),
 			fx.Annotate(initfx.NewKubernetesClientSet, fx.As(new(kubernetes.Interface))),
 			fx.Annotate(initfx.NewRestClient, fx.As(new(rest.Interface))),
@@ -228,8 +239,11 @@ func v2DependencyOptions() fx.Option {
 func v2StepOptions() fx.Option {
 	return fx.Options(
 		fx.Provide(
+			helmfile.NewRuntime,
+
 			// delete steps
 			deletion.NewStatusStep,
+			deletion.NewExperimentalHelmfileStep,
 			deletion.NewAuthRegistrationRemoverStep,
 			deletion.NewExpositionRemoverStep,
 			deletion.NewServiceAccountRemoverStep,
@@ -239,6 +253,7 @@ func v2StepOptions() fx.Option {
 
 			// install or change steps
 			install.NewInitializeConditionsStep,
+			install.NewExperimentalHelmfileStep,
 			install.NewHealthCheckStep,
 			install.NewFetchRemoteDoguDescriptorStep,
 			install.NewValidationStep,
@@ -310,6 +325,7 @@ func generalOptions() fx.Option {
 	return fx.Options(
 		fx.Provide(
 			newVersion,
+			logging.NewZapLogger,
 			logging.NewLogger,
 			initfx.NewOperatorConfig,
 			initfx.GetArgs,
@@ -320,6 +336,7 @@ func generalOptions() fx.Option {
 			fx.Annotate(controllers.NewDoguReconciler, fx.ParamTags("", `name:"doguInstallOrChangeUseCase"`, `name:"doguDeleteUseCase"`, `name:"doguV3InstallOrChangeUseCase"`, `name:"doguV3DeleteUseCase"`, "", "", "", "", "", "")),
 			controllers.NewGlobalConfigReconciler,
 			controllers.NewDoguRestartReconciler,
+			controllers.NewDoguHealthReconciler,
 
 			// runners
 			health.NewStartupHandler,
@@ -336,6 +353,9 @@ func generalOptions() fx.Option {
 			},
 			func(*controllers.GlobalConfigReconciler) {
 				// creates a fx dependency on the GlobalConfigReconciler
+			},
+			func(*controllers.DoguHealthReconciler) {
+				// creates a fx dependency on the DoguHealthReconciler
 			},
 
 			func(*health.StartupHandler) {

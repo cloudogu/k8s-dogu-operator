@@ -8,7 +8,11 @@ ausgeliefert ("served"). `v2` ist die **Storage-Version**
 Weil zwei ausgelieferte Versionen mit nicht-trivialem Schema-Unterschied nebeneinander existieren,
 benötigt der Kubernetes-Apiserver für die Dogu-CRD ein **Conversion-Webhook**, unabhängig davon, welche
 Version die Storage-Version ist. Der Operator implementiert diesen mit dem Kubebuilder-Framework.
-Für die Kommunikation des API-Servers mit dem Webhook-Server wird zusätzliche Konfiguration benötigt.
+Für die Kommunikation des API-Servers mit dem Webhook-Server wird zusätzliche Konfiguration benötigt. Der 
+neue Health-Reconciler läuft bereits auf `v3beta1`; daher wird er beim Start für jedes V3-Dogu einige Fehler 
+verursachen (sofern `doguV3Enabled: true` gesetzt ist). Diese Fehler sind jedoch harmlos und beheben sich 
+innerhalb von Sekunden von selbst. Dies wurde so entschieden, da es sich um ein reines V3-Feature handelt, 
+das nicht mehr auftritt, sobald die Storage-Version umgestellt wurde.
 
 ## Helm-Ressourcen
 
