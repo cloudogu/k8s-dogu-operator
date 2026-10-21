@@ -44,6 +44,7 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/resource"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/serviceaccount"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv2/deletion"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv2/helmfile"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv2/install"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv2/postinstall"
 	upgradeSteps "github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv2/upgrade"
@@ -108,6 +109,7 @@ func k8sOptions() fx.Option {
 			initfx.NewManagerOptions,
 			ctrl.GetConfig,
 			initfx.NewScheme,
+			initfx.NewAPIReader,
 			fx.Annotate(initfx.NewK8sClient, fx.As(new(client.Client)), fx.As(new(installv3.K8sClient)), fx.As(new(usecasev3.K8sClient))),
 			fx.Annotate(initfx.NewKubernetesClientSet, fx.As(new(kubernetes.Interface))),
 			fx.Annotate(initfx.NewRestClient, fx.As(new(rest.Interface))),
@@ -237,8 +239,11 @@ func v2DependencyOptions() fx.Option {
 func v2StepOptions() fx.Option {
 	return fx.Options(
 		fx.Provide(
+			helmfile.NewRuntime,
+
 			// delete steps
 			deletion.NewStatusStep,
+			deletion.NewExperimentalHelmfileStep,
 			deletion.NewAuthRegistrationRemoverStep,
 			deletion.NewExpositionRemoverStep,
 			deletion.NewServiceAccountRemoverStep,
@@ -248,6 +253,7 @@ func v2StepOptions() fx.Option {
 
 			// install or change steps
 			install.NewInitializeConditionsStep,
+			install.NewExperimentalHelmfileStep,
 			install.NewHealthCheckStep,
 			install.NewFetchRemoteDoguDescriptorStep,
 			install.NewValidationStep,
@@ -330,6 +336,7 @@ func generalOptions() fx.Option {
 			fx.Annotate(controllers.NewDoguReconciler, fx.ParamTags("", `name:"doguInstallOrChangeUseCase"`, `name:"doguDeleteUseCase"`, `name:"doguV3InstallOrChangeUseCase"`, `name:"doguV3DeleteUseCase"`, "", "", "", "", "", "")),
 			controllers.NewGlobalConfigReconciler,
 			controllers.NewDoguRestartReconciler,
+			controllers.NewDoguRestartV3Reconciler,
 			controllers.NewDoguHealthReconciler,
 
 			// runners
@@ -344,6 +351,9 @@ func generalOptions() fx.Option {
 			},
 			func(*controllers.DoguRestartReconciler) {
 				// creates a fx dependency on the DoguRestartReconciler
+			},
+			func(*controllers.DoguRestartV3Reconciler) {
+				// creates a fx dependency on the DoguRestartV3Reconciler
 			},
 			func(*controllers.GlobalConfigReconciler) {
 				// creates a fx dependency on the GlobalConfigReconciler
