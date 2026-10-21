@@ -19,6 +19,11 @@ func TestNewUpdatePendingStep(t *testing.T) {
 	assert.Equal(t, clientMock, sut.client)
 }
 
+const (
+	currentGeneration int64 = 2
+	lastGeneration    int64 = 1
+)
+
 func TestUpdatePendingStep_Run(t *testing.T) {
 	for _, test := range []struct {
 		name           string
@@ -34,23 +39,29 @@ func TestUpdatePendingStep_Run(t *testing.T) {
 				Namespace: "namespace",
 				Spec:      v3beta1.DoguSpec{PauseReconciliation: true},
 			},
-			want: doguv3.Continue(),
+			want:     doguv3.Continue(),
+			assertFn: checkNoUpdatePendingCondition,
 		},
 		{
 			name: "Dogu without paused reconciliation and no UpdatePending continues",
 			doguResource: &v3beta1.Dogu{
-				Name:      "dogu",
-				Namespace: "namespace",
-				Status:    v3beta1.DoguStatus{},
+				Name:       "dogu",
+				Namespace:  "namespace",
+				Generation: currentGeneration,
+				Status:     v3beta1.DoguStatus{},
 			},
 			includesStatus: true,
 			want:           doguv3.Continue(),
+			assertFn: func(t *testing.T, dogu *v3beta1.Dogu) {
+				checkUpdatePendingCondition(t, dogu, metav1.ConditionFalse, v3beta1.ReasonReconciliationEnabled, "Reconciliation is enabled", currentGeneration)
+			},
 		},
 		{
 			name: "Dogu without paused reconciliation and UpdatePending resets it",
 			doguResource: &v3beta1.Dogu{
-				Name:      "dogu",
-				Namespace: "namespace",
+				Name:       "dogu",
+				Namespace:  "namespace",
+				Generation: currentGeneration,
 				Status: v3beta1.DoguStatus{
 					Conditions: []metav1.Condition{
 						{
@@ -64,27 +75,22 @@ func TestUpdatePendingStep_Run(t *testing.T) {
 			includesStatus: true,
 			want:           doguv3.Continue(),
 			assertFn: func(t *testing.T, dogu *v3beta1.Dogu) {
-				assert.Len(t, dogu.Status.Conditions, 1)
-				assert.Equal(t, v3beta1.ConditionUpdatePending, dogu.Status.Conditions[0].Type)
-				assert.Equal(t, metav1.ConditionFalse, dogu.Status.Conditions[0].Status)
-				assert.Equal(t, v3beta1.ReasonReconciliationEnabled, dogu.Status.Conditions[0].Reason)
-				assert.Equal(t, dogu.Generation, dogu.Status.Conditions[0].ObservedGeneration)
-				assert.Equal(t, "Reconciliation is enabled", dogu.Status.Conditions[0].Message)
+				checkUpdatePendingCondition(t, dogu, metav1.ConditionFalse, v3beta1.ReasonReconciliationEnabled, "Reconciliation is enabled", currentGeneration)
 			},
 		},
 		{
-			name: "Dogu without paused reconciliation and UpdatePending: False updates condition it",
+			name: "Dogu without paused reconciliation and UpdatePending: False updates condition",
 			doguResource: &v3beta1.Dogu{
 				Name:       "dogu",
 				Namespace:  "namespace",
-				Generation: 2,
+				Generation: currentGeneration,
 				Status: v3beta1.DoguStatus{
 					Conditions: []metav1.Condition{
 						{
 							Type:               v3beta1.ConditionUpdatePending,
 							Reason:             ReasonReconciliationPaused,
 							Status:             metav1.ConditionFalse,
-							ObservedGeneration: 1,
+							ObservedGeneration: lastGeneration,
 						},
 					},
 				},
@@ -92,12 +98,31 @@ func TestUpdatePendingStep_Run(t *testing.T) {
 			includesStatus: true,
 			want:           doguv3.Continue(),
 			assertFn: func(t *testing.T, dogu *v3beta1.Dogu) {
-				assert.Len(t, dogu.Status.Conditions, 1)
-				assert.Equal(t, v3beta1.ConditionUpdatePending, dogu.Status.Conditions[0].Type)
-				assert.Equal(t, metav1.ConditionFalse, dogu.Status.Conditions[0].Status)
-				assert.Equal(t, v3beta1.ReasonReconciliationEnabled, dogu.Status.Conditions[0].Reason)
-				assert.Equal(t, int64(2), dogu.Status.Conditions[0].ObservedGeneration)
-				assert.Equal(t, "Reconciliation is enabled", dogu.Status.Conditions[0].Message)
+				checkUpdatePendingCondition(t, dogu, metav1.ConditionFalse, v3beta1.ReasonReconciliationEnabled, "Reconciliation is enabled", currentGeneration)
+			},
+		},
+		{
+			name: "Dogu with paused reconciliation and UpdatePending: True for an old gen only - should reset condition",
+			doguResource: &v3beta1.Dogu{
+				Name:       "dogu",
+				Namespace:  "namespace",
+				Generation: currentGeneration,
+				Spec:       v3beta1.DoguSpec{PauseReconciliation: true},
+				Status: v3beta1.DoguStatus{
+					Conditions: []metav1.Condition{
+						{
+							Type:               v3beta1.ConditionUpdatePending,
+							Reason:             ReasonReconciliationPaused,
+							Status:             metav1.ConditionTrue,
+							ObservedGeneration: lastGeneration,
+						},
+					},
+				},
+			},
+			includesStatus: true,
+			want:           doguv3.Continue(),
+			assertFn: func(t *testing.T, dogu *v3beta1.Dogu) {
+				checkUpdatePendingCondition(t, dogu, metav1.ConditionFalse, ReasonReconciliationPaused, "Reconciliation is paused", 2)
 			},
 		},
 	} {
@@ -117,4 +142,17 @@ func TestUpdatePendingStep_Run(t *testing.T) {
 			}
 		})
 	}
+}
+
+func checkNoUpdatePendingCondition(t *testing.T, dogu *v3beta1.Dogu) {
+	assert.Len(t, dogu.Status.Conditions, 0)
+}
+
+func checkUpdatePendingCondition(t *testing.T, dogu *v3beta1.Dogu, status metav1.ConditionStatus, reason string, message string, generation int64) {
+	assert.Len(t, dogu.Status.Conditions, 1)
+	assert.Equal(t, v3beta1.ConditionUpdatePending, dogu.Status.Conditions[0].Type)
+	assert.Equal(t, status, dogu.Status.Conditions[0].Status)
+	assert.Equal(t, reason, dogu.Status.Conditions[0].Reason)
+	assert.Equal(t, message, dogu.Status.Conditions[0].Message)
+	assert.Equal(t, generation, dogu.Status.Conditions[0].ObservedGeneration)
 }
