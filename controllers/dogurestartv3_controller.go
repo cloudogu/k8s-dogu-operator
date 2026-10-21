@@ -277,8 +277,8 @@ func (d restartDecision) readyWith(ready metav1.Condition) restartDecision {
 // record applies an decision to the cluster: it persists the conditions, emits the events and collects the garbage of
 // a restart that reached a terminal state.
 func (r *DoguRestartV3Reconciler) record(ctx context.Context, doguRestart *doguv2.DoguRestart, decision restartDecision) error {
-	// a failed reconciliation reports its events in any case: the failure happened, whether it can be recorded
 	if decision.err != nil {
+		// if a failed reconciliation happened, it should be recorded in any case
 		r.emit(doguRestart, decision.events)
 
 		return errors.Join(decision.err, r.updateConditions(ctx, doguRestart, decision.conditions...))
@@ -290,7 +290,7 @@ func (r *DoguRestartV3Reconciler) record(ctx context.Context, doguRestart *doguv
 
 	r.emit(doguRestart, decision.events)
 
-	// a restart that reached a terminal state is not needed any more
+	// a restart that reached a terminal state might exceed the history limit -> trigger GC
 	if restart.IsTerminal(doguRestart) {
 		if err := r.garbageCollector.DoGarbageCollection(ctx, doguRestart.Spec.DoguName); err != nil {
 			return fmt.Errorf("failed to do garbage collection for dogu restart %q: %w", client.ObjectKeyFromObject(doguRestart), err)
@@ -341,7 +341,7 @@ func (r *DoguRestartV3Reconciler) updateConditions(ctx context.Context, doguRest
 	return nil
 }
 
-// restartedCondition builds the Restarted condition, which tells whether the workloads carry the restart.
+// restartedCondition builds the Restarted condition, which tells whether the workloads carry the restartAt annotation.
 func restartedCondition(status metav1.ConditionStatus, reason, message string) metav1.Condition {
 	return metav1.Condition{Type: doguv2.DoguRestartConditionRestarted, Status: status, Reason: reason, Message: message}
 }
