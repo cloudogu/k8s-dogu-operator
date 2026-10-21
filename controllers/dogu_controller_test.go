@@ -680,7 +680,7 @@ func TestDoguReconciler_Reconcile_Downgrade(t *testing.T) {
 		assert.Equal(t, controllerruntime.Result{}, got)
 	})
 
-	t.Run("should delete a v2 dogu that has been installed as v3 dogu", func(t *testing.T) {
+	t.Run("should not refuse the deletion of a dogu with HelmRelease", func(t *testing.T) {
 		dogu := &v2.Dogu{Name: testDoguName, Namespace: testNamespace, Spec: v2.DoguSpec{Name: "official/" + testDoguName}}
 		dogu.DeletionTimestamp = new(v1.Now())
 		dogu.Finalizers = []string{"k8s.cloudogu.com/dogu-cleanup"}

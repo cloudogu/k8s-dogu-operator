@@ -106,6 +106,28 @@ func TestDetector_Detect(t *testing.T) {
 		assert.Equal(t, NotRequired, state)
 	})
 
+	namedBySpecTests := []struct {
+		name      string
+		object    client.Object
+		wantState State
+	}{
+		{name: "sensitive config", object: sensitiveConfig("nexus"), wantState: Required},
+		{name: "data volume claim", object: pvc("nexus", nil), wantState: Required},
+		{name: "migration secret", object: &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "nexus-migration", Namespace: testNamespace}}, wantState: InProgress},
+		{name: "migration volume claim", object: pvc("nexus-migration", nil), wantState: InProgress},
+	}
+	for _, tt := range namedBySpecTests {
+		t.Run(tt.name+" is looked up by the dogu name from the spec", func(t *testing.T) {
+			dogu := v3Dogu("nexus")
+			dogu.Name = "other-name"
+
+			state, err := detect(t, dogu, tt.object)
+
+			require.NoError(t, err)
+			assert.Equal(t, tt.wantState, state)
+		})
+	}
+
 	t.Run("propagates errors other than not found", func(t *testing.T) {
 		cl := fake.NewClientBuilder().WithScheme(testScheme(t)).WithInterceptorFuncs(interceptor.Funcs{
 			Get: func(context.Context, client.WithWatch, client.ObjectKey, client.Object, ...client.GetOption) error {

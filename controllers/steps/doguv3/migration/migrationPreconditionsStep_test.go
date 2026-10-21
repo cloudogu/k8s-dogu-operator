@@ -111,11 +111,11 @@ func TestMigrationPreconditionsStep_Run(t *testing.T) {
 			detector := NewMockMigrationDetector(t)
 			detector.EXPECT().Detect(testCtx, dogu).Return(dogumigration.Required, nil)
 			recorder := NewMockEventRecorder(t)
-			recorder.EXPECT().Event(dogu, corev1.EventTypeNormal, ReasonMigrationPending, tt.wantMsg)
+			recorder.EXPECT().Event(dogu, corev1.EventTypeNormal, v3beta1.ReasonMigrationPending, tt.wantMsg)
 
 			result := NewMigrationPreconditionsStep(detector, recorder).Run(testCtx, dogu)
 
-			assert.Equal(t, stepsv3.RequeueAfter(time.Minute, ReasonMigrationPending, tt.wantMsg), result)
+			assert.Equal(t, stepsv3.RequeueAfter(time.Minute, v3beta1.ReasonMigrationPending, tt.wantMsg), result)
 		})
 	}
 
@@ -128,7 +128,7 @@ func TestMigrationPreconditionsStep_Run(t *testing.T) {
 
 		assert.ErrorIs(t, result.Err, assert.AnError)
 		assert.ErrorContains(t, result.Err, `failed to detect migration state of dogu "nexus"`)
-		assert.Equal(t, ReasonMigrationPending, result.ReadyReason)
+		assert.Equal(t, v3beta1.ReasonMigrationPending, result.ReadyReason)
 		assert.False(t, result.Continue)
 	})
 }

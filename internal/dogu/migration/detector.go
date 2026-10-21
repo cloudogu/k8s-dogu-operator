@@ -86,13 +86,13 @@ func (d *Detector) hasMigrationResources(ctx context.Context, dogu *v3beta1.Dogu
 
 // migrationResourceKey names the temporary resources that hold the V2 resources' content during a migration.
 func migrationResourceKey(dogu *v3beta1.Dogu) client.ObjectKey {
-	return client.ObjectKey{Namespace: dogu.Namespace, Name: dogu.Name + "-migration"}
+	return client.ObjectKey{Namespace: dogu.Namespace, Name: dogu.Spec.Name + "-migration"}
 }
 
 // hasVolumeClaim reports whether the V2 data PVC of the dogu exists.
 func (d *Detector) hasVolumeClaim(ctx context.Context, dogu *v3beta1.Dogu) (bool, error) {
 	claim := &corev1.PersistentVolumeClaim{}
-	found, err := d.get(ctx, client.ObjectKey{Namespace: dogu.Namespace, Name: dogu.Name}, claim)
+	found, err := d.get(ctx, client.ObjectKey{Namespace: dogu.Namespace, Name: dogu.Spec.Name}, claim)
 	if err != nil || !found {
 		return false, err
 	}
@@ -103,7 +103,7 @@ func (d *Detector) hasVolumeClaim(ctx context.Context, dogu *v3beta1.Dogu) (bool
 // hasSensitiveConfig reports whether the V2 sensitive config secret of the dogu exists.
 func (d *Detector) hasSensitiveConfig(ctx context.Context, dogu *v3beta1.Dogu) (bool, error) {
 	secret := &corev1.Secret{}
-	key := client.ObjectKey{Namespace: dogu.Namespace, Name: strings.ToLower(dogu.Name + "-config")}
+	key := client.ObjectKey{Namespace: dogu.Namespace, Name: strings.ToLower(dogu.Spec.Name + "-config")}
 	found, err := d.get(ctx, key, secret)
 	if err != nil || !found {
 		return false, err

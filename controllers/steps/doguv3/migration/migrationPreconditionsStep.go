@@ -27,7 +27,7 @@ func NewMigrationPreconditionsStep(detector MigrationDetector, recorder EventRec
 func (s *MigrationPreconditionsStep) Run(ctx context.Context, doguResource *v3beta1.Dogu) stepsv3.StepResult {
 	state, err := s.detector.Detect(ctx, doguResource)
 	if err != nil {
-		return stepsv3.RequeueWithError(fmt.Errorf("failed to detect migration state of dogu %q: %w", doguResource.Name, err), ReasonMigrationPending)
+		return stepsv3.RequeueWithError(fmt.Errorf("failed to detect migration state of dogu %q: %w", doguResource.Name, err), v3beta1.ReasonMigrationPending)
 	}
 	if state != dogumigration.Required {
 		return stepsv3.Continue()
@@ -39,8 +39,8 @@ func (s *MigrationPreconditionsStep) Run(ctx context.Context, doguResource *v3be
 	}
 
 	msg := "The migration to v3 is blocked by the v2 dogu: " + strings.Join(unmet, ", ")
-	s.eventRecorder.Event(doguResource, corev1.EventTypeNormal, ReasonMigrationPending, msg)
-	return stepsv3.RequeueAfter(pendingRequeueTime, ReasonMigrationPending, msg)
+	s.eventRecorder.Event(doguResource, corev1.EventTypeNormal, v3beta1.ReasonMigrationPending, msg)
+	return stepsv3.RequeueAfter(pendingRequeueTime, v3beta1.ReasonMigrationPending, msg)
 }
 
 // unmetPreconditions compares against the v2 constants, because the status still holds the values the v2 reconciler wrote.

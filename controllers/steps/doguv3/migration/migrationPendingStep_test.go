@@ -28,11 +28,11 @@ func TestMigrationPendingStep_Run(t *testing.T) {
 		detector := NewMockMigrationDetector(t)
 		detector.EXPECT().Detect(testCtx, dogu).Return(dogumigration.Required, nil)
 		recorder := NewMockEventRecorder(t)
-		recorder.EXPECT().Event(dogu, corev1.EventTypeNormal, ReasonMigrationPending, "V2 resources found, the dogu has to be migrated to v3")
+		recorder.EXPECT().Event(dogu, corev1.EventTypeNormal, v3beta1.ReasonMigrationPending, "V2 resources found, the dogu has to be migrated to v3")
 
 		result := NewMigrationPendingStep(detector, recorder).Run(testCtx, dogu)
 
-		assert.Equal(t, stepsv3.RequeueAfter(time.Minute, ReasonMigrationPending, "V2 resources found, the dogu has to be migrated to v3"), result)
+		assert.Equal(t, stepsv3.RequeueAfter(time.Minute, v3beta1.ReasonMigrationPending, "V2 resources found, the dogu has to be migrated to v3"), result)
 	})
 
 	t.Run("migration in progress keeps the dogu pending", func(t *testing.T) {
@@ -40,11 +40,11 @@ func TestMigrationPendingStep_Run(t *testing.T) {
 		detector := NewMockMigrationDetector(t)
 		detector.EXPECT().Detect(testCtx, dogu).Return(dogumigration.InProgress, nil)
 		recorder := NewMockEventRecorder(t)
-		recorder.EXPECT().Event(dogu, corev1.EventTypeNormal, ReasonMigrationPending, "Migration resources found, the migration to v3 has to be resumed")
+		recorder.EXPECT().Event(dogu, corev1.EventTypeNormal, v3beta1.ReasonMigrationPending, "Migration resources found, the migration to v3 has to be resumed")
 
 		result := NewMigrationPendingStep(detector, recorder).Run(testCtx, dogu)
 
-		assert.Equal(t, stepsv3.RequeueAfter(time.Minute, ReasonMigrationPending, "Migration resources found, the migration to v3 has to be resumed"), result)
+		assert.Equal(t, stepsv3.RequeueAfter(time.Minute, v3beta1.ReasonMigrationPending, "Migration resources found, the migration to v3 has to be resumed"), result)
 	})
 
 	t.Run("detection error requeues without event", func(t *testing.T) {
@@ -56,7 +56,7 @@ func TestMigrationPendingStep_Run(t *testing.T) {
 
 		assert.ErrorIs(t, result.Err, assert.AnError)
 		assert.ErrorContains(t, result.Err, `failed to detect migration state of dogu "nexus"`)
-		assert.Equal(t, ReasonMigrationPending, result.ReadyReason)
+		assert.Equal(t, v3beta1.ReasonMigrationPending, result.ReadyReason)
 		assert.False(t, result.Continue)
 	})
 }

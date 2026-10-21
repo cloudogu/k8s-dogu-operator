@@ -90,6 +90,9 @@ func NewDoguInstallOrChangeUseCase(
 func NewDoguMigrationUseCase(
 	finalizerStep *install.CreateFinalizerStep,
 	migrationPreconditionsStep *migration.MigrationPreconditionsStep,
+	ociStep *install.EnsureOCIRepositoryStep,
+	waitOCIStep *install.WaitForOCIRepositoryReadyStep,
+	validateChartStep *install.ValidateChartStep,
 	migrationPendingStep *migration.MigrationPendingStep,
 	client K8sClient,
 	recorder EventRecorder,
@@ -98,6 +101,10 @@ func NewDoguMigrationUseCase(
 		steps: []Step{
 			finalizerStep,
 			migrationPreconditionsStep,
+			// The chart is validated before the migration, so that a v2 dogu is never removed for a chart that cannot be installed.
+			ociStep,
+			waitOCIStep,
+			validateChartStep,
 			// MigrationPendingStep stands in for the actual migration steps and halts the use-case,
 			// so that no chart is installed next to the v2 resources.
 			migrationPendingStep,
