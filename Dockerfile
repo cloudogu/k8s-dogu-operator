@@ -37,11 +37,20 @@ RUN make compile-generic
 FROM gcr.io/distroless/static:nonroot
 LABEL maintainer="hello@cloudogu.com" \
       NAME="k8s-dogu-operator" \
-      VERSION="3.33.0"
+      VERSION="3.35.0"
 
 WORKDIR /
 COPY --from=builder /workspace/target/k8s-dogu-operator .
 COPY --from=builder --chown=65532:65532 /tmp/dogu-registry-cache /tmp/dogu-registry-cache
+
+# Create symlinks to shell and yq for experimental helmfile support
+# We have to extract them from an archive as docker is stupidly inconsistent with following symlinks.
+# The archive contains the two symlinks:
+#   sh -> /helmfile_binaries/busybox
+#   yq -> /helmfile_binaries/yq
+# So these only work if helmfile support is enabled.
+# They are currently hard-coded. To make this dynamic, they will likely have to be replaced by a shim.
+ADD --chown=0:0 helmfile/symlinks.tar.gz /bin
 
 # the linter has a problem with the valid colon-syntax
 # dockerfile_lint - ignore

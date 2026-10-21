@@ -8,8 +8,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - [#358] Support `DoguRestart` for dogu v3.
 
+## [v3.35.0] - 2026-10-20
+### Added
+- [#341] Experimental helmfile support
+
+## [v3.34.0] - 2026-10-19
+### Added
+- [#365] Add new option to disable warp menu entries for v2 dogus
+  - See `controllerManager.env.warpMenuDisabledV2Dogus` in `values.yaml`
 ### Changed
-- [#358] Update mockery to v3.8.1 to support Go 1.27.2.
 - [#362] Replace the logrus based logger with zap, which is the standard logging backend for operators built on controller-runtime.
   - The log output is now JSON by default. The new environment variable `LOG_FORMAT` switches between `json` and `text`.
   - `LOG_LEVEL` now defaults to `info` instead of `error`.
