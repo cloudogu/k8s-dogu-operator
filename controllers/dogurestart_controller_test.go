@@ -44,6 +44,21 @@ func TestDoguRestartReconciler_createRestartInstruction(t *testing.T) {
 		assert.Equal(t, handleGetDoguRestartFailed, instruction.op)
 	})
 
+	t.Run("should ignore a deleted dogu restart", func(t *testing.T) {
+		// given
+		doguRestartInterfaceMock := newMockDoguRestartInterface(t)
+		doguRestartInterfaceMock.EXPECT().Get(mock.Anything, testCasRestartName, metav1.GetOptions{}).Return(nil, errors.NewNotFound(schema.GroupResource{}, testCasRestartName))
+
+		sut := DoguRestartReconciler{doguRestartInterface: doguRestartInterfaceMock}
+
+		// when
+		instruction := sut.createRestartInstruction(testCtx, testCasRestartRequest)
+
+		// then
+		require.NoError(t, instruction.err)
+		assert.Equal(t, ignore, instruction.op)
+	})
+
 	t.Run("should ignore if the dogu restart is not found", func(t *testing.T) {
 		// given
 		doguRestartInterfaceMock := newMockDoguRestartInterface(t)

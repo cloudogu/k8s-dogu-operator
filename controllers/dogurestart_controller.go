@@ -83,6 +83,12 @@ func (r *DoguRestartReconciler) createRestartInstruction(ctx context.Context, re
 
 	doguRestart, err := r.doguRestartInterface.Get(ctx, req.Name, metav1.GetOptions{})
 	if err != nil {
+		// a deleted restart, e.g. by the garbage collection, needs no handling
+		if apierrors.IsNotFound(err) {
+			instruction.op = ignore
+			return
+		}
+
 		instruction.op = handleGetDoguRestartFailed
 		instruction.err = err
 		return
