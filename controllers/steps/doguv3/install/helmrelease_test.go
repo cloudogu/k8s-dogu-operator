@@ -35,7 +35,7 @@ func Test_combineValues(t *testing.T) {
 		var doguMetadataValues []byte
 		doguValuesMetadataSvcMock := NewMockChartService(t)
 		doguValuesMetadataSvcMock.EXPECT().DoguMetaValues(testCtx, inputDogu).Return(doguMetadataValues, true, nil)
-		doguValuesMetadataSvcMock.EXPECT().ChartPatchTemplate(testCtx, inputDogu).Return(nil, false, nil)
+		doguValuesMetadataSvcMock.EXPECT().RuntimePatchTemplate(testCtx, inputDogu).Return(nil, false, nil)
 		valueAsmMock.EXPECT().Assemble(testCtx, inputDogu, doguMetadataValues, []byte(nil)).Return(assembledDoguValues, nil)
 
 		// when
@@ -70,7 +70,7 @@ func Test_combineValues(t *testing.T) {
 		var doguMetadataValues []byte
 		doguValuesMetadataSvcMock := NewMockChartService(t)
 		doguValuesMetadataSvcMock.EXPECT().DoguMetaValues(testCtx, inputDogu).Return(doguMetadataValues, true, nil)
-		doguValuesMetadataSvcMock.EXPECT().ChartPatchTemplate(testCtx, inputDogu).Return(nil, false, nil)
+		doguValuesMetadataSvcMock.EXPECT().RuntimePatchTemplate(testCtx, inputDogu).Return(nil, false, nil)
 		valueAsmMock := NewMockValueAssembler(t)
 		valueAsmMock.EXPECT().Assemble(testCtx, inputDogu, doguMetadataValues, []byte(nil)).Return(nil, assert.AnError)
 
@@ -100,7 +100,7 @@ func TestCombineValuesPatchRetrieval(t *testing.T) {
 			dogu := &doguv3.Dogu{}
 			service := NewMockChartService(t)
 			service.EXPECT().DoguMetaValues(testCtx, dogu).Return(nil, false, nil).Once()
-			service.EXPECT().ChartPatchTemplate(testCtx, dogu).Return(tt.source, tt.found, tt.err).Once()
+			service.EXPECT().RuntimePatchTemplate(testCtx, dogu).Return(tt.source, tt.found, tt.err).Once()
 			assembler := NewMockValueAssembler(t)
 			if tt.err == nil {
 				assembler.EXPECT().Assemble(testCtx, dogu, []byte(nil), tt.expected).Return(values3.Values{}, nil).Once()
@@ -108,7 +108,7 @@ func TestCombineValuesPatchRetrieval(t *testing.T) {
 			got, err := combineValues(testCtx, dogu, service, assembler)
 			if tt.err != nil {
 				require.ErrorIs(t, err, tt.err)
-				assert.ErrorContains(t, err, "failed to retrieve chart patch template")
+				assert.ErrorContains(t, err, "failed to retrieve runtime patch template")
 				assert.Nil(t, got)
 			} else {
 				require.NoError(t, err)
@@ -325,7 +325,7 @@ func TestEnsureHelmReleaseStep_Run(t *testing.T) {
 
 				service := NewMockChartService(t)
 				service.EXPECT().DoguMetaValues(mock.Anything, doguResource).Return(nil, false, nil)
-				service.EXPECT().ChartPatchTemplate(mock.Anything, doguResource).Return(nil, false, nil)
+				service.EXPECT().RuntimePatchTemplate(mock.Anything, doguResource).Return(nil, false, nil)
 				return k8sClient, service, nil
 			},
 			want: v3steps.StepResult{
@@ -341,7 +341,7 @@ func TestEnsureHelmReleaseStep_Run(t *testing.T) {
 				k8sClient := fake.NewClientBuilder().WithScheme(testScheme).WithObjects(&globalConfig).Build()
 				service := NewMockChartService(t)
 				service.EXPECT().DoguMetaValues(mock.Anything, doguResource).Return(nil, false, nil)
-				service.EXPECT().ChartPatchTemplate(mock.Anything, doguResource).Return(nil, false, nil)
+				service.EXPECT().RuntimePatchTemplate(mock.Anything, doguResource).Return(nil, false, nil)
 				recorder := NewMockEventRecorder(t)
 				recorder.EXPECT().Event(doguResource, core.EventTypeNormal, doguv3.ConditionChartAvailable, "HelmRelease created")
 				return k8sClient, service, recorder
@@ -358,7 +358,7 @@ func TestEnsureHelmReleaseStep_Run(t *testing.T) {
 				k8sClient := fake.NewClientBuilder().WithScheme(testScheme).WithObjects(&globalConfig, &release).Build()
 				service := NewMockChartService(t)
 				service.EXPECT().DoguMetaValues(mock.Anything, doguResource).Return(nil, false, nil)
-				service.EXPECT().ChartPatchTemplate(mock.Anything, doguResource).Return(nil, false, nil)
+				service.EXPECT().RuntimePatchTemplate(mock.Anything, doguResource).Return(nil, false, nil)
 				recorder := NewMockEventRecorder(t)
 				recorder.EXPECT().Event(doguResource, core.EventTypeNormal, doguv3.ConditionChartAvailable, "HelmRelease updated")
 				return k8sClient, service, recorder

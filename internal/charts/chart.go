@@ -18,8 +18,8 @@ import (
 )
 
 const (
-	patchTemplateFileName  = "chart-patch-tpl.yaml"
-	doguValuesMetaFileName = "dogu-values-metadata.yaml"
+	runtimePatchTemplateFileName = "runtime-patch-tpl.yaml"
+	doguValuesMetaFileName       = "dogu-values-metadata.yaml"
 )
 
 type ReleaseRef struct {
@@ -96,10 +96,6 @@ func (c *chart) validateValues(values map[string]any) error {
 
 func (c *chart) getDoguValuesMeta() ([]byte, bool) {
 	return c.getTemplateFile(doguValuesMetaFileName)
-}
-
-func (c *chart) getChartPatchTpl() ([]byte, bool) {
-	return c.getTemplateFile(patchTemplateFileName)
 }
 
 func (c *chart) getTemplateFile(name string) ([]byte, bool) {

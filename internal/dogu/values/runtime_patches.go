@@ -11,41 +11,21 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-type patchTemplate struct {
-	APIVersion     string            `yaml:"apiVersion"`
-	RuntimePatches map[string]Values `yaml:"runtimePatches"`
-}
-
 func renderRuntimePatches(source []byte, global Values) (Values, error) {
 	if source == nil {
 		return nil, nil
 	}
 	decoder := yaml.NewDecoder(bytes.NewReader(source))
-	var envelope patchTemplate
-	if err := decoder.Decode(&envelope); err != nil {
-		return nil, fmt.Errorf("decode chart patch template: %w", err)
+	var result Values
+	if err := decoder.Decode(&result); err != nil {
+		return nil, fmt.Errorf("decode runtime patch template: %w", err)
 	}
 	var extra any
 	if err := decoder.Decode(&extra); err != io.EOF {
-		return nil, fmt.Errorf("chart patch template must contain exactly one YAML document")
+		return nil, fmt.Errorf("runtime patch template must contain exactly one YAML document")
 	}
-	if envelope.RuntimePatches == nil {
-		return nil, nil
-	}
-	if envelope.APIVersion != "v1" {
-		return nil, fmt.Errorf("runtimePatches requires apiVersion v1")
-	}
-	result := Values{}
-	for target := range envelope.RuntimePatches {
-		if target != "values.yaml" {
-			return nil, fmt.Errorf("unsupported runtimePatches target %q", target)
-		}
-	}
-	if value, exists := envelope.RuntimePatches["values.yaml"]; exists {
-		if value == nil {
-			return nil, fmt.Errorf("runtimePatches values.yaml must be a mapping")
-		}
-		result = value
+	if result == nil {
+		return nil, fmt.Errorf("runtime patch template must be a mapping")
 	}
 	funcs := template.FuncMap{
 		"globalConfig": func(path string) (string, error) {
@@ -70,7 +50,7 @@ func renderRuntimePatches(source []byte, global Values) (Values, error) {
 			return text, nil
 		},
 	}
-	if _, err := renderRuntimeValue(result, funcs, "runtimePatches.values.yaml"); err != nil {
+	if _, err := renderRuntimeValue(result, funcs, "runtime-patch-tpl.yaml"); err != nil {
 		return nil, err
 	}
 	if _, err := json.Marshal(result); err != nil {

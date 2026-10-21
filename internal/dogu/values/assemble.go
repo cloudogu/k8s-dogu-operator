@@ -67,7 +67,7 @@ func (a Assembler) Assemble(ctx context.Context, cr *v3beta1.Dogu, valuesMeta, p
 
 	runtimeValues, err := renderRuntimePatches(patchTemplate, globalConfigValues)
 	if err != nil {
-		return nil, fmt.Errorf("failed to render chart-patch-tpl.yaml runtime patches: %w", err)
+		return nil, fmt.Errorf("failed to render runtime-patch-tpl.yaml: %w", err)
 	}
 
 	// Place global config under global.cesConfig.

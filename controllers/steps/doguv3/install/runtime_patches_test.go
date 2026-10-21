@@ -67,19 +67,18 @@ func TestRuntimePatchesHelmRelease(t *testing.T) {
 		Raw:      []*helmchart.File{{Name: "values.yaml", Data: []byte("host: chart-default\nuntouched: chart-only\n")}},
 		Schema:   []byte(`{"type":"object","required":["host"],"properties":{"host":{"type":"string","minLength":1},"integer":{"enum":[9007199254740993]}}}`),
 		Files: []*helmchart.File{
-			{Name: "chart-patch-tpl.yaml", Data: []byte(`---
+			{Name: "mirror-patch-tpl.yaml", Data: []byte(`---
 apiVersion: v1
 patches:
   values.yaml:
     image: '{{ registryFrom .images.fixture }}'
-runtimePatches:
-  values.yaml:
-    host: '{{ globalConfig "fqdn" }}'
-    explicit: runtime
-    mapped: runtime
-    integer: 9007199254740993
-    backend:
-      applicationHost: '{{ globalConfig "fqdn" }}'
+`)},
+			{Name: "runtime-patch-tpl.yaml", Data: []byte(`host: '{{ globalConfig "fqdn" }}'
+explicit: runtime
+mapped: runtime
+integer: 9007199254740993
+backend:
+  applicationHost: '{{ globalConfig "fqdn" }}'
 `)},
 			{Name: "dogu-values-metadata.yaml", Data: []byte(`apiVersion: v1
 metavalues:
@@ -169,10 +168,7 @@ data:
 }
 
 func TestRuntimePatchesValidationFailures(t *testing.T) {
-	const patch = `apiVersion: v1
-runtimePatches:
-  values.yaml:
-    host: '{{ globalConfig "absent" }}'
+	const patch = `host: '{{ globalConfig "absent" }}'
 `
 	for _, skip := range []bool{false, true} {
 		t.Run("skipSchema="+fmt.Sprint(skip), func(t *testing.T) {
@@ -180,7 +176,7 @@ runtimePatches:
 			dogu.Spec.SkipSchemaValidation = skip
 			service := NewMockChartService(t)
 			service.EXPECT().DoguMetaValues(mock.Anything, dogu).Return(nil, false, nil).Once()
-			service.EXPECT().ChartPatchTemplate(mock.Anything, dogu).Return([]byte(patch), true, nil).Once()
+			service.EXPECT().RuntimePatchTemplate(mock.Anything, dogu).Return([]byte(patch), true, nil).Once()
 			step := NewValidateChartStep(service, values.NewAssembler(cl), cl)
 			result := step.Run(t.Context(), dogu)
 			assert.False(t, result.Continue)
@@ -193,15 +189,9 @@ func TestRuntimePatchesWriteFailuresPreserveHelmRelease(t *testing.T) {
 	for _, tt := range []struct {
 		name, config, template, errorContains string
 	}{
-		{name: "missing config", config: "fqdn: new.example", errorContains: `globalConfig "absent" is missing`, template: `apiVersion: v1
-runtimePatches:
-  values.yaml:
-    host: '{{ globalConfig "absent" }}'
+		{name: "missing config", config: "fqdn: new.example", errorContains: `globalConfig "absent" is missing`, template: `host: '{{ globalConfig "absent" }}'
 `},
-		{name: "non-string config", config: "fqdn: false", errorContains: "does not refer to a string", template: `apiVersion: v1
-runtimePatches:
-  values.yaml:
-    host: '{{ globalConfig "fqdn" }}'
+		{name: "non-string config", config: "fqdn: false", errorContains: "does not refer to a string", template: `host: '{{ globalConfig "fqdn" }}'
 `},
 		{name: "serialization", config: "invalid: .nan", errorContains: "unsupported value: NaN"},
 	} {
@@ -218,7 +208,7 @@ runtimePatches:
 			before := release.DeepCopy()
 			service := NewMockChartService(t)
 			service.EXPECT().DoguMetaValues(mock.Anything, dogu).Return(nil, false, nil).Once()
-			service.EXPECT().ChartPatchTemplate(mock.Anything, dogu).Return([]byte(tt.template), tt.template != "", nil).Once()
+			service.EXPECT().RuntimePatchTemplate(mock.Anything, dogu).Return([]byte(tt.template), tt.template != "", nil).Once()
 			step := NewEnsureHelmReleaseStep(cl, &config.OperatorConfig{}, service, record.NewFakeRecorder(10))
 			result := step.Run(t.Context(), dogu)
 			assert.False(t, result.Continue)

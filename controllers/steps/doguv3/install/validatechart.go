@@ -46,9 +46,9 @@ func (vcs *ValidateChartStep) Run(ctx context.Context, doguResource *v3beta1.Dog
 		return stepsv3.RequeueWithError(fmt.Errorf("failed to get dogu meta values: %w", err), v3beta1.ReasonInstalling)
 	}
 
-	patchTemplate, found, err := vcs.chartService.ChartPatchTemplate(ctx, doguResource)
+	patchTemplate, found, err := vcs.chartService.RuntimePatchTemplate(ctx, doguResource)
 	if err != nil {
-		return stepsv3.RequeueWithError(fmt.Errorf("failed to retrieve chart patch template: %w", err), v3beta1.ReasonInstalling)
+		return stepsv3.RequeueWithError(fmt.Errorf("failed to retrieve runtime patch template: %w", err), v3beta1.ReasonInstalling)
 	}
 	if !found {
 		patchTemplate = nil

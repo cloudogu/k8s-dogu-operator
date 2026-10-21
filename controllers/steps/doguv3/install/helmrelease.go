@@ -134,9 +134,9 @@ func combineValues(ctx context.Context, dogu *doguv3.Dogu, doguMetadataValueSvc 
 		return nil, fmt.Errorf("failed to retrieve dogu metadata values: %w", err)
 	}
 
-	patchTemplate, found, err := doguMetadataValueSvc.ChartPatchTemplate(ctx, dogu)
+	patchTemplate, found, err := doguMetadataValueSvc.RuntimePatchTemplate(ctx, dogu)
 	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve chart patch template: %w", err)
+		return nil, fmt.Errorf("failed to retrieve runtime patch template: %w", err)
 	}
 	if !found {
 		patchTemplate = nil

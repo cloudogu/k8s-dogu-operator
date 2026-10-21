@@ -530,18 +530,15 @@ metavalues:
         mapping:
           debug: trace
 `)
-	patch := []byte(`apiVersion: v1
-runtimePatches:
-  values.yaml:
-    application:
-      host: fromRuntime
-      logging: fromRuntime
-      sibling: '{{ globalConfig "fqdn" }}'
-      list: [runtime]
-    global:
-      cesConfig:
-        runtimeOverride: fromRuntime
-        crOverride: fromRuntime
+	patch := []byte(`application:
+  host: fromRuntime
+  logging: fromRuntime
+  sibling: '{{ globalConfig "fqdn" }}'
+  list: [runtime]
+global:
+  cesConfig:
+    runtimeOverride: fromRuntime
+    crOverride: fromRuntime
 `)
 	a := NewAssembler(newFakeClientWithGlobalConfig(testNamespace, map[string]string{
 		globalConfigFileName: "fqdn: ces.example.org\nruntimeOverride: fromGlobal\ncrOverride: fromGlobal\nuntouched: original\n",
@@ -555,7 +552,7 @@ runtimePatches:
 }
 
 func TestAssembler_RuntimeErrorsDoNotBecomeDefaults(t *testing.T) {
-	patch := []byte("apiVersion: v1\nruntimePatches:\n  values.yaml:\n    host: '{{ globalConfig \"absent\" }}'\n")
+	patch := []byte("host: '{{ globalConfig \"absent\" }}'\n")
 	for _, config := range []map[string]string{nil, {globalConfigFileName: "["}} {
 		a := NewAssembler(newFakeClientWithGlobalConfig(testNamespace, config))
 		_, err := a.Assemble(t.Context(), newTestDogu(testNamespace, nil, nil), nil, patch)
@@ -579,13 +576,10 @@ func TestAssembler_ConflictsDoNotLogValues(t *testing.T) {
   scalarToMap:
     enabled: true
 `), nil)
-	patch := []byte(`apiVersion: v1
-runtimePatches:
-  values.yaml:
-    application:
-      mapToScalar:
-        token: '{{ globalConfig "token" }}'
-      scalarToMap: '{{ globalConfig "token" }}'
+	patch := []byte(`application:
+  mapToScalar:
+    token: '{{ globalConfig "token" }}'
+  scalarToMap: '{{ globalConfig "token" }}'
 `)
 	a := NewAssembler(newFakeClientWithGlobalConfig(testNamespace, map[string]string{
 		globalConfigFileName: "token: sensitive-sentinel\n",
