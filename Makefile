@@ -3,9 +3,9 @@ ARTIFACT_ID=k8s-dogu-operator
 VERSION=3.35.0
 
 IMAGE=cloudogu/${ARTIFACT_ID}:${VERSION}
-GOTAG=1.27.2
+GOTAG=1.27.3
 LINT_VERSION=v2.13.2
-MAKEFILES_VERSION=11.0.0
+MAKEFILES_VERSION=11.1.2
 
 PRE_COMPILE = generate-deepcopy
 K8S_COMPONENT_SOURCE_VALUES = ${HELM_SOURCE_DIR}/values.yaml
@@ -37,11 +37,6 @@ build-helmfile-image:
 .PHONY: push-helmfile-image
 push-helmfile-image: build-helmfile-image
 	@docker push "registry.cloudogu.com/internal/helmfile:${HELMFILE_IMAGE_VERSION}"
-
-.PHONY: mocks
-mocks: ${MOCKERY_BIN} ${MOCKERY_YAML} ## target is used to generate mocks for all interfaces in a project.
-	${MOCKERY_BIN}
-	@echo "Mocks successfully created."
 
 .PHONY: build-boot
 build-boot: helm-apply kill-operator-pod ## Builds a new version of the dogu and deploys it into the K8s-EcoSystem.
