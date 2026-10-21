@@ -38,6 +38,8 @@ github.com/cloudogu/k8s-dogu-lib/v3 v3.1.1-0.20261021142541-7f328958f56c h1:7Nkq
 github.com/cloudogu/k8s-dogu-lib/v3 v3.1.1-0.20261021142541-7f328958f56c/go.mod h1:up4m1SOcOGDxD3EIu21fl3PEcjPfOHkHvaCKK48h0Ro=
 github.com/cloudogu/k8s-dogu-lib/v3 v3.1.1 h1:+Zk8Ppki8MULh+OX7tT6H/fN7yRRnJ5qBUFoo2hspak=
 github.com/cloudogu/k8s-dogu-lib/v3 v3.1.1/go.mod h1:up4m1SOcOGDxD3EIu21fl3PEcjPfOHkHvaCKK48h0Ro=
+github.com/cloudogu/k8s-dogu-lib/v3 v3.2.1 h1:zb/UYjBhtuZbra8OscXRTnfTd4sOx4582UypD4jkhws=
+github.com/cloudogu/k8s-dogu-lib/v3 v3.2.1/go.mod h1:up4m1SOcOGDxD3EIu21fl3PEcjPfOHkHvaCKK48h0Ro=
 github.com/cloudogu/k8s-exposition-lib v1.0.0 h1:WKL8oXt3N9CVH3WNuLUbbkmBAUjs1CcEvOoUnlnFtAo=
 github.com/cloudogu/k8s-exposition-lib v1.0.0/go.mod h1:psu5GdaD2wjUGVY9njtfmUjnxi4QX4Ks4txS8pGQhgY=
 github.com/cloudogu/k8s-host-change v0.8.1 h1:PlhYfqdk9bTiv5LnjIXK+d+1ubjM80Zp3gSKu77E5Dw=
