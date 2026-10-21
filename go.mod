@@ -1,6 +1,6 @@
 module github.com/cloudogu/k8s-dogu-operator/v3
 
-go 1.27.2
+go 1.27.3
 
 require (
 	github.com/cloudogu/ces-commons-lib v0.3.0
