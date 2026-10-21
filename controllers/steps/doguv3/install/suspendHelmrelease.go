@@ -87,7 +87,6 @@ func (shr *SuspendHelmReleaseStep) suspendOrRelease(ctx context.Context, doguRes
 		}
 		result = stepsv3.RequeueAfter(defaultRequeueAfter, targetState.reason, targetState.message)
 	} else {
-		logging.Debug(ctx, "Leaving HelmRelease for dogu unchanged", "name", doguResource.Name)
 		result = stepsv3.Continue()
 	}
 	if err := shr.setSuspendedConditionOnDoguCR(ctx, doguResource, targetState); err != nil {
