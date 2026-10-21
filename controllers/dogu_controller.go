@@ -40,9 +40,10 @@ const (
 )
 
 const (
-	ReasonReconcileSuccess = "ReconcileSuccess"
-	ReasonReconcileFail    = "ReconcileFail"
-	ReasonHasToReconcile   = "HasToReconcile"
+	ReasonReconcileSuccess    = "ReconcileSuccess"
+	ReasonReconcileFail       = "ReconcileFail"
+	ReasonHasToReconcile      = "HasToReconcile"
+	ReasonDowngradeNotAllowed = "DowngradeNotAllowed"
 )
 
 // The DoguReconciler knows where the [*doguv2.Dogu] is at all times. It knows this because it knows where it isn't.
@@ -147,6 +148,16 @@ func (r *DoguReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 func (r *DoguReconciler) handleDoguV2(ctx context.Context, req ctrl.Request, doguResource *doguv2.Dogu) (ctrl.Result, error) {
 	r.eventRecorder.Event(doguResource, coreV1.EventTypeNormal, ReconcileStartedEventReason, "reconciliation started")
 
+	if r.doguV3Enabled && doguResource.GetDeletionTimestamp().IsZero() {
+		installedAsV3, err := r.isInstalledAsV3(ctx, doguResource)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+		if installedAsV3 {
+			return ctrl.Result{}, r.refuseDowngrade(ctx, doguResource)
+		}
+	}
+
 	var requeueAfter time.Duration
 	var cont bool
 	var err error
@@ -178,6 +189,28 @@ func (r *DoguReconciler) handleDoguV2(ctx context.Context, req ctrl.Request, dog
 
 	errs := errors.Join(getDoguResourceErr, err)
 	return r.requeueHandlerV2.Handle(ctx, doguResource, errs, requeueAfter)
+}
+
+// isInstalledAsV3 reports whether the dogu has already been installed as v3 dogu.
+func (r *DoguReconciler) isInstalledAsV3(ctx context.Context, doguResource *doguv2.Dogu) (bool, error) {
+	release := &helmv2.HelmRelease{}
+	err := r.client.Get(ctx, client.ObjectKey{Namespace: doguResource.Namespace, Name: doguResource.Name}, release)
+	if apierrors.IsNotFound(err) {
+		return false, nil
+	}
+	if err != nil {
+		return false, fmt.Errorf("failed to get HelmRelease of dogu %q: %w", doguResource.Name, err)
+	}
+
+	return true, nil
+}
+
+// refuseDowngrade stops the reconciliation of a v2 dogu that has already been installed as v3 dogu,
+// so that the v2 resources are not deployed next to the v3 ones.
+func (r *DoguReconciler) refuseDowngrade(ctx context.Context, doguResource *doguv2.Dogu) error {
+	msg := "The dogu has been installed as v3 dogu, a downgrade to v2 is not allowed."
+	r.eventRecorder.Event(doguResource, coreV1.EventTypeWarning, ReasonDowngradeNotAllowed, msg)
+	return r.setReadyCondition(ctx, doguResource, metav1.ConditionFalse, ReasonDowngradeNotAllowed, msg)
 }
 
 func (r *DoguReconciler) handleDoguV3(ctx context.Context, _ ctrl.Request, doguResource *doguv2.Dogu) (ctrl.Result, error) {

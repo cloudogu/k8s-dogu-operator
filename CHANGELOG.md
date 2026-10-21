@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ### Added
 - [#358] Support `DoguRestart` for dogu v3.
+- [#368] Detect whether a v3 dogu has to be migrated from v2 or installed
+
+### Changed
+- Update go to 1.27.3
 
 ## [v3.35.0] - 2026-10-20
 ### Added
