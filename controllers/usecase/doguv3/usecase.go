@@ -89,6 +89,7 @@ func NewDoguInstallOrChangeUseCase(
 // The steps are executed in the order they are provided.
 func NewDoguMigrationUseCase(
 	finalizerStep *install.CreateFinalizerStep,
+	migrationPreconditionsStep *migration.MigrationPreconditionsStep,
 	migrationPendingStep *migration.MigrationPendingStep,
 	client K8sClient,
 	recorder EventRecorder,
@@ -96,6 +97,7 @@ func NewDoguMigrationUseCase(
 	return &DoguUseCase{
 		steps: []Step{
 			finalizerStep,
+			migrationPreconditionsStep,
 			// MigrationPendingStep stands in for the actual migration steps and halts the use-case,
 			// so that no chart is installed next to the v2 resources.
 			migrationPendingStep,

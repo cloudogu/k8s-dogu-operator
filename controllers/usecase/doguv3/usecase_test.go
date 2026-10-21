@@ -97,6 +97,7 @@ func TestNewDoguMigrationUseCase(t *testing.T) {
 
 	got := NewDoguMigrationUseCase(
 		&install.CreateFinalizerStep{},
+		&migration.MigrationPreconditionsStep{},
 		&migration.MigrationPendingStep{},
 		clientMock,
 		recorderMock,
@@ -104,6 +105,7 @@ func TestNewDoguMigrationUseCase(t *testing.T) {
 
 	wantTypes := []string{
 		"*install.CreateFinalizerStep",
+		"*migration.MigrationPreconditionsStep",
 		"*migration.MigrationPendingStep",
 	}
 
