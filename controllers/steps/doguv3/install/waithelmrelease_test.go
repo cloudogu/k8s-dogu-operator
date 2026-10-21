@@ -99,6 +99,16 @@ func TestHelmReleaseStatusStep_Run(t *testing.T) {
 
 		assert.Equal(t, stepsv3.Continue(), result)
 	})
+	t.Run("should continue if pauseReconciliation is set", func(t *testing.T) {
+		doguResource := testDoguResource.DeepCopy()
+		doguResource.Spec.PauseReconciliation = true
+		c := fake.NewClientBuilder().Build()
+		step := NewHelmReleaseStatusStep(c, NewMockEventRecorder(t))
+
+		result := step.Run(context.Background(), doguResource)
+
+		assert.Equal(t, stepsv3.Continue(), result)
+	})
 }
 
 func healthyCondition(status metav1.ConditionStatus, message string) metav1.Condition {
