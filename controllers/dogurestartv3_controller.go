@@ -159,12 +159,16 @@ func (r *DoguRestartV3Reconciler) precheck(ctx context.Context, doguRestart *dog
 				doguRestart.Spec.DoguName, client.ObjectKeyFromObject(doguRestart), err)}
 		}
 
-		return nil, new(doguNotFound(doguRestart))
+		return nil, new(doguNotFound(ctx, doguRestart))
 	}
 
 	// restarts of v2 dogus are handled by the DoguRestartReconciler
 	if dogu.Spec.DoguApiVersion != v3beta1.DoguApiVersionV3 {
 		return nil, &restartDecision{}
+	}
+
+	if len(doguRestart.Status.Conditions) == 0 {
+		logging.Info(ctx, "Dogu restart requested", "dogu", dogu.Name)
 	}
 
 	if !isDoguIdle(dogu) {
@@ -183,11 +187,13 @@ func (r *DoguRestartV3Reconciler) precheck(ctx context.Context, doguRestart *dog
 }
 
 // doguNotFound decides what happens to a restart whose dogu does not exist.
-func doguNotFound(doguRestart *doguv2.DoguRestart) restartDecision {
+func doguNotFound(ctx context.Context, doguRestart *doguv2.DoguRestart) restartDecision {
 	// Let missing dogus be handled by the DoguRestartReconciler (DoguV2) - it sets the conditions to DoguNotFound.
 	if len(doguRestart.Status.Conditions) == 0 {
 		return restartDecision{requeueAfter: requeueWaitTimeout}
 	}
+
+	logging.Info(ctx, "Dogu restart aborted: dogu not found", "dogu", doguRestart.Spec.DoguName)
 
 	const message = "Dogu to restart was not found."
 	ready := readyCondition(metav1.ConditionFalse, doguv2.DoguRestartReasonDoguNotFound, message)
@@ -216,6 +222,8 @@ func (r *DoguRestartV3Reconciler) restart(ctx context.Context, doguRestart *dogu
 	}
 
 	if superseded {
+		logging.Info(ctx, "Dogu restart skipped: superseded by a newer restart", "dogu", dogu.Name)
+
 		const message = "The dogu was already restarted by a newer restart."
 		ready := readyCondition(metav1.ConditionTrue, doguv2.DoguRestartReasonSuperseded, message)
 
@@ -236,6 +244,7 @@ func (r *DoguRestartV3Reconciler) restart(ctx context.Context, doguRestart *dogu
 	// emit the Restarted event only once, when the condition becomes true; later reconciles during the rollout pass
 	// here again. It has to be read before record updates the conditions.
 	if !meta.IsStatusConditionTrue(doguRestart.Status.Conditions, doguv2.DoguRestartConditionRestarted) {
+		logging.Info(ctx, "Dogu restart triggered: restart annotation set on all workloads", "dogu", dogu.Name)
 		decision.events = append(decision.events, restartEvent{corev1.EventTypeNormal, doguv2.DoguRestartConditionRestarted, restartedMessage})
 	}
 
@@ -261,6 +270,8 @@ func (r *DoguRestartV3Reconciler) restart(ctx context.Context, doguRestart *dogu
 
 		return decision
 	}
+
+	logging.Info(ctx, "Dogu restarted: all workloads rolled out", "dogu", dogu.Name)
 
 	return decision.readyWith(readyCondition(metav1.ConditionTrue, doguv2.DoguRestartReasonSucceeded,
 		"All workloads of the dogu are rolled out."))
