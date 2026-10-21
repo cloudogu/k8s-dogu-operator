@@ -1,6 +1,6 @@
 module github.com/cloudogu/k8s-dogu-operator/v3
 
-go 1.27.2
+go 1.27.3
 
 require (
 	github.com/cloudogu/ces-commons-lib v0.3.0
@@ -8,7 +8,7 @@ require (
 	github.com/cloudogu/dogu-lib v1.2.0
 	github.com/cloudogu/k8s-apply-lib v0.5.0
 	github.com/cloudogu/k8s-auth-registration-lib v1.0.0
-	github.com/cloudogu/k8s-dogu-lib/v3 v3.1.1
+	github.com/cloudogu/k8s-dogu-lib/v3 v3.2.0
 	github.com/cloudogu/k8s-exposition-lib v1.0.0
 	github.com/cloudogu/k8s-host-change v0.8.1
 	github.com/cloudogu/k8s-registry-lib v1.0.0
