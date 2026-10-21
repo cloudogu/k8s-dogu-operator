@@ -1,17 +1,17 @@
 # Set these to the desired values
 ARTIFACT_ID=k8s-dogu-operator
-VERSION=3.32.0
+VERSION=3.35.0
 
 IMAGE=cloudogu/${ARTIFACT_ID}:${VERSION}
-GOTAG=1.27.2
+GOTAG=1.27.3
 LINT_VERSION=v2.13.2
-MAKEFILES_VERSION=11.0.0
+MAKEFILES_VERSION=11.1.2
 
 PRE_COMPILE = generate-deepcopy
 K8S_COMPONENT_SOURCE_VALUES = ${HELM_SOURCE_DIR}/values.yaml
 K8S_COMPONENT_TARGET_VALUES = ${HELM_TARGET_DIR}/values.yaml
 HELM_PRE_GENERATE_TARGETS = helm-values-update-image-version
-HELM_POST_GENERATE_TARGETS = helm-values-replace-image-repo template-stage template-log-level template-image-pull-policy
+HELM_POST_GENERATE_TARGETS = helm-values-replace-image-repo template-stage template-log-level template-log-format template-image-pull-policy
 IMAGE_IMPORT_TARGET=image-import
 CHECK_VAR_TARGETS=check-all-vars
 
@@ -28,10 +28,15 @@ include build/make/k8s-controller.mk
 include build/make/mocks.mk
 include build/make/vulnerability-scan.mk
 
-.PHONY: mocks
-mocks: ${MOCKERY_BIN} ${MOCKERY_YAML} ## target is used to generate mocks for all interfaces in a project.
-	${MOCKERY_BIN}
-	@echo "Mocks successfully created."
+HELMFILE_IMAGE_VERSION=0.1.0
+
+.PHONY: build-helmfile-image
+build-helmfile-image:
+	@docker build -f helmfile.Dockerfile . -t "registry.cloudogu.com/internal/helmfile:${HELMFILE_IMAGE_VERSION}"
+
+.PHONY: push-helmfile-image
+push-helmfile-image: build-helmfile-image
+	@docker push "registry.cloudogu.com/internal/helmfile:${HELMFILE_IMAGE_VERSION}"
 
 .PHONY: build-boot
 build-boot: helm-apply kill-operator-pod ## Builds a new version of the dogu and deploys it into the K8s-EcoSystem.
@@ -62,6 +67,11 @@ template-stage: $(BINARY_YQ)
 template-log-level: $(BINARY_YQ)
 	@echo "Setting LOG_LEVEL env in deployment to ${LOG_LEVEL}!"
 	@$(BINARY_YQ) -i e ".controllerManager.env.logLevel=\"${LOG_LEVEL}\"" ${K8S_COMPONENT_TARGET_VALUES}
+
+.PHONY: template-log-format
+template-log-format: $(BINARY_YQ)
+	@echo "Setting LOG_FORMAT env in deployment to ${LOG_FORMAT}!"
+	@$(BINARY_YQ) -i e ".controllerManager.env.logFormat=\"${LOG_FORMAT}\"" ${K8S_COMPONENT_TARGET_VALUES}
 
 .PHONY: template-image-pull-policy
 template-image-pull-policy: $(BINARY_YQ)

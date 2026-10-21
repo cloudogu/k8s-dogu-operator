@@ -8,11 +8,11 @@ import (
 	v2 "github.com/cloudogu/k8s-dogu-lib/v3/api/v2"
 	"github.com/cloudogu/k8s-dogu-lib/v3/api/v3beta1"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
+	"github.com/cloudogu/k8s-dogu-operator/v3/internal/logging"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/util/retry"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 const (
@@ -35,7 +35,7 @@ func NewShutdownHandler(config *config.OperatorConfig) *ShutdownHandler {
 // Handle sets health states of all dogus to unknown.
 // v2 dogus get their health and conditions set to unknown, v3 dogus their conditions.
 func (s *ShutdownHandler) Handle(ctx context.Context, k8sClient client.Client) error {
-	logger := log.FromContext(ctx).WithName("health shutdown handler")
+	logger := logging.FromContext(ctx).WithName("health shutdown handler")
 	logger.Info("shutdown detected, handling health status")
 
 	errs := []error{s.handleV2(ctx, k8sClient)}
@@ -86,7 +86,7 @@ func (s *ShutdownHandler) handleV2(ctx context.Context, k8sClient client.Client)
 
 // handleV3 sets all conditions of v3 dogus to unknown.
 func (s *ShutdownHandler) handleV3(ctx context.Context, k8sClient client.Client) error {
-	logger := log.FromContext(ctx).WithName("health shutdown handler")
+	logger := logging.FromContext(ctx).WithName("health shutdown handler")
 
 	dogus := &v3beta1.DoguList{}
 	if err := k8sClient.List(ctx, dogus, client.InNamespace(s.namespace)); err != nil {

@@ -12,3 +12,5 @@
 !vendor/**/*
 !Makefile
 !.git/**/*
+# symlinks for sh and yq in experimental helmfile support
+!helmfile/symlinks.tar.gz

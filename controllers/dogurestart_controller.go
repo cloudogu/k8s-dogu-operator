@@ -6,11 +6,11 @@ import (
 
 	doguv2 "github.com/cloudogu/k8s-dogu-lib/v3/api/v2"
 	doguClientV2 "github.com/cloudogu/k8s-dogu-lib/v3/client/typed/api/v2"
+	"github.com/cloudogu/k8s-dogu-operator/v3/internal/logging"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 )
 
@@ -72,9 +72,9 @@ func (r *DoguRestartReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 }
 
 func (r *DoguRestartReconciler) createRestartInstruction(ctx context.Context, req ctrl.Request) (instruction restartInstruction) {
-	logger := log.FromContext(ctx).
+	ctx = logging.IntoContext(ctx, logging.FromContext(ctx).
 		WithName("DoguRestartReconciler.createRestartInstruction").
-		WithValues("doguRestart", req.NamespacedName)
+		WithValues("doguRestart", req.NamespacedName))
 
 	instruction.req = req
 	instruction.doguRestartInterface = r.doguRestartInterface
@@ -83,12 +83,27 @@ func (r *DoguRestartReconciler) createRestartInstruction(ctx context.Context, re
 
 	doguRestart, err := r.doguRestartInterface.Get(ctx, req.Name, metav1.GetOptions{})
 	if err != nil {
+		// a deleted restart, e.g. by the garbage collection, needs no handling
+		if apierrors.IsNotFound(err) {
+			instruction.op = ignore
+			return
+		}
+
 		instruction.op = handleGetDoguRestartFailed
 		instruction.err = err
 		return
 	}
-	logger.Info("dogu restart ressource has been found")
+
+	logging.Debug(ctx, "dogu restart ressource has been found")
 	instruction.restart = doguRestart
+
+	// restarts with conditions belong to v3 dogus. This is checked before loading the dogu, so that the
+	// DoguRestartV3Reconciler handles a deleted dogu of a started restart and not this reconciler.
+	if len(doguRestart.Status.Conditions) > 0 {
+		logging.Debug(ctx, "restart has conditions and belongs to the DoguRestartV3Reconciler, ignoring")
+		instruction.op = ignore
+		return
+	}
 
 	if instruction.op = RestartOperationFromRestartStatusPhase(doguRestart.Status.Phase); instruction.op == ignore {
 		// early exit to prevent unnecessary dogu loading
@@ -108,8 +123,9 @@ func (r *DoguRestartReconciler) createRestartInstruction(ctx context.Context, re
 	}
 
 	if !dogu.IsV2() {
-		instruction.op = handleGetDoguRestartFailed
-		instruction.err = fmt.Errorf("the referenced dogu in dogurestart %q is not dogu api version v2, the operator currently only supports v2 dogus", req.NamespacedName)
+		// new restarts of v3 dogus have no conditions yet; without this check the dogu would be stopped like a v2 dogu
+		logging.Debug(ctx, "dogu is not a v2 dogu, restart belongs to the DoguRestartV3Reconciler, ignoring")
+		instruction.op = ignore
 		return
 	}
 

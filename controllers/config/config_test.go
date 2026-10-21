@@ -442,3 +442,38 @@ func Test_getDoguV3Enabled(t *testing.T) {
 		})
 	}
 }
+
+func Test_getWarpMenuDisabledV2Dogus(t *testing.T) {
+	tests := []struct {
+		name      string
+		envSetter func(t *testing.T)
+		want      []string
+	}{
+		{
+			name: "should return nil if no env var is defined",
+			want: nil,
+		},
+		{
+			name: "should return dogu slice if env var is defined",
+			envSetter: func(t *testing.T) {
+				t.Setenv(envVarWarpMenuDisabledV2Dogus, `["grafana", "jenkins"]`)
+			},
+			want: []string{"grafana", "jenkins"},
+		},
+		{
+			name: "should return nil if env var is invalid",
+			envSetter: func(t *testing.T) {
+				t.Setenv(envVarWarpMenuDisabledV2Dogus, `["grafana": "invalid", "jenkins"]`)
+			},
+			want: nil,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.envSetter != nil {
+				tt.envSetter(t)
+			}
+			assert.Equalf(t, tt.want, getWarpMenuDisabledV2Dogus(), "getWarpMenuDisabledV2Dogus()")
+		})
+	}
+}
