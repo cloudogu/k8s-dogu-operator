@@ -8,6 +8,7 @@ import (
 	"github.com/cloudogu/k8s-dogu-lib/v3/api/v3beta1"
 	stepsv3 "github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv3"
 	fluxstate "github.com/cloudogu/k8s-dogu-operator/v3/internal/flux"
+	"github.com/cloudogu/k8s-dogu-operator/v3/internal/logging"
 	flux "github.com/fluxcd/helm-controller/api/v2"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metautil "k8s.io/apimachinery/pkg/api/meta"
@@ -33,6 +34,10 @@ func NewHelmReleaseStatusStep(k8sClient K8sClient, recorder EventRecorder) *Helm
 }
 
 func (hrs *HelmReleaseStatusStep) Run(ctx context.Context, doguResource *v3beta1.Dogu) stepsv3.StepResult {
+	if doguResource.Spec.PauseReconciliation {
+		logging.Debug(ctx, "Skipping HelmReleaseStatusStep because pausedReconciliation is set for dogu", "dogu", doguResource.Name)
+		return stepsv3.Continue()
+	}
 	// Get the HelmRelease
 	release := &flux.HelmRelease{}
 	err := hrs.k8sClient.Get(ctx, client.ObjectKey{Namespace: doguResource.Namespace, Name: doguResource.Spec.Name}, release)
