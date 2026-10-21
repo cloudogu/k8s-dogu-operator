@@ -12,6 +12,7 @@ import (
 	"github.com/cloudogu/k8s-dogu-lib/v3/api/v3beta1"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/resource"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv3"
+	"github.com/fluxcd/pkg/apis/meta"
 	flux "github.com/fluxcd/source-controller/api/v1"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -199,6 +200,10 @@ func TestEnsureOCIRepositoryStep_Run(t *testing.T) {
 				doguResource := testDoguResource.DeepCopy()
 				doguResource.Spec.PauseReconciliation = true
 				existingRepo := testRepository.DeepCopy()
+				existingRepo.Spec.Provider = flux.GenericOCIProvider
+				existingRepo.Spec.Timeout = &metav1.Duration{Duration: 60 * time.Second}
+				existingRepo.Spec.SecretRef = &meta.LocalObjectReference{Name: containerRegistrySecret}
+				existingRepo.Spec.Interval = metav1.Duration{Duration: time.Hour * 6}
 				existingRepo.Labels = map[string]string{
 					labelKeyFluxSharding:     resource.LabelValueCes,
 					v3beta1.DoguLabelName:    testDoguName,

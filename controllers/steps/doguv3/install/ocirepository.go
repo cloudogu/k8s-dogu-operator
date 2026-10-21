@@ -3,6 +3,7 @@ package install
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"time"
 
 	"github.com/cloudogu/dogu-lib/doguv3"
@@ -150,10 +151,7 @@ func (eor *EnsureOCIRepositoryStep) checkForPendingChanges(ctx context.Context, 
 }
 
 func checkForChanges(actual *flux.OCIRepository, desired *flux.OCIRepository) bool {
-	if actual.Spec.URL != desired.Spec.URL {
-		return true
-	}
-	if actual.Spec.Reference.Tag != desired.Spec.Reference.Tag {
+	if !reflect.DeepEqual(actual.Spec, desired.Spec) {
 		return true
 	}
 	for key := range desired.Labels {
