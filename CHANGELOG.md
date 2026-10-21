@@ -8,6 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - [#367] Warning condition and event when activating the export mode for V3 Dogus because is not implemented
 
+## [v3.35.0] - 2026-10-20
+### Added
+- [#341] Experimental helmfile support
+
+## [v3.34.0] - 2026-10-19
+### Added
+- [#365] Add new option to disable warp menu entries for v2 dogus
+  - See `controllerManager.env.warpMenuDisabledV2Dogus` in `values.yaml`
 ### Changed
 - [#362] Replace the logrus based logger with zap, which is the standard logging backend for operators built on controller-runtime.
   - The log output is now JSON by default. The new environment variable `LOG_FORMAT` switches between `json` and `text`.

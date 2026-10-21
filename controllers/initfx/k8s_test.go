@@ -159,6 +159,13 @@ func TestNewK8sClient(t *testing.T) {
 	})
 }
 
+func TestNewAPIReader(t *testing.T) {
+	mgrMock := newMockK8sManager(t)
+	reader := newMockK8sClient(t)
+	mgrMock.EXPECT().GetAPIReader().Return(reader)
+	assert.Same(t, reader, NewAPIReader(mgrMock))
+}
+
 func TestNewPersistentVolumeClaimInterface(t *testing.T) {
 	t.Run("should successfully create pvc interface", func(t *testing.T) {
 		// given

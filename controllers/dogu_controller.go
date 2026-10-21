@@ -11,6 +11,7 @@ import (
 	"github.com/cloudogu/k8s-dogu-lib/v3/api/v3beta1"
 	doguClientV2 "github.com/cloudogu/k8s-dogu-lib/v3/client/typed/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv2/helmfile"
 	"github.com/cloudogu/k8s-dogu-operator/v3/internal/logging"
 	expositionv1 "github.com/cloudogu/k8s-exposition-lib/api/v1"
 	warpmenuentryv1 "github.com/cloudogu/k8s-warp-menu-entry-lib/api/v1"
@@ -223,9 +224,10 @@ func (r *DoguReconciler) setupWithManager(mgr ctrlManager) error {
 		return err
 	}
 
+	// use the helmfile.LifecyclePredicate to differentiate between Helmfile and normal Dogus
 	controllerBuilder := ctrl.NewControllerManagedBy(mgr).
 		For(&doguv2.Dogu{}, builder.WithPredicates(predicate.Or(
-			predicate.GenerationChangedPredicate{},
+			helmfile.LifecyclePredicate{},
 			predicate.Funcs{UpdateFunc: v3HealthyStatusChanged},
 		))).
 		Owns(&coreV1.ConfigMap{}).
