@@ -55,7 +55,6 @@ type desiredState struct {
 
 func (shr *SuspendHelmReleaseStep) Run(ctx context.Context, doguResource *doguv3.Dogu) stepsv3.StepResult {
 	// get Helm release if it exists
-	logging.Debug(ctx, "Entering SuspendHelmReleaseStep.Run", "dogu", doguResource.Name)
 	helmRelease, err := shr.existingHelmRelease(ctx, doguResource)
 	if err != nil {
 		return stepsv3.RequeueWithError(err, doguv3.ReasonInstalling)
