@@ -135,6 +135,7 @@ func TestExportModeStep_Run(t *testing.T) {
 				},
 				eventRecorder: func(t *testing.T, doguResource *v3beta1.Dogu) EventRecorder {
 					eventRecorderMock := NewMockEventRecorder(t)
+					eventRecorderMock.EXPECT().Event(doguResource, v1.EventTypeWarning, "ExportModeActive", "Export mode was activated but is currently not supported for V3 Dogus")
 					return eventRecorderMock
 				},
 			},

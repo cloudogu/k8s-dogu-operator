@@ -64,6 +64,7 @@ func (ems *ExportModeStep) Run(ctx context.Context, doguResource *v3beta1.Dogu) 
 	}
 
 	// Update condition with correct values
+	ems.eventRecorder.Event(doguResource, corev1.EventTypeWarning, v3beta1.ConditionExportModeActive, conditionOrEventExportModeMessage)
 	return ems.setCondition(ctx, doguResource, desiredCondition)
 }
 
