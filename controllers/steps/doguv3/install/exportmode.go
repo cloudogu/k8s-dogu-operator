@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/cloudogu/k8s-dogu-lib/v3/api/v3beta1"
-	doguapply "github.com/cloudogu/k8s-dogu-lib/v3/applyconfiguration/api/v3beta1"
+	v3beta1ac "github.com/cloudogu/k8s-dogu-lib/v3/applyconfiguration/api/v3beta1"
 	stepsv3 "github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv3"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -82,13 +82,13 @@ func (ems *ExportModeStep) setCondition(ctx context.Context, doguResource *v3bet
 		WithMessage(condition.Message).
 		WithObservedGeneration(condition.ObservedGeneration).
 		WithLastTransitionTime(condition.LastTransitionTime)
-	doguApplyConfiguration := doguapply.Dogu(doguResource.Name, doguResource.Namespace).
-		WithStatus(doguapply.DoguStatus().WithConditions(conditionApplyConfiguration))
+	doguApplyConfiguration := v3beta1ac.Dogu(doguResource.Name, doguResource.Namespace).
+		WithStatus(v3beta1ac.DoguStatus().WithConditions(conditionApplyConfiguration))
 
 	return ems.applyConfiguration(ctx, doguApplyConfiguration)
 }
 
-func (ems *ExportModeStep) applyConfiguration(ctx context.Context, configuration *doguapply.DoguApplyConfiguration) stepsv3.StepResult {
+func (ems *ExportModeStep) applyConfiguration(ctx context.Context, configuration *v3beta1ac.DoguApplyConfiguration) stepsv3.StepResult {
 	err := ems.k8sClient.Status().Apply(ctx, configuration, client.FieldOwner("k8s-dogu-operator-export-mode-step"), client.ForceOwnership)
 	if err != nil {
 		return stepsv3.RequeueWithError(fmt.Errorf("failed to apply condition to status: %w", err), v3beta1.ReasonInstalling)
