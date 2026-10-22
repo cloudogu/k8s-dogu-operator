@@ -113,7 +113,9 @@ func configureHelmRelease(release *flux.HelmRelease, doguResource *doguv3.Dogu, 
 			Mode:   flux.DriftDetectionEnabled,
 			Ignore: []flux.IgnoreRule{},
 		},
-		Values: values,
+		// PVC resize, as the third possible reason for a suspension, is handled in earlier steps
+		Suspend: doguResource.Spec.Stopped || doguResource.Spec.PauseReconciliation,
+		Values:  values,
 		CommonMetadata: &flux.CommonMetadata{
 			Annotations: nil,
 			Labels: map[string]string{
@@ -126,11 +128,6 @@ func configureHelmRelease(release *flux.HelmRelease, doguResource *doguv3.Dogu, 
 				resource.CommonLabelKeyPartOf:  resource.LabelValueCes,
 			},
 		},
-	}
-	// the default of suspended is nil, so we only set it, if wanted
-	// PVC resize, as the third possible reason for a suspension, is handled in earlier steps
-	if doguResource.Spec.Stopped || doguResource.Spec.PauseReconciliation {
-		release.Spec.Suspend = true
 	}
 }
 
