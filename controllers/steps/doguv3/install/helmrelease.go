@@ -10,14 +10,13 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/resource"
 	stepsv3 "github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv3"
-	values3 "github.com/cloudogu/k8s-dogu-operator/v3/internal/dogu/values"
+	"github.com/cloudogu/k8s-dogu-operator/v3/internal/logging"
 	flux "github.com/fluxcd/helm-controller/api/v2"
 	fluxoci "github.com/fluxcd/source-controller/api/v1"
 	core "k8s.io/api/core/v1"
 	apiext "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 // EnsureHelmReleaseStep ensures the HelmRelease resource.
@@ -27,32 +26,25 @@ type EnsureHelmReleaseStep struct {
 	helmReconcileInterval metav1.Duration
 	retryInterval         metav1.Duration
 	chartService          ChartService
+	assembler             ValueAssembler
 }
 
-func NewEnsureHelmReleaseStep(k8sClient K8sClient, operatorConfig *config.OperatorConfig, chartService ChartService, recorder EventRecorder) *EnsureHelmReleaseStep {
+func NewEnsureHelmReleaseStep(k8sClient K8sClient, operatorConfig *config.OperatorConfig, chartService ChartService, assembler ValueAssembler, recorder EventRecorder) *EnsureHelmReleaseStep {
 	return &EnsureHelmReleaseStep{
 		k8sClient:             k8sClient,
 		eventRecorder:         recorder,
 		helmReconcileInterval: metav1.Duration{Duration: operatorConfig.DoguHelmReconciliationInterval},
 		retryInterval:         metav1.Duration{Duration: operatorConfig.DoguHelmRetryInterval},
 		chartService:          chartService,
+		assembler:             assembler,
 	}
-}
-
-// DesiredRelease builds the desired configuration without writing cluster resources.
-// Both the normal update and the pending comparison use this configuration.
-func (ehr *EnsureHelmReleaseStep) DesiredRelease(ctx context.Context, dogu *doguv3.Dogu) (*flux.HelmRelease, error) {
-	values, err := combineValues(ctx, dogu, ehr.chartService, values3.NewAssembler(ehr.k8sClient))
-	if err != nil {
-		return nil, err
-	}
-	release := &flux.HelmRelease{}
-	configureHelmRelease(release, dogu, values, &ehr.retryInterval, &ehr.helmReconcileInterval)
-	return release, nil
 }
 
 func (ehr *EnsureHelmReleaseStep) Run(ctx context.Context, doguResource *doguv3.Dogu) stepsv3.StepResult {
-	desired, err := ehr.DesiredRelease(ctx, doguResource)
+	if doguResource.Spec.PauseReconciliation {
+		return stepsv3.Continue()
+	}
+	combinedValues, err := combineValues(ctx, doguResource, ehr.chartService, ehr.assembler)
 	if err != nil {
 		return stepsv3.RequeueWithError(err, doguv3.ReasonInstalling)
 	}
@@ -65,7 +57,7 @@ func (ehr *EnsureHelmReleaseStep) Run(ctx context.Context, doguResource *doguv3.
 	// Use patch because the repository resource will be updated by the helm-controller.
 	// CreateOrUpdate would produce conflict errors and increase the number of reconciles.
 	result, err := controllerutil.CreateOrPatch(ctx, ehr.k8sClient, release, func() error {
-		configureHelmRelease(release, doguResource, desired.Spec.Values, &ehr.retryInterval, &ehr.helmReconcileInterval)
+		configureHelmRelease(release, doguResource, combinedValues, &ehr.retryInterval, &ehr.helmReconcileInterval)
 		return controllerutil.SetControllerReference(doguResource, release, ehr.k8sClient.Scheme())
 	})
 
@@ -76,15 +68,15 @@ func (ehr *EnsureHelmReleaseStep) Run(ctx context.Context, doguResource *doguv3.
 	switch result {
 	case controllerutil.OperationResultCreated:
 		ehr.eventRecorder.Event(doguResource, core.EventTypeNormal, doguv3.ConditionChartAvailable, "HelmRelease created")
-		log.FromContext(ctx).Info("created HelmRelease", "name", release.Name)
+		logging.Info(ctx, "created HelmRelease", "name", release.Name)
 	case controllerutil.OperationResultUpdated:
 		ehr.eventRecorder.Event(doguResource, core.EventTypeNormal, doguv3.ConditionChartAvailable, "HelmRelease updated")
-		log.FromContext(ctx).Info("updated HelmRelease", "name", release.Name)
+		logging.Info(ctx, "updated HelmRelease", "name", release.Name)
 	case controllerutil.OperationResultNone:
 		// nothing changed - HelmRelease already was exactly as desired
 	default:
 		// should not happen, as we never make changes to the HelmRelease's Status
-		log.FromContext(ctx).Info("found unexpected operation result for helm release upsert", "result", result, "helm-release", release.Name)
+		logging.Info(ctx, "found unexpected operation result for helm release upsert", "result", result, "helm-release", release.Name)
 	}
 
 	return stepsv3.Continue()
@@ -98,7 +90,6 @@ func configureHelmRelease(release *flux.HelmRelease, doguResource *doguv3.Dogu, 
 	release.Labels[doguv3.DoguLabelName] = doguResource.Spec.Name
 	release.Labels[doguv3.DoguLabelVersion] = doguResource.Spec.Version
 	release.Spec = flux.HelmReleaseSpec{
-		Suspend: release.Spec.Suspend || doguResource.Spec.Stopped,
 		ChartRef: &flux.CrossNamespaceSourceReference{
 			APIVersion: "v1",
 			Kind:       fluxoci.OCIRepositoryKind,
@@ -124,7 +115,9 @@ func configureHelmRelease(release *flux.HelmRelease, doguResource *doguv3.Dogu, 
 			Mode:   flux.DriftDetectionEnabled,
 			Ignore: []flux.IgnoreRule{},
 		},
-		Values: values,
+		// PVC resize, as the third possible reason for a suspension, is handled in earlier steps
+		Suspend: doguResource.Spec.Stopped || doguResource.Spec.PauseReconciliation,
+		Values:  values,
 		CommonMetadata: &flux.CommonMetadata{
 			Annotations: nil,
 			Labels: map[string]string{

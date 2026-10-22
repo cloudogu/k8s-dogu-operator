@@ -6,9 +6,10 @@ import (
 	"time"
 
 	"github.com/cloudogu/k8s-dogu-lib/v3/api/v3beta1"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
 	stepsv3 "github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv3"
-	"github.com/cloudogu/k8s-dogu-operator/v3/internal/dogu/pending"
 	fluxstate "github.com/cloudogu/k8s-dogu-operator/v3/internal/flux"
+	"github.com/cloudogu/k8s-dogu-operator/v3/internal/logging"
 	flux "github.com/fluxcd/helm-controller/api/v2"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metautil "k8s.io/apimachinery/pkg/api/meta"
@@ -22,65 +23,64 @@ const longWaitRequeueAfter = 5 * time.Minute
 
 // HelmReleaseStatusStep translates the state of the dogu's HelmRelease and its workloads into the conditions of the dogu resource.
 type HelmReleaseStatusStep struct {
-	k8sClient     K8sClient
-	releaseReader *fluxstate.HelmReleaseReader
-	eventRecorder EventRecorder
+	k8sClient             K8sClient
+	eventRecorder         EventRecorder
+	chartService          ChartService
+	assembler             ValueAssembler
+	releaseReader         *fluxstate.HelmReleaseReader
+	helmReconcileInterval metav1.Duration
+	retryInterval         metav1.Duration
 }
 
-func NewHelmReleaseStatusStep(k8sClient K8sClient, releaseReader *fluxstate.HelmReleaseReader, recorder EventRecorder) *HelmReleaseStatusStep {
+func NewHelmReleaseStatusStep(
+	k8sClient K8sClient,
+	chartService ChartService,
+	assembler ValueAssembler,
+	operatorConfig *config.OperatorConfig,
+	releaseReader *fluxstate.HelmReleaseReader,
+	recorder EventRecorder,
+) *HelmReleaseStatusStep {
 	return &HelmReleaseStatusStep{
-		k8sClient:     k8sClient,
-		releaseReader: releaseReader,
-		eventRecorder: recorder,
+		k8sClient:             k8sClient,
+		eventRecorder:         recorder,
+		chartService:          chartService,
+		assembler:             assembler,
+		releaseReader:         releaseReader,
+		helmReconcileInterval: metav1.Duration{Duration: operatorConfig.DoguHelmReconciliationInterval},
+		retryInterval:         metav1.Duration{Duration: operatorConfig.DoguHelmRetryInterval},
 	}
-}
-
-// PendingChange compares the desired release with Flux and Helm data without changing resources.
-func (hrs *HelmReleaseStatusStep) PendingChange(ctx context.Context, dogu *v3beta1.Dogu, desired *flux.HelmRelease) (pending.PendingChange, error) {
-	release := &flux.HelmRelease{}
-	err := hrs.k8sClient.Get(ctx, client.ObjectKey{Namespace: dogu.Namespace, Name: dogu.Spec.Name}, release)
-	if errors.IsNotFound(err) {
-		return pending.PendingReleaseChange(nil, desired, nil, dogu.Spec.Version), nil
-	}
-	if err != nil {
-		return pending.PendingChange{Status: metav1.ConditionUnknown, Message: "The HelmRelease could not be read"}, fmt.Errorf("failed to read HelmRelease for pending changes: %w", err)
-	}
-	// Detect known differences before reading Helm's release secret.
-	change := pending.PendingReleaseChange(release, desired, nil, dogu.Spec.Version)
-	if change.Status != metav1.ConditionUnknown || desired == nil {
-		return change, nil
-	}
-	// Complete the comparison with the values and manifest stored by Helm.
-	stored, err := hrs.releaseReader.StoredRelease(release)
-	if err != nil {
-		return change, err
-	}
-	return pending.PendingReleaseChange(release, desired, stored, dogu.Spec.Version), nil
 }
 
 func (hrs *HelmReleaseStatusStep) Run(ctx context.Context, doguResource *v3beta1.Dogu) stepsv3.StepResult {
-	if doguResource.Spec.PauseReconciliation {
-		return stepsv3.Abort(v3beta1.ReasonPauseReconciliation, "Dogu reconciliation is paused")
-	}
 	// Get the HelmRelease
 	release := &flux.HelmRelease{}
 	err := hrs.k8sClient.Get(ctx, client.ObjectKey{Namespace: doguResource.Namespace, Name: doguResource.Spec.Name}, release)
 	// cache lag
 	if errors.IsNotFound(err) {
+		if doguResource.Spec.PauseReconciliation || doguResource.Spec.Stopped {
+			return hrs.checkPendingChanges(ctx, doguResource, nil)
+		}
 		return stepsv3.RequeueAfter(defaultRequeueAfter, v3beta1.ReasonInstalling, err.Error())
 	}
 	if err != nil {
 		return stepsv3.RequeueWithError(fmt.Errorf("failed to get HelmRelease: %w", err), v3beta1.ReasonInstalling)
 	}
+
+	if doguResource.Spec.PauseReconciliation || doguResource.Spec.Stopped {
+		if result := hrs.checkPendingChanges(ctx, doguResource, release); !result.Continue {
+			return result
+		}
+		if doguResource.Spec.PauseReconciliation {
+			return stepsv3.Continue()
+		}
+	}
+
 	if release.Spec.Suspend {
-		// A confirmed stop does not need a rollout; the release stays suspended.
 		if doguResource.Spec.Stopped && doguResource.Status.Stopped {
 			return stepsv3.Continue()
 		}
-		// Starting requires the separate suspension step to let Flux apply the prepared release.
 		return stepsv3.RequeueAfter(defaultRequeueAfter, v3beta1.ReasonStarting, "Waiting for the suspension step to release the prepared HelmRelease")
 	}
-	// Do not confirm a stop while Flux can still apply the release.
 	if doguResource.Spec.Stopped {
 		return stepsv3.RequeueAfter(defaultRequeueAfter, v3beta1.ReasonStopping, "Waiting for HelmRelease suspension")
 	}
@@ -89,10 +89,10 @@ func (hrs *HelmReleaseStatusStep) Run(ctx context.Context, doguResource *v3beta1
 
 	state := fluxstate.EvaluateRelease(release, desired)
 
-	return hrs.stepResultForRelease(state, doguResource)
+	return hrs.stepResultForRelease(ctx, state, doguResource)
 }
 
-func (hrs *HelmReleaseStatusStep) stepResultForRelease(state fluxstate.ReleaseState, doguResource *v3beta1.Dogu) stepsv3.StepResult {
+func (hrs *HelmReleaseStatusStep) stepResultForRelease(ctx context.Context, state fluxstate.ReleaseState, doguResource *v3beta1.Dogu) stepsv3.StepResult {
 	reason := v3beta1.ReasonInstalling
 	if state.EverDeployed {
 		reason = v3beta1.ReasonUpgrading
@@ -110,14 +110,14 @@ func (hrs *HelmReleaseStatusStep) stepResultForRelease(state fluxstate.ReleaseSt
 	case fluxstate.PhaseUpgradeFailed:
 		return stepsv3.Abort(v3beta1.ReasonUpgradeFailed, state.Message)
 	case fluxstate.PhaseDeployed:
-		return stepResultForDeployed(doguResource)
+		return stepResultForDeployed(ctx, doguResource)
 	default:
 		return stepsv3.RequeueWithError(fmt.Errorf("unknown release phase %q", state.Phase), reason)
 	}
 }
 
 // stepResultForDeployed derives the Ready condition of a deployed dogu from its Healthy condition.
-func stepResultForDeployed(doguResource *v3beta1.Dogu) stepsv3.StepResult {
+func stepResultForDeployed(ctx context.Context, doguResource *v3beta1.Dogu) stepsv3.StepResult {
 	healthy := metautil.FindStatusCondition(doguResource.Status.Conditions, v3beta1.ConditionHealthy)
 	if healthy == nil {
 		return stepsv3.RequeueAfter(longWaitRequeueAfter, v3beta1.ReasonWorkloadsNotReady, "Waiting for the health check of the dogu")
@@ -126,6 +126,6 @@ func stepResultForDeployed(doguResource *v3beta1.Dogu) stepsv3.StepResult {
 	if healthy.Status != metav1.ConditionTrue || healthy.ObservedGeneration < doguResource.Generation {
 		return stepsv3.RequeueAfter(longWaitRequeueAfter, v3beta1.ReasonWorkloadsNotReady, healthy.Message)
 	}
-
+	logging.Info(ctx, "Dogu's Helm release is deployed and healthy", "dogu", doguResource.Name)
 	return stepsv3.Continue()
 }

@@ -50,9 +50,10 @@ func NewDoguV3UseCases(
 	waitStep := install.NewWaitForOCIRepositoryReadyStep(k8sClient, recorder)
 	validateStep := install.NewValidateChartStep(chartService, assembler, k8sClient)
 	suspendStep := install.NewSuspendHelmReleaseStep(k8sClient, chartService, assembler, resizeChecker, recorder)
-	helmReleaseStep := install.NewEnsureHelmReleaseStep(k8sClient, operatorConfig, chartService, recorder)
-	helmReleaseStatusStep := install.NewHelmReleaseStatusStep(k8sClient, releaseReader, recorder)
+	helmReleaseStep := install.NewEnsureHelmReleaseStep(k8sClient, operatorConfig, chartService, assembler, recorder)
+	helmReleaseStatusStep := install.NewHelmReleaseStatusStep(k8sClient, chartService, assembler, operatorConfig, releaseReader, recorder)
 	exportModeStep := install.NewExportModeStep(k8sClient, recorder)
+	updatePendingStep := install.NewUpdatePendingStep(k8sClient)
 
 	unsuspendStep := deletion.NewUnsuspendHelmReleaseStep(k8sClient, recorder)
 	deleteHelmReleaseStep := deletion.NewDeleteHelmReleaseStep(k8sClient, recorder)
@@ -63,7 +64,7 @@ func NewDoguV3UseCases(
 	migrationPreconditionsStep := migration.NewMigrationPreconditionsStep(detector, recorder)
 	migrationPendingStep := migration.NewMigrationPendingStep(detector, recorder)
 
-	installUseCase := NewDoguInstallOrChangeUseCase(finalizerStep, ociStep, waitStep, validateStep, suspendStep, helmReleaseStep, helmReleaseStatusStep, exportModeStep, k8sClient, recorder)
+	installUseCase := NewDoguInstallOrChangeUseCase(finalizerStep, ociStep, waitStep, validateStep, suspendStep, helmReleaseStep, helmReleaseStatusStep, updatePendingStep, exportModeStep, k8sClient, recorder)
 	migrationUseCase := NewDoguMigrationUseCase(finalizerStep, migrationPreconditionsStep, ociStep, waitStep, validateStep, migrationPendingStep, k8sClient, recorder)
 	deleteUseCase := NewDoguDeleteUseCase(unsuspendStep, deleteHelmReleaseStep, deleteOCIRepositoryStep, removeFinalizerStep, k8sClient, recorder)
 

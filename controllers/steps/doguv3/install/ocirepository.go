@@ -11,7 +11,6 @@ import (
 	"github.com/cloudogu/k8s-dogu-lib/v3/api/v3beta1"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/resource"
 	stepsv3 "github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv3"
-	"github.com/cloudogu/k8s-dogu-operator/v3/internal/dogu/pending"
 	"github.com/cloudogu/k8s-dogu-operator/v3/internal/logging"
 	"github.com/fluxcd/pkg/apis/meta"
 	flux "github.com/fluxcd/source-controller/api/v1"
@@ -44,11 +43,6 @@ func NewEnsureOCIRepositoryStep(k8sClient K8sClient, doguRegistry DoguRegistryRe
 		doguRegistry:  doguRegistry,
 		eventRecorder: recorder,
 	}
-}
-
-// PendingChange is a placeholder until the OCI comparison is implemented in the pause/resume story.
-func (eor *EnsureOCIRepositoryStep) PendingChange(ctx context.Context, dogu *v3beta1.Dogu) (pending.PendingChange, error) {
-	return pending.PendingChange{Status: metav1.ConditionUnknown, Message: "The chart source comparison is not implemented yet"}, nil
 }
 
 func (eor *EnsureOCIRepositoryStep) Run(ctx context.Context, doguResource *v3beta1.Dogu) stepsv3.StepResult {

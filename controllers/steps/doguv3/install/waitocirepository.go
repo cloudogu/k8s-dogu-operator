@@ -49,10 +49,6 @@ func (wor *WaitForOCIRepositoryReadyStep) Run(ctx context.Context, doguResource 
 		return stepsv3.RequeueWithError(fmt.Errorf("failed to get OCIRepository: %w", err), v3beta1.ReasonInstalling)
 	}
 
-	ready := metautil.FindStatusCondition(repo.Status.Conditions, meta.ReadyCondition)
-	if ready != nil && ready.ObservedGeneration < repo.Generation {
-		return stepsv3.RequeueAfter(defaultRequeueAfter, v3beta1.ReasonInstalling, "Waiting for the current OCIRepository generation")
-	}
 	// Not ready yet, update status and requeue
 	if !metautil.IsStatusConditionTrue(repo.Status.Conditions, meta.ReadyCondition) {
 		return wor.updateChartUnavailableStatus(ctx, doguResource, repo)

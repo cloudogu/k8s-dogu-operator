@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"slices"
 	"testing"
 	"time"
 
@@ -11,15 +12,14 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv3"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv3/deletion"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv3/install"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv3/migration"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
@@ -62,6 +62,7 @@ func TestNewDoguInstallOrChangeUseCase(t *testing.T) {
 	helmReleaseStep := &install.EnsureHelmReleaseStep{}
 	helmReleaseStatusStep := &install.HelmReleaseStatusStep{}
 	exportModeStep := &install.ExportModeStep{}
+	updatePendingStep := &install.UpdatePendingStep{}
 
 	got := NewDoguInstallOrChangeUseCase(
 		finalizerStep,
@@ -71,6 +72,7 @@ func TestNewDoguInstallOrChangeUseCase(t *testing.T) {
 		suspendStep,
 		helmReleaseStep,
 		helmReleaseStatusStep,
+		updatePendingStep,
 		exportModeStep,
 		clientMock,
 		recorderMock,
@@ -86,12 +88,51 @@ func TestNewDoguInstallOrChangeUseCase(t *testing.T) {
 		"*install.StopWorkloadsStep",
 		"*install.EnsureHelmReleaseStep",
 		"*install.HelmReleaseStatusStep",
+		"*install.UpdatePendingStep",
 	}
 
 	assert.NotNil(t, got)
 	assert.Equal(t, clientMock, got.k8sClient)
 	assert.Equal(t, recorderMock, got.eventRecorder)
-	assert.Equal(t, wantTypes, typesOf(got.steps))
+	require.True(t,
+		slices.Equal(typesOf(got.steps), wantTypes),
+		"order mismatch: got=%v want=%v",
+		typesOf(got.steps), wantTypes,
+	)
+}
+
+func TestNewDoguMigrationUseCase(t *testing.T) {
+	clientMock := NewMockK8sClient(t)
+	recorderMock := NewMockEventRecorder(t)
+
+	got := NewDoguMigrationUseCase(
+		&install.CreateFinalizerStep{},
+		&migration.MigrationPreconditionsStep{},
+		&install.EnsureOCIRepositoryStep{},
+		&install.WaitForOCIRepositoryReadyStep{},
+		&install.ValidateChartStep{},
+		&migration.MigrationPendingStep{},
+		clientMock,
+		recorderMock,
+	)
+
+	wantTypes := []string{
+		"*install.CreateFinalizerStep",
+		"*migration.MigrationPreconditionsStep",
+		"*install.EnsureOCIRepositoryStep",
+		"*install.WaitForOCIRepositoryReadyStep",
+		"*install.ValidateChartStep",
+		"*migration.MigrationPendingStep",
+	}
+
+	assert.NotNil(t, got)
+	assert.Equal(t, clientMock, got.k8sClient)
+	assert.Equal(t, recorderMock, got.eventRecorder)
+	require.True(t,
+		slices.Equal(typesOf(got.steps), wantTypes),
+		"order mismatch: got=%v want=%v",
+		typesOf(got.steps), wantTypes,
+	)
 }
 
 func TestNewDoguDeleteUseCase(t *testing.T) {
@@ -121,7 +162,11 @@ func TestNewDoguDeleteUseCase(t *testing.T) {
 	assert.NotNil(t, got)
 	assert.Equal(t, clientMock, got.k8sClient)
 	assert.Equal(t, recorderMock, got.eventRecorder)
-	assert.Equal(t, wantTypes, typesOf(got.steps))
+	require.True(t,
+		slices.Equal(typesOf(got.steps), wantTypes),
+		"order mismatch: got=%v want=%v",
+		typesOf(got.steps), wantTypes,
+	)
 }
 
 func typesOf[T any](xs []T) []string {
@@ -169,10 +214,12 @@ func TestDoguUseCase_HandleUntilApplied(t *testing.T) {
 			},
 		},
 		{
-			name: "should finish without success condition or event when the dogu is being deleted",
+			name: "should finish deletion even when the dogu is paused and stopped",
 			setup: func(t *testing.T) (K8sClient, EventRecorder, *v3beta1.Dogu, []Step) {
 				successStepResult := doguv3.StepResult{Continue: true}
 				doguResource := testDoguResource.DeepCopy()
+				doguResource.Spec.PauseReconciliation = true
+				doguResource.Spec.Stopped = true
 				now := metav1.Now()
 				doguResource.DeletionTimestamp = &now
 				// The fake client only accepts an object carrying a deletion timestamp if it has a finalizer.
@@ -402,78 +449,6 @@ func TestDoguUseCase_HandleUntilApplied(t *testing.T) {
 			if tt.assertFn != nil {
 				tt.assertFn(t, doguResource)
 			}
-		})
-	}
-}
-
-func TestDoguUseCase_StartClearsStoppedStatus(t *testing.T) {
-	for _, stopped := range []bool{false, true} {
-		t.Run(fmt.Sprintf("previously stopped=%t", stopped), func(t *testing.T) {
-			dogu := testDoguResource.DeepCopy()
-			dogu.Generation = 3
-			dogu.Status.Stopped = stopped
-			dogu.Status.Conditions = []metav1.Condition{
-				{Type: v3beta1.ConditionStopped, Status: metav1.ConditionFalse, Reason: v3beta1.ReasonPartiallyStopped,
-					Message: "Waiting for all dogu workloads and Pods to stop", ObservedGeneration: 2},
-				{Type: v3beta1.ConditionReady, Status: metav1.ConditionTrue, Reason: v3beta1.ReasonSucceeded,
-					Message: "Dogu reconciliation completed successfully", ObservedGeneration: dogu.Generation},
-			}
-			k8s := fake.NewClientBuilder().WithScheme(testScheme).WithStatusSubresource(dogu).WithObjects(dogu).Build()
-			step := NewMockStep(t)
-			step.EXPECT().Run(mock.Anything, dogu).Return(doguv3.Continue())
-			useCase := &DoguUseCase{steps: []Step{step}, k8sClient: k8s, eventRecorder: record.NewFakeRecorder(1)}
-
-			delay, err := useCase.HandleUntilApplied(testCtx, dogu)
-			require.NoError(t, err)
-			assert.Zero(t, delay)
-			require.NoError(t, k8s.Get(testCtx, client.ObjectKeyFromObject(dogu), dogu))
-			assert.False(t, dogu.Status.Stopped)
-			condition := meta.FindStatusCondition(dogu.Status.Conditions, v3beta1.ConditionStopped)
-			require.NotNil(t, condition)
-			assert.Equal(t, metav1.ConditionFalse, condition.Status)
-			assert.Equal(t, v3beta1.ReasonNotStopped, condition.Reason)
-			assert.Equal(t, "Dogu workloads are running", condition.Message)
-			assert.Equal(t, dogu.Generation, condition.ObservedGeneration)
-		})
-	}
-}
-
-func TestDoguUseCase_DeletionPreservesPending(t *testing.T) {
-	for _, tc := range []struct {
-		name   string
-		result doguv3.StepResult
-	}{
-		{name: "waiting", result: doguv3.RequeueAfter(5*time.Second, "Deleting", "Waiting for HelmRelease deletion")},
-		{name: "failed", result: doguv3.RequeueWithError(assert.AnError, "DeletionFailed")},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			dogu := testDoguResource.DeepCopy()
-			dogu.Spec.Stopped = true
-			now := metav1.Now()
-			dogu.DeletionTimestamp = &now
-			dogu.Finalizers = []string{"test.cloudogu.com/cleanup"}
-			dogu.Status.Conditions = []metav1.Condition{{
-				Type: v3beta1.ConditionUpdatePending, Status: metav1.ConditionFalse,
-				Reason: v3beta1.ReasonSucceeded, Message: "No changes are pending",
-			}}
-			pendingBefore := dogu.Status.Conditions[0]
-			k8s := fake.NewClientBuilder().WithScheme(testScheme).WithStatusSubresource(dogu).WithObjects(dogu).Build()
-			step := NewMockStep(t)
-			step.EXPECT().Run(mock.Anything, dogu).Return(tc.result)
-			useCase := &DoguUseCase{steps: []Step{step}, k8sClient: k8s}
-			delay, err := useCase.HandleUntilApplied(testCtx, dogu)
-			if tc.result.Err != nil {
-				require.ErrorIs(t, err, tc.result.Err)
-			} else {
-				require.NoError(t, err)
-				assert.Equal(t, 5*time.Second, delay)
-			}
-			require.NoError(t, k8s.Get(testCtx, client.ObjectKeyFromObject(dogu), dogu))
-			assert.Equal(t, &pendingBefore, meta.FindStatusCondition(dogu.Status.Conditions, v3beta1.ConditionUpdatePending))
-			ready := meta.FindStatusCondition(dogu.Status.Conditions, v3beta1.ConditionReady)
-			require.NotNil(t, ready)
-			assert.Equal(t, metav1.ConditionFalse, ready.Status)
-			assert.Equal(t, tc.result.ReadyReason, ready.Reason)
 		})
 	}
 }
