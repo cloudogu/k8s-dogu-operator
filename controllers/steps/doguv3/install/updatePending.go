@@ -11,7 +11,7 @@ import (
 
 // UpdatePendingStep resets any UpdatePending condition to false, if the PauseReconciliation flag is set to false.
 // It also resets the condition if the PauseReconciliation flag is set to true, but the UpdatePending condition is
-// only set for an oder resource generation - because that indicates, that no changes would be made to OCIRepository
+// only set for an older resource generation - because that indicates, that no changes would be made to OCIRepository
 // or HelmRelease based on the _current_ dogu resource version.
 type UpdatePendingStep struct {
 	client K8sClient
