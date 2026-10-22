@@ -59,7 +59,7 @@ func NewDoguV3UseCases(
 	migrationPreconditionsStep := migration.NewMigrationPreconditionsStep(detector, recorder)
 	migrationPendingStep := migration.NewMigrationPendingStep(detector, recorder)
 
-	installUseCase := NewDoguInstallOrChangeUseCase(finalizerStep, ociStep, waitStep, validateStep, helmReleaseStep, helmReleaseStatusStep, k8sClient, recorder)
+	installUseCase := NewDoguInstallOrChangeUseCase(finalizerStep, ociStep, waitStep, validateStep, helmReleaseStep, helmReleaseStatusStep, exportModeStep, k8sClient, recorder)
 	migrationUseCase := NewDoguMigrationUseCase(finalizerStep, migrationPreconditionsStep, ociStep, waitStep, validateStep, migrationPendingStep, k8sClient, recorder)
 	deleteUseCase := NewDoguDeleteUseCase(unsuspendStep, deleteHelmReleaseStep, deleteOCIRepositoryStep, removeFinalizerStep, k8sClient, recorder)
 
