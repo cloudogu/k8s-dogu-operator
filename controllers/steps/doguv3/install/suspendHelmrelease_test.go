@@ -35,7 +35,7 @@ func TestSuspendHelmReleaseStep_Run(t *testing.T) {
 			name:            "suspend for paused Dogu",
 			existingRelease: true,
 			doguPaused:      true,
-			wantResult:      stepsv3.RequeueAfter(defaultRequeueAfter, ReasonReconciliationPaused, messageReconciliationPaused),
+			wantResult:      stepsv3.Continue(),
 			wantSuspended:   true,
 			wantCondition:   ReasonReconciliationPaused,
 		},
@@ -43,7 +43,7 @@ func TestSuspendHelmReleaseStep_Run(t *testing.T) {
 			name:            "suspend for stopped Dogu",
 			existingRelease: true,
 			doguStopped:     true,
-			wantResult:      stepsv3.RequeueAfter(defaultRequeueAfter, ReasonDoguStopped, messageDoguStopped),
+			wantResult:      stepsv3.Continue(),
 			wantSuspended:   true,
 			wantCondition:   ReasonDoguStopped,
 		},
@@ -52,7 +52,7 @@ func TestSuspendHelmReleaseStep_Run(t *testing.T) {
 			existingRelease:  true,
 			resizeRelevant:   true,
 			resizeInProgress: true,
-			wantResult:       stepsv3.RequeueAfter(defaultRequeueAfter, ReasonPVCResizeInProgress, messagePVCResizeInProgress),
+			wantResult:       stepsv3.Continue(),
 			wantSuspended:    true,
 			wantCondition:    ReasonPVCResizeInProgress,
 		},
@@ -61,7 +61,7 @@ func TestSuspendHelmReleaseStep_Run(t *testing.T) {
 			existingRelease:  true,
 			alreadySuspended: true,
 			resizeRelevant:   true,
-			wantResult:       stepsv3.RequeueAfter(defaultRequeueAfter, ReasonNotSuspended, messageNotSuspended),
+			wantResult:       stepsv3.Continue(),
 			wantCondition:    ReasonNotSuspended,
 		},
 		{
@@ -136,7 +136,8 @@ func newSuspendRunTestClient(t *testing.T, dogu *doguv3.Dogu, existingRelease, a
 
 func newSuspendRunChartService(t *testing.T, dogu *doguv3.Dogu, test suspendHelmReleaseRunCase) *MockChartService {
 	chartService := NewMockChartService(t)
-	if !test.existingRelease {
+	// without a release of if the dogu is stopped or paused, we need not call the chart service
+	if !test.existingRelease || test.doguStopped || test.doguPaused {
 		return chartService
 	}
 	chartService.EXPECT().DoguMetaValues(mock.Anything, dogu).Return(nil, false, nil)
@@ -171,7 +172,10 @@ func assertSuspendRunResult(t *testing.T, k8sClient client.Client, dogu *doguv3.
 		return
 	}
 	require.NoError(t, err)
-	assert.Equal(t, test.wantSuspended, release.Spec.Suspend)
+	if test.wantSuspended {
+		// setting suspend to false is done automatically by the helm release step
+		assert.True(t, release.Spec.Suspend)
+	}
 	if test.wantCondition != "" {
 		assertSuspendTestCondition(t, k8sClient, dogu, test.wantCondition)
 	}
@@ -293,12 +297,15 @@ func TestSuspendHelmReleaseStep_ChangeSuspendValueOfHelmRelease(t *testing.T) {
 				k8sClient := newSuspendTestClient(t, release)
 				step := NewSuspendHelmReleaseStep(k8sClient, nil, nil, nil, nil)
 
-				_, err := step.setSuspendValueOfHelmRelease(t.Context(), release, test.desired)
+				err := step.setSuspendValueOfHelmRelease(t.Context(), release, test.desired)
 
 				require.NoError(t, err)
 				updated := &flux.HelmRelease{}
 				require.NoError(t, k8sClient.Get(t.Context(), client.ObjectKeyFromObject(release), updated))
-				assert.Equal(t, test.desired, updated.Spec.Suspend)
+				if test.desired {
+					// setting suspend to false is done automatically by the helm release step
+					assert.True(t, updated.Spec.Suspend)
+				}
 				assert.Equal(t, test.initial, release.Spec.Suspend)
 			})
 		}
@@ -317,7 +324,7 @@ func TestSuspendHelmReleaseStep_ChangeSuspendValueOfHelmRelease(t *testing.T) {
 			Build()
 		step := NewSuspendHelmReleaseStep(clientWithError, nil, nil, nil, nil)
 
-		_, err := step.setSuspendValueOfHelmRelease(t.Context(), &flux.HelmRelease{
+		err := step.setSuspendValueOfHelmRelease(t.Context(), &flux.HelmRelease{
 			Name: dogu.Spec.Name, Namespace: dogu.Namespace,
 		}, true)
 
@@ -325,11 +332,9 @@ func TestSuspendHelmReleaseStep_ChangeSuspendValueOfHelmRelease(t *testing.T) {
 	})
 }
 
-func TestSuspendHelmReleaseStep_suspensionReason(t *testing.T) {
+func TestSuspendHelmReleaseStep_expectedState(t *testing.T) {
 	tests := []struct {
 		name            string
-		pause           bool
-		stopped         bool
 		checkResult     pvc.CheckResult
 		noCheckExpected bool
 		checkError      error
@@ -339,21 +344,6 @@ func TestSuspendHelmReleaseStep_suspensionReason(t *testing.T) {
 		wantMessage     string
 		wantErrorText   string
 	}{
-		{
-			name:            "pause takes precedence",
-			pause:           true,
-			stopped:         true,
-			noCheckExpected: true,
-			wantReason:      ReasonReconciliationPaused,
-			wantMessage:     messageReconciliationPaused,
-		},
-		{
-			name:            "stopped Dogu",
-			stopped:         true,
-			noCheckExpected: true,
-			wantReason:      ReasonDoguStopped,
-			wantMessage:     messageDoguStopped,
-		},
 		{
 			name:        "PVC resize in progress",
 			checkResult: pvc.CheckResult{ResizeRequests: []pvc.ResizeRequest{{PVC: client.ObjectKey{Name: "data"}}}},
@@ -387,8 +377,6 @@ func TestSuspendHelmReleaseStep_suspensionReason(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			dogu := newSuspendTestDogu()
-			dogu.Spec.PauseReconciliation = test.pause
-			dogu.Spec.Stopped = test.stopped
 			values := test.values
 			if values == nil {
 				values = &apiext.JSON{Raw: []byte(`{}`)}
@@ -399,12 +387,12 @@ func TestSuspendHelmReleaseStep_suspensionReason(t *testing.T) {
 			if !test.noCheckExpected {
 				checker.EXPECT().Check(mock.Anything, dogu.Namespace, mock.Anything).Return(test.checkResult, test.checkError)
 			}
-			if !test.pause && !test.stopped && test.wantErrorText != "failed to decode assembled chart values" {
+			if test.wantErrorText != "failed to decode assembled chart values" {
 				chartService.EXPECT().Render(mock.Anything, dogu, map[string]any{}).Return(nil, test.renderError)
 			}
 			step := NewSuspendHelmReleaseStep(nil, chartService, nil, checker, nil)
 
-			targetState, err := step.suspensionReason(t.Context(), dogu, values)
+			targetState, err := step.checkForPVCResize(t.Context(), dogu, values)
 
 			if test.wantErrorText != "" {
 				require.ErrorContains(t, err, test.wantErrorText)

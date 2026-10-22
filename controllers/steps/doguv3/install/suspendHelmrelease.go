@@ -9,7 +9,7 @@ import (
 	stepsv3 "github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv3"
 	"github.com/cloudogu/k8s-dogu-operator/v3/internal/logging"
 	flux "github.com/fluxcd/helm-controller/api/v2"
-	apiext "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
+	v1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	apimeta "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -73,22 +73,12 @@ func (shr *SuspendHelmReleaseStep) Run(ctx context.Context, doguResource *doguv3
 }
 
 func (shr *SuspendHelmReleaseStep) suspendOrRelease(ctx context.Context, doguResource *doguv3.Dogu, helmRelease *flux.HelmRelease, targetState desiredState) stepsv3.StepResult {
-	modified, err := shr.setSuspendValueOfHelmRelease(ctx, helmRelease, targetState.suspendHelmRelease)
+	err := shr.setSuspendValueOfHelmRelease(ctx, helmRelease, targetState.suspendHelmRelease)
 	if err != nil {
 		return stepsv3.RequeueWithError(err, doguv3.ReasonReconciliationPaused)
 	}
 
-	var result stepsv3.StepResult
-	if modified {
-		if targetState.suspendHelmRelease {
-			logging.Info(ctx, "Suspended HelmRelease for dogu", "name", doguResource.Name)
-		} else {
-			logging.Info(ctx, "Released suspension on HelmRelease for dogu", "name", doguResource.Name)
-		}
-		result = stepsv3.RequeueAfter(defaultRequeueAfter, targetState.reason, targetState.message)
-	} else {
-		result = stepsv3.Continue()
-	}
+	var result = stepsv3.Continue()
 	if err := shr.setSuspendedConditionOnDoguCR(ctx, doguResource, targetState); err != nil {
 		result = stepsv3.RequeueWithError(err, doguv3.ReasonReconciliationPaused)
 	}
@@ -108,15 +98,6 @@ func (shr *SuspendHelmReleaseStep) existingHelmRelease(ctx context.Context, dogu
 }
 
 func (shr *SuspendHelmReleaseStep) expectedState(ctx context.Context, doguResource *doguv3.Dogu) (desiredState, error) {
-	//Get the details required to check for pvc
-	combinedValues, err := combineValues(ctx, doguResource, shr.chartService, shr.assembler)
-	if err != nil {
-		return desiredState{}, err
-	}
-	return shr.suspensionReason(ctx, doguResource, combinedValues)
-}
-
-func (shr *SuspendHelmReleaseStep) suspensionReason(ctx context.Context, doguResource *doguv3.Dogu, values *apiext.JSON) (desiredState, error) {
 	if doguResource.Spec.PauseReconciliation {
 		return desiredState{
 			suspendHelmRelease: true,
@@ -131,6 +112,17 @@ func (shr *SuspendHelmReleaseStep) suspensionReason(ctx context.Context, doguRes
 			message:            messageDoguStopped,
 		}, nil
 	}
+
+	//Get the details required to check for pvc
+	combinedValues, err := combineValues(ctx, doguResource, shr.chartService, shr.assembler)
+	if err != nil {
+		return desiredState{}, err
+	}
+
+	return shr.checkForPVCResize(ctx, doguResource, combinedValues)
+}
+
+func (shr *SuspendHelmReleaseStep) checkForPVCResize(ctx context.Context, doguResource *doguv3.Dogu, values *v1.JSON) (desiredState, error) {
 
 	chartValues := map[string]any{}
 	if err := json.Unmarshal(values.Raw, &chartValues); err != nil {
@@ -160,16 +152,22 @@ func (shr *SuspendHelmReleaseStep) suspensionReason(ctx context.Context, doguRes
 	}, nil
 }
 
-func (shr *SuspendHelmReleaseStep) setSuspendValueOfHelmRelease(ctx context.Context, release *flux.HelmRelease, suspend bool) (modified bool, err error) {
+func (shr *SuspendHelmReleaseStep) setSuspendValueOfHelmRelease(ctx context.Context, release *flux.HelmRelease, suspend bool) (err error) {
 	if release.Spec.Suspend == suspend {
-		return false, nil
+		return nil
+	}
+	// only write to release now if suspend == true, as the unsuspend gets handled automatically later by helmRelease step
+	if !suspend {
+		logging.Info(ctx, "Suspension on HelmRelease for dogu will be released", "name", release.Name)
+		return nil
 	}
 	releaseCR := release.DeepCopy()
 	releaseCR.Spec.Suspend = suspend
 	if err := shr.k8sClient.Patch(ctx, releaseCR, client.MergeFrom(release)); err != nil {
-		return false, fmt.Errorf("failed to suspend HelmRelease %q: %w", release.Name, err)
+		return fmt.Errorf("failed to suspend HelmRelease %q: %w", release.Name, err)
 	}
-	return true, nil
+	logging.Info(ctx, "Suspended HelmRelease for dogu", "name", release.Name)
+	return nil
 }
 
 func (shr *SuspendHelmReleaseStep) setSuspendedConditionOnDoguCR(ctx context.Context, doguResource *doguv3.Dogu, targetState desiredState) error {
