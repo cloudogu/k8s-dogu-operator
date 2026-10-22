@@ -31,7 +31,7 @@ func NewStopWorkloadsStep(k8sClient client.Client) *StopWorkloadsStep {
 }
 
 func (s *StopWorkloadsStep) Run(ctx context.Context, dogu *v3beta1.Dogu) stepsv3.StepResult {
-	if !dogu.Spec.Stopped {
+	if dogu.Spec.PauseReconciliation || !dogu.Spec.Stopped {
 		return stepsv3.Continue()
 	}
 
@@ -145,7 +145,7 @@ func (s *StopWorkloadsStep) stopStatefulSet(ctx context.Context, statefulSet *ap
 	if policy := statefulSet.Spec.PersistentVolumeClaimRetentionPolicy; policy != nil && policy.WhenScaled == appsv1.DeletePersistentVolumeClaimRetentionPolicyType {
 		before := statefulSet.DeepCopy()
 		statefulSet.Spec.PersistentVolumeClaimRetentionPolicy.WhenScaled = appsv1.RetainPersistentVolumeClaimRetentionPolicyType
-		if err := s.k8sClient.Patch(ctx, statefulSet, client.MergeFromWithOptions(before, client.MergeFromWithOptimisticLock{})); err != nil {
+		if err = s.k8sClient.Patch(ctx, statefulSet, client.MergeFromWithOptions(before, client.MergeFromWithOptimisticLock{})); err != nil {
 			return false, fmt.Errorf("failed to retain PVCs when scaling StatefulSet %s/%s: %w", statefulSet.Namespace, statefulSet.Name, err)
 		}
 		return true, nil // Wait for the StatefulSet controller to remove Pod owner references from PVCs before scaling down.
@@ -163,7 +163,7 @@ func (s *StopWorkloadsStep) stopStatefulSet(ctx context.Context, statefulSet *ap
 	}
 	before := statefulSet.DeepCopy()
 	statefulSet.Spec.Replicas = ptr.To[int32](0)
-	if err := s.k8sClient.Patch(ctx, statefulSet, client.MergeFromWithOptions(before, client.MergeFromWithOptimisticLock{})); err != nil {
+	if err = s.k8sClient.Patch(ctx, statefulSet, client.MergeFromWithOptions(before, client.MergeFromWithOptimisticLock{})); err != nil {
 		return false, fmt.Errorf("failed to scale StatefulSet %s/%s to zero: %w", statefulSet.Namespace, statefulSet.Name, err)
 	}
 	return true, nil

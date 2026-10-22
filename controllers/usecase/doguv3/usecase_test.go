@@ -58,6 +58,7 @@ func TestNewDoguInstallOrChangeUseCase(t *testing.T) {
 	ensureOCIStep := &install.EnsureOCIRepositoryStep{}
 	waitOCIStep := &install.WaitForOCIRepositoryReadyStep{}
 	validateChartStep := &install.ValidateChartStep{}
+	suspendStep := &install.SuspendHelmReleaseStep{}
 	helmReleaseStep := &install.EnsureHelmReleaseStep{}
 	helmReleaseStatusStep := &install.HelmReleaseStatusStep{}
 	exportModeStep := &install.ExportModeStep{}
@@ -67,6 +68,7 @@ func TestNewDoguInstallOrChangeUseCase(t *testing.T) {
 		ensureOCIStep,
 		waitOCIStep,
 		validateChartStep,
+		suspendStep,
 		helmReleaseStep,
 		helmReleaseStatusStep,
 		exportModeStep,
@@ -77,10 +79,11 @@ func TestNewDoguInstallOrChangeUseCase(t *testing.T) {
 	wantTypes := []string{
 		"*install.ExportModeStep",
 		"*install.CreateFinalizerStep",
-		"*install.StopWorkloadsStep",
 		"*install.EnsureOCIRepositoryStep",
 		"*install.WaitForOCIRepositoryReadyStep",
 		"*install.ValidateChartStep",
+		"*install.SuspendHelmReleaseStep",
+		"*install.StopWorkloadsStep",
 		"*install.EnsureHelmReleaseStep",
 		"*install.HelmReleaseStatusStep",
 	}

@@ -62,13 +62,14 @@ func NewDoguInstallOrChangeUseCase(
 	ociStep *install.EnsureOCIRepositoryStep,
 	waitOCIStep *install.WaitForOCIRepositoryReadyStep,
 	validateChartStep *install.ValidateChartStep,
+	suspendHelmReleaseStep *install.SuspendHelmReleaseStep,
 	helmReleaseStep *install.EnsureHelmReleaseStep,
 	helmReleaseStatusStep *install.HelmReleaseStatusStep,
 	exportModeStep *install.ExportModeStep,
 	client K8sClient, recorder EventRecorder) *DoguUseCase {
 	stopStep := install.NewStopWorkloadsStep(client)
 	return &DoguUseCase{
-		steps:                 []Step{exportModeStep, finalizerStep, stopStep, ociStep, waitOCIStep, validateChartStep, helmReleaseStep, helmReleaseStatusStep},
+		steps:                 []Step{exportModeStep, finalizerStep, ociStep, waitOCIStep, validateChartStep, suspendHelmReleaseStep, stopStep, helmReleaseStep, helmReleaseStatusStep},
 		k8sClient:             client,
 		eventRecorder:         recorder,
 		ociStep:               ociStep,

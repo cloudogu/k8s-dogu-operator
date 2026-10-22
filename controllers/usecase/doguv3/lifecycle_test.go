@@ -9,6 +9,7 @@ import (
 	"github.com/cloudogu/k8s-dogu-lib/v3/api/v3beta1"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv3/install"
+	"github.com/cloudogu/k8s-dogu-operator/v3/internal/dogu/pvc"
 	"github.com/cloudogu/k8s-dogu-operator/v3/internal/dogu/values"
 	fluxstate "github.com/cloudogu/k8s-dogu-operator/v3/internal/flux"
 	helm "github.com/fluxcd/helm-controller/api/v2"
@@ -108,6 +109,7 @@ func newLifecycleFixture(t *testing.T) *lifecycleFixture {
 		install.NewEnsureOCIRepositoryStep(f.k8s, lifecycleRegistry{}, recorder),
 		install.NewWaitForOCIRepositoryReadyStep(f.k8s, recorder),
 		install.NewValidateChartStep(f.chart, values.NewAssembler(f.k8s), f.k8s),
+		install.NewSuspendHelmReleaseStep(f.k8s, f.chart, values.NewAssembler(f.k8s), pvc.NewResizeChecker(f.k8s), recorder),
 		install.NewEnsureHelmReleaseStep(f.k8s, &config.OperatorConfig{}, f.chart, recorder),
 		install.NewHelmReleaseStatusStep(f.k8s, fluxstate.NewHelmReleaseReader(f.k8s, helmClient), recorder), f.k8s, recorder,
 	)

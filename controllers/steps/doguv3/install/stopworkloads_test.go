@@ -44,9 +44,26 @@ func TestStopWorkloadsStep(t *testing.T) {
 		Status:     flux.HelmReleaseStatus{ObservedGeneration: 3},
 	}
 
+	t.Run("pause skips stopping even when stopped is requested", func(t *testing.T) {
+		dogu, k8s := stoppedDoguClient(t, deployment.DeepCopy(), release.DeepCopy())
+		dogu.Spec.PauseReconciliation = true
+		before := dogu.DeepCopy()
+
+		result := NewStopWorkloadsStep(k8s).Run(t.Context(), dogu)
+
+		require.NoError(t, result.Err)
+		assert.True(t, result.Continue)
+		actual := &appsv1.Deployment{}
+		require.NoError(t, k8s.Get(t.Context(), client.ObjectKeyFromObject(deployment), actual))
+		assert.Equal(t, deployment.Spec, actual.Spec)
+		assert.Equal(t, before.Status, dogu.Status)
+	})
+
 	t.Run("waits for suspension without touching workloads", func(t *testing.T) {
 		dogu, k8s := stoppedDoguClient(t, deployment.DeepCopy(), release.DeepCopy())
+
 		result := NewStopWorkloadsStep(k8s).Run(t.Context(), dogu)
+
 		require.NoError(t, result.Err)
 		assert.Positive(t, result.RequeueAfter)
 		actual := &appsv1.Deployment{}
