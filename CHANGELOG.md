@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - [#359] Set `status.volumeStatus` for all PVCs of v3 dogus.
 - [#359] Reject v3 dogu changes that shrink a volume or change its storage class (`Valid=False`).
+- [#359] Enable V3 dogus to increase the volume size of their pvcs.
 - [#358] Support `DoguRestart` for dogu v3.
 
 ## [v3.35.0] - 2026-10-20

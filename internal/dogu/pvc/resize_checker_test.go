@@ -436,6 +436,67 @@ func TestResizeChecker_CheckErrors(t *testing.T) {
 	})
 }
 
+func TestResizeChecker_CheckInProgress(t *testing.T) {
+	ctx := context.Background()
+
+	tests := []struct {
+		name   string
+		modify func(live *corev1.PersistentVolumeClaim)
+	}{
+		{name: "capacity below the desired request", modify: func(live *corev1.PersistentVolumeClaim) {
+			live.Status.Capacity[corev1.ResourceStorage] = resource.MustParse("1Gi")
+		}},
+		{name: "resizing condition", modify: func(live *corev1.PersistentVolumeClaim) {
+			live.Status.Conditions = []corev1.PersistentVolumeClaimCondition{{Type: corev1.PersistentVolumeClaimResizing, Status: corev1.ConditionTrue}}
+		}},
+		{name: "file system resize pending condition", modify: func(live *corev1.PersistentVolumeClaim) {
+			live.Status.Conditions = []corev1.PersistentVolumeClaimCondition{{Type: corev1.PersistentVolumeClaimFileSystemResizePending, Status: corev1.ConditionTrue}}
+		}},
+		{name: "allocated resource status", modify: func(live *corev1.PersistentVolumeClaim) {
+			live.Status.AllocatedResourceStatuses = map[corev1.ResourceName]corev1.ClaimResourceStatus{
+				corev1.ResourceStorage: corev1.PersistentVolumeClaimNodeResizePending,
+			}
+		}},
+	}
+	for _, tt := range tests {
+		t.Run("reports a started resize as in progress: "+tt.name, func(t *testing.T) {
+			live := newPVC("data", "2Gi", nil)
+			tt.modify(live)
+			checker := NewResizeChecker(fake.NewClientBuilder().WithObjects(live).Build())
+
+			result, err := checker.Check(ctx, testNamespace, renderedObjects(t, newPVC("data", "2Gi", nil)))
+
+			require.NoError(t, err)
+			assert.Empty(t, result.ResizeRequests)
+			assert.Equal(t, []client.ObjectKey{{Namespace: testNamespace, Name: "data"}}, result.InProgress)
+		})
+	}
+
+	t.Run("reports a started resize of a StatefulSet PVC as in progress", func(t *testing.T) {
+		live := newPVC("db-postgres-0", "2Gi", nil)
+		live.Status.Capacity[corev1.ResourceStorage] = resource.MustParse("1Gi")
+		checker := NewResizeChecker(fake.NewClientBuilder().WithObjects(live).Build())
+
+		result, err := checker.Check(ctx, testNamespace, renderedObjects(t, newStatefulSet("postgres", ptr.To[int32](1), 0, newPVC("db", "2Gi", nil))))
+
+		require.NoError(t, err)
+		assert.Empty(t, result.ResizeRequests)
+		assert.Equal(t, []client.ObjectKey{{Namespace: testNamespace, Name: "db-postgres-0"}}, result.InProgress)
+	})
+
+	t.Run("rejects a started resize with a resize error condition", func(t *testing.T) {
+		live := newPVC("data", "2Gi", nil)
+		live.Status.Capacity[corev1.ResourceStorage] = resource.MustParse("1Gi")
+		live.Status.Conditions = []corev1.PersistentVolumeClaimCondition{{Type: corev1.PersistentVolumeClaimControllerResizeError, Status: corev1.ConditionTrue}}
+		checker := NewResizeChecker(fake.NewClientBuilder().WithObjects(live).Build())
+
+		result, err := checker.Check(ctx, testNamespace, renderedObjects(t, newPVC("data", "2Gi", nil)))
+
+		require.ErrorContains(t, err, "live PVC \"ecosystem/data\" has active resize condition \"ControllerResizeError\"")
+		assert.Empty(t, result.InProgress)
+	})
+}
+
 func TestExtractDesiredClaims(t *testing.T) {
 	t.Run("extracts standalone PVCs and ignores unrelated objects", func(t *testing.T) {
 		pvc := newPVC("data", "2Gi", nil)

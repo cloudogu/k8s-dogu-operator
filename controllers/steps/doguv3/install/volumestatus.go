@@ -33,7 +33,7 @@ func NewVolumeStatusStep(chartService ChartService, assembler ValueAssembler, di
 }
 
 func (vss *VolumeStatusStep) Run(ctx context.Context, doguResource *v3beta1.Dogu) stepsv3.StepResult {
-	rendered, err := vss.renderChart(ctx, doguResource)
+	rendered, err := renderChart(ctx, vss.chartService, vss.assembler, doguResource)
 	if err != nil {
 		return stepsv3.RequeueWithError(err, v3beta1.ReasonInstalling)
 	}
@@ -71,30 +71,58 @@ func (vss *VolumeStatusStep) Run(ctx context.Context, doguResource *v3beta1.Dogu
 		return strings.Compare(a.ClaimName, b.ClaimName)
 	})
 
-	if equality.Semantic.DeepEqual(doguResource.Status.VolumeStatus, statuses) {
+	if !equality.Semantic.DeepEqual(doguResource.Status.VolumeStatus, statuses) {
+		doguResource.Status.VolumeStatus = statuses
+		if err := vss.k8sClient.Status().Update(ctx, doguResource); err != nil {
+			return stepsv3.RequeueWithError(fmt.Errorf("failed to update volume status: %w", err), v3beta1.ReasonInstalling)
+		}
+	}
+
+	if doguResource.Spec.Stopped || doguResource.Spec.PauseReconciliation {
 		return stepsv3.Continue()
 	}
 
-	doguResource.Status.VolumeStatus = statuses
-	if err := vss.k8sClient.Status().Update(ctx, doguResource); err != nil {
-		return stepsv3.RequeueWithError(fmt.Errorf("failed to update volume status: %w", err), v3beta1.ReasonInstalling)
+	return waitForResize(statuses)
+}
+
+// waitForResize keeps the dogu in ResizingPVC until every rendered volume has reached its desired capacity.
+func waitForResize(statuses []v3beta1.VolumeStatus) stepsv3.StepResult {
+	var resizing, failed []string
+	for _, status := range statuses {
+		if status.DesiredSize.IsZero() {
+			continue
+		}
+		switch status.State {
+		case v3beta1.VolumeStatusStateResizing:
+			resizing = append(resizing, status.ClaimName)
+		case v3beta1.VolumeStatusStateResizeFailed:
+			failed = append(failed, status.ClaimName)
+		case v3beta1.VolumeStatusStateReady:
+		}
+	}
+
+	if len(failed) > 0 {
+		return stepsv3.RequeueWithError(fmt.Errorf("volumes failed to resize: %v", failed), v3beta1.ReasonResizingPVC)
+	}
+	if len(resizing) > 0 {
+		return stepsv3.RequeueAfter(defaultRequeueAfter, v3beta1.ReasonResizingPVC, fmt.Sprintf("waiting for volumes to reach their desired capacity: %v", resizing))
 	}
 
 	return stepsv3.Continue()
 }
 
-func (vss *VolumeStatusStep) renderChart(ctx context.Context, doguResource *v3beta1.Dogu) ([]*unstructured.Unstructured, error) {
-	metaValues, _, err := vss.chartService.DoguMetaValues(ctx, doguResource)
+func renderChart(ctx context.Context, chartService ChartService, assembler ValueAssembler, doguResource *v3beta1.Dogu) ([]*unstructured.Unstructured, error) {
+	metaValues, _, err := chartService.DoguMetaValues(ctx, doguResource)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get dogu meta values: %w", err)
 	}
 
-	values, err := vss.assembler.Assemble(ctx, doguResource, metaValues)
+	values, err := assembler.Assemble(ctx, doguResource, metaValues)
 	if err != nil {
 		return nil, fmt.Errorf("failed to assemble values: %w", err)
 	}
 
-	rendered, err := vss.chartService.Render(ctx, doguResource, values)
+	rendered, err := chartService.Render(ctx, doguResource, values)
 	if err != nil {
 		return nil, fmt.Errorf("failed to render chart: %w", err)
 	}

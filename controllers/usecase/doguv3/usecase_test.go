@@ -60,12 +60,14 @@ func TestNewDoguInstallOrChangeUseCase(t *testing.T) {
 	helmReleaseStep := &install.EnsureHelmReleaseStep{}
 	helmReleaseStatusStep := &install.HelmReleaseStatusStep{}
 	volumeStatusStep := &install.VolumeStatusStep{}
+	resizePVCStep := &install.ResizePVCStep{}
 
 	got := NewDoguInstallOrChangeUseCase(
 		finalizerStep,
 		ensureOCIStep,
 		waitOCIStep,
 		validateChartStep,
+		resizePVCStep,
 		helmReleaseStep,
 		helmReleaseStatusStep,
 		volumeStatusStep,
@@ -78,6 +80,7 @@ func TestNewDoguInstallOrChangeUseCase(t *testing.T) {
 		"*install.EnsureOCIRepositoryStep",
 		"*install.WaitForOCIRepositoryReadyStep",
 		"*install.ValidateChartStep",
+		"*install.ResizePVCStep",
 		"*install.EnsureHelmReleaseStep",
 		"*install.HelmReleaseStatusStep",
 		"*install.VolumeStatusStep",

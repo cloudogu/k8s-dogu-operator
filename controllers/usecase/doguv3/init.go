@@ -24,6 +24,7 @@ import (
 // client construction eagerly, so a failure here aborts operator startup (fail-fast).
 func NewDoguV3UseCases(
 	k8sClient client.Client,
+	apiReader client.Reader, // for uncached reading
 	recorder record.EventRecorder,
 	restConfig *rest.Config,
 	clientSet kubernetes.Interface,
@@ -43,9 +44,12 @@ func NewDoguV3UseCases(
 	assembler := values.NewAssembler(k8sClient)
 
 	finalizerStep := install.NewCreateFinalizerStep(k8sClient)
+	resizeChecker := pvc.NewResizeChecker(k8sClient)
+
 	ociStep := install.NewEnsureOCIRepositoryStep(k8sClient, registryReader, recorder)
 	waitStep := install.NewWaitForOCIRepositoryReadyStep(k8sClient, recorder)
-	validateStep := install.NewValidateChartStep(chartService, assembler, pvc.NewResizeChecker(k8sClient), k8sClient)
+	validateStep := install.NewValidateChartStep(chartService, assembler, resizeChecker, k8sClient)
+	resizePVCStep := install.NewResizePVCStep(chartService, assembler, resizeChecker, workloads.NewDiscovery(apiReader), apiReader, k8sClient)
 	helmReleaseStep := install.NewEnsureHelmReleaseStep(k8sClient, operatorConfig, chartService, recorder)
 	helmReleaseStatusStep := install.NewHelmReleaseStatusStep(k8sClient, recorder)
 	volumeStatusStep := install.NewVolumeStatusStep(chartService, assembler, workloads.NewDiscovery(k8sClient), k8sClient)
@@ -55,7 +59,7 @@ func NewDoguV3UseCases(
 	deleteOCIRepositoryStep := deletion.NewDeleteOCIRepositoryStep(k8sClient, recorder)
 	removeFinalizerStep := deletion.NewRemoveFinalizerStep(k8sClient)
 
-	installUseCase := NewDoguInstallOrChangeUseCase(finalizerStep, ociStep, waitStep, validateStep, helmReleaseStep, helmReleaseStatusStep, volumeStatusStep, k8sClient, recorder)
+	installUseCase := NewDoguInstallOrChangeUseCase(finalizerStep, ociStep, waitStep, validateStep, resizePVCStep, helmReleaseStep, helmReleaseStatusStep, volumeStatusStep, k8sClient, recorder)
 	deleteUseCase := NewDoguDeleteUseCase(unsuspendStep, deleteHelmReleaseStep, deleteOCIRepositoryStep, removeFinalizerStep, k8sClient, recorder)
 
 	return installUseCase, deleteUseCase, nil

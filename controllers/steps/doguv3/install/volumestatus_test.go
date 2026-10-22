@@ -2,6 +2,7 @@ package install
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/cloudogu/k8s-dogu-lib/v3/api/v3beta1"
@@ -108,6 +109,7 @@ func TestVolumeStatusStep_Run(t *testing.T) {
 		{ClaimName: "db-nexus-3", Size: resource.MustParse("3Gi"), DesiredSize: resource.MustParse("5Gi"), State: v3beta1.VolumeStatusStateResizeFailed, MountedBy: mountedBy("StatefulSet", "nexus")},
 		{ClaimName: "existing", Size: resource.MustParse("1Gi"), State: v3beta1.VolumeStatusStateReady, MountedBy: mountedBy("Deployment", "nexus-proxy")},
 	}
+	happyCaseResult := doguv3.RequeueWithError(errors.New("volumes failed to resize: [db-nexus-2 db-nexus-3]"), v3beta1.ReasonResizingPVC)
 
 	tests := []struct {
 		name       string
@@ -126,7 +128,7 @@ func TestVolumeStatusStep_Run(t *testing.T) {
 				d.EXPECT().Volumes(mock.Anything, testNamespace, testWorkloads).Return(volumes, nil)
 				return NewVolumeStatusStep(cs, as, d, newVolumeStatusFakeClient(doguResource, interceptor.Funcs{})), doguResource
 			},
-			want:       doguv3.Continue(),
+			want:       happyCaseResult,
 			wantStatus: happyCaseStatus,
 		},
 		{
@@ -161,7 +163,7 @@ func TestVolumeStatusStep_Run(t *testing.T) {
 				})
 				return NewVolumeStatusStep(cs, as, d, k8sClient), doguResource
 			},
-			want:       doguv3.Continue(),
+			want:       happyCaseResult,
 			wantStatus: happyCaseStatus,
 		},
 		{
@@ -269,4 +271,79 @@ func TestVolumeStatusStep_Run(t *testing.T) {
 			assert.Equal(t, tt.wantStatus, persisted.Status.VolumeStatus)
 		})
 	}
+}
+
+func TestVolumeStatusStep_RunWaitsForResize(t *testing.T) {
+	statefulSet := mountedBy("StatefulSet", "nexus")
+
+	t.Run("requeue with ResizingPVC while a rendered volume has not reached its desired capacity", func(t *testing.T) {
+		doguResource := testDoguResource.DeepCopy()
+		volumes := []workloads.Volume{{PVC: volumePVC("data", "2Gi", "2Gi"), MountedBy: statefulSet},
+			{PVC: volumePVC("db-nexus-0", "5Gi", "3Gi"), MountedBy: statefulSet},
+			{PVC: volumePVC("db-nexus-1", "5Gi", "5Gi", corev1.PersistentVolumeClaimFileSystemResizePending), MountedBy: statefulSet}}
+
+		cs, as := mockChartRendering(t, doguResource, renderedChart(t), nil)
+		d := mockDiscovery(t, volumes)
+
+		result := NewVolumeStatusStep(cs, as, d, newVolumeStatusFakeClient(doguResource, interceptor.Funcs{})).Run(testCtx, doguResource)
+
+		assert.Equal(t, doguv3.RequeueAfter(defaultRequeueAfter, v3beta1.ReasonResizingPVC, "waiting for volumes to reach their desired capacity: [db-nexus-0 db-nexus-1]"), result)
+	})
+
+	t.Run("requeue with error when a rendered volume failed to resize", func(t *testing.T) {
+		doguResource := testDoguResource.DeepCopy()
+		volumes := []workloads.Volume{
+			{PVC: volumePVC("db-nexus-0", "5Gi", "3Gi"), MountedBy: statefulSet},
+			{PVC: volumePVC("db-nexus-1", "5Gi", "3Gi", corev1.PersistentVolumeClaimNodeResizeError), MountedBy: statefulSet},
+		}
+		cs, as := mockChartRendering(t, doguResource, renderedChart(t), nil)
+		d := mockDiscovery(t, volumes)
+
+		result := NewVolumeStatusStep(cs, as, d, newVolumeStatusFakeClient(doguResource, interceptor.Funcs{})).Run(testCtx, doguResource)
+
+		require.EqualError(t, result.Err, "volumes failed to resize: [db-nexus-1]")
+		assert.Equal(t, v3beta1.ReasonResizingPVC, result.ReadyReason)
+	})
+
+	t.Run("continue while a volume the chart does not render is resizing", func(t *testing.T) {
+		doguResource := testDoguResource.DeepCopy()
+		// nexus-proxy is not part of the rendered chart
+		volumes := []workloads.Volume{
+			{PVC: volumePVC("existing", "5Gi", "3Gi"), MountedBy: mountedBy("Deployment", "nexus-proxy")},
+		}
+
+		cs, as := mockChartRendering(t, doguResource, renderedChart(t), nil)
+		d := mockDiscovery(t, volumes)
+
+		result := NewVolumeStatusStep(cs, as, d, newVolumeStatusFakeClient(doguResource, interceptor.Funcs{})).Run(testCtx, doguResource)
+
+		assert.Equal(t, doguv3.Continue(), result)
+	})
+
+	for name, modify := range map[string]func(*v3beta1.Dogu){
+		"stopped": func(d *v3beta1.Dogu) { d.Spec.Stopped = true },
+		"paused":  func(d *v3beta1.Dogu) { d.Spec.PauseReconciliation = true },
+	} {
+		t.Run("continue without waiting for a "+name+" dogu", func(t *testing.T) {
+			doguResource := testDoguResource.DeepCopy()
+			modify(doguResource)
+			volumes := []workloads.Volume{
+				{PVC: volumePVC("db-nexus-0", "5Gi", "3Gi"), MountedBy: statefulSet},
+			}
+
+			cs, as := mockChartRendering(t, doguResource, renderedChart(t), nil)
+			d := mockDiscovery(t, volumes)
+
+			result := NewVolumeStatusStep(cs, as, d, newVolumeStatusFakeClient(doguResource, interceptor.Funcs{})).Run(testCtx, doguResource)
+
+			assert.Equal(t, doguv3.Continue(), result)
+		})
+	}
+}
+
+func mockDiscovery(t *testing.T, volumes []workloads.Volume) *MockVolumeDiscovery {
+	d := NewMockVolumeDiscovery(t)
+	d.EXPECT().Workloads(mock.Anything, testNamespace, testDoguName).Return(testWorkloads, nil)
+	d.EXPECT().Volumes(mock.Anything, testNamespace, testWorkloads).Return(volumes, nil)
+	return d
 }
