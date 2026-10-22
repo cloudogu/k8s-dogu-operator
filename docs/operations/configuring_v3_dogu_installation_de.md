@@ -27,15 +27,16 @@ oder „1h“ (für 1 Stunde). Kombinationen wie „1h20m“ (für 1 Stunde und 
 
 ## Stoppen und Starten
 
-- **Stoppen:** `spec.stopped: true` skaliert Deployments und StatefulSets auf null und erhält StatefulSet-PVCs beim Herunterskalieren.
-  `Stopped=True` bestätigt, dass die zugehörigen Pods entfernt sind. DaemonSets werden nicht unterstützt.
-- **Änderungen:** OCIRepository und HelmRelease werden auch im Stopp aktualisiert, aber noch nicht ausgerollt.
-- **Starten:** `spec.stopped: false` bereitet den aktuellen Sollstand vor. Nach Aufheben der Suspendierung rollt Flux ihn aus;
-  erfolgreiches Release und aktuelles `Healthy=True` bestätigen den Start.
-- **Pausieren:** `spec.pauseReconciliation: true` pausiert Ressourcenänderungen durch den Dogu-Operator, nicht die Pending-Prüfung.
-  Gegen Korrekturen durch Flux muss auch das HelmRelease suspendiert sein.
-- **UpdatePending:** `True` bedeutet noch nicht angewendete Änderungen, `False` keine Unterschiede und `Unknown` einen unvollständigen Vergleich.
-  Wegen der noch fehlenden Chart-Quellenprüfung bleibt der Status derzeit ohne erkannten Unterschied auf `Unknown`.
+Mit `spec.stopped: true` an der Dogu-Ressource werden die Workloads gestoppt. Der Operator wartet auf die Suspendierung
+des HelmRelease, skaliert Deployments und StatefulSets auf null und wartet, bis deren Pods verschwunden sind.
+StatefulSet-PVCs bleiben erhalten. `status.stopped: true` bestätigt den abgeschlossenen Stopp.
 
-Voraussetzung zum Stoppen ist ein von Flux bestätigtes `spec.suspend: true` am HelmRelease; zum Starten muss es separat auf `false` gesetzt werden.
-Bei initial gestoppten Dogus wird das HelmRelease suspendiert angelegt. Globale Konfigurationsänderungen werden erst beim nächsten Abgleich berücksichtigt.
+Im gestoppten Zustand aktualisiert der Operator weiterhin Chart-Quellen und HelmRelease-Eingaben; Flux wendet diese
+während der Suspendierung nicht an. Mit `spec.stopped: false` wird das Dogu wieder gestartet. Der Stoppstatus wird
+nach erfolgreichem Deployment und erfolgreicher Health-Prüfung zurückgesetzt.
+
+`spec.pauseReconciliation: true` hat Vorrang vor Start und Stopp: Reguläre Ressourcenänderungen werden übersprungen,
+die Prüfungen von Quelle und Release können aber weiterhin `UpdatePending=True` setzen. Ein True für die aktuelle
+Generation bleibt während Pause oder Stopp erhalten. Eine ältere Condition wird erst zurückgesetzt, wenn alle
+relevanten Prüfungen ohne ausstehende Änderungen abgeschlossen sind. Eine unvollständige Prüfung lässt die Condition
+unverändert und wird wiederholt.

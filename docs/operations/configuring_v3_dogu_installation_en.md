@@ -24,15 +24,14 @@ or "1h" (for 1 hour). Combinations like "1h20m" (for 1 hour and 20 minutes) are 
 
 ## Stopping and Starting
 
-- **Stop:** `spec.stopped: true` scales Deployments and StatefulSets to zero and retains StatefulSet PVCs during scale-down.
-  `Stopped=True` confirms that the associated Pods are gone. DaemonSets are not supported.
-- **Changes:** The OCIRepository and HelmRelease are updated while stopped, but changes are not rolled out yet.
-- **Start:** `spec.stopped: false` prepares the current desired state. After suspension is lifted, Flux rolls it out;
-  a successful release and a current `Healthy=True` confirm the start.
-- **Pause:** `spec.pauseReconciliation: true` pauses resource changes by the dogu operator, but pending checks continue.
-  The HelmRelease must also be suspended to prevent corrections by Flux.
-- **UpdatePending:** `True` means unapplied changes, `False` no differences, and `Unknown` an incomplete comparison.
-  The chart source check is not implemented yet, so the status remains `Unknown` unless a difference is detected.
+Set `spec.stopped: true` on the Dogu resource to stop its workloads. The operator waits for HelmRelease suspension,
+scales Deployments and StatefulSets to zero and waits for their pods to disappear. StatefulSet PVCs are retained.
+`status.stopped: true` confirms that the workloads have stopped.
 
-Stopping requires Flux to acknowledge `spec.suspend: true` on the HelmRelease; starting requires it to be set to `false` separately.
-For initially stopped dogus, the HelmRelease is created suspended. Global configuration changes are considered during the next reconciliation.
+While stopped, the operator still updates chart sources and HelmRelease inputs; Flux does not apply them while suspended.
+Set `spec.stopped: false` to start the dogu again. The stopped status is cleared after deployment and health checks succeed.
+
+`spec.pauseReconciliation: true` takes precedence over starting or stopping: regular resource changes are skipped,
+but source and release checks can still set `UpdatePending=True`. A current-generation True is retained while paused
+or stopped. An older condition is cleared only after all relevant checks complete without detecting pending changes.
+An incomplete check leaves the condition unchanged and retries.

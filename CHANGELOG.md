@@ -6,6 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
+- [#360] Support stopping and starting v3 dogu workloads.
 - [#358] Support `DoguRestart` for dogu v3.
 - [#367] Warning condition and event when activating the export mode for V3 Dogus because is not implemented
 - [#368] Detect whether a v3 dogu has to be migrated from v2 or installed
@@ -34,9 +35,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Log calls of the cesapp-lib and the k8s-apply-lib keep their log level instead of being logged as info.
   - The lifecycle logging of fx is logged in the same format as all other logs.
 - [#362] Move the logging package to `internal/logging` and log via its `Info`, `Debug` and `Error` functions instead of `log.FromContext`.
-
-### Added
-- [#360] Stop v3 dogu workloads while preserving StatefulSet claims.
 
 ## [v3.33.0] - 2026-10-15
 ### Added
