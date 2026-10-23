@@ -68,9 +68,13 @@ func NewDoguInstallOrChangeUseCase(
 	helmReleaseStep *install.EnsureHelmReleaseStep,
 	helmReleaseStatusStep *install.HelmReleaseStatusStep,
 	updatePendingStep *install.UpdatePendingStep,
+	exportModeStep *install.ExportModeStep,
 	client K8sClient, recorder EventRecorder) *DoguUseCase {
 	return &DoguUseCase{
 		steps: []Step{
+			// Execute the current export mode step first because it only creates a condition with "not implemented" reason.
+			// If the functionality of the export mode for dogu v3 will be developed the position may change in the execution order.
+			exportModeStep,
 			// CreateFinalizerStep MUST run before any owned resource (OCIRepository, HelmRelease) is
 			// created, so a delete racing an install can never orphan those resources. (In v2 the
 			// finalizer is added after its read-only gate steps, but likewise before resource creation;
