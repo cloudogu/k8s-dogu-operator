@@ -193,11 +193,11 @@ func TestRuntimePatchesWriteFailuresPreserveHelmRelease(t *testing.T) {
 `},
 		{name: "non-string config", config: "fqdn: false", errorContains: "does not refer to a string", template: `host: '{{ globalConfig "fqdn" }}'
 `},
-		{name: "serialization", config: "invalid: .nan", errorContains: "unsupported value: NaN"},
+		{name: "serialization", config: "invalid: .nan", errorContains: "unsupported value: NaN", template: "host: server.invalid"},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			cl, dogu := runtimeFailureFixture(t, tt.config)
-			release := &helmflux.HelmRelease{ObjectMeta: metav1.ObjectMeta{Name: dogu.Name, Namespace: dogu.Namespace},
+			release := &helmflux.HelmRelease{Name: dogu.Name, Namespace: dogu.Namespace,
 				Spec: helmflux.HelmReleaseSpec{
 					ReleaseName: "last-valid-release", Suspend: true, Interval: metav1.Duration{Duration: 7 * time.Minute},
 					ChartRef: &helmflux.CrossNamespaceSourceReference{Kind: "OCIRepository", Name: "last-valid-chart"},

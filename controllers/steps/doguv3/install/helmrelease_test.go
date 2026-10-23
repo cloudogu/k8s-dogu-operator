@@ -83,7 +83,7 @@ func Test_combineValues(t *testing.T) {
 	})
 }
 
-func TestCombineValuesPatchRetrieval(t *testing.T) {
+func TestCombineValues_PatchRetrieval(t *testing.T) {
 	for _, tt := range []struct {
 		name     string
 		found    bool
@@ -91,9 +91,10 @@ func TestCombineValuesPatchRetrieval(t *testing.T) {
 		expected []byte
 		err      error
 	}{
-		{name: "absent ignores source", source: []byte("ignored")},
-		{name: "present nil remains present", found: true, expected: []byte{}},
-		{name: "present empty remains present", found: true, source: []byte{}, expected: []byte{}},
+		{name: "absent ignores source", found: false, source: nil, expected: nil},
+		{name: "present nil file fails", found: true, source: nil, expected: nil, err: assert.AnError},
+		{name: "present empty file fails", found: true, source: nil, expected: []byte("\t\n    "), err: assert.AnError},
+		{name: "present YAML remains present", found: true, source: []byte("---\nkey: value"), expected: []byte("---\nkey: value")},
 		{name: "retrieval error stops assembly", err: assert.AnError},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
