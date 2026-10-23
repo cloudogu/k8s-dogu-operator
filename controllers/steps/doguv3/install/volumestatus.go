@@ -10,6 +10,7 @@ import (
 	stepsv3 "github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv3"
 	"github.com/cloudogu/k8s-dogu-operator/v3/internal/dogu/pvc"
 	"github.com/cloudogu/k8s-dogu-operator/v3/internal/dogu/workloads"
+	"github.com/cloudogu/k8s-dogu-operator/v3/internal/logging"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -18,18 +19,20 @@ import (
 
 // VolumeStatusStep reports every volume of a dogu, also of a stopped one, in status.volumeStatus.
 type VolumeStatusStep struct {
-	chartService ChartService
-	assembler    ValueAssembler
-	discovery    VolumeDiscovery
-	k8sClient    K8sClient
+	chartService  ChartService
+	assembler     ValueAssembler
+	discovery     VolumeDiscovery
+	k8sClient     K8sClient
+	eventRecorder EventRecorder
 }
 
-func NewVolumeStatusStep(chartService ChartService, assembler ValueAssembler, discovery VolumeDiscovery, k8sClient K8sClient) *VolumeStatusStep {
+func NewVolumeStatusStep(chartService ChartService, assembler ValueAssembler, discovery VolumeDiscovery, k8sClient K8sClient, recorder EventRecorder) *VolumeStatusStep {
 	return &VolumeStatusStep{
-		chartService: chartService,
-		assembler:    assembler,
-		discovery:    discovery,
-		k8sClient:    k8sClient,
+		chartService:  chartService,
+		assembler:     assembler,
+		discovery:     discovery,
+		k8sClient:     k8sClient,
+		eventRecorder: recorder,
 	}
 }
 
@@ -49,16 +52,30 @@ func (vss *VolumeStatusStep) Run(ctx context.Context, doguResource *v3beta1.Dogu
 		return stepsv3.RequeueWithError(fmt.Errorf("failed to discover volumes: %w", err), v3beta1.ReasonInstalling)
 	}
 
+	previous := doguResource.Status.VolumeStatus
 	statuses, err := updateVolumeStatus(ctx, vss.k8sClient, doguResource, rendered, volumes, nil)
 	if err != nil {
 		return stepsv3.RequeueWithError(err, v3beta1.ReasonInstalling)
 	}
+	vss.reportResizedVolumes(ctx, doguResource, previous, statuses)
 
 	if doguResource.Spec.Stopped || doguResource.Spec.PauseReconciliation {
 		return stepsv3.Continue()
 	}
 
 	return waitForResize(statuses)
+}
+
+func (vss *VolumeStatusStep) reportResizedVolumes(ctx context.Context, doguResource *v3beta1.Dogu, previous, statuses []v3beta1.VolumeStatus) {
+	for _, status := range statuses {
+		wasResizing := slices.ContainsFunc(previous, func(old v3beta1.VolumeStatus) bool {
+			return old.ClaimName == status.ClaimName && old.State == v3beta1.VolumeStatusStateResizing
+		})
+		if wasResizing && status.State == v3beta1.VolumeStatusStateReady {
+			logging.Info(ctx, "volume resized", "pvc", status.ClaimName, "size", status.Size.String())
+			vss.eventRecorder.Event(doguResource, corev1.EventTypeNormal, v3beta1.ReasonResizingPVC, fmt.Sprintf("Volume %s resized to %s", status.ClaimName, status.Size.String()))
+		}
+	}
 }
 
 // updateVolumeStatus writes status.volumeStatus from the live volumes and reports failedClaims as ResizeFailed.

@@ -9,6 +9,7 @@ import (
 	stepsv3 "github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv3"
 	"github.com/cloudogu/k8s-dogu-operator/v3/internal/dogu/pvc"
 	"github.com/cloudogu/k8s-dogu-operator/v3/internal/dogu/workloads"
+	"github.com/cloudogu/k8s-dogu-operator/v3/internal/logging"
 	flux "github.com/fluxcd/helm-controller/api/v2"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -29,11 +30,12 @@ type ResizePVCStep struct {
 	// apiReader reads uncached, so a lagging cache cannot hide a mounting pod or a resumed release.
 	apiReader        client.Reader
 	k8sClient        K8sClient
+	eventRecorder    EventRecorder
 	offlineExpansion bool
 }
 
 // NewResizePVCStep expects a discovery that reads through apiReader as well.
-func NewResizePVCStep(chartService ChartService, assembler ValueAssembler, resizeChecker ResizeChecker, discovery VolumeDiscovery, apiReader client.Reader, k8sClient K8sClient, offlineExpansion bool) *ResizePVCStep {
+func NewResizePVCStep(chartService ChartService, assembler ValueAssembler, resizeChecker ResizeChecker, discovery VolumeDiscovery, apiReader client.Reader, k8sClient K8sClient, recorder EventRecorder, offlineExpansion bool) *ResizePVCStep {
 	return &ResizePVCStep{
 		chartService:     chartService,
 		assembler:        assembler,
@@ -41,6 +43,7 @@ func NewResizePVCStep(chartService ChartService, assembler ValueAssembler, resiz
 		discovery:        discovery,
 		apiReader:        apiReader,
 		k8sClient:        k8sClient,
+		eventRecorder:    recorder,
 		offlineExpansion: offlineExpansion,
 	}
 }
@@ -77,7 +80,7 @@ func (rps *ResizePVCStep) resizeOnline(ctx context.Context, doguResource *v3beta
 		return result
 	}
 
-	return rps.replaceWorkloads(ctx, doguWorkloads, volumes, nil, checkResult.OutdatedStatefulSets)
+	return rps.replaceWorkloads(ctx, doguResource, doguWorkloads, volumes, nil, checkResult.OutdatedStatefulSets)
 }
 
 // resizeOffline detaches the claims from all workloads and pods, for storage that only expands unmounted volumes.
@@ -109,20 +112,22 @@ func (rps *ResizePVCStep) resizeOffline(ctx context.Context, doguResource *v3bet
 		return result
 	}
 
-	if result = rps.replaceWorkloads(ctx, doguWorkloads, volumes, affected, checkResult.OutdatedStatefulSets); !result.Continue {
+	if result = rps.replaceWorkloads(ctx, doguResource, doguWorkloads, volumes, affected, checkResult.OutdatedStatefulSets); !result.Continue {
 		return result
 	}
 
-	return rps.deleteMountingPods(ctx, doguResource.Namespace, affected)
+	return rps.deleteMountingPods(ctx, doguResource, affected)
 }
 
 // replaceWorkloads deletes the workloads mounting claims plus the outdated StatefulSets and waits until they are gone.
-func (rps *ResizePVCStep) replaceWorkloads(ctx context.Context, doguWorkloads workloads.Workloads, volumes []workloads.Volume, claims []string, outdatedStatefulSets []types.UID) stepsv3.StepResult {
+func (rps *ResizePVCStep) replaceWorkloads(ctx context.Context, doguResource *v3beta1.Dogu, doguWorkloads workloads.Workloads, volumes []workloads.Volume, claims []string, outdatedStatefulSets []types.UID) stepsv3.StepResult {
 	deletedWorkloads, err := rps.deleteWorkloadsToRecreate(ctx, doguWorkloads, volumes, claims, outdatedStatefulSets)
 	if err != nil {
 		return stepsv3.RequeueWithError(err, v3beta1.ReasonResizingPVC)
 	}
 	if len(deletedWorkloads) > 0 {
+		logging.Info(ctx, "deleted workloads to recreate them on the resized volumes", "workloads", deletedWorkloads)
+		rps.eventRecorder.Event(doguResource, corev1.EventTypeNormal, v3beta1.ReasonResizingPVC, fmt.Sprintf("Deleted %v to recreate them on the resized volumes", deletedWorkloads))
 		return stepsv3.RequeueAfter(defaultRequeueAfter, v3beta1.ReasonResizingPVC, fmt.Sprintf("waiting for workloads to be deleted and recreated by the release: %v", deletedWorkloads))
 	}
 
@@ -163,7 +168,7 @@ func (rps *ResizePVCStep) growClaims(ctx context.Context, doguResource *v3beta1.
 	var rejectedClaims []string
 	var rejection error
 	for _, request := range requests {
-		err := rps.patchStorageRequest(ctx, request)
+		err := rps.patchStorageRequest(ctx, doguResource, request)
 		// Stop and report if resizing is not allowed
 		if apierrors.IsForbidden(err) || apierrors.IsInvalid(err) {
 			rejectedClaims, rejection = []string{request.PVC.Name}, err
@@ -178,8 +183,11 @@ func (rps *ResizePVCStep) growClaims(ctx context.Context, doguResource *v3beta1.
 	if err != nil {
 		return workloads.Workloads{}, nil, stepsv3.RequeueWithError(err, v3beta1.ReasonResizingPVC)
 	}
-	if _, err := updateVolumeStatus(ctx, rps.k8sClient, doguResource, rendered, volumes, rejectedClaims); err != nil {
-		return workloads.Workloads{}, nil, stepsv3.RequeueWithError(err, v3beta1.ReasonResizingPVC)
+	// without new requests the workloads may be deleted, so the discovered volumes would wipe the status of a running resize
+	if len(requests) > 0 {
+		if _, err := updateVolumeStatus(ctx, rps.k8sClient, doguResource, rendered, volumes, rejectedClaims); err != nil {
+			return workloads.Workloads{}, nil, stepsv3.RequeueWithError(err, v3beta1.ReasonResizingPVC)
+		}
 	}
 	if rejection != nil {
 		return workloads.Workloads{}, nil, stepsv3.Abort(v3beta1.ReasonResizingPVC, rejection.Error())
@@ -188,18 +196,21 @@ func (rps *ResizePVCStep) growClaims(ctx context.Context, doguResource *v3beta1.
 	return doguWorkloads, volumes, stepsv3.Continue()
 }
 
-func (rps *ResizePVCStep) patchStorageRequest(ctx context.Context, request pvc.ResizeRequest) error {
+func (rps *ResizePVCStep) patchStorageRequest(ctx context.Context, doguResource *v3beta1.Dogu, request pvc.ResizeRequest) error {
 	claim := &corev1.PersistentVolumeClaim{}
 	if err := rps.k8sClient.Get(ctx, request.PVC, claim); err != nil {
 		return fmt.Errorf("failed to get PVC %q: %w", request.PVC, err)
 	}
 
+	current := claim.Spec.Resources.Requests.Storage().String()
 	patch := client.MergeFrom(claim.DeepCopy())
 	claim.Spec.Resources.Requests[corev1.ResourceStorage] = request.Desired.DeepCopy()
 	if err := rps.k8sClient.Patch(ctx, claim, patch); err != nil {
 		return fmt.Errorf("failed to grow PVC %q to %s: %w", request.PVC, request.Desired.String(), err)
 	}
 
+	logging.Info(ctx, "growing volume", "pvc", claim.Name, "from", current, "to", request.Desired.String())
+	rps.eventRecorder.Event(doguResource, corev1.EventTypeNormal, v3beta1.ReasonResizingPVC, fmt.Sprintf("Growing volume %s from %s to %s", claim.Name, current, request.Desired.String()))
 	return nil
 }
 
@@ -307,13 +318,13 @@ func findWorkload(doguWorkloads workloads.Workloads, ref corev1.TypedLocalObject
 }
 
 // deleteMountingPods finds running pods by claim name; they carry no dogu label and may have outlived their workload.
-func (rps *ResizePVCStep) deleteMountingPods(ctx context.Context, namespace string, claims []string) stepsv3.StepResult {
+func (rps *ResizePVCStep) deleteMountingPods(ctx context.Context, doguResource *v3beta1.Dogu, claims []string) stepsv3.StepResult {
 	pods := &corev1.PodList{}
-	if err := rps.apiReader.List(ctx, pods, client.InNamespace(namespace)); err != nil {
-		return stepsv3.RequeueWithError(fmt.Errorf("failed to list pods in namespace %q: %w", namespace, err), v3beta1.ReasonResizingPVC)
+	if err := rps.apiReader.List(ctx, pods, client.InNamespace(doguResource.Namespace)); err != nil {
+		return stepsv3.RequeueWithError(fmt.Errorf("failed to list pods in namespace %q: %w", doguResource.Namespace, err), v3beta1.ReasonResizingPVC)
 	}
 
-	var deleted []string
+	var deleted, newlyDeleted []string
 	for i := range pods.Items {
 		pod := &pods.Items[i]
 		// skip finished pods to keep the logs
@@ -324,6 +335,13 @@ func (rps *ResizePVCStep) deleteMountingPods(ctx context.Context, namespace stri
 			return stepsv3.RequeueWithError(fmt.Errorf("failed to delete pod %q: %w", pod.Name, err), v3beta1.ReasonResizingPVC)
 		}
 		deleted = append(deleted, pod.Name)
+		if pod.DeletionTimestamp == nil {
+			newlyDeleted = append(newlyDeleted, pod.Name)
+		}
+	}
+	if len(newlyDeleted) > 0 {
+		logging.Info(ctx, "deleted pods that mount resizing volumes", "pods", newlyDeleted)
+		rps.eventRecorder.Event(doguResource, corev1.EventTypeNormal, v3beta1.ReasonResizingPVC, fmt.Sprintf("Deleted pods %v that mount resizing volumes", newlyDeleted))
 	}
 	if len(deleted) > 0 {
 		return stepsv3.RequeueAfter(defaultRequeueAfter, v3beta1.ReasonResizingPVC, fmt.Sprintf("waiting for pods that mount resizing volumes to terminate: %v", deleted))

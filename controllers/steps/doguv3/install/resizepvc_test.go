@@ -23,6 +23,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
@@ -95,7 +96,20 @@ func prepareResizeStep(client client.Client, t *testing.T, doguResource *v3beta1
 	assembler := NewMockValueAssembler(t)
 	assembler.EXPECT().Assemble(mock.Anything, doguResource, []byte("meta")).Return(assembledValues, nil).Maybe()
 
-	return NewResizePVCStep(chartService, assembler, pvc.NewResizeChecker(client), workloads.NewDiscovery(client), client, client, true)
+	return NewResizePVCStep(chartService, assembler, pvc.NewResizeChecker(client), workloads.NewDiscovery(client), client, client, record.NewFakeRecorder(10), true)
+}
+
+func recordedEvents(step *ResizePVCStep) []string {
+	recorder := step.eventRecorder.(*record.FakeRecorder)
+	var events []string
+	for {
+		select {
+		case event := <-recorder.Events:
+			events = append(events, event)
+		default:
+			return events
+		}
+	}
 }
 
 func prepareOnlineResizeStep(client client.Client, t *testing.T, doguResource *v3beta1.Dogu, rendered []*unstructured.Unstructured) *ResizePVCStep {
@@ -205,6 +219,56 @@ func TestResizePVCStep_Run(t *testing.T) {
 		assert.Equal(t, resource.MustParse("2Gi"), claim.Spec.Resources.Requests[corev1.ResourceStorage])
 		assert.False(t, delRecClient.exists(t, mounting))
 		assert.True(t, delRecClient.exists(t, other))
+	})
+
+	t.Run("reports the grown PVC as event", func(t *testing.T) {
+		claim := volumePVC("data", "1Gi", "1Gi")
+		delRecClient := newDeletionRecClient(&claim, helmRelease(true))
+		doguResource := delRecClient.dogu(t)
+
+		step := prepareResizeStep(delRecClient.client, t, doguResource, renderedPVC(t, "data", "2Gi"))
+		step.Run(testCtx, doguResource)
+
+		assert.Contains(t, recordedEvents(step), "Normal ResizingPVC Growing volume data from 1Gi to 2Gi")
+	})
+
+	t.Run("reports the deleted workloads as event", func(t *testing.T) {
+		claim := volumePVC("data", "1Gi", "1Gi")
+		delRecClient := newDeletionRecClient(&claim, resizeDeployment("nexus", "data"), helmRelease(true))
+		doguResource := delRecClient.dogu(t)
+
+		step := prepareResizeStep(delRecClient.client, t, doguResource, renderedPVC(t, "data", "2Gi"))
+		step.Run(testCtx, doguResource)
+
+		assert.Contains(t, recordedEvents(step), "Normal ResizingPVC Deleted [Deployment/nexus] to recreate them on the resized volumes")
+	})
+
+	t.Run("keeps the volume status while the workloads of a running resize are gone", func(t *testing.T) {
+		claim := volumePVC("data", "2Gi", "1Gi")
+		delRecClient := newDeletionRecClient(&claim, helmRelease(true))
+		doguResource := delRecClient.dogu(t)
+		resizing := []v3beta1.VolumeStatus{{ClaimName: "data", Size: resource.MustParse("1Gi"), DesiredSize: resource.MustParse("2Gi"), State: v3beta1.VolumeStatusStateResizing}}
+		doguResource.Status.VolumeStatus = resizing
+		require.NoError(t, delRecClient.client.Status().Update(testCtx, doguResource))
+
+		step := prepareResizeStep(delRecClient.client, t, doguResource, renderedPVC(t, "data", "2Gi"))
+		step.Run(testCtx, doguResource)
+
+		assert.Equal(t, resizing, delRecClient.dogu(t).Status.VolumeStatus)
+	})
+
+	t.Run("reports only the newly deleted pods as event", func(t *testing.T) {
+		terminating := resizePod("nexus-old", "data")
+		terminating.DeletionTimestamp = &metav1.Time{Time: time.Now()}
+		terminating.Finalizers = []string{"test"}
+		claim := volumePVC("data", "2Gi", "1Gi")
+		delRecClient := newDeletionRecClient(&claim, terminating, resizePod("nexus-abc", "data"), helmRelease(true))
+		doguResource := delRecClient.dogu(t)
+
+		step := prepareResizeStep(delRecClient.client, t, doguResource, renderedPVC(t, "data", "2Gi"))
+		step.Run(testCtx, doguResource)
+
+		assert.Equal(t, []string{"Normal ResizingPVC Deleted pods [nexus-abc] that mount resizing volumes"}, recordedEvents(step))
 	})
 
 	t.Run("deletes each workload kind with its propagation policy and a UID precondition", func(t *testing.T) {

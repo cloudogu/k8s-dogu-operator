@@ -25,7 +25,7 @@ type ResizeRequest struct {
 	Desired resource.Quantity
 }
 
-// CheckResult contains only PVCs that require an expansion or whose expansion to the desired size is still running.
+// CheckResult contains only PVCs that require an expansion or whose expansion up to the desired size is still running.
 type CheckResult struct {
 	ResizeRequests []ResizeRequest
 	InProgress     []client.ObjectKey
@@ -232,10 +232,10 @@ func checkLivePVC(desired desiredClaim, livePVC *corev1.PersistentVolumeClaim) (
 	return ResizeRequest{}, pvcUnchanged, nil
 }
 
-// resizeInProgress reports whether the bound PVC already requests the desired size and its expansion has not finished without error.
+// resizeInProgress reports whether the bound PVC requests at most the desired size and its expansion has not finished without error; a larger size is requested afterwards.
 func resizeInProgress(desired resource.Quantity, pvc *corev1.PersistentVolumeClaim) bool {
 	requested, found := pvc.Spec.Resources.Requests[corev1.ResourceStorage]
-	if !found || requested.Cmp(desired) != 0 || pvc.Status.Phase != corev1.ClaimBound ||
+	if !found || requested.Cmp(desired) > 0 || pvc.Status.Phase != corev1.ClaimBound ||
 		hasTrueCondition(pvc, corev1.PersistentVolumeClaimControllerResizeError, corev1.PersistentVolumeClaimNodeResizeError) {
 		return false
 	}

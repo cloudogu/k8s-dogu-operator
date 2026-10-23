@@ -433,28 +433,28 @@ func TestResizeChecker_CheckErrors(t *testing.T) {
 		assert.Empty(t, result.ResizeRequests)
 	})
 
-	t.Run("rejects a live PVC with an active resize status", func(t *testing.T) {
-		live := newPVC("data", "1Gi", nil)
+	t.Run("rejects a live PVC with an active resize status beyond the desired size", func(t *testing.T) {
+		live := newPVC("data", "2Gi", nil)
 		live.Status.AllocatedResourceStatuses = map[corev1.ResourceName]corev1.ClaimResourceStatus{
 			corev1.ResourceStorage: corev1.PersistentVolumeClaimControllerResizeInProgress,
 		}
 		checker := NewResizeChecker(fake.NewClientBuilder().WithObjects(live).Build())
 
-		result, err := checker.Check(ctx, testNamespace, renderedObjects(t, newPVC("data", "2Gi", nil)))
+		result, err := checker.Check(ctx, testNamespace, renderedObjects(t, newPVC("data", "1Gi", nil)))
 
 		require.ErrorContains(t, err, "live PVC \"ecosystem/data\" has storage resize status \"ControllerResizeInProgress\"")
 		assert.Empty(t, result.ResizeRequests)
 	})
 
-	t.Run("rejects a live PVC with an active resize condition", func(t *testing.T) {
-		live := newPVC("data", "1Gi", nil)
+	t.Run("rejects a live PVC with an active resize condition beyond the desired size", func(t *testing.T) {
+		live := newPVC("data", "2Gi", nil)
 		live.Status.Conditions = []corev1.PersistentVolumeClaimCondition{{
 			Type:   corev1.PersistentVolumeClaimResizing,
 			Status: corev1.ConditionTrue,
 		}}
 		checker := NewResizeChecker(fake.NewClientBuilder().WithObjects(live).Build())
 
-		result, err := checker.Check(ctx, testNamespace, renderedObjects(t, newPVC("data", "2Gi", nil)))
+		result, err := checker.Check(ctx, testNamespace, renderedObjects(t, newPVC("data", "1Gi", nil)))
 
 		require.ErrorContains(t, err, "live PVC \"ecosystem/data\" has active resize condition \"Resizing\"")
 		assert.Empty(t, result.ResizeRequests)
@@ -501,6 +501,18 @@ func TestResizeChecker_CheckInProgress(t *testing.T) {
 			checker := NewResizeChecker(fake.NewClientBuilder().WithObjects(live).Build())
 
 			result, err := checker.Check(ctx, testNamespace, renderedObjects(t, newPVC("data", "2Gi", nil)))
+
+			require.NoError(t, err)
+			assert.Empty(t, result.ResizeRequests)
+			assert.Equal(t, []client.ObjectKey{{Namespace: testNamespace, Name: "data"}}, result.InProgress)
+		})
+		// the larger size is requested once this resize has finished
+		t.Run("reports a started resize below the desired size as in progress: "+tt.name, func(t *testing.T) {
+			live := newPVC("data", "2Gi", nil)
+			tt.modify(live)
+			checker := NewResizeChecker(fake.NewClientBuilder().WithObjects(live).Build())
+
+			result, err := checker.Check(ctx, testNamespace, renderedObjects(t, newPVC("data", "3Gi", nil)))
 
 			require.NoError(t, err)
 			assert.Empty(t, result.ResizeRequests)
