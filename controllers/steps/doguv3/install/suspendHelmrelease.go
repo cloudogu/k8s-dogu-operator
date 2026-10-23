@@ -17,11 +17,6 @@ import (
 )
 
 const (
-	ConditionSuspended          = "Suspended"
-	ReasonNotSuspended          = "NotSuspended"
-	ReasonPVCResizeInProgress   = "PVCResizeInProgress"
-	ReasonDoguStopped           = "DoguStopped"
-	ReasonReconciliationPaused  = "ReconciliationPaused"
 	messageNotSuspended         = "HelmRelease reconciliation is enabled"
 	messagePVCResizeInProgress  = "HelmRelease reconciliation is suspended while a PVC resize is in progress"
 	messageDoguStopped          = "HelmRelease reconciliation is suspended because the Dogu is stopped"
@@ -101,14 +96,14 @@ func (shr *SuspendHelmReleaseStep) expectedState(ctx context.Context, doguResour
 	if doguResource.Spec.PauseReconciliation {
 		return desiredState{
 			suspendHelmRelease: true,
-			reason:             ReasonReconciliationPaused,
+			reason:             doguv3.ReasonReconciliationPaused,
 			message:            messageReconciliationPaused,
 		}, nil
 	}
 	if doguResource.Spec.Stopped {
 		return desiredState{
 			suspendHelmRelease: true,
-			reason:             ReasonDoguStopped,
+			reason:             doguv3.ReasonDoguStopped,
 			message:            messageDoguStopped,
 		}, nil
 	}
@@ -140,14 +135,14 @@ func (shr *SuspendHelmReleaseStep) checkForPVCResize(ctx context.Context, doguRe
 	if len(checkResult.ResizeRequests) > 0 {
 		return desiredState{
 			suspendHelmRelease: true,
-			reason:             ReasonPVCResizeInProgress,
+			reason:             doguv3.ReasonPVCResizeInProgress,
 			message:            messagePVCResizeInProgress,
 		}, nil
 	}
 
 	return desiredState{
 		suspendHelmRelease: false,
-		reason:             ReasonNotSuspended,
+		reason:             doguv3.ReasonNotSuspended,
 		message:            messageNotSuspended,
 	}, nil
 }
@@ -176,7 +171,7 @@ func (shr *SuspendHelmReleaseStep) setSuspendedConditionOnDoguCR(ctx context.Con
 		status = metav1.ConditionTrue
 	}
 	condition := metav1.Condition{
-		Type:               ConditionSuspended,
+		Type:               doguv3.ConditionSuspended,
 		Status:             status,
 		Reason:             targetState.reason,
 		Message:            targetState.message,

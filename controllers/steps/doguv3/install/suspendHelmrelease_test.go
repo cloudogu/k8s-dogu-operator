@@ -37,7 +37,7 @@ func TestSuspendHelmReleaseStep_Run(t *testing.T) {
 			doguPaused:      true,
 			wantResult:      stepsv3.Continue(),
 			wantSuspended:   true,
-			wantCondition:   ReasonReconciliationPaused,
+			wantCondition:   doguv3.ReasonReconciliationPaused,
 		},
 		{
 			name:            "suspend for stopped Dogu",
@@ -45,7 +45,7 @@ func TestSuspendHelmReleaseStep_Run(t *testing.T) {
 			doguStopped:     true,
 			wantResult:      stepsv3.Continue(),
 			wantSuspended:   true,
-			wantCondition:   ReasonDoguStopped,
+			wantCondition:   doguv3.ReasonDoguStopped,
 		},
 		{
 			name:             "suspend for PVC resize",
@@ -54,7 +54,7 @@ func TestSuspendHelmReleaseStep_Run(t *testing.T) {
 			resizeInProgress: true,
 			wantResult:       stepsv3.Continue(),
 			wantSuspended:    true,
-			wantCondition:    ReasonPVCResizeInProgress,
+			wantCondition:    doguv3.ReasonPVCResizeInProgress,
 		},
 		{
 			name:             "resume when suspension reason has disappeared",
@@ -62,7 +62,7 @@ func TestSuspendHelmReleaseStep_Run(t *testing.T) {
 			alreadySuspended: true,
 			resizeRelevant:   true,
 			wantResult:       stepsv3.Continue(),
-			wantCondition:    ReasonNotSuspended,
+			wantCondition:    doguv3.ReasonNotSuspended,
 		},
 		{
 			name:             "update condition when already suspended for a Dogu pause",
@@ -71,7 +71,7 @@ func TestSuspendHelmReleaseStep_Run(t *testing.T) {
 			doguPaused:       true,
 			wantResult:       stepsv3.Continue(),
 			wantSuspended:    true,
-			wantCondition:    ReasonReconciliationPaused,
+			wantCondition:    doguv3.ReasonReconciliationPaused,
 		},
 		{
 			name:             "continue when already suspended for PVC resize",
@@ -81,7 +81,7 @@ func TestSuspendHelmReleaseStep_Run(t *testing.T) {
 			resizeInProgress: true,
 			wantResult:       stepsv3.Continue(),
 			wantSuspended:    true,
-			wantCondition:    ReasonPVCResizeInProgress,
+			wantCondition:    doguv3.ReasonPVCResizeInProgress,
 		},
 	}
 
@@ -347,12 +347,12 @@ func TestSuspendHelmReleaseStep_expectedState(t *testing.T) {
 		{
 			name:        "PVC resize in progress",
 			checkResult: pvc.CheckResult{ResizeRequests: []pvc.ResizeRequest{{PVC: client.ObjectKey{Name: "data"}}}},
-			wantReason:  ReasonPVCResizeInProgress,
+			wantReason:  doguv3.ReasonPVCResizeInProgress,
 			wantMessage: messagePVCResizeInProgress,
 		},
 		{
 			name:        "no suspension reason",
-			wantReason:  ReasonNotSuspended,
+			wantReason:  doguv3.ReasonNotSuspended,
 			wantMessage: messageNotSuspended,
 		},
 		{
@@ -414,13 +414,13 @@ func TestSuspendHelmReleaseStep_setSuspendedConditionOnDoguCR(t *testing.T) {
 	}{
 		{
 			name:    "sets true condition for a suspension reason",
-			reason:  ReasonDoguStopped,
+			reason:  doguv3.ReasonDoguStopped,
 			message: messageDoguStopped,
 			status:  metav1.ConditionTrue,
 		},
 		{
 			name:    "sets false condition when no reason remains",
-			reason:  ReasonNotSuspended,
+			reason:  doguv3.ReasonNotSuspended,
 			message: messageNotSuspended,
 			status:  metav1.ConditionFalse,
 		},
@@ -458,7 +458,7 @@ func TestSuspendHelmReleaseStep_setSuspendedConditionOnDoguCR(t *testing.T) {
 			Build()
 		step := NewSuspendHelmReleaseStep(k8sClient, nil, nil, nil, nil)
 
-		err := step.setSuspendedConditionOnDoguCR(t.Context(), dogu, desiredState{suspendHelmRelease: true, reason: ReasonDoguStopped, message: messageDoguStopped})
+		err := step.setSuspendedConditionOnDoguCR(t.Context(), dogu, desiredState{suspendHelmRelease: true, reason: doguv3.ReasonDoguStopped, message: messageDoguStopped})
 
 		require.ErrorContains(t, err, "failed to update Dogu suspended condition")
 	})
@@ -504,11 +504,11 @@ func assertSuspendTestCondition(t *testing.T, k8sClient client.Client, dogu *dog
 	status := metav1.ConditionTrue
 	message := messageDoguStopped
 	switch reason {
-	case ReasonReconciliationPaused:
+	case doguv3.ReasonReconciliationPaused:
 		message = messageReconciliationPaused
-	case ReasonPVCResizeInProgress:
+	case doguv3.ReasonPVCResizeInProgress:
 		message = messagePVCResizeInProgress
-	case ReasonNotSuspended:
+	case doguv3.ReasonNotSuspended:
 		status = metav1.ConditionFalse
 		message = messageNotSuspended
 	}
@@ -519,7 +519,7 @@ func assertSuspendTestConditionWithStatus(t *testing.T, k8sClient client.Client,
 	t.Helper()
 	updated := &doguv3.Dogu{}
 	require.NoError(t, k8sClient.Get(t.Context(), client.ObjectKeyFromObject(dogu), updated))
-	condition := apimeta.FindStatusCondition(updated.Status.Conditions, ConditionSuspended)
+	condition := apimeta.FindStatusCondition(updated.Status.Conditions, doguv3.ConditionSuspended)
 	require.NotNil(t, condition)
 	assert.Equal(t, status, condition.Status)
 	assert.Equal(t, reason, condition.Reason)

@@ -27,7 +27,7 @@ func (ups *UpdatePendingStep) Run(ctx context.Context, doguResource *v3beta1.Dog
 	if doguResource.Spec.PauseReconciliation {
 		return ups.checkUpdatePendingCondition(ctx, doguResource)
 	}
-	return ups.setUpdatePendingCondition(ctx, doguResource, v1.ConditionFalse, v3beta1.ReasonReconciliationEnabled, "Reconciliation is enabled")
+	return ups.setUpdatePendingCondition(ctx, doguResource, v1.ConditionFalse, v3beta1.ReasonNotSuspended, "Reconciliation is enabled")
 }
 
 func (ups *UpdatePendingStep) checkUpdatePendingCondition(ctx context.Context, doguResource *v3beta1.Dogu) doguv3.StepResult {

@@ -119,7 +119,7 @@ func (eor *EnsureOCIRepositoryStep) checkForPendingChanges(ctx context.Context, 
 	err := eor.k8sClient.Get(ctx, client.ObjectKey{Namespace: repository.Namespace, Name: repository.Name}, repository)
 	if err != nil {
 		if !errors.IsNotFound(err) {
-			return stepsv3.RequeueWithError(err, ReasonReconciliationPaused)
+			return stepsv3.RequeueWithError(err, v3beta1.ReasonReconciliationPaused)
 		}
 	}
 
@@ -132,7 +132,7 @@ func (eor *EnsureOCIRepositoryStep) checkForPendingChanges(ctx context.Context, 
 		Type:               v3beta1.ConditionUpdatePending,
 		Status:             metav1.ConditionTrue,
 		ObservedGeneration: doguResource.Generation,
-		Reason:             ReasonReconciliationPaused,
+		Reason:             v3beta1.ReasonReconciliationPaused,
 		Message:            "Changes not propagated to OCIRepository, because dogu reconciliation is paused",
 	}
 	if metautil.SetStatusCondition(&doguResource.Status.Conditions, changeCondition) {
@@ -141,7 +141,7 @@ func (eor *EnsureOCIRepositoryStep) checkForPendingChanges(ctx context.Context, 
 			if errors.IsConflict(err) {
 				return stepsv3.RequeueAfter(defaultRequeueAfter, v3beta1.ReasonInstalling, err.Error())
 			}
-			return stepsv3.RequeueWithError(err, ReasonReconciliationPaused)
+			return stepsv3.RequeueWithError(err, v3beta1.ReasonReconciliationPaused)
 		}
 		eor.eventRecorder.Event(doguResource, v1.EventTypeNormal, v3beta1.ConditionUpdatePending, "Changes not propagated to OCIRepository, because dogu reconciliation is paused")
 		logging.Info(ctx, "Changes not propagated to OCIRepository, because dogu reconciliation is paused", "dogu", doguResource.Name)

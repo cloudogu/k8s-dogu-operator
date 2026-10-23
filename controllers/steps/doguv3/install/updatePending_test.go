@@ -53,7 +53,7 @@ func TestUpdatePendingStep_Run(t *testing.T) {
 			includesStatus: true,
 			want:           doguv3.Continue(),
 			assertFn: func(t *testing.T, dogu *v3beta1.Dogu) {
-				checkUpdatePendingCondition(t, dogu, metav1.ConditionFalse, v3beta1.ReasonReconciliationEnabled, "Reconciliation is enabled", currentGeneration)
+				checkUpdatePendingCondition(t, dogu, metav1.ConditionFalse, v3beta1.ReasonNotSuspended, "Reconciliation is enabled", currentGeneration)
 			},
 		},
 		{
@@ -66,7 +66,7 @@ func TestUpdatePendingStep_Run(t *testing.T) {
 					Conditions: []metav1.Condition{
 						{
 							Type:   v3beta1.ConditionUpdatePending,
-							Reason: ReasonReconciliationPaused,
+							Reason: v3beta1.ReasonReconciliationPaused,
 							Status: metav1.ConditionTrue,
 						},
 					},
@@ -75,7 +75,7 @@ func TestUpdatePendingStep_Run(t *testing.T) {
 			includesStatus: true,
 			want:           doguv3.Continue(),
 			assertFn: func(t *testing.T, dogu *v3beta1.Dogu) {
-				checkUpdatePendingCondition(t, dogu, metav1.ConditionFalse, v3beta1.ReasonReconciliationEnabled, "Reconciliation is enabled", currentGeneration)
+				checkUpdatePendingCondition(t, dogu, metav1.ConditionFalse, v3beta1.ReasonNotSuspended, "Reconciliation is enabled", currentGeneration)
 			},
 		},
 		{
@@ -88,7 +88,7 @@ func TestUpdatePendingStep_Run(t *testing.T) {
 					Conditions: []metav1.Condition{
 						{
 							Type:               v3beta1.ConditionUpdatePending,
-							Reason:             ReasonReconciliationPaused,
+							Reason:             v3beta1.ReasonReconciliationPaused,
 							Status:             metav1.ConditionFalse,
 							ObservedGeneration: lastGeneration,
 						},
@@ -98,7 +98,7 @@ func TestUpdatePendingStep_Run(t *testing.T) {
 			includesStatus: true,
 			want:           doguv3.Continue(),
 			assertFn: func(t *testing.T, dogu *v3beta1.Dogu) {
-				checkUpdatePendingCondition(t, dogu, metav1.ConditionFalse, v3beta1.ReasonReconciliationEnabled, "Reconciliation is enabled", currentGeneration)
+				checkUpdatePendingCondition(t, dogu, metav1.ConditionFalse, v3beta1.ReasonNotSuspended, "Reconciliation is enabled", currentGeneration)
 			},
 		},
 		{
@@ -112,7 +112,7 @@ func TestUpdatePendingStep_Run(t *testing.T) {
 					Conditions: []metav1.Condition{
 						{
 							Type:               v3beta1.ConditionUpdatePending,
-							Reason:             ReasonReconciliationPaused,
+							Reason:             v3beta1.ReasonReconciliationPaused,
 							Status:             metav1.ConditionTrue,
 							ObservedGeneration: lastGeneration,
 						},
@@ -122,7 +122,7 @@ func TestUpdatePendingStep_Run(t *testing.T) {
 			includesStatus: true,
 			want:           doguv3.Continue(),
 			assertFn: func(t *testing.T, dogu *v3beta1.Dogu) {
-				checkUpdatePendingCondition(t, dogu, metav1.ConditionFalse, ReasonReconciliationPaused, "Reconciliation is paused", 2)
+				checkUpdatePendingCondition(t, dogu, metav1.ConditionFalse, v3beta1.ReasonReconciliationPaused, "Reconciliation is paused", 2)
 			},
 		},
 	} {
