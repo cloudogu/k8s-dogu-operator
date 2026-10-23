@@ -49,7 +49,7 @@ func TestRuntimePatchesHelmRelease(t *testing.T) {
 	require.NoError(t, v3beta1.AddToScheme(scheme))
 	require.NoError(t, helmflux.AddToScheme(scheme))
 	dogu := &v3beta1.Dogu{
-		ObjectMeta: metav1.ObjectMeta{Name: "fixture", Namespace: "ecosystem", UID: "fixture-uid"},
+		Name: "fixture", Namespace: "ecosystem", UID: "fixture-uid",
 		Spec: v3beta1.DoguSpec{
 			Name: "fixture", Version: "1.0.0", DoguApiVersion: "v3",
 			Values:       apiext.JSON{Raw: []byte(`{"explicit":"user"}`)},
@@ -57,7 +57,7 @@ func TestRuntimePatchesHelmRelease(t *testing.T) {
 		},
 	}
 	global := &corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{Name: "global-config", Namespace: dogu.Namespace},
+		Name: "global-config", Namespace: dogu.Namespace,
 		Data:       map[string]string{"config.yaml": "fqdn: first.example\n"},
 	}
 	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(dogu, global).WithStatusSubresource(dogu).Build()
