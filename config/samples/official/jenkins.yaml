@@ -1,9 +1,0 @@
-apiVersion: k8s.cloudogu.com/v2
-kind: Dogu
-metadata:
-  name: jenkins
-  labels:
-    app: ces
-spec:
-  name: official/jenkins
-  version: 2.462.3-1

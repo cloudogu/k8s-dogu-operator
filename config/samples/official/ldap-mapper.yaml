@@ -1,9 +1,0 @@
-apiVersion: k8s.cloudogu.com/v2
-kind: Dogu
-metadata:
-  name: ldap-mapper
-  labels:
-    app: ces
-spec:
-  name: official/ldap-mapper
-  version: 1.6.0-1
