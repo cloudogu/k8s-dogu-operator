@@ -64,8 +64,10 @@ func NewDoguInstallOrChangeUseCase(
 	ociStep *install.EnsureOCIRepositoryStep,
 	waitOCIStep *install.WaitForOCIRepositoryReadyStep,
 	validateChartStep *install.ValidateChartStep,
+	suspendHelmReleaseStep *install.SuspendHelmReleaseStep,
 	helmReleaseStep *install.EnsureHelmReleaseStep,
 	helmReleaseStatusStep *install.HelmReleaseStatusStep,
+	updatePendingStep *install.UpdatePendingStep,
 	exportModeStep *install.ExportModeStep,
 	client K8sClient, recorder EventRecorder) *DoguUseCase {
 	return &DoguUseCase{
@@ -81,8 +83,10 @@ func NewDoguInstallOrChangeUseCase(
 			ociStep,
 			waitOCIStep,
 			validateChartStep,
+			suspendHelmReleaseStep,
 			helmReleaseStep,
 			helmReleaseStatusStep,
+			updatePendingStep,
 		},
 		k8sClient:     client,
 		eventRecorder: recorder,
@@ -133,6 +137,7 @@ func (duc *DoguUseCase) HandleUntilApplied(ctx context.Context, doguResource *v3
 
 		// Abort, requeue or error
 		if !result.Continue {
+			logging.Debug(stepCtx, "Stopping step execution and requeue", "dogu", doguResource.Name)
 			return duc.stopStepExecution(ctx, doguResource, result)
 		}
 	}
