@@ -12,7 +12,9 @@ import (
 )
 
 // ignoredConditionTypes lists the conditions to ignore.
-var ignoredConditionTypes = []string{meta.ReconcilingCondition}
+func ignoredConditionTypes() []string {
+	return []string{meta.ReconcilingCondition}
+}
 
 // IgnoreReconcilingPredicate drops updates of a HelmRelease which only differ in ignored conditions.
 func IgnoreReconcilingPredicate() predicate.Predicate {
@@ -33,8 +35,9 @@ func withoutIgnoredFields(release *helmv2.HelmRelease) *helmv2.HelmRelease {
 	stripped := release.DeepCopy()
 	stripped.ResourceVersion = ""
 	stripped.ManagedFields = nil
+	ignored := ignoredConditionTypes()
 	stripped.Status.Conditions = slices.DeleteFunc(stripped.Status.Conditions, func(c metav1.Condition) bool {
-		return slices.Contains(ignoredConditionTypes, c.Type)
+		return slices.Contains(ignored, c.Type)
 	})
 	return stripped
 }
