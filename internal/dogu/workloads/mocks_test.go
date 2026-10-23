@@ -46,6 +46,80 @@ func (_m *MockDiscovery) EXPECT() *MockDiscovery_Expecter {
 	return &MockDiscovery_Expecter{mock: &_m.Mock}
 }
 
+// Volumes provides a mock function for the type MockDiscovery
+func (_mock *MockDiscovery) Volumes(ctx context.Context, namespace string, workloads Workloads) ([]Volume, error) {
+	ret := _mock.Called(ctx, namespace, workloads)
+
+	if len(ret) == 0 {
+		panic("no return value specified for Volumes")
+	}
+
+	var r0 []Volume
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, Workloads) ([]Volume, error)); ok {
+		return returnFunc(ctx, namespace, workloads)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, Workloads) []Volume); ok {
+		r0 = returnFunc(ctx, namespace, workloads)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]Volume)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string, Workloads) error); ok {
+		r1 = returnFunc(ctx, namespace, workloads)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockDiscovery_Volumes_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Volumes'
+type MockDiscovery_Volumes_Call struct {
+	*mock.Call
+}
+
+// Volumes is a helper method to define mock.On call
+//   - ctx context.Context
+//   - namespace string
+//   - workloads Workloads
+func (_e *MockDiscovery_Expecter) Volumes(ctx any, namespace any, workloads any) *MockDiscovery_Volumes_Call {
+	return &MockDiscovery_Volumes_Call{Call: _e.mock.On("Volumes", ctx, namespace, workloads)}
+}
+
+func (_c *MockDiscovery_Volumes_Call) Run(run func(ctx context.Context, namespace string, workloads Workloads)) *MockDiscovery_Volumes_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 string
+		if args[1] != nil {
+			arg1 = args[1].(string)
+		}
+		var arg2 Workloads
+		if args[2] != nil {
+			arg2 = args[2].(Workloads)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockDiscovery_Volumes_Call) Return(volumes []Volume, err error) *MockDiscovery_Volumes_Call {
+	_c.Call.Return(volumes, err)
+	return _c
+}
+
+func (_c *MockDiscovery_Volumes_Call) RunAndReturn(run func(ctx context.Context, namespace string, workloads Workloads) ([]Volume, error)) *MockDiscovery_Volumes_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Workloads provides a mock function for the type MockDiscovery
 func (_mock *MockDiscovery) Workloads(ctx context.Context, namespace string, doguName string) (Workloads, error) {
 	ret := _mock.Called(ctx, namespace, doguName)

@@ -8,6 +8,7 @@ import (
 	doguv3steps "github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv3"
 	"github.com/cloudogu/k8s-dogu-operator/v3/internal/dogu/pvc"
 	"github.com/cloudogu/k8s-dogu-operator/v3/internal/dogu/values"
+	"github.com/cloudogu/k8s-dogu-operator/v3/internal/dogu/workloads"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -29,6 +30,11 @@ type ValueAssembler interface {
 
 type ResizeChecker interface {
 	Check(ctx context.Context, targetNamespace string, renderedObjects []*unstructured.Unstructured) (pvc.CheckResult, error)
+}
+
+type VolumeDiscovery interface {
+	Workloads(ctx context.Context, namespace, doguName string) (workloads.Workloads, error)
+	Volumes(ctx context.Context, namespace string, workloads workloads.Workloads) ([]workloads.Volume, error)
 }
 
 type K8sClient interface {

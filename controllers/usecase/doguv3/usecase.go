@@ -65,10 +65,12 @@ func NewDoguInstallOrChangeUseCase(
 	waitOCIStep *install.WaitForOCIRepositoryReadyStep,
 	validateChartStep *install.ValidateChartStep,
 	suspendHelmReleaseStep *install.SuspendHelmReleaseStep,
+	resizePVCStep *install.ResizePVCStep,
 	helmReleaseStep *install.EnsureHelmReleaseStep,
 	helmReleaseStatusStep *install.HelmReleaseStatusStep,
 	updatePendingStep *install.UpdatePendingStep,
 	exportModeStep *install.ExportModeStep,
+	volumeStatusStep *install.VolumeStatusStep,
 	client K8sClient, recorder EventRecorder) *DoguUseCase {
 	return &DoguUseCase{
 		steps: []Step{
@@ -84,9 +86,11 @@ func NewDoguInstallOrChangeUseCase(
 			waitOCIStep,
 			validateChartStep,
 			suspendHelmReleaseStep,
+			resizePVCStep,
 			helmReleaseStep,
 			helmReleaseStatusStep,
 			updatePendingStep,
+			volumeStatusStep,
 		},
 		k8sClient:     client,
 		eventRecorder: recorder,

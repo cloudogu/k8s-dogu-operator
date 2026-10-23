@@ -443,6 +443,36 @@ func Test_getDoguV3Enabled(t *testing.T) {
 	}
 }
 
+func Test_readOfflineVolumeExpansion(t *testing.T) {
+	tests := []struct {
+		name    string
+		value   *string
+		want    bool
+		wantErr string
+	}{
+		{name: "default to online expansion when unset", want: false},
+		{name: "enable offline expansion", value: new("true"), want: true},
+		{name: "disable offline expansion", value: new("false"), want: false},
+		{name: "fail on invalid value", value: new("invalid"), wantErr: "failed to parse value of environment variable OFFLINE_VOLUME_EXPANSION"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.value != nil {
+				t.Setenv(envVarOfflineVolumeExpansion, *tt.value)
+			}
+
+			got, err := readOfflineVolumeExpansion()
+
+			if tt.wantErr != "" {
+				require.ErrorContains(t, err, tt.wantErr)
+				return
+			}
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
 func Test_getWarpMenuDisabledV2Dogus(t *testing.T) {
 	tests := []struct {
 		name      string

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -13,6 +14,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -23,9 +25,30 @@ type ResizeRequest struct {
 	Desired resource.Quantity
 }
 
-// CheckResult contains only PVCs that require an expansion.
+// CheckResult contains only PVCs that require an expansion or whose expansion up to the desired size is still running.
 type CheckResult struct {
 	ResizeRequests []ResizeRequest
+	InProgress     []client.ObjectKey
+	// OutdatedStatefulSets are the UIDs of live StatefulSets whose immutable claim templates request another size than rendered.
+	OutdatedStatefulSets []types.UID
+}
+
+type pvcOutcome int
+
+const (
+	pvcUnchanged pvcOutcome = iota
+	pvcNeedsResize
+	pvcResizeInProgress
+)
+
+func (r *CheckResult) add(request ResizeRequest, outcome pvcOutcome) {
+	switch outcome {
+	case pvcNeedsResize:
+		r.ResizeRequests = append(r.ResizeRequests, request)
+	case pvcResizeInProgress:
+		r.InProgress = append(r.InProgress, request.PVC)
+	case pvcUnchanged:
+	}
 }
 
 // ResizeChecker checks rendered Kubernetes objects against live PVCs without changing cluster resources.
@@ -65,19 +88,19 @@ func (c *resizeChecker) Check(ctx context.Context, targetNamespace string, rende
 	checkErr := extractionErr
 
 	for _, desired := range desiredClaims {
-		request, include, err := c.checkPVC(ctx, desired)
+		request, outcome, err := c.checkPVC(ctx, desired)
 		if err != nil {
 			checkErr = errors.Join(checkErr, err)
 			continue
 		}
-		if include {
-			result.ResizeRequests = append(result.ResizeRequests, request)
-		}
+		result.add(request, outcome)
 	}
 
-	statefulSetRequests, err := c.checkStatefulSetClaims(ctx, desiredTemplates)
+	checkErr = errors.Join(checkErr, c.checkStatefulSetClaims(ctx, desiredTemplates, &result))
+
+	outdated, err := c.outdatedStatefulSets(ctx, desiredTemplates)
 	checkErr = errors.Join(checkErr, err)
-	result.ResizeRequests = append(result.ResizeRequests, statefulSetRequests...)
+	result.OutdatedStatefulSets = outdated
 
 	if checkErr != nil {
 		return CheckResult{}, checkErr
@@ -86,13 +109,12 @@ func (c *resizeChecker) Check(ctx context.Context, targetNamespace string, rende
 	return result, nil
 }
 
-func (c *resizeChecker) checkStatefulSetClaims(ctx context.Context, desiredTemplates []desiredClaimTemplate) ([]ResizeRequest, error) {
+func (c *resizeChecker) checkStatefulSetClaims(ctx context.Context, desiredTemplates []desiredClaimTemplate, result *CheckResult) error {
 	templatesByNamespace := map[string][]desiredClaimTemplate{}
 	for _, template := range desiredTemplates {
 		templatesByNamespace[template.statefulSet.Namespace] = append(templatesByNamespace[template.statefulSet.Namespace], template)
 	}
 
-	var requests []ResizeRequest
 	var checkErr error
 	for namespace, templates := range templatesByNamespace {
 		livePVCs := &corev1.PersistentVolumeClaimList{}
@@ -104,7 +126,7 @@ func (c *resizeChecker) checkStatefulSetClaims(ctx context.Context, desiredTempl
 		for i := range livePVCs.Items {
 			livePVC := &livePVCs.Items[i]
 			for _, template := range templates {
-				if !matchesStatefulSetPVCName(livePVC.Name, template.name, template.statefulSet.Name) {
+				if !MatchesStatefulSetClaim(livePVC.Name, template.name, template.statefulSet.Name) {
 					continue
 				}
 
@@ -113,35 +135,63 @@ func (c *resizeChecker) checkStatefulSetClaims(ctx context.Context, desiredTempl
 					storage:      template.storage.DeepCopy(),
 					storageClass: copyStringPointer(template.storageClass),
 				}
-				request, include, err := checkLivePVC(desired, livePVC)
+				request, outcome, err := checkLivePVC(desired, livePVC)
 				if err != nil {
 					checkErr = errors.Join(checkErr, err)
 					continue
 				}
-				if include {
-					requests = append(requests, request)
-				}
+				result.add(request, outcome)
 			}
 		}
 	}
 
-	return requests, checkErr
+	return checkErr
 }
 
-func (c *resizeChecker) checkPVC(ctx context.Context, desired desiredClaim) (ResizeRequest, bool, error) {
+// outdatedStatefulSets finds live StatefulSets a Helm upgrade cannot change because their claim template sizes differ.
+func (c *resizeChecker) outdatedStatefulSets(ctx context.Context, desiredTemplates []desiredClaimTemplate) ([]types.UID, error) {
+	var outdated []types.UID
+	var checkErr error
+	for _, template := range desiredTemplates {
+		live := &appsv1.StatefulSet{}
+		err := c.k8s.Get(ctx, template.statefulSet, live)
+		if apierrors.IsNotFound(err) {
+			continue
+		}
+		if err != nil {
+			checkErr = errors.Join(checkErr, fmt.Errorf("failed to read live StatefulSet %q: %w", template.statefulSet, err))
+			continue
+		}
+		if slices.Contains(outdated, live.UID) {
+			continue
+		}
+
+		for _, liveTemplate := range live.Spec.VolumeClaimTemplates {
+			liveStorage, found := liveTemplate.Spec.Resources.Requests[corev1.ResourceStorage]
+			if liveTemplate.Name == template.name && found && liveStorage.Cmp(template.storage) != 0 {
+				outdated = append(outdated, live.UID)
+				break
+			}
+		}
+	}
+
+	return outdated, checkErr
+}
+
+func (c *resizeChecker) checkPVC(ctx context.Context, desired desiredClaim) (ResizeRequest, pvcOutcome, error) {
 	livePVC := &corev1.PersistentVolumeClaim{}
 	err := c.k8s.Get(ctx, desired.key, livePVC)
 	if apierrors.IsNotFound(err) {
-		return ResizeRequest{}, false, nil
+		return ResizeRequest{}, pvcUnchanged, nil
 	}
 	if err != nil {
-		return ResizeRequest{}, false, fmt.Errorf("failed to read live PVC %q: %w", desired.key, err)
+		return ResizeRequest{}, pvcUnchanged, fmt.Errorf("failed to read live PVC %q: %w", desired.key, err)
 	}
 
 	return checkLivePVC(desired, livePVC)
 }
 
-func checkLivePVC(desired desiredClaim, livePVC *corev1.PersistentVolumeClaim) (ResizeRequest, bool, error) {
+func checkLivePVC(desired desiredClaim, livePVC *corev1.PersistentVolumeClaim) (ResizeRequest, pvcOutcome, error) {
 	request := ResizeRequest{
 		PVC:     desired.key,
 		Desired: desired.storage.DeepCopy(),
@@ -156,9 +206,13 @@ func checkLivePVC(desired desiredClaim, livePVC *corev1.PersistentVolumeClaim) (
 		}
 	}
 
+	if validationErr == nil && resizeInProgress(desired.storage, livePVC) {
+		return request, pvcResizeInProgress, nil
+	}
+
 	currentRequest, err := currentStorageRequest(livePVC)
 	if err != nil {
-		return ResizeRequest{}, false, errors.Join(validationErr, err)
+		return ResizeRequest{}, pvcUnchanged, errors.Join(validationErr, err)
 	}
 
 	if desired.storage.Cmp(currentRequest) < 0 {
@@ -169,13 +223,37 @@ func checkLivePVC(desired desiredClaim, livePVC *corev1.PersistentVolumeClaim) (
 		})
 	}
 	if validationErr != nil {
-		return ResizeRequest{}, false, validationErr
+		return ResizeRequest{}, pvcUnchanged, validationErr
 	}
 	if desired.storage.Cmp(currentRequest) > 0 {
-		return request, true, nil
+		return request, pvcNeedsResize, nil
 	}
 
-	return ResizeRequest{}, false, nil
+	return ResizeRequest{}, pvcUnchanged, nil
+}
+
+// resizeInProgress reports whether the bound PVC requests at most the desired size and its expansion has not finished without error; a larger size is requested afterwards.
+func resizeInProgress(desired resource.Quantity, pvc *corev1.PersistentVolumeClaim) bool {
+	requested, found := pvc.Spec.Resources.Requests[corev1.ResourceStorage]
+	if !found || requested.Cmp(desired) > 0 || pvc.Status.Phase != corev1.ClaimBound ||
+		hasTrueCondition(pvc, corev1.PersistentVolumeClaimControllerResizeError, corev1.PersistentVolumeClaimNodeResizeError) {
+		return false
+	}
+
+	capacity, found := pvc.Status.Capacity[corev1.ResourceStorage]
+	return found && capacity.Cmp(requested) < 0 ||
+		pvc.Status.AllocatedResourceStatuses[corev1.ResourceStorage] != "" ||
+		hasTrueCondition(pvc, corev1.PersistentVolumeClaimResizing, corev1.PersistentVolumeClaimFileSystemResizePending)
+}
+
+func hasTrueCondition(pvc *corev1.PersistentVolumeClaim, conditionTypes ...corev1.PersistentVolumeClaimConditionType) bool {
+	for _, condition := range pvc.Status.Conditions {
+		if condition.Status == corev1.ConditionTrue && slices.Contains(conditionTypes, condition.Type) {
+			return true
+		}
+	}
+
+	return false
 }
 
 func currentStorageRequest(pvc *corev1.PersistentVolumeClaim) (resource.Quantity, error) {
@@ -288,7 +366,8 @@ func desiredClaimTemplatesFromStatefulSet(statefulSet *appsv1.StatefulSet) ([]de
 	return templates, extractionErr
 }
 
-func matchesStatefulSetPVCName(pvcName, templateName, statefulSetName string) bool {
+// MatchesStatefulSetClaim reports whether the PVC was created from the StatefulSet's volume claim template.
+func MatchesStatefulSetClaim(pvcName, templateName, statefulSetName string) bool {
 	ordinal, found := strings.CutPrefix(pvcName, templateName+"-"+statefulSetName+"-")
 	if !found || ordinal == "" || ordinal[0] == '0' && len(ordinal) > 1 {
 		return false

@@ -2,10 +2,12 @@ package install
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/cloudogu/k8s-dogu-lib/v3/api/v3beta1"
 	stepsv3 "github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv3"
+	"github.com/cloudogu/k8s-dogu-operator/v3/internal/dogu/pvc"
 	"github.com/cloudogu/k8s-dogu-operator/v3/internal/logging"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -22,19 +24,22 @@ const (
 // ValidateChartStep validates a dogu's chart before any HelmRelease is written. It assembles the
 // merged values, optionally validates them against the chart's values.schema.json (honoring
 // Spec.SkipSchemaValidation) and renders the chart server-side without creating or modifying any
-// cluster resource. A chart whose values violate the schema or that fails to render aborts the
-// reconciliation via ConditionValid so no HelmRelease is produced.
+// cluster resource. A chart whose values violate the schema, that fails to render or that would
+// make a forbidden pvc change (shrink or storage class change) aborts the reconciliation via
+// ConditionValid so no HelmRelease is produced.
 type ValidateChartStep struct {
-	chartService ChartService
-	assembler    ValueAssembler
-	k8sClient    K8sClient
+	chartService  ChartService
+	assembler     ValueAssembler
+	resizeChecker ResizeChecker
+	k8sClient     K8sClient
 }
 
-func NewValidateChartStep(chartService ChartService, assembler ValueAssembler, k8sClient K8sClient) *ValidateChartStep {
+func NewValidateChartStep(chartService ChartService, assembler ValueAssembler, resizeChecker ResizeChecker, k8sClient K8sClient) *ValidateChartStep {
 	return &ValidateChartStep{
-		chartService: chartService,
-		assembler:    assembler,
-		k8sClient:    k8sClient,
+		chartService:  chartService,
+		assembler:     assembler,
+		resizeChecker: resizeChecker,
+		k8sClient:     k8sClient,
 	}
 }
 
@@ -65,14 +70,37 @@ func (vcs *ValidateChartStep) Run(ctx context.Context, doguResource *v3beta1.Dog
 		logging.Info(ctx, "Successfully validated values against schema for dogu", "dogu", doguResource.Spec.Name)
 	}
 
-	if _, rErr := vcs.chartService.Render(ctx, doguResource, values); rErr != nil {
+	rendered, rErr := vcs.chartService.Render(ctx, doguResource, values)
+	if rErr != nil {
 		msg := fmt.Sprintf("chart could not be rendered: %v", rErr)
 		return vcs.abort(ctx, doguResource, ReasonRenderFailed, msg)
 	}
 
 	logging.Info(ctx, "Successfully rendered dogu helm chart", "dogu", doguResource.Spec.Name)
 
+	if _, cErr := vcs.resizeChecker.Check(ctx, doguResource.Namespace, rendered); cErr != nil {
+		if reason, rejected := volumeRejectionReason(cErr); rejected {
+			return vcs.abort(ctx, doguResource, reason, fmt.Sprintf("volumes cannot be changed as requested: %v", cErr))
+		}
+
+		return stepsv3.RequeueWithError(fmt.Errorf("failed to check volumes: %w", cErr), v3beta1.ReasonInstalling)
+	}
+
 	return vcs.succeed(ctx, doguResource)
+}
+
+func volumeRejectionReason(err error) (string, bool) {
+	var shrinkErr *pvc.VolumeShrinkError
+	if errors.As(err, &shrinkErr) {
+		return v3beta1.ReasonVolumeShrink, true
+	}
+
+	var storageClassErr *pvc.StorageClassImmutableError
+	if errors.As(err, &storageClassErr) {
+		return v3beta1.ReasonStorageClassImmutable, true
+	}
+
+	return "", false
 }
 
 // setSchemaValidationSkippedCondition mirrors the Spec.SkipSchemaValidation flag onto the
@@ -110,7 +138,7 @@ func (vcs *ValidateChartStep) abort(ctx context.Context, doguResource *v3beta1.D
 
 // succeed sets ConditionValid to true, persists the conditions and continues the reconciliation.
 func (vcs *ValidateChartStep) succeed(ctx context.Context, doguResource *v3beta1.Dogu) stepsv3.StepResult {
-	const message = "chart values satisfy the schema and the chart renders successfully"
+	const message = "chart values satisfy the schema, the chart renders successfully and no volume shrinks or changes its storage class"
 	vcs.setValidCondition(doguResource, metav1.ConditionTrue, ReasonValid, message)
 	if err := vcs.persistConditions(ctx, doguResource); err != nil {
 		return stepsv3.RequeueWithError(err, v3beta1.ReasonInstalling)

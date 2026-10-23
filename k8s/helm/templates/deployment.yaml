@@ -41,6 +41,8 @@ spec:
               value: {{ quote .Values.controllerManager.env.expositionEnabled | default false }}
             - name: DOGU_V3_ENABLED
               value: {{ quote .Values.controllerManager.env.doguV3Enabled | default false }}
+            - name: OFFLINE_VOLUME_EXPANSION
+              value: {{ quote .Values.controllerManager.env.offlineVolumeExpansion | default false }}
             - name: WARP_MENU_ENTRY_ENABLED
               value: {{ quote .Values.controllerManager.env.warpMenuEntryEnabled | default false }}
             - name: WARP_MENU_DISBALED_V2_DOGUS
