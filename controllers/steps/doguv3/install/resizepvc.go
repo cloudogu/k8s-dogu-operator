@@ -72,9 +72,9 @@ func (rps *ResizePVCStep) resizeOnline(ctx context.Context, doguResource *v3beta
 		return stepsv3.Continue()
 	}
 
-	doguWorkloads, volumes, err := rps.growClaims(ctx, doguResource, rendered, checkResult.ResizeRequests)
-	if err != nil {
-		return stepsv3.RequeueWithError(err, v3beta1.ReasonResizingPVC)
+	doguWorkloads, volumes, result := rps.growClaims(ctx, doguResource, rendered, checkResult.ResizeRequests)
+	if !result.Continue {
+		return result
 	}
 
 	return rps.replaceWorkloads(ctx, doguWorkloads, volumes, nil, checkResult.OutdatedStatefulSets)
@@ -103,12 +103,13 @@ func (rps *ResizePVCStep) resizeOffline(ctx context.Context, doguResource *v3bet
 		return stepsv3.Abort(v3beta1.ReasonResizingPVC, fmt.Sprintf("cannot resize volumes owned by other objects than their StatefulSet, their deletion would lead to data loss: %v", foreignOwners))
 	}
 
-	doguWorkloads, volumes, err = rps.growClaims(ctx, doguResource, rendered, checkResult.ResizeRequests)
-	if err != nil {
-		return stepsv3.RequeueWithError(err, v3beta1.ReasonResizingPVC)
+	var result stepsv3.StepResult
+	doguWorkloads, volumes, result = rps.growClaims(ctx, doguResource, rendered, checkResult.ResizeRequests)
+	if !result.Continue {
+		return result
 	}
 
-	if result := rps.replaceWorkloads(ctx, doguWorkloads, volumes, affected, checkResult.OutdatedStatefulSets); !result.Continue {
+	if result = rps.replaceWorkloads(ctx, doguWorkloads, volumes, affected, checkResult.OutdatedStatefulSets); !result.Continue {
 		return result
 	}
 
@@ -157,23 +158,34 @@ func (rps *ResizePVCStep) affectedClaims(ctx context.Context, doguResource *v3be
 	return claims, nil
 }
 
-// growClaims grows and reports the volume claims.
-func (rps *ResizePVCStep) growClaims(ctx context.Context, doguResource *v3beta1.Dogu, rendered []*unstructured.Unstructured, requests []pvc.ResizeRequest) (workloads.Workloads, []workloads.Volume, error) {
+// growClaims grows and reports the volume claims. It aborts if the cluster rejects a claim, before any workload is deleted.
+func (rps *ResizePVCStep) growClaims(ctx context.Context, doguResource *v3beta1.Dogu, rendered []*unstructured.Unstructured, requests []pvc.ResizeRequest) (workloads.Workloads, []workloads.Volume, stepsv3.StepResult) {
+	var rejectedClaims []string
+	var rejection error
 	for _, request := range requests {
-		if err := rps.patchStorageRequest(ctx, request); err != nil {
-			return workloads.Workloads{}, nil, err
+		err := rps.patchStorageRequest(ctx, request)
+		// Stop and report if resizing is not allowed
+		if apierrors.IsForbidden(err) || apierrors.IsInvalid(err) {
+			rejectedClaims, rejection = []string{request.PVC.Name}, err
+			break
+		}
+		if err != nil {
+			return workloads.Workloads{}, nil, stepsv3.RequeueWithError(err, v3beta1.ReasonResizingPVC)
 		}
 	}
 
 	doguWorkloads, volumes, err := rps.discover(ctx, doguResource)
 	if err != nil {
-		return workloads.Workloads{}, nil, err
+		return workloads.Workloads{}, nil, stepsv3.RequeueWithError(err, v3beta1.ReasonResizingPVC)
 	}
-	if _, err := updateVolumeStatus(ctx, rps.k8sClient, doguResource, rendered, volumes, nil); err != nil {
-		return workloads.Workloads{}, nil, err
+	if _, err := updateVolumeStatus(ctx, rps.k8sClient, doguResource, rendered, volumes, rejectedClaims); err != nil {
+		return workloads.Workloads{}, nil, stepsv3.RequeueWithError(err, v3beta1.ReasonResizingPVC)
+	}
+	if rejection != nil {
+		return workloads.Workloads{}, nil, stepsv3.Abort(v3beta1.ReasonResizingPVC, rejection.Error())
 	}
 
-	return doguWorkloads, volumes, nil
+	return doguWorkloads, volumes, stepsv3.Continue()
 }
 
 func (rps *ResizePVCStep) patchStorageRequest(ctx context.Context, request pvc.ResizeRequest) error {

@@ -2,6 +2,7 @@ package install
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -155,6 +156,17 @@ func resizePod(name, claimName string) *corev1.Pod {
 		Name:                  "data",
 		PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{ClaimName: claimName},
 	}}}}.Spec}
+}
+
+// rejectingPatches answers patches like the API server for a StorageClass without allowVolumeExpansion.
+func rejectingPatches(c client.Client) client.Client {
+	return interceptor.NewClient(c.(client.WithWatch), interceptor.Funcs{Patch: func(_ context.Context, _ client.WithWatch, obj client.Object, _ client.Patch, _ ...client.PatchOption) error {
+		return apierrors.NewForbidden(corev1.Resource("persistentvolumeclaims"), obj.GetName(), errors.New("only dynamically provisioned pvc can be resized and the storageclass that provisions the pvc must support resize"))
+	}})
+}
+
+func rejectedPatchMessage(claimName string) string {
+	return `failed to grow PVC "ecosystem/` + claimName + `" to 2Gi: persistentvolumeclaims "` + claimName + `" is forbidden: only dynamically provisioned pvc can be resized and the storageclass that provisions the pvc must support resize`
 }
 
 func helmRelease(suspended bool) *flux.HelmRelease {
@@ -414,6 +426,60 @@ func TestResizePVCStep_Run(t *testing.T) {
 		assert.Equal(t, v3beta1.VolumeStatusStateResizeFailed, stored.Status.VolumeStatus[0].State)
 	})
 
+	t.Run("aborts before deleting workloads when the cluster rejects growing the PVC", func(t *testing.T) {
+		mounting := resizeDeployment("nexus", "data")
+		claim := volumePVC("data", "1Gi", "1Gi")
+		delRecClient := newDeletionRecClient(&claim, mounting, resizePod("nexus-abc", "data"), helmRelease(true))
+		doguResource := delRecClient.dogu(t)
+
+		// reject the patches
+		step := prepareResizeStep(rejectingPatches(delRecClient.client), t, doguResource, renderedPVC(t, "data", "2Gi"))
+		result := step.Run(testCtx, doguResource)
+
+		assert.Equal(t, doguv3.Abort(v3beta1.ReasonResizingPVC, rejectedPatchMessage("data")), result)
+		assert.Empty(t, *delRecClient.deletions)
+		assert.Equal(t, []v3beta1.VolumeStatus{{
+			ClaimName:   "data",
+			Size:        resource.MustParse("1Gi"),
+			DesiredSize: resource.MustParse("2Gi"),
+			State:       v3beta1.VolumeStatusStateResizeFailed,
+			MountedBy:   mountedBy("Deployment", "nexus"),
+		}}, delRecClient.dogu(t).Status.VolumeStatus)
+	})
+
+	t.Run("continues without changes once the values of a rejected resize are reset", func(t *testing.T) {
+		mounting := resizeDeployment("nexus", "data")
+		claim := volumePVC("data", "1Gi", "1Gi")
+		delRecClient := newDeletionRecClient(&claim, mounting, helmRelease(true))
+		doguResource := delRecClient.dogu(t)
+
+		// reject the patches
+		rejected := prepareResizeStep(rejectingPatches(delRecClient.client), t, doguResource, renderedPVC(t, "data", "2Gi"))
+		require.Equal(t, v3beta1.ReasonResizingPVC, rejected.Run(testCtx, doguResource).ReadyReason)
+		reset := prepareResizeStep(delRecClient.client, t, doguResource, renderedPVC(t, "data", "1Gi"))
+		result := reset.Run(testCtx, doguResource)
+
+		assert.Equal(t, doguv3.Continue(), result)
+		assert.Empty(t, *delRecClient.deletions)
+	})
+
+	t.Run("requeues with error when growing the PVC fails for another reason", func(t *testing.T) {
+		mounting := resizeDeployment("nexus", "data")
+		claim := volumePVC("data", "1Gi", "1Gi")
+		delRecClient := newDeletionRecClient(&claim, mounting, helmRelease(true))
+		failing := interceptor.NewClient(delRecClient.client.(client.WithWatch), interceptor.Funcs{Patch: func(_ context.Context, _ client.WithWatch, _ client.Object, _ client.Patch, _ ...client.PatchOption) error {
+			return apierrors.NewTimeoutError("patch timed out", 1)
+		}})
+		doguResource := delRecClient.dogu(t)
+
+		step := prepareResizeStep(failing, t, doguResource, renderedPVC(t, "data", "2Gi"))
+		result := step.Run(testCtx, doguResource)
+
+		require.ErrorContains(t, result.Err, "patch timed out")
+		assert.Equal(t, v3beta1.ReasonResizingPVC, result.ReadyReason)
+		assert.Empty(t, *delRecClient.deletions)
+	})
+
 	t.Run("continues without changes when no volume grows", func(t *testing.T) {
 		mounting := resizeDeployment("nexus", "data")
 		claim := volumePVC("data", "2Gi", "2Gi")
@@ -496,6 +562,23 @@ func TestResizePVCStep_RunOnline(t *testing.T) {
 			{key: client.ObjectKey{Namespace: testNamespace, Name: "postgres"}, uid: "postgres-uid", propagation: metav1.DeletePropagationOrphan},
 		}, *delRecClient.deletions)
 		assert.True(t, delRecClient.exists(t, pod))
+	})
+
+	t.Run("aborts before orphaning the outdated StatefulSet when the cluster rejects growing the PVC", func(t *testing.T) {
+		live := claimTemplateStatefulSet("postgres", "1Gi")
+		claim := volumePVC("data-postgres-0", "1Gi", "1Gi")
+		delRecClient := newDeletionRecClient(&claim, live, helmRelease(false))
+		doguResource := delRecClient.dogu(t)
+
+		// reject the patch
+		step := prepareOnlineResizeStep(rejectingPatches(delRecClient.client), t, doguResource, toUnstructured(t, claimTemplateStatefulSet("postgres", "2Gi")))
+		result := step.Run(testCtx, doguResource)
+
+		assert.Equal(t, doguv3.Abort(v3beta1.ReasonResizingPVC, rejectedPatchMessage("data-postgres-0")), result)
+		assert.Empty(t, *delRecClient.deletions)
+		stored := delRecClient.dogu(t)
+		require.Len(t, stored.Status.VolumeStatus, 1)
+		assert.Equal(t, v3beta1.VolumeStatusStateResizeFailed, stored.Status.VolumeStatus[0].State)
 	})
 
 	t.Run("grows a PVC owned by another object than its StatefulSet as no pod gets deleted", func(t *testing.T) {
