@@ -13,6 +13,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Update go to 1.27.3
 
+### Fixed
+- [#372] Ignore updates of HelmReleases that only toggle the `Reconciling` condition, to avoid unnecessary reconciliations
+
 ## [v3.35.0] - 2026-10-20
 ### Added
 - [#341] Experimental helmfile support

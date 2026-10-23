@@ -12,6 +12,7 @@ import (
 	doguClientV2 "github.com/cloudogu/k8s-dogu-lib/v3/client/typed/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv2/helmfile"
+	"github.com/cloudogu/k8s-dogu-operator/v3/internal/flux"
 	"github.com/cloudogu/k8s-dogu-operator/v3/internal/logging"
 	expositionv1 "github.com/cloudogu/k8s-exposition-lib/api/v1"
 	warpmenuentryv1 "github.com/cloudogu/k8s-warp-menu-entry-lib/api/v1"
@@ -285,7 +286,7 @@ func (r *DoguReconciler) setupWithManager(mgr ctrlManager) error {
 	if r.doguV3Enabled {
 		controllerBuilder = controllerBuilder.
 			Owns(&fluxsource.OCIRepository{}).
-			Owns(&helmv2.HelmRelease{})
+			Owns(&helmv2.HelmRelease{}, builder.WithPredicates(flux.IgnoreReconcilingPredicate()))
 	}
 
 	return controllerBuilder.Complete(r)
