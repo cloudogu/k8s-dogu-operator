@@ -125,7 +125,7 @@ node('docker') {
             }
 
             stage('Deploy Manager') {
-                k3d.helm("dependency build ${helmChartDir}")
+                sh("make helm-update-dependencies")
                 k3d.helm("install ${repositoryName} ${helmChartDir}")
             }
 
