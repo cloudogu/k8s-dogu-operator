@@ -116,7 +116,12 @@ func pendingReleaseChange(actual, desired *helmflux.HelmRelease, stored *sdk.Rel
 	if latest.Status != string(sdk.StatusDeployed) || stored.Info == nil || stored.Info.Status != sdk.StatusDeployed {
 		return unknown, nil
 	}
-	if !meta.IsStatusConditionTrue(actual.Status.Conditions, helmflux.ReleasedCondition) || meta.IsStatusConditionTrue(actual.Status.Conditions, fluxmeta.ReconcilingCondition) {
+	if !meta.IsStatusConditionTrue(actual.Status.Conditions, helmflux.ReleasedCondition) {
+		return unknown, nil
+	}
+	// Flux can acknowledge suspension without clearing a stale Reconciling condition.
+	suspensionAcknowledged := actual.Spec.Suspend && actual.Status.ObservedGeneration == actual.Generation
+	if meta.IsStatusConditionTrue(actual.Status.Conditions, fluxmeta.ReconcilingCondition) && !suspensionAcknowledged {
 		return unknown, nil
 	}
 	metadataApplied, err := commonMetadataApplied(stored.Manifest, desired.Spec.CommonMetadata)

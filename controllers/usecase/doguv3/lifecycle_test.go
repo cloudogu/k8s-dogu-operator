@@ -160,6 +160,32 @@ func (f *lifecycleFixture) recordDeployment(t *testing.T) {
 	require.NoError(t, f.k8s.Status().Update(t.Context(), f.release))
 }
 
+func TestV3StoppedReleaseClearsPendingAfterAcknowledgedSuspension(t *testing.T) {
+	f := newLifecycleFixture(t)
+	f.stop(t)
+	f.release.Generation = 8
+	require.NoError(t, f.k8s.Update(t.Context(), f.release))
+	f.recordDeployment(t)
+	f.release.Status.Conditions = append(f.release.Status.Conditions, metav1.Condition{
+		Type: fluxmeta.ReconcilingCondition, Status: metav1.ConditionTrue,
+		Reason: fluxmeta.ProgressingReason, Message: "Fulfilling prerequisites", ObservedGeneration: 7,
+	})
+	require.NoError(t, f.k8s.Status().Update(t.Context(), f.release))
+	f.dogu.Generation++
+	require.NoError(t, f.k8s.Update(t.Context(), f.dogu))
+
+	delay, err := f.useCase.HandleUntilApplied(t.Context(), f.dogu)
+
+	require.NoError(t, err)
+	assert.Zero(t, delay, "acknowledged suspension must not retry because of a stale Reconciling condition")
+	assert.True(t, f.dogu.Status.Stopped)
+	require.NoError(t, f.k8s.Get(t.Context(), client.ObjectKeyFromObject(f.dogu), f.dogu))
+	pending := meta.FindStatusCondition(f.dogu.Status.Conditions, v3beta1.ConditionUpdatePending)
+	require.NotNil(t, pending)
+	assert.Equal(t, metav1.ConditionFalse, pending.Status)
+	assert.Equal(t, f.dogu.Generation, pending.ObservedGeneration)
+}
+
 func TestV3PausePreservesResourcesAndCombinesDetection(t *testing.T) {
 	f := newLifecycleFixture(t)
 	f.dogu.Spec.PauseReconciliation = true
