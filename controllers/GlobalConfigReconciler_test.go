@@ -24,10 +24,10 @@ const testNamespace = "ecosystem"
 func TestGlobalConfigReconcilerV3Dispatch(t *testing.T) {
 	for _, enabled := range []bool{false, true} {
 		t.Run(fmt.Sprintf("V3 enabled=%t", enabled), func(t *testing.T) {
-			legacy := v2.Dogu{ObjectMeta: v1.ObjectMeta{Name: "legacy", Namespace: testNamespace}}
+			legacy := v2.Dogu{Name: "legacy", Namespace: testNamespace}
 			modern := v2.Dogu{
-				ObjectMeta: v1.ObjectMeta{Name: "modern", Namespace: testNamespace,
-					Annotations: map[string]string{"k8s.cloudogu.com/v3beta1-doguApiVersion": "v3"}},
+				Name: "modern", Namespace: testNamespace,
+					Annotations: map[string]string{"k8s.cloudogu.com/v3beta1-doguApiVersion": "v3"},
 				Spec: v2.DoguSpec{Name: "official/modern"},
 			}
 			dogus := newMockDoguInterface(t)
