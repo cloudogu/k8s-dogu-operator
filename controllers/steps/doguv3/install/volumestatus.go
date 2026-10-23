@@ -9,6 +9,7 @@ import (
 	"github.com/cloudogu/k8s-dogu-lib/v3/api/v3beta1"
 	stepsv3 "github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv3"
 	"github.com/cloudogu/k8s-dogu-operator/v3/internal/dogu/pvc"
+	"github.com/cloudogu/k8s-dogu-operator/v3/internal/dogu/workloads"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -48,22 +49,40 @@ func (vss *VolumeStatusStep) Run(ctx context.Context, doguResource *v3beta1.Dogu
 		return stepsv3.RequeueWithError(fmt.Errorf("failed to discover volumes: %w", err), v3beta1.ReasonInstalling)
 	}
 
+	statuses, err := updateVolumeStatus(ctx, vss.k8sClient, doguResource, rendered, volumes, nil)
+	if err != nil {
+		return stepsv3.RequeueWithError(err, v3beta1.ReasonInstalling)
+	}
+
+	if doguResource.Spec.Stopped || doguResource.Spec.PauseReconciliation {
+		return stepsv3.Continue()
+	}
+
+	return waitForResize(statuses)
+}
+
+// updateVolumeStatus writes status.volumeStatus from the live volumes and reports failedClaims as ResizeFailed.
+func updateVolumeStatus(ctx context.Context, k8sClient K8sClient, doguResource *v3beta1.Dogu, rendered []*unstructured.Unstructured, volumes []workloads.Volume, failedClaims []string) ([]v3beta1.VolumeStatus, error) {
 	livePVCs := make([]corev1.PersistentVolumeClaim, 0, len(volumes))
 	for _, volume := range volumes {
 		livePVCs = append(livePVCs, volume.PVC)
 	}
 	desiredSizes, err := pvc.DesiredSizes(rendered, doguResource.Namespace, livePVCs)
 	if err != nil {
-		return stepsv3.RequeueWithError(fmt.Errorf("failed to read desired volume sizes: %w", err), v3beta1.ReasonInstalling)
+		return nil, fmt.Errorf("failed to read desired volume sizes: %w", err)
 	}
 
 	statuses := make([]v3beta1.VolumeStatus, 0, len(volumes))
 	for _, volume := range volumes {
+		state := volumeState(&volume.PVC)
+		if slices.Contains(failedClaims, volume.PVC.Name) {
+			state = v3beta1.VolumeStatusStateResizeFailed
+		}
 		statuses = append(statuses, v3beta1.VolumeStatus{
 			ClaimName:   volume.PVC.Name,
 			Size:        volume.PVC.Status.Capacity.Storage().DeepCopy(),
 			DesiredSize: desiredSizes[client.ObjectKeyFromObject(&volume.PVC)],
-			State:       volumeState(&volume.PVC),
+			State:       state,
 			MountedBy:   volume.MountedBy,
 		})
 	}
@@ -73,17 +92,15 @@ func (vss *VolumeStatusStep) Run(ctx context.Context, doguResource *v3beta1.Dogu
 
 	if !equality.Semantic.DeepEqual(doguResource.Status.VolumeStatus, statuses) {
 		doguResource.Status.VolumeStatus = statuses
-		if err := vss.k8sClient.Status().Update(ctx, doguResource); err != nil {
-			return stepsv3.RequeueWithError(fmt.Errorf("failed to update volume status: %w", err), v3beta1.ReasonInstalling)
+		if err := k8sClient.Status().Update(ctx, doguResource); err != nil {
+			return nil, fmt.Errorf("failed to update volume status: %w", err)
 		}
 	}
 
-	if doguResource.Spec.Stopped || doguResource.Spec.PauseReconciliation {
-		return stepsv3.Continue()
-	}
-
-	return waitForResize(statuses)
+	return statuses, nil
 }
+
+const offlineExpansionHint = "if the storage only expands unmounted volumes, set OFFLINE_VOLUME_EXPANSION=true on the operator"
 
 // waitForResize keeps the dogu in ResizingPVC until every rendered volume has reached its desired capacity.
 func waitForResize(statuses []v3beta1.VolumeStatus) stepsv3.StepResult {
@@ -102,10 +119,10 @@ func waitForResize(statuses []v3beta1.VolumeStatus) stepsv3.StepResult {
 	}
 
 	if len(failed) > 0 {
-		return stepsv3.RequeueWithError(fmt.Errorf("volumes failed to resize: %v", failed), v3beta1.ReasonResizingPVC)
+		return stepsv3.RequeueWithError(fmt.Errorf("volumes failed to resize: %v; %s", failed, offlineExpansionHint), v3beta1.ReasonResizingPVC)
 	}
 	if len(resizing) > 0 {
-		return stepsv3.RequeueAfter(defaultRequeueAfter, v3beta1.ReasonResizingPVC, fmt.Sprintf("waiting for volumes to reach their desired capacity: %v", resizing))
+		return stepsv3.RequeueAfter(defaultRequeueAfter, v3beta1.ReasonResizingPVC, fmt.Sprintf("waiting for volumes to reach their desired capacity: %v; %s", resizing, offlineExpansionHint))
 	}
 
 	return stepsv3.Continue()

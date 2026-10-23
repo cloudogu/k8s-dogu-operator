@@ -14,6 +14,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -28,6 +29,8 @@ type ResizeRequest struct {
 type CheckResult struct {
 	ResizeRequests []ResizeRequest
 	InProgress     []client.ObjectKey
+	// OutdatedStatefulSets are the UIDs of live StatefulSets whose immutable claim templates request another size than rendered.
+	OutdatedStatefulSets []types.UID
 }
 
 type pvcOutcome int
@@ -95,6 +98,10 @@ func (c *resizeChecker) Check(ctx context.Context, targetNamespace string, rende
 
 	checkErr = errors.Join(checkErr, c.checkStatefulSetClaims(ctx, desiredTemplates, &result))
 
+	outdated, err := c.outdatedStatefulSets(ctx, desiredTemplates)
+	checkErr = errors.Join(checkErr, err)
+	result.OutdatedStatefulSets = outdated
+
 	if checkErr != nil {
 		return CheckResult{}, checkErr
 	}
@@ -139,6 +146,36 @@ func (c *resizeChecker) checkStatefulSetClaims(ctx context.Context, desiredTempl
 	}
 
 	return checkErr
+}
+
+// outdatedStatefulSets finds live StatefulSets a Helm upgrade cannot change because their claim template sizes differ.
+func (c *resizeChecker) outdatedStatefulSets(ctx context.Context, desiredTemplates []desiredClaimTemplate) ([]types.UID, error) {
+	var outdated []types.UID
+	var checkErr error
+	for _, template := range desiredTemplates {
+		live := &appsv1.StatefulSet{}
+		err := c.k8s.Get(ctx, template.statefulSet, live)
+		if apierrors.IsNotFound(err) {
+			continue
+		}
+		if err != nil {
+			checkErr = errors.Join(checkErr, fmt.Errorf("failed to read live StatefulSet %q: %w", template.statefulSet, err))
+			continue
+		}
+		if slices.Contains(outdated, live.UID) {
+			continue
+		}
+
+		for _, liveTemplate := range live.Spec.VolumeClaimTemplates {
+			liveStorage, found := liveTemplate.Spec.Resources.Requests[corev1.ResourceStorage]
+			if liveTemplate.Name == template.name && found && liveStorage.Cmp(template.storage) != 0 {
+				outdated = append(outdated, live.UID)
+				break
+			}
+		}
+	}
+
+	return outdated, checkErr
 }
 
 func (c *resizeChecker) checkPVC(ctx context.Context, desired desiredClaim) (ResizeRequest, pvcOutcome, error) {

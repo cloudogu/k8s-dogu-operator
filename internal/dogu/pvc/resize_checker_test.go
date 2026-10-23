@@ -15,6 +15,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -347,6 +348,41 @@ func TestResizeChecker_CheckStatefulSetClaims(t *testing.T) {
 		assert.Empty(t, result.ResizeRequests)
 	})
 
+	t.Run("reports a live StatefulSet whose claim template differs from the rendered size", func(t *testing.T) {
+		live := newStatefulSet("postgres", ptr.To[int32](1), 0, newPVC("data", "1Gi", nil), newPVC("logs", "1Gi", nil))
+		live.UID = "postgres-uid"
+		// grown already, e.g. by online expansion before a restart of the operator
+		liveClaim := newPVC("data-postgres-0", "2Gi", nil)
+		checker := NewResizeChecker(fake.NewClientBuilder().WithObjects(live, liveClaim).Build())
+
+		result, err := checker.Check(ctx, testNamespace, renderedObjects(t,
+			newStatefulSet("postgres", ptr.To[int32](1), 0, newPVC("data", "2Gi", nil), newPVC("logs", "1Gi", nil)),
+		))
+
+		require.NoError(t, err)
+		assert.Empty(t, result.ResizeRequests)
+		assert.Empty(t, result.InProgress)
+		assert.Equal(t, []types.UID{"postgres-uid"}, result.OutdatedStatefulSets)
+	})
+
+	t.Run("does not report a live StatefulSet with equivalent claim template sizes", func(t *testing.T) {
+		live := newStatefulSet("postgres", ptr.To[int32](0), 0, newPVC("data", "1024Mi", nil))
+		checker := NewResizeChecker(fake.NewClientBuilder().WithObjects(live).Build())
+
+		result, err := checker.Check(ctx, testNamespace, renderedObjects(t, newStatefulSet("postgres", ptr.To[int32](0), 0, newPVC("data", "1Gi", nil))))
+
+		require.NoError(t, err)
+		assert.Empty(t, result.OutdatedStatefulSets)
+	})
+
+	t.Run("does not report a StatefulSet that does not exist yet", func(t *testing.T) {
+		checker := NewResizeChecker(fake.NewClientBuilder().Build())
+
+		result, err := checker.Check(ctx, testNamespace, renderedObjects(t, newStatefulSet("postgres", ptr.To[int32](0), 0, newPVC("data", "2Gi", nil))))
+
+		require.NoError(t, err)
+		assert.Empty(t, result.OutdatedStatefulSets)
+	})
 }
 
 func TestResizeChecker_CheckErrors(t *testing.T) {
