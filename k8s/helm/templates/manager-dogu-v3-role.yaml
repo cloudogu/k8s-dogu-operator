@@ -35,6 +35,7 @@ rules:
       - get
       - watch
       - patch
+      - update
       - delete
   - apiGroups:
       - "helm.toolkit.fluxcd.io"
@@ -42,8 +43,9 @@ rules:
       - helmreleases/status
     verbs:
       - get
-  # dogu v3: discover a dogu's workloads to derive its health.
+  # dogu v3: discover a dogu's workloads to derive its health and restart them.
   # watch is needed for the caching kes-client
+  # patch is needed to set the restart annotation via server-side apply
   - apiGroups:
       - apps
     resources:
@@ -54,14 +56,8 @@ rules:
       - get
       - list
       - watch
-  # dogu v3: stop replicated workloads without deleting their persistent data.
-  - apiGroups:
-      - apps
-    resources:
-      - deployments
-      - statefulsets
-    verbs:
       - patch
+  # dogu v3: follow Deployment Pod ownership and wait for stopped Pods to disappear.
   - apiGroups:
       - apps
     resources:

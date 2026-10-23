@@ -163,6 +163,16 @@ func TestWaitForOCIRepositoryReadyStep_Run(t *testing.T) {
 			},
 			want: doguv3.RequeueWithError(fmt.Errorf("%s: %w", "failed to update oci success condition", assert.AnError), v3beta1.DoguStatusInstalling),
 		},
+		{
+			name: "should continue if pauseReconciliation is set",
+			setup: func(t *testing.T) (K8sClient, EventRecorder, *v3beta1.Dogu) {
+				doguResource := testDoguResource.DeepCopy()
+				doguResource.Spec.PauseReconciliation = true
+				c := fake.NewClientBuilder().Build()
+				return c, nil, doguResource
+			},
+			want: doguv3.Continue(),
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

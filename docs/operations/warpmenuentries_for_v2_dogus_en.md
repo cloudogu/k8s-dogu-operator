@@ -21,6 +21,13 @@ If a `WarpMenuEntry` CR exists, but there is a change in the display name, categ
 The WarpMenuEntry-CR is created only if `WARP_MENU_ENTRY_ENABLED=true` .
 If `WARP_MENU_ENTRY_ENABLED=false` (or not set), WarpMenuEntry-CR is not created.
 
+## WARP_MENU_DISABLED_V2_DOGUS
+
+The attribute `controllerManager.env.warpMenuDisabledV2Dogus` in the `values.yaml` sets the environment variable `WARP_MENU_DISABLED_V2_DOGUS` for the dogu operator.
+It is a list of simple Dogu names without a Dogu namespace. 
+Dogus specified in this list are hidden in the Warp menu.
+This is only possible for V2 Dogus. For V3 Dogus, the configuration must be performed in the “Values” section of the respective Dogu.
+
 ## Format of warp menu entry to be created
 
 ### For dogus that have a warp tag

@@ -12,8 +12,10 @@ import (
 	"github.com/cloudogu/cesapp-lib/core"
 	v129 "github.com/cloudogu/k8s-auth-registration-lib/api/v1"
 	v128 "github.com/cloudogu/k8s-auth-registration-lib/client/typed/api/v1"
-	v21 "github.com/cloudogu/k8s-dogu-lib/v3/api/v2"
-	v3beta10 "github.com/cloudogu/k8s-dogu-lib/v3/api/v3beta1"
+	v22 "github.com/cloudogu/k8s-dogu-lib/v3/api/v2"
+	v3beta11 "github.com/cloudogu/k8s-dogu-lib/v3/api/v3beta1"
+	v21 "github.com/cloudogu/k8s-dogu-lib/v3/applyconfiguration/api/v2"
+	v3beta10 "github.com/cloudogu/k8s-dogu-lib/v3/applyconfiguration/api/v3beta1"
 	v20 "github.com/cloudogu/k8s-dogu-lib/v3/client/typed/api/v2"
 	"github.com/cloudogu/k8s-dogu-lib/v3/client/typed/api/v3beta1"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/exec"
@@ -10334,27 +10336,175 @@ func (_m *mockDoguV2Client) EXPECT() *mockDoguV2Client_Expecter {
 	return &mockDoguV2Client_Expecter{mock: &_m.Mock}
 }
 
+// Apply provides a mock function for the type mockDoguV2Client
+func (_mock *mockDoguV2Client) Apply(ctx context.Context, dogu *v21.DoguApplyConfiguration, opts v120.ApplyOptions) (*v22.Dogu, error) {
+	ret := _mock.Called(ctx, dogu, opts)
+
+	if len(ret) == 0 {
+		panic("no return value specified for Apply")
+	}
+
+	var r0 *v22.Dogu
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *v21.DoguApplyConfiguration, v120.ApplyOptions) (*v22.Dogu, error)); ok {
+		return returnFunc(ctx, dogu, opts)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *v21.DoguApplyConfiguration, v120.ApplyOptions) *v22.Dogu); ok {
+		r0 = returnFunc(ctx, dogu, opts)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*v22.Dogu)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, *v21.DoguApplyConfiguration, v120.ApplyOptions) error); ok {
+		r1 = returnFunc(ctx, dogu, opts)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// mockDoguV2Client_Apply_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Apply'
+type mockDoguV2Client_Apply_Call struct {
+	*mock.Call
+}
+
+// Apply is a helper method to define mock.On call
+//   - ctx context.Context
+//   - dogu *v21.DoguApplyConfiguration
+//   - opts v120.ApplyOptions
+func (_e *mockDoguV2Client_Expecter) Apply(ctx any, dogu any, opts any) *mockDoguV2Client_Apply_Call {
+	return &mockDoguV2Client_Apply_Call{Call: _e.mock.On("Apply", ctx, dogu, opts)}
+}
+
+func (_c *mockDoguV2Client_Apply_Call) Run(run func(ctx context.Context, dogu *v21.DoguApplyConfiguration, opts v120.ApplyOptions)) *mockDoguV2Client_Apply_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 *v21.DoguApplyConfiguration
+		if args[1] != nil {
+			arg1 = args[1].(*v21.DoguApplyConfiguration)
+		}
+		var arg2 v120.ApplyOptions
+		if args[2] != nil {
+			arg2 = args[2].(v120.ApplyOptions)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *mockDoguV2Client_Apply_Call) Return(result *v22.Dogu, err error) *mockDoguV2Client_Apply_Call {
+	_c.Call.Return(result, err)
+	return _c
+}
+
+func (_c *mockDoguV2Client_Apply_Call) RunAndReturn(run func(ctx context.Context, dogu *v21.DoguApplyConfiguration, opts v120.ApplyOptions) (*v22.Dogu, error)) *mockDoguV2Client_Apply_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// ApplyStatus provides a mock function for the type mockDoguV2Client
+func (_mock *mockDoguV2Client) ApplyStatus(ctx context.Context, dogu *v21.DoguApplyConfiguration, opts v120.ApplyOptions) (*v22.Dogu, error) {
+	ret := _mock.Called(ctx, dogu, opts)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ApplyStatus")
+	}
+
+	var r0 *v22.Dogu
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *v21.DoguApplyConfiguration, v120.ApplyOptions) (*v22.Dogu, error)); ok {
+		return returnFunc(ctx, dogu, opts)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *v21.DoguApplyConfiguration, v120.ApplyOptions) *v22.Dogu); ok {
+		r0 = returnFunc(ctx, dogu, opts)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*v22.Dogu)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, *v21.DoguApplyConfiguration, v120.ApplyOptions) error); ok {
+		r1 = returnFunc(ctx, dogu, opts)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// mockDoguV2Client_ApplyStatus_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ApplyStatus'
+type mockDoguV2Client_ApplyStatus_Call struct {
+	*mock.Call
+}
+
+// ApplyStatus is a helper method to define mock.On call
+//   - ctx context.Context
+//   - dogu *v21.DoguApplyConfiguration
+//   - opts v120.ApplyOptions
+func (_e *mockDoguV2Client_Expecter) ApplyStatus(ctx any, dogu any, opts any) *mockDoguV2Client_ApplyStatus_Call {
+	return &mockDoguV2Client_ApplyStatus_Call{Call: _e.mock.On("ApplyStatus", ctx, dogu, opts)}
+}
+
+func (_c *mockDoguV2Client_ApplyStatus_Call) Run(run func(ctx context.Context, dogu *v21.DoguApplyConfiguration, opts v120.ApplyOptions)) *mockDoguV2Client_ApplyStatus_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 *v21.DoguApplyConfiguration
+		if args[1] != nil {
+			arg1 = args[1].(*v21.DoguApplyConfiguration)
+		}
+		var arg2 v120.ApplyOptions
+		if args[2] != nil {
+			arg2 = args[2].(v120.ApplyOptions)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *mockDoguV2Client_ApplyStatus_Call) Return(result *v22.Dogu, err error) *mockDoguV2Client_ApplyStatus_Call {
+	_c.Call.Return(result, err)
+	return _c
+}
+
+func (_c *mockDoguV2Client_ApplyStatus_Call) RunAndReturn(run func(ctx context.Context, dogu *v21.DoguApplyConfiguration, opts v120.ApplyOptions) (*v22.Dogu, error)) *mockDoguV2Client_ApplyStatus_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Create provides a mock function for the type mockDoguV2Client
-func (_mock *mockDoguV2Client) Create(ctx context.Context, dogu *v21.Dogu, opts v120.CreateOptions) (*v21.Dogu, error) {
+func (_mock *mockDoguV2Client) Create(ctx context.Context, dogu *v22.Dogu, opts v120.CreateOptions) (*v22.Dogu, error) {
 	ret := _mock.Called(ctx, dogu, opts)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Create")
 	}
 
-	var r0 *v21.Dogu
+	var r0 *v22.Dogu
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, *v21.Dogu, v120.CreateOptions) (*v21.Dogu, error)); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *v22.Dogu, v120.CreateOptions) (*v22.Dogu, error)); ok {
 		return returnFunc(ctx, dogu, opts)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, *v21.Dogu, v120.CreateOptions) *v21.Dogu); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *v22.Dogu, v120.CreateOptions) *v22.Dogu); ok {
 		r0 = returnFunc(ctx, dogu, opts)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*v21.Dogu)
+			r0 = ret.Get(0).(*v22.Dogu)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, *v21.Dogu, v120.CreateOptions) error); ok {
+	if returnFunc, ok := ret.Get(1).(func(context.Context, *v22.Dogu, v120.CreateOptions) error); ok {
 		r1 = returnFunc(ctx, dogu, opts)
 	} else {
 		r1 = ret.Error(1)
@@ -10369,21 +10519,21 @@ type mockDoguV2Client_Create_Call struct {
 
 // Create is a helper method to define mock.On call
 //   - ctx context.Context
-//   - dogu *v21.Dogu
+//   - dogu *v22.Dogu
 //   - opts v120.CreateOptions
 func (_e *mockDoguV2Client_Expecter) Create(ctx any, dogu any, opts any) *mockDoguV2Client_Create_Call {
 	return &mockDoguV2Client_Create_Call{Call: _e.mock.On("Create", ctx, dogu, opts)}
 }
 
-func (_c *mockDoguV2Client_Create_Call) Run(run func(ctx context.Context, dogu *v21.Dogu, opts v120.CreateOptions)) *mockDoguV2Client_Create_Call {
+func (_c *mockDoguV2Client_Create_Call) Run(run func(ctx context.Context, dogu *v22.Dogu, opts v120.CreateOptions)) *mockDoguV2Client_Create_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
 			arg0 = args[0].(context.Context)
 		}
-		var arg1 *v21.Dogu
+		var arg1 *v22.Dogu
 		if args[1] != nil {
-			arg1 = args[1].(*v21.Dogu)
+			arg1 = args[1].(*v22.Dogu)
 		}
 		var arg2 v120.CreateOptions
 		if args[2] != nil {
@@ -10398,12 +10548,12 @@ func (_c *mockDoguV2Client_Create_Call) Run(run func(ctx context.Context, dogu *
 	return _c
 }
 
-func (_c *mockDoguV2Client_Create_Call) Return(dogu1 *v21.Dogu, err error) *mockDoguV2Client_Create_Call {
+func (_c *mockDoguV2Client_Create_Call) Return(dogu1 *v22.Dogu, err error) *mockDoguV2Client_Create_Call {
 	_c.Call.Return(dogu1, err)
 	return _c
 }
 
-func (_c *mockDoguV2Client_Create_Call) RunAndReturn(run func(ctx context.Context, dogu *v21.Dogu, opts v120.CreateOptions) (*v21.Dogu, error)) *mockDoguV2Client_Create_Call {
+func (_c *mockDoguV2Client_Create_Call) RunAndReturn(run func(ctx context.Context, dogu *v22.Dogu, opts v120.CreateOptions) (*v22.Dogu, error)) *mockDoguV2Client_Create_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -10535,23 +10685,23 @@ func (_c *mockDoguV2Client_DeleteCollection_Call) RunAndReturn(run func(ctx cont
 }
 
 // Get provides a mock function for the type mockDoguV2Client
-func (_mock *mockDoguV2Client) Get(ctx context.Context, name string, opts v120.GetOptions) (*v21.Dogu, error) {
+func (_mock *mockDoguV2Client) Get(ctx context.Context, name string, opts v120.GetOptions) (*v22.Dogu, error) {
 	ret := _mock.Called(ctx, name, opts)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Get")
 	}
 
-	var r0 *v21.Dogu
+	var r0 *v22.Dogu
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, v120.GetOptions) (*v21.Dogu, error)); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, v120.GetOptions) (*v22.Dogu, error)); ok {
 		return returnFunc(ctx, name, opts)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, v120.GetOptions) *v21.Dogu); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, v120.GetOptions) *v22.Dogu); ok {
 		r0 = returnFunc(ctx, name, opts)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*v21.Dogu)
+			r0 = ret.Get(0).(*v22.Dogu)
 		}
 	}
 	if returnFunc, ok := ret.Get(1).(func(context.Context, string, v120.GetOptions) error); ok {
@@ -10598,34 +10748,34 @@ func (_c *mockDoguV2Client_Get_Call) Run(run func(ctx context.Context, name stri
 	return _c
 }
 
-func (_c *mockDoguV2Client_Get_Call) Return(dogu *v21.Dogu, err error) *mockDoguV2Client_Get_Call {
+func (_c *mockDoguV2Client_Get_Call) Return(dogu *v22.Dogu, err error) *mockDoguV2Client_Get_Call {
 	_c.Call.Return(dogu, err)
 	return _c
 }
 
-func (_c *mockDoguV2Client_Get_Call) RunAndReturn(run func(ctx context.Context, name string, opts v120.GetOptions) (*v21.Dogu, error)) *mockDoguV2Client_Get_Call {
+func (_c *mockDoguV2Client_Get_Call) RunAndReturn(run func(ctx context.Context, name string, opts v120.GetOptions) (*v22.Dogu, error)) *mockDoguV2Client_Get_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // List provides a mock function for the type mockDoguV2Client
-func (_mock *mockDoguV2Client) List(ctx context.Context, opts v120.ListOptions) (*v21.DoguList, error) {
+func (_mock *mockDoguV2Client) List(ctx context.Context, opts v120.ListOptions) (*v22.DoguList, error) {
 	ret := _mock.Called(ctx, opts)
 
 	if len(ret) == 0 {
 		panic("no return value specified for List")
 	}
 
-	var r0 *v21.DoguList
+	var r0 *v22.DoguList
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, v120.ListOptions) (*v21.DoguList, error)); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, v120.ListOptions) (*v22.DoguList, error)); ok {
 		return returnFunc(ctx, opts)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, v120.ListOptions) *v21.DoguList); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, v120.ListOptions) *v22.DoguList); ok {
 		r0 = returnFunc(ctx, opts)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*v21.DoguList)
+			r0 = ret.Get(0).(*v22.DoguList)
 		}
 	}
 	if returnFunc, ok := ret.Get(1).(func(context.Context, v120.ListOptions) error); ok {
@@ -10666,18 +10816,18 @@ func (_c *mockDoguV2Client_List_Call) Run(run func(ctx context.Context, opts v12
 	return _c
 }
 
-func (_c *mockDoguV2Client_List_Call) Return(doguList *v21.DoguList, err error) *mockDoguV2Client_List_Call {
+func (_c *mockDoguV2Client_List_Call) Return(doguList *v22.DoguList, err error) *mockDoguV2Client_List_Call {
 	_c.Call.Return(doguList, err)
 	return _c
 }
 
-func (_c *mockDoguV2Client_List_Call) RunAndReturn(run func(ctx context.Context, opts v120.ListOptions) (*v21.DoguList, error)) *mockDoguV2Client_List_Call {
+func (_c *mockDoguV2Client_List_Call) RunAndReturn(run func(ctx context.Context, opts v120.ListOptions) (*v22.DoguList, error)) *mockDoguV2Client_List_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // Patch provides a mock function for the type mockDoguV2Client
-func (_mock *mockDoguV2Client) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v120.PatchOptions, subresources ...string) (*v21.Dogu, error) {
+func (_mock *mockDoguV2Client) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v120.PatchOptions, subresources ...string) (*v22.Dogu, error) {
 	// string
 	_va := make([]any, len(subresources))
 	for _i := range subresources {
@@ -10692,16 +10842,16 @@ func (_mock *mockDoguV2Client) Patch(ctx context.Context, name string, pt types.
 		panic("no return value specified for Patch")
 	}
 
-	var r0 *v21.Dogu
+	var r0 *v22.Dogu
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, types.PatchType, []byte, v120.PatchOptions, ...string) (*v21.Dogu, error)); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, types.PatchType, []byte, v120.PatchOptions, ...string) (*v22.Dogu, error)); ok {
 		return returnFunc(ctx, name, pt, data, opts, subresources...)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, types.PatchType, []byte, v120.PatchOptions, ...string) *v21.Dogu); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, types.PatchType, []byte, v120.PatchOptions, ...string) *v22.Dogu); ok {
 		r0 = returnFunc(ctx, name, pt, data, opts, subresources...)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*v21.Dogu)
+			r0 = ret.Get(0).(*v22.Dogu)
 		}
 	}
 	if returnFunc, ok := ret.Get(1).(func(context.Context, string, types.PatchType, []byte, v120.PatchOptions, ...string) error); ok {
@@ -10771,37 +10921,37 @@ func (_c *mockDoguV2Client_Patch_Call) Run(run func(ctx context.Context, name st
 	return _c
 }
 
-func (_c *mockDoguV2Client_Patch_Call) Return(result *v21.Dogu, err error) *mockDoguV2Client_Patch_Call {
+func (_c *mockDoguV2Client_Patch_Call) Return(result *v22.Dogu, err error) *mockDoguV2Client_Patch_Call {
 	_c.Call.Return(result, err)
 	return _c
 }
 
-func (_c *mockDoguV2Client_Patch_Call) RunAndReturn(run func(ctx context.Context, name string, pt types.PatchType, data []byte, opts v120.PatchOptions, subresources ...string) (*v21.Dogu, error)) *mockDoguV2Client_Patch_Call {
+func (_c *mockDoguV2Client_Patch_Call) RunAndReturn(run func(ctx context.Context, name string, pt types.PatchType, data []byte, opts v120.PatchOptions, subresources ...string) (*v22.Dogu, error)) *mockDoguV2Client_Patch_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // Update provides a mock function for the type mockDoguV2Client
-func (_mock *mockDoguV2Client) Update(ctx context.Context, dogu *v21.Dogu, opts v120.UpdateOptions) (*v21.Dogu, error) {
+func (_mock *mockDoguV2Client) Update(ctx context.Context, dogu *v22.Dogu, opts v120.UpdateOptions) (*v22.Dogu, error) {
 	ret := _mock.Called(ctx, dogu, opts)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Update")
 	}
 
-	var r0 *v21.Dogu
+	var r0 *v22.Dogu
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, *v21.Dogu, v120.UpdateOptions) (*v21.Dogu, error)); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *v22.Dogu, v120.UpdateOptions) (*v22.Dogu, error)); ok {
 		return returnFunc(ctx, dogu, opts)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, *v21.Dogu, v120.UpdateOptions) *v21.Dogu); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *v22.Dogu, v120.UpdateOptions) *v22.Dogu); ok {
 		r0 = returnFunc(ctx, dogu, opts)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*v21.Dogu)
+			r0 = ret.Get(0).(*v22.Dogu)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, *v21.Dogu, v120.UpdateOptions) error); ok {
+	if returnFunc, ok := ret.Get(1).(func(context.Context, *v22.Dogu, v120.UpdateOptions) error); ok {
 		r1 = returnFunc(ctx, dogu, opts)
 	} else {
 		r1 = ret.Error(1)
@@ -10816,21 +10966,21 @@ type mockDoguV2Client_Update_Call struct {
 
 // Update is a helper method to define mock.On call
 //   - ctx context.Context
-//   - dogu *v21.Dogu
+//   - dogu *v22.Dogu
 //   - opts v120.UpdateOptions
 func (_e *mockDoguV2Client_Expecter) Update(ctx any, dogu any, opts any) *mockDoguV2Client_Update_Call {
 	return &mockDoguV2Client_Update_Call{Call: _e.mock.On("Update", ctx, dogu, opts)}
 }
 
-func (_c *mockDoguV2Client_Update_Call) Run(run func(ctx context.Context, dogu *v21.Dogu, opts v120.UpdateOptions)) *mockDoguV2Client_Update_Call {
+func (_c *mockDoguV2Client_Update_Call) Run(run func(ctx context.Context, dogu *v22.Dogu, opts v120.UpdateOptions)) *mockDoguV2Client_Update_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
 			arg0 = args[0].(context.Context)
 		}
-		var arg1 *v21.Dogu
+		var arg1 *v22.Dogu
 		if args[1] != nil {
-			arg1 = args[1].(*v21.Dogu)
+			arg1 = args[1].(*v22.Dogu)
 		}
 		var arg2 v120.UpdateOptions
 		if args[2] != nil {
@@ -10845,37 +10995,37 @@ func (_c *mockDoguV2Client_Update_Call) Run(run func(ctx context.Context, dogu *
 	return _c
 }
 
-func (_c *mockDoguV2Client_Update_Call) Return(dogu1 *v21.Dogu, err error) *mockDoguV2Client_Update_Call {
+func (_c *mockDoguV2Client_Update_Call) Return(dogu1 *v22.Dogu, err error) *mockDoguV2Client_Update_Call {
 	_c.Call.Return(dogu1, err)
 	return _c
 }
 
-func (_c *mockDoguV2Client_Update_Call) RunAndReturn(run func(ctx context.Context, dogu *v21.Dogu, opts v120.UpdateOptions) (*v21.Dogu, error)) *mockDoguV2Client_Update_Call {
+func (_c *mockDoguV2Client_Update_Call) RunAndReturn(run func(ctx context.Context, dogu *v22.Dogu, opts v120.UpdateOptions) (*v22.Dogu, error)) *mockDoguV2Client_Update_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // UpdateSpecWithRetry provides a mock function for the type mockDoguV2Client
-func (_mock *mockDoguV2Client) UpdateSpecWithRetry(ctx context.Context, dogu *v21.Dogu, modifySpecFn func(spec v21.DoguSpec) v21.DoguSpec, opts v120.UpdateOptions) (*v21.Dogu, error) {
+func (_mock *mockDoguV2Client) UpdateSpecWithRetry(ctx context.Context, dogu *v22.Dogu, modifySpecFn func(spec v22.DoguSpec) v22.DoguSpec, opts v120.UpdateOptions) (*v22.Dogu, error) {
 	ret := _mock.Called(ctx, dogu, modifySpecFn, opts)
 
 	if len(ret) == 0 {
 		panic("no return value specified for UpdateSpecWithRetry")
 	}
 
-	var r0 *v21.Dogu
+	var r0 *v22.Dogu
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, *v21.Dogu, func(spec v21.DoguSpec) v21.DoguSpec, v120.UpdateOptions) (*v21.Dogu, error)); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *v22.Dogu, func(spec v22.DoguSpec) v22.DoguSpec, v120.UpdateOptions) (*v22.Dogu, error)); ok {
 		return returnFunc(ctx, dogu, modifySpecFn, opts)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, *v21.Dogu, func(spec v21.DoguSpec) v21.DoguSpec, v120.UpdateOptions) *v21.Dogu); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *v22.Dogu, func(spec v22.DoguSpec) v22.DoguSpec, v120.UpdateOptions) *v22.Dogu); ok {
 		r0 = returnFunc(ctx, dogu, modifySpecFn, opts)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*v21.Dogu)
+			r0 = ret.Get(0).(*v22.Dogu)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, *v21.Dogu, func(spec v21.DoguSpec) v21.DoguSpec, v120.UpdateOptions) error); ok {
+	if returnFunc, ok := ret.Get(1).(func(context.Context, *v22.Dogu, func(spec v22.DoguSpec) v22.DoguSpec, v120.UpdateOptions) error); ok {
 		r1 = returnFunc(ctx, dogu, modifySpecFn, opts)
 	} else {
 		r1 = ret.Error(1)
@@ -10890,26 +11040,26 @@ type mockDoguV2Client_UpdateSpecWithRetry_Call struct {
 
 // UpdateSpecWithRetry is a helper method to define mock.On call
 //   - ctx context.Context
-//   - dogu *v21.Dogu
-//   - modifySpecFn func(spec v21.DoguSpec) v21.DoguSpec
+//   - dogu *v22.Dogu
+//   - modifySpecFn func(spec v22.DoguSpec) v22.DoguSpec
 //   - opts v120.UpdateOptions
 func (_e *mockDoguV2Client_Expecter) UpdateSpecWithRetry(ctx any, dogu any, modifySpecFn any, opts any) *mockDoguV2Client_UpdateSpecWithRetry_Call {
 	return &mockDoguV2Client_UpdateSpecWithRetry_Call{Call: _e.mock.On("UpdateSpecWithRetry", ctx, dogu, modifySpecFn, opts)}
 }
 
-func (_c *mockDoguV2Client_UpdateSpecWithRetry_Call) Run(run func(ctx context.Context, dogu *v21.Dogu, modifySpecFn func(spec v21.DoguSpec) v21.DoguSpec, opts v120.UpdateOptions)) *mockDoguV2Client_UpdateSpecWithRetry_Call {
+func (_c *mockDoguV2Client_UpdateSpecWithRetry_Call) Run(run func(ctx context.Context, dogu *v22.Dogu, modifySpecFn func(spec v22.DoguSpec) v22.DoguSpec, opts v120.UpdateOptions)) *mockDoguV2Client_UpdateSpecWithRetry_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
 			arg0 = args[0].(context.Context)
 		}
-		var arg1 *v21.Dogu
+		var arg1 *v22.Dogu
 		if args[1] != nil {
-			arg1 = args[1].(*v21.Dogu)
+			arg1 = args[1].(*v22.Dogu)
 		}
-		var arg2 func(spec v21.DoguSpec) v21.DoguSpec
+		var arg2 func(spec v22.DoguSpec) v22.DoguSpec
 		if args[2] != nil {
-			arg2 = args[2].(func(spec v21.DoguSpec) v21.DoguSpec)
+			arg2 = args[2].(func(spec v22.DoguSpec) v22.DoguSpec)
 		}
 		var arg3 v120.UpdateOptions
 		if args[3] != nil {
@@ -10925,37 +11075,37 @@ func (_c *mockDoguV2Client_UpdateSpecWithRetry_Call) Run(run func(ctx context.Co
 	return _c
 }
 
-func (_c *mockDoguV2Client_UpdateSpecWithRetry_Call) Return(result *v21.Dogu, err error) *mockDoguV2Client_UpdateSpecWithRetry_Call {
+func (_c *mockDoguV2Client_UpdateSpecWithRetry_Call) Return(result *v22.Dogu, err error) *mockDoguV2Client_UpdateSpecWithRetry_Call {
 	_c.Call.Return(result, err)
 	return _c
 }
 
-func (_c *mockDoguV2Client_UpdateSpecWithRetry_Call) RunAndReturn(run func(ctx context.Context, dogu *v21.Dogu, modifySpecFn func(spec v21.DoguSpec) v21.DoguSpec, opts v120.UpdateOptions) (*v21.Dogu, error)) *mockDoguV2Client_UpdateSpecWithRetry_Call {
+func (_c *mockDoguV2Client_UpdateSpecWithRetry_Call) RunAndReturn(run func(ctx context.Context, dogu *v22.Dogu, modifySpecFn func(spec v22.DoguSpec) v22.DoguSpec, opts v120.UpdateOptions) (*v22.Dogu, error)) *mockDoguV2Client_UpdateSpecWithRetry_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // UpdateStatus provides a mock function for the type mockDoguV2Client
-func (_mock *mockDoguV2Client) UpdateStatus(ctx context.Context, dogu *v21.Dogu, opts v120.UpdateOptions) (*v21.Dogu, error) {
+func (_mock *mockDoguV2Client) UpdateStatus(ctx context.Context, dogu *v22.Dogu, opts v120.UpdateOptions) (*v22.Dogu, error) {
 	ret := _mock.Called(ctx, dogu, opts)
 
 	if len(ret) == 0 {
 		panic("no return value specified for UpdateStatus")
 	}
 
-	var r0 *v21.Dogu
+	var r0 *v22.Dogu
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, *v21.Dogu, v120.UpdateOptions) (*v21.Dogu, error)); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *v22.Dogu, v120.UpdateOptions) (*v22.Dogu, error)); ok {
 		return returnFunc(ctx, dogu, opts)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, *v21.Dogu, v120.UpdateOptions) *v21.Dogu); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *v22.Dogu, v120.UpdateOptions) *v22.Dogu); ok {
 		r0 = returnFunc(ctx, dogu, opts)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*v21.Dogu)
+			r0 = ret.Get(0).(*v22.Dogu)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, *v21.Dogu, v120.UpdateOptions) error); ok {
+	if returnFunc, ok := ret.Get(1).(func(context.Context, *v22.Dogu, v120.UpdateOptions) error); ok {
 		r1 = returnFunc(ctx, dogu, opts)
 	} else {
 		r1 = ret.Error(1)
@@ -10970,21 +11120,21 @@ type mockDoguV2Client_UpdateStatus_Call struct {
 
 // UpdateStatus is a helper method to define mock.On call
 //   - ctx context.Context
-//   - dogu *v21.Dogu
+//   - dogu *v22.Dogu
 //   - opts v120.UpdateOptions
 func (_e *mockDoguV2Client_Expecter) UpdateStatus(ctx any, dogu any, opts any) *mockDoguV2Client_UpdateStatus_Call {
 	return &mockDoguV2Client_UpdateStatus_Call{Call: _e.mock.On("UpdateStatus", ctx, dogu, opts)}
 }
 
-func (_c *mockDoguV2Client_UpdateStatus_Call) Run(run func(ctx context.Context, dogu *v21.Dogu, opts v120.UpdateOptions)) *mockDoguV2Client_UpdateStatus_Call {
+func (_c *mockDoguV2Client_UpdateStatus_Call) Run(run func(ctx context.Context, dogu *v22.Dogu, opts v120.UpdateOptions)) *mockDoguV2Client_UpdateStatus_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
 			arg0 = args[0].(context.Context)
 		}
-		var arg1 *v21.Dogu
+		var arg1 *v22.Dogu
 		if args[1] != nil {
-			arg1 = args[1].(*v21.Dogu)
+			arg1 = args[1].(*v22.Dogu)
 		}
 		var arg2 v120.UpdateOptions
 		if args[2] != nil {
@@ -10999,37 +11149,37 @@ func (_c *mockDoguV2Client_UpdateStatus_Call) Run(run func(ctx context.Context, 
 	return _c
 }
 
-func (_c *mockDoguV2Client_UpdateStatus_Call) Return(dogu1 *v21.Dogu, err error) *mockDoguV2Client_UpdateStatus_Call {
+func (_c *mockDoguV2Client_UpdateStatus_Call) Return(dogu1 *v22.Dogu, err error) *mockDoguV2Client_UpdateStatus_Call {
 	_c.Call.Return(dogu1, err)
 	return _c
 }
 
-func (_c *mockDoguV2Client_UpdateStatus_Call) RunAndReturn(run func(ctx context.Context, dogu *v21.Dogu, opts v120.UpdateOptions) (*v21.Dogu, error)) *mockDoguV2Client_UpdateStatus_Call {
+func (_c *mockDoguV2Client_UpdateStatus_Call) RunAndReturn(run func(ctx context.Context, dogu *v22.Dogu, opts v120.UpdateOptions) (*v22.Dogu, error)) *mockDoguV2Client_UpdateStatus_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // UpdateStatusWithRetry provides a mock function for the type mockDoguV2Client
-func (_mock *mockDoguV2Client) UpdateStatusWithRetry(ctx context.Context, dogu *v21.Dogu, modifyStatusFn func(v21.DoguStatus) v21.DoguStatus, opts v120.UpdateOptions) (*v21.Dogu, error) {
+func (_mock *mockDoguV2Client) UpdateStatusWithRetry(ctx context.Context, dogu *v22.Dogu, modifyStatusFn func(v22.DoguStatus) v22.DoguStatus, opts v120.UpdateOptions) (*v22.Dogu, error) {
 	ret := _mock.Called(ctx, dogu, modifyStatusFn, opts)
 
 	if len(ret) == 0 {
 		panic("no return value specified for UpdateStatusWithRetry")
 	}
 
-	var r0 *v21.Dogu
+	var r0 *v22.Dogu
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, *v21.Dogu, func(v21.DoguStatus) v21.DoguStatus, v120.UpdateOptions) (*v21.Dogu, error)); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *v22.Dogu, func(v22.DoguStatus) v22.DoguStatus, v120.UpdateOptions) (*v22.Dogu, error)); ok {
 		return returnFunc(ctx, dogu, modifyStatusFn, opts)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, *v21.Dogu, func(v21.DoguStatus) v21.DoguStatus, v120.UpdateOptions) *v21.Dogu); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *v22.Dogu, func(v22.DoguStatus) v22.DoguStatus, v120.UpdateOptions) *v22.Dogu); ok {
 		r0 = returnFunc(ctx, dogu, modifyStatusFn, opts)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*v21.Dogu)
+			r0 = ret.Get(0).(*v22.Dogu)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, *v21.Dogu, func(v21.DoguStatus) v21.DoguStatus, v120.UpdateOptions) error); ok {
+	if returnFunc, ok := ret.Get(1).(func(context.Context, *v22.Dogu, func(v22.DoguStatus) v22.DoguStatus, v120.UpdateOptions) error); ok {
 		r1 = returnFunc(ctx, dogu, modifyStatusFn, opts)
 	} else {
 		r1 = ret.Error(1)
@@ -11044,26 +11194,26 @@ type mockDoguV2Client_UpdateStatusWithRetry_Call struct {
 
 // UpdateStatusWithRetry is a helper method to define mock.On call
 //   - ctx context.Context
-//   - dogu *v21.Dogu
-//   - modifyStatusFn func(v21.DoguStatus) v21.DoguStatus
+//   - dogu *v22.Dogu
+//   - modifyStatusFn func(v22.DoguStatus) v22.DoguStatus
 //   - opts v120.UpdateOptions
 func (_e *mockDoguV2Client_Expecter) UpdateStatusWithRetry(ctx any, dogu any, modifyStatusFn any, opts any) *mockDoguV2Client_UpdateStatusWithRetry_Call {
 	return &mockDoguV2Client_UpdateStatusWithRetry_Call{Call: _e.mock.On("UpdateStatusWithRetry", ctx, dogu, modifyStatusFn, opts)}
 }
 
-func (_c *mockDoguV2Client_UpdateStatusWithRetry_Call) Run(run func(ctx context.Context, dogu *v21.Dogu, modifyStatusFn func(v21.DoguStatus) v21.DoguStatus, opts v120.UpdateOptions)) *mockDoguV2Client_UpdateStatusWithRetry_Call {
+func (_c *mockDoguV2Client_UpdateStatusWithRetry_Call) Run(run func(ctx context.Context, dogu *v22.Dogu, modifyStatusFn func(v22.DoguStatus) v22.DoguStatus, opts v120.UpdateOptions)) *mockDoguV2Client_UpdateStatusWithRetry_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
 			arg0 = args[0].(context.Context)
 		}
-		var arg1 *v21.Dogu
+		var arg1 *v22.Dogu
 		if args[1] != nil {
-			arg1 = args[1].(*v21.Dogu)
+			arg1 = args[1].(*v22.Dogu)
 		}
-		var arg2 func(v21.DoguStatus) v21.DoguStatus
+		var arg2 func(v22.DoguStatus) v22.DoguStatus
 		if args[2] != nil {
-			arg2 = args[2].(func(v21.DoguStatus) v21.DoguStatus)
+			arg2 = args[2].(func(v22.DoguStatus) v22.DoguStatus)
 		}
 		var arg3 v120.UpdateOptions
 		if args[3] != nil {
@@ -11079,12 +11229,12 @@ func (_c *mockDoguV2Client_UpdateStatusWithRetry_Call) Run(run func(ctx context.
 	return _c
 }
 
-func (_c *mockDoguV2Client_UpdateStatusWithRetry_Call) Return(result *v21.Dogu, err error) *mockDoguV2Client_UpdateStatusWithRetry_Call {
+func (_c *mockDoguV2Client_UpdateStatusWithRetry_Call) Return(result *v22.Dogu, err error) *mockDoguV2Client_UpdateStatusWithRetry_Call {
 	_c.Call.Return(result, err)
 	return _c
 }
 
-func (_c *mockDoguV2Client_UpdateStatusWithRetry_Call) RunAndReturn(run func(ctx context.Context, dogu *v21.Dogu, modifyStatusFn func(v21.DoguStatus) v21.DoguStatus, opts v120.UpdateOptions) (*v21.Dogu, error)) *mockDoguV2Client_UpdateStatusWithRetry_Call {
+func (_c *mockDoguV2Client_UpdateStatusWithRetry_Call) RunAndReturn(run func(ctx context.Context, dogu *v22.Dogu, modifyStatusFn func(v22.DoguStatus) v22.DoguStatus, opts v120.UpdateOptions) (*v22.Dogu, error)) *mockDoguV2Client_UpdateStatusWithRetry_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -11193,27 +11343,175 @@ func (_m *mockDoguRestartInterface) EXPECT() *mockDoguRestartInterface_Expecter 
 	return &mockDoguRestartInterface_Expecter{mock: &_m.Mock}
 }
 
+// Apply provides a mock function for the type mockDoguRestartInterface
+func (_mock *mockDoguRestartInterface) Apply(ctx context.Context, doguRestart *v21.DoguRestartApplyConfiguration, opts v120.ApplyOptions) (*v22.DoguRestart, error) {
+	ret := _mock.Called(ctx, doguRestart, opts)
+
+	if len(ret) == 0 {
+		panic("no return value specified for Apply")
+	}
+
+	var r0 *v22.DoguRestart
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *v21.DoguRestartApplyConfiguration, v120.ApplyOptions) (*v22.DoguRestart, error)); ok {
+		return returnFunc(ctx, doguRestart, opts)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *v21.DoguRestartApplyConfiguration, v120.ApplyOptions) *v22.DoguRestart); ok {
+		r0 = returnFunc(ctx, doguRestart, opts)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*v22.DoguRestart)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, *v21.DoguRestartApplyConfiguration, v120.ApplyOptions) error); ok {
+		r1 = returnFunc(ctx, doguRestart, opts)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// mockDoguRestartInterface_Apply_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Apply'
+type mockDoguRestartInterface_Apply_Call struct {
+	*mock.Call
+}
+
+// Apply is a helper method to define mock.On call
+//   - ctx context.Context
+//   - doguRestart *v21.DoguRestartApplyConfiguration
+//   - opts v120.ApplyOptions
+func (_e *mockDoguRestartInterface_Expecter) Apply(ctx any, doguRestart any, opts any) *mockDoguRestartInterface_Apply_Call {
+	return &mockDoguRestartInterface_Apply_Call{Call: _e.mock.On("Apply", ctx, doguRestart, opts)}
+}
+
+func (_c *mockDoguRestartInterface_Apply_Call) Run(run func(ctx context.Context, doguRestart *v21.DoguRestartApplyConfiguration, opts v120.ApplyOptions)) *mockDoguRestartInterface_Apply_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 *v21.DoguRestartApplyConfiguration
+		if args[1] != nil {
+			arg1 = args[1].(*v21.DoguRestartApplyConfiguration)
+		}
+		var arg2 v120.ApplyOptions
+		if args[2] != nil {
+			arg2 = args[2].(v120.ApplyOptions)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *mockDoguRestartInterface_Apply_Call) Return(result *v22.DoguRestart, err error) *mockDoguRestartInterface_Apply_Call {
+	_c.Call.Return(result, err)
+	return _c
+}
+
+func (_c *mockDoguRestartInterface_Apply_Call) RunAndReturn(run func(ctx context.Context, doguRestart *v21.DoguRestartApplyConfiguration, opts v120.ApplyOptions) (*v22.DoguRestart, error)) *mockDoguRestartInterface_Apply_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// ApplyStatus provides a mock function for the type mockDoguRestartInterface
+func (_mock *mockDoguRestartInterface) ApplyStatus(ctx context.Context, doguRestart *v21.DoguRestartApplyConfiguration, opts v120.ApplyOptions) (*v22.DoguRestart, error) {
+	ret := _mock.Called(ctx, doguRestart, opts)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ApplyStatus")
+	}
+
+	var r0 *v22.DoguRestart
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *v21.DoguRestartApplyConfiguration, v120.ApplyOptions) (*v22.DoguRestart, error)); ok {
+		return returnFunc(ctx, doguRestart, opts)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *v21.DoguRestartApplyConfiguration, v120.ApplyOptions) *v22.DoguRestart); ok {
+		r0 = returnFunc(ctx, doguRestart, opts)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*v22.DoguRestart)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, *v21.DoguRestartApplyConfiguration, v120.ApplyOptions) error); ok {
+		r1 = returnFunc(ctx, doguRestart, opts)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// mockDoguRestartInterface_ApplyStatus_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ApplyStatus'
+type mockDoguRestartInterface_ApplyStatus_Call struct {
+	*mock.Call
+}
+
+// ApplyStatus is a helper method to define mock.On call
+//   - ctx context.Context
+//   - doguRestart *v21.DoguRestartApplyConfiguration
+//   - opts v120.ApplyOptions
+func (_e *mockDoguRestartInterface_Expecter) ApplyStatus(ctx any, doguRestart any, opts any) *mockDoguRestartInterface_ApplyStatus_Call {
+	return &mockDoguRestartInterface_ApplyStatus_Call{Call: _e.mock.On("ApplyStatus", ctx, doguRestart, opts)}
+}
+
+func (_c *mockDoguRestartInterface_ApplyStatus_Call) Run(run func(ctx context.Context, doguRestart *v21.DoguRestartApplyConfiguration, opts v120.ApplyOptions)) *mockDoguRestartInterface_ApplyStatus_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 *v21.DoguRestartApplyConfiguration
+		if args[1] != nil {
+			arg1 = args[1].(*v21.DoguRestartApplyConfiguration)
+		}
+		var arg2 v120.ApplyOptions
+		if args[2] != nil {
+			arg2 = args[2].(v120.ApplyOptions)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *mockDoguRestartInterface_ApplyStatus_Call) Return(result *v22.DoguRestart, err error) *mockDoguRestartInterface_ApplyStatus_Call {
+	_c.Call.Return(result, err)
+	return _c
+}
+
+func (_c *mockDoguRestartInterface_ApplyStatus_Call) RunAndReturn(run func(ctx context.Context, doguRestart *v21.DoguRestartApplyConfiguration, opts v120.ApplyOptions) (*v22.DoguRestart, error)) *mockDoguRestartInterface_ApplyStatus_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Create provides a mock function for the type mockDoguRestartInterface
-func (_mock *mockDoguRestartInterface) Create(ctx context.Context, doguRestart *v21.DoguRestart, opts v120.CreateOptions) (*v21.DoguRestart, error) {
+func (_mock *mockDoguRestartInterface) Create(ctx context.Context, doguRestart *v22.DoguRestart, opts v120.CreateOptions) (*v22.DoguRestart, error) {
 	ret := _mock.Called(ctx, doguRestart, opts)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Create")
 	}
 
-	var r0 *v21.DoguRestart
+	var r0 *v22.DoguRestart
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, *v21.DoguRestart, v120.CreateOptions) (*v21.DoguRestart, error)); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *v22.DoguRestart, v120.CreateOptions) (*v22.DoguRestart, error)); ok {
 		return returnFunc(ctx, doguRestart, opts)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, *v21.DoguRestart, v120.CreateOptions) *v21.DoguRestart); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *v22.DoguRestart, v120.CreateOptions) *v22.DoguRestart); ok {
 		r0 = returnFunc(ctx, doguRestart, opts)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*v21.DoguRestart)
+			r0 = ret.Get(0).(*v22.DoguRestart)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, *v21.DoguRestart, v120.CreateOptions) error); ok {
+	if returnFunc, ok := ret.Get(1).(func(context.Context, *v22.DoguRestart, v120.CreateOptions) error); ok {
 		r1 = returnFunc(ctx, doguRestart, opts)
 	} else {
 		r1 = ret.Error(1)
@@ -11228,21 +11526,21 @@ type mockDoguRestartInterface_Create_Call struct {
 
 // Create is a helper method to define mock.On call
 //   - ctx context.Context
-//   - doguRestart *v21.DoguRestart
+//   - doguRestart *v22.DoguRestart
 //   - opts v120.CreateOptions
 func (_e *mockDoguRestartInterface_Expecter) Create(ctx any, doguRestart any, opts any) *mockDoguRestartInterface_Create_Call {
 	return &mockDoguRestartInterface_Create_Call{Call: _e.mock.On("Create", ctx, doguRestart, opts)}
 }
 
-func (_c *mockDoguRestartInterface_Create_Call) Run(run func(ctx context.Context, doguRestart *v21.DoguRestart, opts v120.CreateOptions)) *mockDoguRestartInterface_Create_Call {
+func (_c *mockDoguRestartInterface_Create_Call) Run(run func(ctx context.Context, doguRestart *v22.DoguRestart, opts v120.CreateOptions)) *mockDoguRestartInterface_Create_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
 			arg0 = args[0].(context.Context)
 		}
-		var arg1 *v21.DoguRestart
+		var arg1 *v22.DoguRestart
 		if args[1] != nil {
-			arg1 = args[1].(*v21.DoguRestart)
+			arg1 = args[1].(*v22.DoguRestart)
 		}
 		var arg2 v120.CreateOptions
 		if args[2] != nil {
@@ -11257,12 +11555,12 @@ func (_c *mockDoguRestartInterface_Create_Call) Run(run func(ctx context.Context
 	return _c
 }
 
-func (_c *mockDoguRestartInterface_Create_Call) Return(doguRestart1 *v21.DoguRestart, err error) *mockDoguRestartInterface_Create_Call {
+func (_c *mockDoguRestartInterface_Create_Call) Return(doguRestart1 *v22.DoguRestart, err error) *mockDoguRestartInterface_Create_Call {
 	_c.Call.Return(doguRestart1, err)
 	return _c
 }
 
-func (_c *mockDoguRestartInterface_Create_Call) RunAndReturn(run func(ctx context.Context, doguRestart *v21.DoguRestart, opts v120.CreateOptions) (*v21.DoguRestart, error)) *mockDoguRestartInterface_Create_Call {
+func (_c *mockDoguRestartInterface_Create_Call) RunAndReturn(run func(ctx context.Context, doguRestart *v22.DoguRestart, opts v120.CreateOptions) (*v22.DoguRestart, error)) *mockDoguRestartInterface_Create_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -11394,23 +11692,23 @@ func (_c *mockDoguRestartInterface_DeleteCollection_Call) RunAndReturn(run func(
 }
 
 // Get provides a mock function for the type mockDoguRestartInterface
-func (_mock *mockDoguRestartInterface) Get(ctx context.Context, name string, opts v120.GetOptions) (*v21.DoguRestart, error) {
+func (_mock *mockDoguRestartInterface) Get(ctx context.Context, name string, opts v120.GetOptions) (*v22.DoguRestart, error) {
 	ret := _mock.Called(ctx, name, opts)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Get")
 	}
 
-	var r0 *v21.DoguRestart
+	var r0 *v22.DoguRestart
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, v120.GetOptions) (*v21.DoguRestart, error)); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, v120.GetOptions) (*v22.DoguRestart, error)); ok {
 		return returnFunc(ctx, name, opts)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, v120.GetOptions) *v21.DoguRestart); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, v120.GetOptions) *v22.DoguRestart); ok {
 		r0 = returnFunc(ctx, name, opts)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*v21.DoguRestart)
+			r0 = ret.Get(0).(*v22.DoguRestart)
 		}
 	}
 	if returnFunc, ok := ret.Get(1).(func(context.Context, string, v120.GetOptions) error); ok {
@@ -11457,34 +11755,34 @@ func (_c *mockDoguRestartInterface_Get_Call) Run(run func(ctx context.Context, n
 	return _c
 }
 
-func (_c *mockDoguRestartInterface_Get_Call) Return(doguRestart *v21.DoguRestart, err error) *mockDoguRestartInterface_Get_Call {
+func (_c *mockDoguRestartInterface_Get_Call) Return(doguRestart *v22.DoguRestart, err error) *mockDoguRestartInterface_Get_Call {
 	_c.Call.Return(doguRestart, err)
 	return _c
 }
 
-func (_c *mockDoguRestartInterface_Get_Call) RunAndReturn(run func(ctx context.Context, name string, opts v120.GetOptions) (*v21.DoguRestart, error)) *mockDoguRestartInterface_Get_Call {
+func (_c *mockDoguRestartInterface_Get_Call) RunAndReturn(run func(ctx context.Context, name string, opts v120.GetOptions) (*v22.DoguRestart, error)) *mockDoguRestartInterface_Get_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // List provides a mock function for the type mockDoguRestartInterface
-func (_mock *mockDoguRestartInterface) List(ctx context.Context, opts v120.ListOptions) (*v21.DoguRestartList, error) {
+func (_mock *mockDoguRestartInterface) List(ctx context.Context, opts v120.ListOptions) (*v22.DoguRestartList, error) {
 	ret := _mock.Called(ctx, opts)
 
 	if len(ret) == 0 {
 		panic("no return value specified for List")
 	}
 
-	var r0 *v21.DoguRestartList
+	var r0 *v22.DoguRestartList
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, v120.ListOptions) (*v21.DoguRestartList, error)); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, v120.ListOptions) (*v22.DoguRestartList, error)); ok {
 		return returnFunc(ctx, opts)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, v120.ListOptions) *v21.DoguRestartList); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, v120.ListOptions) *v22.DoguRestartList); ok {
 		r0 = returnFunc(ctx, opts)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*v21.DoguRestartList)
+			r0 = ret.Get(0).(*v22.DoguRestartList)
 		}
 	}
 	if returnFunc, ok := ret.Get(1).(func(context.Context, v120.ListOptions) error); ok {
@@ -11525,18 +11823,18 @@ func (_c *mockDoguRestartInterface_List_Call) Run(run func(ctx context.Context, 
 	return _c
 }
 
-func (_c *mockDoguRestartInterface_List_Call) Return(doguRestartList *v21.DoguRestartList, err error) *mockDoguRestartInterface_List_Call {
+func (_c *mockDoguRestartInterface_List_Call) Return(doguRestartList *v22.DoguRestartList, err error) *mockDoguRestartInterface_List_Call {
 	_c.Call.Return(doguRestartList, err)
 	return _c
 }
 
-func (_c *mockDoguRestartInterface_List_Call) RunAndReturn(run func(ctx context.Context, opts v120.ListOptions) (*v21.DoguRestartList, error)) *mockDoguRestartInterface_List_Call {
+func (_c *mockDoguRestartInterface_List_Call) RunAndReturn(run func(ctx context.Context, opts v120.ListOptions) (*v22.DoguRestartList, error)) *mockDoguRestartInterface_List_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // Patch provides a mock function for the type mockDoguRestartInterface
-func (_mock *mockDoguRestartInterface) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v120.PatchOptions, subresources ...string) (*v21.DoguRestart, error) {
+func (_mock *mockDoguRestartInterface) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v120.PatchOptions, subresources ...string) (*v22.DoguRestart, error) {
 	// string
 	_va := make([]any, len(subresources))
 	for _i := range subresources {
@@ -11551,16 +11849,16 @@ func (_mock *mockDoguRestartInterface) Patch(ctx context.Context, name string, p
 		panic("no return value specified for Patch")
 	}
 
-	var r0 *v21.DoguRestart
+	var r0 *v22.DoguRestart
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, types.PatchType, []byte, v120.PatchOptions, ...string) (*v21.DoguRestart, error)); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, types.PatchType, []byte, v120.PatchOptions, ...string) (*v22.DoguRestart, error)); ok {
 		return returnFunc(ctx, name, pt, data, opts, subresources...)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, types.PatchType, []byte, v120.PatchOptions, ...string) *v21.DoguRestart); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, types.PatchType, []byte, v120.PatchOptions, ...string) *v22.DoguRestart); ok {
 		r0 = returnFunc(ctx, name, pt, data, opts, subresources...)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*v21.DoguRestart)
+			r0 = ret.Get(0).(*v22.DoguRestart)
 		}
 	}
 	if returnFunc, ok := ret.Get(1).(func(context.Context, string, types.PatchType, []byte, v120.PatchOptions, ...string) error); ok {
@@ -11630,37 +11928,37 @@ func (_c *mockDoguRestartInterface_Patch_Call) Run(run func(ctx context.Context,
 	return _c
 }
 
-func (_c *mockDoguRestartInterface_Patch_Call) Return(result *v21.DoguRestart, err error) *mockDoguRestartInterface_Patch_Call {
+func (_c *mockDoguRestartInterface_Patch_Call) Return(result *v22.DoguRestart, err error) *mockDoguRestartInterface_Patch_Call {
 	_c.Call.Return(result, err)
 	return _c
 }
 
-func (_c *mockDoguRestartInterface_Patch_Call) RunAndReturn(run func(ctx context.Context, name string, pt types.PatchType, data []byte, opts v120.PatchOptions, subresources ...string) (*v21.DoguRestart, error)) *mockDoguRestartInterface_Patch_Call {
+func (_c *mockDoguRestartInterface_Patch_Call) RunAndReturn(run func(ctx context.Context, name string, pt types.PatchType, data []byte, opts v120.PatchOptions, subresources ...string) (*v22.DoguRestart, error)) *mockDoguRestartInterface_Patch_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // Update provides a mock function for the type mockDoguRestartInterface
-func (_mock *mockDoguRestartInterface) Update(ctx context.Context, doguRestart *v21.DoguRestart, opts v120.UpdateOptions) (*v21.DoguRestart, error) {
+func (_mock *mockDoguRestartInterface) Update(ctx context.Context, doguRestart *v22.DoguRestart, opts v120.UpdateOptions) (*v22.DoguRestart, error) {
 	ret := _mock.Called(ctx, doguRestart, opts)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Update")
 	}
 
-	var r0 *v21.DoguRestart
+	var r0 *v22.DoguRestart
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, *v21.DoguRestart, v120.UpdateOptions) (*v21.DoguRestart, error)); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *v22.DoguRestart, v120.UpdateOptions) (*v22.DoguRestart, error)); ok {
 		return returnFunc(ctx, doguRestart, opts)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, *v21.DoguRestart, v120.UpdateOptions) *v21.DoguRestart); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *v22.DoguRestart, v120.UpdateOptions) *v22.DoguRestart); ok {
 		r0 = returnFunc(ctx, doguRestart, opts)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*v21.DoguRestart)
+			r0 = ret.Get(0).(*v22.DoguRestart)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, *v21.DoguRestart, v120.UpdateOptions) error); ok {
+	if returnFunc, ok := ret.Get(1).(func(context.Context, *v22.DoguRestart, v120.UpdateOptions) error); ok {
 		r1 = returnFunc(ctx, doguRestart, opts)
 	} else {
 		r1 = ret.Error(1)
@@ -11675,21 +11973,21 @@ type mockDoguRestartInterface_Update_Call struct {
 
 // Update is a helper method to define mock.On call
 //   - ctx context.Context
-//   - doguRestart *v21.DoguRestart
+//   - doguRestart *v22.DoguRestart
 //   - opts v120.UpdateOptions
 func (_e *mockDoguRestartInterface_Expecter) Update(ctx any, doguRestart any, opts any) *mockDoguRestartInterface_Update_Call {
 	return &mockDoguRestartInterface_Update_Call{Call: _e.mock.On("Update", ctx, doguRestart, opts)}
 }
 
-func (_c *mockDoguRestartInterface_Update_Call) Run(run func(ctx context.Context, doguRestart *v21.DoguRestart, opts v120.UpdateOptions)) *mockDoguRestartInterface_Update_Call {
+func (_c *mockDoguRestartInterface_Update_Call) Run(run func(ctx context.Context, doguRestart *v22.DoguRestart, opts v120.UpdateOptions)) *mockDoguRestartInterface_Update_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
 			arg0 = args[0].(context.Context)
 		}
-		var arg1 *v21.DoguRestart
+		var arg1 *v22.DoguRestart
 		if args[1] != nil {
-			arg1 = args[1].(*v21.DoguRestart)
+			arg1 = args[1].(*v22.DoguRestart)
 		}
 		var arg2 v120.UpdateOptions
 		if args[2] != nil {
@@ -11704,37 +12002,37 @@ func (_c *mockDoguRestartInterface_Update_Call) Run(run func(ctx context.Context
 	return _c
 }
 
-func (_c *mockDoguRestartInterface_Update_Call) Return(doguRestart1 *v21.DoguRestart, err error) *mockDoguRestartInterface_Update_Call {
+func (_c *mockDoguRestartInterface_Update_Call) Return(doguRestart1 *v22.DoguRestart, err error) *mockDoguRestartInterface_Update_Call {
 	_c.Call.Return(doguRestart1, err)
 	return _c
 }
 
-func (_c *mockDoguRestartInterface_Update_Call) RunAndReturn(run func(ctx context.Context, doguRestart *v21.DoguRestart, opts v120.UpdateOptions) (*v21.DoguRestart, error)) *mockDoguRestartInterface_Update_Call {
+func (_c *mockDoguRestartInterface_Update_Call) RunAndReturn(run func(ctx context.Context, doguRestart *v22.DoguRestart, opts v120.UpdateOptions) (*v22.DoguRestart, error)) *mockDoguRestartInterface_Update_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // UpdateSpecWithRetry provides a mock function for the type mockDoguRestartInterface
-func (_mock *mockDoguRestartInterface) UpdateSpecWithRetry(ctx context.Context, doguRestart *v21.DoguRestart, modifySpecFn func(spec v21.DoguRestartSpec) v21.DoguRestartSpec, opts v120.UpdateOptions) (*v21.DoguRestart, error) {
+func (_mock *mockDoguRestartInterface) UpdateSpecWithRetry(ctx context.Context, doguRestart *v22.DoguRestart, modifySpecFn func(spec v22.DoguRestartSpec) v22.DoguRestartSpec, opts v120.UpdateOptions) (*v22.DoguRestart, error) {
 	ret := _mock.Called(ctx, doguRestart, modifySpecFn, opts)
 
 	if len(ret) == 0 {
 		panic("no return value specified for UpdateSpecWithRetry")
 	}
 
-	var r0 *v21.DoguRestart
+	var r0 *v22.DoguRestart
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, *v21.DoguRestart, func(spec v21.DoguRestartSpec) v21.DoguRestartSpec, v120.UpdateOptions) (*v21.DoguRestart, error)); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *v22.DoguRestart, func(spec v22.DoguRestartSpec) v22.DoguRestartSpec, v120.UpdateOptions) (*v22.DoguRestart, error)); ok {
 		return returnFunc(ctx, doguRestart, modifySpecFn, opts)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, *v21.DoguRestart, func(spec v21.DoguRestartSpec) v21.DoguRestartSpec, v120.UpdateOptions) *v21.DoguRestart); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *v22.DoguRestart, func(spec v22.DoguRestartSpec) v22.DoguRestartSpec, v120.UpdateOptions) *v22.DoguRestart); ok {
 		r0 = returnFunc(ctx, doguRestart, modifySpecFn, opts)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*v21.DoguRestart)
+			r0 = ret.Get(0).(*v22.DoguRestart)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, *v21.DoguRestart, func(spec v21.DoguRestartSpec) v21.DoguRestartSpec, v120.UpdateOptions) error); ok {
+	if returnFunc, ok := ret.Get(1).(func(context.Context, *v22.DoguRestart, func(spec v22.DoguRestartSpec) v22.DoguRestartSpec, v120.UpdateOptions) error); ok {
 		r1 = returnFunc(ctx, doguRestart, modifySpecFn, opts)
 	} else {
 		r1 = ret.Error(1)
@@ -11749,26 +12047,26 @@ type mockDoguRestartInterface_UpdateSpecWithRetry_Call struct {
 
 // UpdateSpecWithRetry is a helper method to define mock.On call
 //   - ctx context.Context
-//   - doguRestart *v21.DoguRestart
-//   - modifySpecFn func(spec v21.DoguRestartSpec) v21.DoguRestartSpec
+//   - doguRestart *v22.DoguRestart
+//   - modifySpecFn func(spec v22.DoguRestartSpec) v22.DoguRestartSpec
 //   - opts v120.UpdateOptions
 func (_e *mockDoguRestartInterface_Expecter) UpdateSpecWithRetry(ctx any, doguRestart any, modifySpecFn any, opts any) *mockDoguRestartInterface_UpdateSpecWithRetry_Call {
 	return &mockDoguRestartInterface_UpdateSpecWithRetry_Call{Call: _e.mock.On("UpdateSpecWithRetry", ctx, doguRestart, modifySpecFn, opts)}
 }
 
-func (_c *mockDoguRestartInterface_UpdateSpecWithRetry_Call) Run(run func(ctx context.Context, doguRestart *v21.DoguRestart, modifySpecFn func(spec v21.DoguRestartSpec) v21.DoguRestartSpec, opts v120.UpdateOptions)) *mockDoguRestartInterface_UpdateSpecWithRetry_Call {
+func (_c *mockDoguRestartInterface_UpdateSpecWithRetry_Call) Run(run func(ctx context.Context, doguRestart *v22.DoguRestart, modifySpecFn func(spec v22.DoguRestartSpec) v22.DoguRestartSpec, opts v120.UpdateOptions)) *mockDoguRestartInterface_UpdateSpecWithRetry_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
 			arg0 = args[0].(context.Context)
 		}
-		var arg1 *v21.DoguRestart
+		var arg1 *v22.DoguRestart
 		if args[1] != nil {
-			arg1 = args[1].(*v21.DoguRestart)
+			arg1 = args[1].(*v22.DoguRestart)
 		}
-		var arg2 func(spec v21.DoguRestartSpec) v21.DoguRestartSpec
+		var arg2 func(spec v22.DoguRestartSpec) v22.DoguRestartSpec
 		if args[2] != nil {
-			arg2 = args[2].(func(spec v21.DoguRestartSpec) v21.DoguRestartSpec)
+			arg2 = args[2].(func(spec v22.DoguRestartSpec) v22.DoguRestartSpec)
 		}
 		var arg3 v120.UpdateOptions
 		if args[3] != nil {
@@ -11784,37 +12082,37 @@ func (_c *mockDoguRestartInterface_UpdateSpecWithRetry_Call) Run(run func(ctx co
 	return _c
 }
 
-func (_c *mockDoguRestartInterface_UpdateSpecWithRetry_Call) Return(result *v21.DoguRestart, err error) *mockDoguRestartInterface_UpdateSpecWithRetry_Call {
+func (_c *mockDoguRestartInterface_UpdateSpecWithRetry_Call) Return(result *v22.DoguRestart, err error) *mockDoguRestartInterface_UpdateSpecWithRetry_Call {
 	_c.Call.Return(result, err)
 	return _c
 }
 
-func (_c *mockDoguRestartInterface_UpdateSpecWithRetry_Call) RunAndReturn(run func(ctx context.Context, doguRestart *v21.DoguRestart, modifySpecFn func(spec v21.DoguRestartSpec) v21.DoguRestartSpec, opts v120.UpdateOptions) (*v21.DoguRestart, error)) *mockDoguRestartInterface_UpdateSpecWithRetry_Call {
+func (_c *mockDoguRestartInterface_UpdateSpecWithRetry_Call) RunAndReturn(run func(ctx context.Context, doguRestart *v22.DoguRestart, modifySpecFn func(spec v22.DoguRestartSpec) v22.DoguRestartSpec, opts v120.UpdateOptions) (*v22.DoguRestart, error)) *mockDoguRestartInterface_UpdateSpecWithRetry_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // UpdateStatus provides a mock function for the type mockDoguRestartInterface
-func (_mock *mockDoguRestartInterface) UpdateStatus(ctx context.Context, doguRestart *v21.DoguRestart, opts v120.UpdateOptions) (*v21.DoguRestart, error) {
+func (_mock *mockDoguRestartInterface) UpdateStatus(ctx context.Context, doguRestart *v22.DoguRestart, opts v120.UpdateOptions) (*v22.DoguRestart, error) {
 	ret := _mock.Called(ctx, doguRestart, opts)
 
 	if len(ret) == 0 {
 		panic("no return value specified for UpdateStatus")
 	}
 
-	var r0 *v21.DoguRestart
+	var r0 *v22.DoguRestart
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, *v21.DoguRestart, v120.UpdateOptions) (*v21.DoguRestart, error)); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *v22.DoguRestart, v120.UpdateOptions) (*v22.DoguRestart, error)); ok {
 		return returnFunc(ctx, doguRestart, opts)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, *v21.DoguRestart, v120.UpdateOptions) *v21.DoguRestart); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *v22.DoguRestart, v120.UpdateOptions) *v22.DoguRestart); ok {
 		r0 = returnFunc(ctx, doguRestart, opts)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*v21.DoguRestart)
+			r0 = ret.Get(0).(*v22.DoguRestart)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, *v21.DoguRestart, v120.UpdateOptions) error); ok {
+	if returnFunc, ok := ret.Get(1).(func(context.Context, *v22.DoguRestart, v120.UpdateOptions) error); ok {
 		r1 = returnFunc(ctx, doguRestart, opts)
 	} else {
 		r1 = ret.Error(1)
@@ -11829,21 +12127,21 @@ type mockDoguRestartInterface_UpdateStatus_Call struct {
 
 // UpdateStatus is a helper method to define mock.On call
 //   - ctx context.Context
-//   - doguRestart *v21.DoguRestart
+//   - doguRestart *v22.DoguRestart
 //   - opts v120.UpdateOptions
 func (_e *mockDoguRestartInterface_Expecter) UpdateStatus(ctx any, doguRestart any, opts any) *mockDoguRestartInterface_UpdateStatus_Call {
 	return &mockDoguRestartInterface_UpdateStatus_Call{Call: _e.mock.On("UpdateStatus", ctx, doguRestart, opts)}
 }
 
-func (_c *mockDoguRestartInterface_UpdateStatus_Call) Run(run func(ctx context.Context, doguRestart *v21.DoguRestart, opts v120.UpdateOptions)) *mockDoguRestartInterface_UpdateStatus_Call {
+func (_c *mockDoguRestartInterface_UpdateStatus_Call) Run(run func(ctx context.Context, doguRestart *v22.DoguRestart, opts v120.UpdateOptions)) *mockDoguRestartInterface_UpdateStatus_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
 			arg0 = args[0].(context.Context)
 		}
-		var arg1 *v21.DoguRestart
+		var arg1 *v22.DoguRestart
 		if args[1] != nil {
-			arg1 = args[1].(*v21.DoguRestart)
+			arg1 = args[1].(*v22.DoguRestart)
 		}
 		var arg2 v120.UpdateOptions
 		if args[2] != nil {
@@ -11858,37 +12156,37 @@ func (_c *mockDoguRestartInterface_UpdateStatus_Call) Run(run func(ctx context.C
 	return _c
 }
 
-func (_c *mockDoguRestartInterface_UpdateStatus_Call) Return(doguRestart1 *v21.DoguRestart, err error) *mockDoguRestartInterface_UpdateStatus_Call {
+func (_c *mockDoguRestartInterface_UpdateStatus_Call) Return(doguRestart1 *v22.DoguRestart, err error) *mockDoguRestartInterface_UpdateStatus_Call {
 	_c.Call.Return(doguRestart1, err)
 	return _c
 }
 
-func (_c *mockDoguRestartInterface_UpdateStatus_Call) RunAndReturn(run func(ctx context.Context, doguRestart *v21.DoguRestart, opts v120.UpdateOptions) (*v21.DoguRestart, error)) *mockDoguRestartInterface_UpdateStatus_Call {
+func (_c *mockDoguRestartInterface_UpdateStatus_Call) RunAndReturn(run func(ctx context.Context, doguRestart *v22.DoguRestart, opts v120.UpdateOptions) (*v22.DoguRestart, error)) *mockDoguRestartInterface_UpdateStatus_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // UpdateStatusWithRetry provides a mock function for the type mockDoguRestartInterface
-func (_mock *mockDoguRestartInterface) UpdateStatusWithRetry(ctx context.Context, doguRestart *v21.DoguRestart, modifyStatusFn func(v21.DoguRestartStatus) v21.DoguRestartStatus, opts v120.UpdateOptions) (*v21.DoguRestart, error) {
+func (_mock *mockDoguRestartInterface) UpdateStatusWithRetry(ctx context.Context, doguRestart *v22.DoguRestart, modifyStatusFn func(v22.DoguRestartStatus) v22.DoguRestartStatus, opts v120.UpdateOptions) (*v22.DoguRestart, error) {
 	ret := _mock.Called(ctx, doguRestart, modifyStatusFn, opts)
 
 	if len(ret) == 0 {
 		panic("no return value specified for UpdateStatusWithRetry")
 	}
 
-	var r0 *v21.DoguRestart
+	var r0 *v22.DoguRestart
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, *v21.DoguRestart, func(v21.DoguRestartStatus) v21.DoguRestartStatus, v120.UpdateOptions) (*v21.DoguRestart, error)); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *v22.DoguRestart, func(v22.DoguRestartStatus) v22.DoguRestartStatus, v120.UpdateOptions) (*v22.DoguRestart, error)); ok {
 		return returnFunc(ctx, doguRestart, modifyStatusFn, opts)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, *v21.DoguRestart, func(v21.DoguRestartStatus) v21.DoguRestartStatus, v120.UpdateOptions) *v21.DoguRestart); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *v22.DoguRestart, func(v22.DoguRestartStatus) v22.DoguRestartStatus, v120.UpdateOptions) *v22.DoguRestart); ok {
 		r0 = returnFunc(ctx, doguRestart, modifyStatusFn, opts)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*v21.DoguRestart)
+			r0 = ret.Get(0).(*v22.DoguRestart)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, *v21.DoguRestart, func(v21.DoguRestartStatus) v21.DoguRestartStatus, v120.UpdateOptions) error); ok {
+	if returnFunc, ok := ret.Get(1).(func(context.Context, *v22.DoguRestart, func(v22.DoguRestartStatus) v22.DoguRestartStatus, v120.UpdateOptions) error); ok {
 		r1 = returnFunc(ctx, doguRestart, modifyStatusFn, opts)
 	} else {
 		r1 = ret.Error(1)
@@ -11903,26 +12201,26 @@ type mockDoguRestartInterface_UpdateStatusWithRetry_Call struct {
 
 // UpdateStatusWithRetry is a helper method to define mock.On call
 //   - ctx context.Context
-//   - doguRestart *v21.DoguRestart
-//   - modifyStatusFn func(v21.DoguRestartStatus) v21.DoguRestartStatus
+//   - doguRestart *v22.DoguRestart
+//   - modifyStatusFn func(v22.DoguRestartStatus) v22.DoguRestartStatus
 //   - opts v120.UpdateOptions
 func (_e *mockDoguRestartInterface_Expecter) UpdateStatusWithRetry(ctx any, doguRestart any, modifyStatusFn any, opts any) *mockDoguRestartInterface_UpdateStatusWithRetry_Call {
 	return &mockDoguRestartInterface_UpdateStatusWithRetry_Call{Call: _e.mock.On("UpdateStatusWithRetry", ctx, doguRestart, modifyStatusFn, opts)}
 }
 
-func (_c *mockDoguRestartInterface_UpdateStatusWithRetry_Call) Run(run func(ctx context.Context, doguRestart *v21.DoguRestart, modifyStatusFn func(v21.DoguRestartStatus) v21.DoguRestartStatus, opts v120.UpdateOptions)) *mockDoguRestartInterface_UpdateStatusWithRetry_Call {
+func (_c *mockDoguRestartInterface_UpdateStatusWithRetry_Call) Run(run func(ctx context.Context, doguRestart *v22.DoguRestart, modifyStatusFn func(v22.DoguRestartStatus) v22.DoguRestartStatus, opts v120.UpdateOptions)) *mockDoguRestartInterface_UpdateStatusWithRetry_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
 			arg0 = args[0].(context.Context)
 		}
-		var arg1 *v21.DoguRestart
+		var arg1 *v22.DoguRestart
 		if args[1] != nil {
-			arg1 = args[1].(*v21.DoguRestart)
+			arg1 = args[1].(*v22.DoguRestart)
 		}
-		var arg2 func(v21.DoguRestartStatus) v21.DoguRestartStatus
+		var arg2 func(v22.DoguRestartStatus) v22.DoguRestartStatus
 		if args[2] != nil {
-			arg2 = args[2].(func(v21.DoguRestartStatus) v21.DoguRestartStatus)
+			arg2 = args[2].(func(v22.DoguRestartStatus) v22.DoguRestartStatus)
 		}
 		var arg3 v120.UpdateOptions
 		if args[3] != nil {
@@ -11938,12 +12236,12 @@ func (_c *mockDoguRestartInterface_UpdateStatusWithRetry_Call) Run(run func(ctx 
 	return _c
 }
 
-func (_c *mockDoguRestartInterface_UpdateStatusWithRetry_Call) Return(result *v21.DoguRestart, err error) *mockDoguRestartInterface_UpdateStatusWithRetry_Call {
+func (_c *mockDoguRestartInterface_UpdateStatusWithRetry_Call) Return(result *v22.DoguRestart, err error) *mockDoguRestartInterface_UpdateStatusWithRetry_Call {
 	_c.Call.Return(result, err)
 	return _c
 }
 
-func (_c *mockDoguRestartInterface_UpdateStatusWithRetry_Call) RunAndReturn(run func(ctx context.Context, doguRestart *v21.DoguRestart, modifyStatusFn func(v21.DoguRestartStatus) v21.DoguRestartStatus, opts v120.UpdateOptions) (*v21.DoguRestart, error)) *mockDoguRestartInterface_UpdateStatusWithRetry_Call {
+func (_c *mockDoguRestartInterface_UpdateStatusWithRetry_Call) RunAndReturn(run func(ctx context.Context, doguRestart *v22.DoguRestart, modifyStatusFn func(v22.DoguRestartStatus) v22.DoguRestartStatus, opts v120.UpdateOptions) (*v22.DoguRestart, error)) *mockDoguRestartInterface_UpdateStatusWithRetry_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -12187,27 +12485,175 @@ func (_m *mockDoguV3Client) EXPECT() *mockDoguV3Client_Expecter {
 	return &mockDoguV3Client_Expecter{mock: &_m.Mock}
 }
 
+// Apply provides a mock function for the type mockDoguV3Client
+func (_mock *mockDoguV3Client) Apply(ctx context.Context, dogu *v3beta10.DoguApplyConfiguration, opts v120.ApplyOptions) (*v3beta11.Dogu, error) {
+	ret := _mock.Called(ctx, dogu, opts)
+
+	if len(ret) == 0 {
+		panic("no return value specified for Apply")
+	}
+
+	var r0 *v3beta11.Dogu
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *v3beta10.DoguApplyConfiguration, v120.ApplyOptions) (*v3beta11.Dogu, error)); ok {
+		return returnFunc(ctx, dogu, opts)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *v3beta10.DoguApplyConfiguration, v120.ApplyOptions) *v3beta11.Dogu); ok {
+		r0 = returnFunc(ctx, dogu, opts)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*v3beta11.Dogu)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, *v3beta10.DoguApplyConfiguration, v120.ApplyOptions) error); ok {
+		r1 = returnFunc(ctx, dogu, opts)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// mockDoguV3Client_Apply_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Apply'
+type mockDoguV3Client_Apply_Call struct {
+	*mock.Call
+}
+
+// Apply is a helper method to define mock.On call
+//   - ctx context.Context
+//   - dogu *v3beta10.DoguApplyConfiguration
+//   - opts v120.ApplyOptions
+func (_e *mockDoguV3Client_Expecter) Apply(ctx any, dogu any, opts any) *mockDoguV3Client_Apply_Call {
+	return &mockDoguV3Client_Apply_Call{Call: _e.mock.On("Apply", ctx, dogu, opts)}
+}
+
+func (_c *mockDoguV3Client_Apply_Call) Run(run func(ctx context.Context, dogu *v3beta10.DoguApplyConfiguration, opts v120.ApplyOptions)) *mockDoguV3Client_Apply_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 *v3beta10.DoguApplyConfiguration
+		if args[1] != nil {
+			arg1 = args[1].(*v3beta10.DoguApplyConfiguration)
+		}
+		var arg2 v120.ApplyOptions
+		if args[2] != nil {
+			arg2 = args[2].(v120.ApplyOptions)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *mockDoguV3Client_Apply_Call) Return(result *v3beta11.Dogu, err error) *mockDoguV3Client_Apply_Call {
+	_c.Call.Return(result, err)
+	return _c
+}
+
+func (_c *mockDoguV3Client_Apply_Call) RunAndReturn(run func(ctx context.Context, dogu *v3beta10.DoguApplyConfiguration, opts v120.ApplyOptions) (*v3beta11.Dogu, error)) *mockDoguV3Client_Apply_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// ApplyStatus provides a mock function for the type mockDoguV3Client
+func (_mock *mockDoguV3Client) ApplyStatus(ctx context.Context, dogu *v3beta10.DoguApplyConfiguration, opts v120.ApplyOptions) (*v3beta11.Dogu, error) {
+	ret := _mock.Called(ctx, dogu, opts)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ApplyStatus")
+	}
+
+	var r0 *v3beta11.Dogu
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *v3beta10.DoguApplyConfiguration, v120.ApplyOptions) (*v3beta11.Dogu, error)); ok {
+		return returnFunc(ctx, dogu, opts)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *v3beta10.DoguApplyConfiguration, v120.ApplyOptions) *v3beta11.Dogu); ok {
+		r0 = returnFunc(ctx, dogu, opts)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*v3beta11.Dogu)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, *v3beta10.DoguApplyConfiguration, v120.ApplyOptions) error); ok {
+		r1 = returnFunc(ctx, dogu, opts)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// mockDoguV3Client_ApplyStatus_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ApplyStatus'
+type mockDoguV3Client_ApplyStatus_Call struct {
+	*mock.Call
+}
+
+// ApplyStatus is a helper method to define mock.On call
+//   - ctx context.Context
+//   - dogu *v3beta10.DoguApplyConfiguration
+//   - opts v120.ApplyOptions
+func (_e *mockDoguV3Client_Expecter) ApplyStatus(ctx any, dogu any, opts any) *mockDoguV3Client_ApplyStatus_Call {
+	return &mockDoguV3Client_ApplyStatus_Call{Call: _e.mock.On("ApplyStatus", ctx, dogu, opts)}
+}
+
+func (_c *mockDoguV3Client_ApplyStatus_Call) Run(run func(ctx context.Context, dogu *v3beta10.DoguApplyConfiguration, opts v120.ApplyOptions)) *mockDoguV3Client_ApplyStatus_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 *v3beta10.DoguApplyConfiguration
+		if args[1] != nil {
+			arg1 = args[1].(*v3beta10.DoguApplyConfiguration)
+		}
+		var arg2 v120.ApplyOptions
+		if args[2] != nil {
+			arg2 = args[2].(v120.ApplyOptions)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *mockDoguV3Client_ApplyStatus_Call) Return(result *v3beta11.Dogu, err error) *mockDoguV3Client_ApplyStatus_Call {
+	_c.Call.Return(result, err)
+	return _c
+}
+
+func (_c *mockDoguV3Client_ApplyStatus_Call) RunAndReturn(run func(ctx context.Context, dogu *v3beta10.DoguApplyConfiguration, opts v120.ApplyOptions) (*v3beta11.Dogu, error)) *mockDoguV3Client_ApplyStatus_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Create provides a mock function for the type mockDoguV3Client
-func (_mock *mockDoguV3Client) Create(ctx context.Context, dogu *v3beta10.Dogu, opts v120.CreateOptions) (*v3beta10.Dogu, error) {
+func (_mock *mockDoguV3Client) Create(ctx context.Context, dogu *v3beta11.Dogu, opts v120.CreateOptions) (*v3beta11.Dogu, error) {
 	ret := _mock.Called(ctx, dogu, opts)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Create")
 	}
 
-	var r0 *v3beta10.Dogu
+	var r0 *v3beta11.Dogu
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, *v3beta10.Dogu, v120.CreateOptions) (*v3beta10.Dogu, error)); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *v3beta11.Dogu, v120.CreateOptions) (*v3beta11.Dogu, error)); ok {
 		return returnFunc(ctx, dogu, opts)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, *v3beta10.Dogu, v120.CreateOptions) *v3beta10.Dogu); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *v3beta11.Dogu, v120.CreateOptions) *v3beta11.Dogu); ok {
 		r0 = returnFunc(ctx, dogu, opts)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*v3beta10.Dogu)
+			r0 = ret.Get(0).(*v3beta11.Dogu)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, *v3beta10.Dogu, v120.CreateOptions) error); ok {
+	if returnFunc, ok := ret.Get(1).(func(context.Context, *v3beta11.Dogu, v120.CreateOptions) error); ok {
 		r1 = returnFunc(ctx, dogu, opts)
 	} else {
 		r1 = ret.Error(1)
@@ -12222,21 +12668,21 @@ type mockDoguV3Client_Create_Call struct {
 
 // Create is a helper method to define mock.On call
 //   - ctx context.Context
-//   - dogu *v3beta10.Dogu
+//   - dogu *v3beta11.Dogu
 //   - opts v120.CreateOptions
 func (_e *mockDoguV3Client_Expecter) Create(ctx any, dogu any, opts any) *mockDoguV3Client_Create_Call {
 	return &mockDoguV3Client_Create_Call{Call: _e.mock.On("Create", ctx, dogu, opts)}
 }
 
-func (_c *mockDoguV3Client_Create_Call) Run(run func(ctx context.Context, dogu *v3beta10.Dogu, opts v120.CreateOptions)) *mockDoguV3Client_Create_Call {
+func (_c *mockDoguV3Client_Create_Call) Run(run func(ctx context.Context, dogu *v3beta11.Dogu, opts v120.CreateOptions)) *mockDoguV3Client_Create_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
 			arg0 = args[0].(context.Context)
 		}
-		var arg1 *v3beta10.Dogu
+		var arg1 *v3beta11.Dogu
 		if args[1] != nil {
-			arg1 = args[1].(*v3beta10.Dogu)
+			arg1 = args[1].(*v3beta11.Dogu)
 		}
 		var arg2 v120.CreateOptions
 		if args[2] != nil {
@@ -12251,12 +12697,12 @@ func (_c *mockDoguV3Client_Create_Call) Run(run func(ctx context.Context, dogu *
 	return _c
 }
 
-func (_c *mockDoguV3Client_Create_Call) Return(dogu1 *v3beta10.Dogu, err error) *mockDoguV3Client_Create_Call {
+func (_c *mockDoguV3Client_Create_Call) Return(dogu1 *v3beta11.Dogu, err error) *mockDoguV3Client_Create_Call {
 	_c.Call.Return(dogu1, err)
 	return _c
 }
 
-func (_c *mockDoguV3Client_Create_Call) RunAndReturn(run func(ctx context.Context, dogu *v3beta10.Dogu, opts v120.CreateOptions) (*v3beta10.Dogu, error)) *mockDoguV3Client_Create_Call {
+func (_c *mockDoguV3Client_Create_Call) RunAndReturn(run func(ctx context.Context, dogu *v3beta11.Dogu, opts v120.CreateOptions) (*v3beta11.Dogu, error)) *mockDoguV3Client_Create_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -12388,23 +12834,23 @@ func (_c *mockDoguV3Client_DeleteCollection_Call) RunAndReturn(run func(ctx cont
 }
 
 // Get provides a mock function for the type mockDoguV3Client
-func (_mock *mockDoguV3Client) Get(ctx context.Context, name string, opts v120.GetOptions) (*v3beta10.Dogu, error) {
+func (_mock *mockDoguV3Client) Get(ctx context.Context, name string, opts v120.GetOptions) (*v3beta11.Dogu, error) {
 	ret := _mock.Called(ctx, name, opts)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Get")
 	}
 
-	var r0 *v3beta10.Dogu
+	var r0 *v3beta11.Dogu
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, v120.GetOptions) (*v3beta10.Dogu, error)); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, v120.GetOptions) (*v3beta11.Dogu, error)); ok {
 		return returnFunc(ctx, name, opts)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, v120.GetOptions) *v3beta10.Dogu); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, v120.GetOptions) *v3beta11.Dogu); ok {
 		r0 = returnFunc(ctx, name, opts)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*v3beta10.Dogu)
+			r0 = ret.Get(0).(*v3beta11.Dogu)
 		}
 	}
 	if returnFunc, ok := ret.Get(1).(func(context.Context, string, v120.GetOptions) error); ok {
@@ -12451,34 +12897,34 @@ func (_c *mockDoguV3Client_Get_Call) Run(run func(ctx context.Context, name stri
 	return _c
 }
 
-func (_c *mockDoguV3Client_Get_Call) Return(dogu *v3beta10.Dogu, err error) *mockDoguV3Client_Get_Call {
+func (_c *mockDoguV3Client_Get_Call) Return(dogu *v3beta11.Dogu, err error) *mockDoguV3Client_Get_Call {
 	_c.Call.Return(dogu, err)
 	return _c
 }
 
-func (_c *mockDoguV3Client_Get_Call) RunAndReturn(run func(ctx context.Context, name string, opts v120.GetOptions) (*v3beta10.Dogu, error)) *mockDoguV3Client_Get_Call {
+func (_c *mockDoguV3Client_Get_Call) RunAndReturn(run func(ctx context.Context, name string, opts v120.GetOptions) (*v3beta11.Dogu, error)) *mockDoguV3Client_Get_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // List provides a mock function for the type mockDoguV3Client
-func (_mock *mockDoguV3Client) List(ctx context.Context, opts v120.ListOptions) (*v3beta10.DoguList, error) {
+func (_mock *mockDoguV3Client) List(ctx context.Context, opts v120.ListOptions) (*v3beta11.DoguList, error) {
 	ret := _mock.Called(ctx, opts)
 
 	if len(ret) == 0 {
 		panic("no return value specified for List")
 	}
 
-	var r0 *v3beta10.DoguList
+	var r0 *v3beta11.DoguList
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, v120.ListOptions) (*v3beta10.DoguList, error)); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, v120.ListOptions) (*v3beta11.DoguList, error)); ok {
 		return returnFunc(ctx, opts)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, v120.ListOptions) *v3beta10.DoguList); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, v120.ListOptions) *v3beta11.DoguList); ok {
 		r0 = returnFunc(ctx, opts)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*v3beta10.DoguList)
+			r0 = ret.Get(0).(*v3beta11.DoguList)
 		}
 	}
 	if returnFunc, ok := ret.Get(1).(func(context.Context, v120.ListOptions) error); ok {
@@ -12519,18 +12965,18 @@ func (_c *mockDoguV3Client_List_Call) Run(run func(ctx context.Context, opts v12
 	return _c
 }
 
-func (_c *mockDoguV3Client_List_Call) Return(doguList *v3beta10.DoguList, err error) *mockDoguV3Client_List_Call {
+func (_c *mockDoguV3Client_List_Call) Return(doguList *v3beta11.DoguList, err error) *mockDoguV3Client_List_Call {
 	_c.Call.Return(doguList, err)
 	return _c
 }
 
-func (_c *mockDoguV3Client_List_Call) RunAndReturn(run func(ctx context.Context, opts v120.ListOptions) (*v3beta10.DoguList, error)) *mockDoguV3Client_List_Call {
+func (_c *mockDoguV3Client_List_Call) RunAndReturn(run func(ctx context.Context, opts v120.ListOptions) (*v3beta11.DoguList, error)) *mockDoguV3Client_List_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // Patch provides a mock function for the type mockDoguV3Client
-func (_mock *mockDoguV3Client) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v120.PatchOptions, subresources ...string) (*v3beta10.Dogu, error) {
+func (_mock *mockDoguV3Client) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v120.PatchOptions, subresources ...string) (*v3beta11.Dogu, error) {
 	// string
 	_va := make([]any, len(subresources))
 	for _i := range subresources {
@@ -12545,16 +12991,16 @@ func (_mock *mockDoguV3Client) Patch(ctx context.Context, name string, pt types.
 		panic("no return value specified for Patch")
 	}
 
-	var r0 *v3beta10.Dogu
+	var r0 *v3beta11.Dogu
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, types.PatchType, []byte, v120.PatchOptions, ...string) (*v3beta10.Dogu, error)); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, types.PatchType, []byte, v120.PatchOptions, ...string) (*v3beta11.Dogu, error)); ok {
 		return returnFunc(ctx, name, pt, data, opts, subresources...)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, types.PatchType, []byte, v120.PatchOptions, ...string) *v3beta10.Dogu); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, types.PatchType, []byte, v120.PatchOptions, ...string) *v3beta11.Dogu); ok {
 		r0 = returnFunc(ctx, name, pt, data, opts, subresources...)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*v3beta10.Dogu)
+			r0 = ret.Get(0).(*v3beta11.Dogu)
 		}
 	}
 	if returnFunc, ok := ret.Get(1).(func(context.Context, string, types.PatchType, []byte, v120.PatchOptions, ...string) error); ok {
@@ -12624,37 +13070,37 @@ func (_c *mockDoguV3Client_Patch_Call) Run(run func(ctx context.Context, name st
 	return _c
 }
 
-func (_c *mockDoguV3Client_Patch_Call) Return(result *v3beta10.Dogu, err error) *mockDoguV3Client_Patch_Call {
+func (_c *mockDoguV3Client_Patch_Call) Return(result *v3beta11.Dogu, err error) *mockDoguV3Client_Patch_Call {
 	_c.Call.Return(result, err)
 	return _c
 }
 
-func (_c *mockDoguV3Client_Patch_Call) RunAndReturn(run func(ctx context.Context, name string, pt types.PatchType, data []byte, opts v120.PatchOptions, subresources ...string) (*v3beta10.Dogu, error)) *mockDoguV3Client_Patch_Call {
+func (_c *mockDoguV3Client_Patch_Call) RunAndReturn(run func(ctx context.Context, name string, pt types.PatchType, data []byte, opts v120.PatchOptions, subresources ...string) (*v3beta11.Dogu, error)) *mockDoguV3Client_Patch_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // Update provides a mock function for the type mockDoguV3Client
-func (_mock *mockDoguV3Client) Update(ctx context.Context, dogu *v3beta10.Dogu, opts v120.UpdateOptions) (*v3beta10.Dogu, error) {
+func (_mock *mockDoguV3Client) Update(ctx context.Context, dogu *v3beta11.Dogu, opts v120.UpdateOptions) (*v3beta11.Dogu, error) {
 	ret := _mock.Called(ctx, dogu, opts)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Update")
 	}
 
-	var r0 *v3beta10.Dogu
+	var r0 *v3beta11.Dogu
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, *v3beta10.Dogu, v120.UpdateOptions) (*v3beta10.Dogu, error)); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *v3beta11.Dogu, v120.UpdateOptions) (*v3beta11.Dogu, error)); ok {
 		return returnFunc(ctx, dogu, opts)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, *v3beta10.Dogu, v120.UpdateOptions) *v3beta10.Dogu); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *v3beta11.Dogu, v120.UpdateOptions) *v3beta11.Dogu); ok {
 		r0 = returnFunc(ctx, dogu, opts)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*v3beta10.Dogu)
+			r0 = ret.Get(0).(*v3beta11.Dogu)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, *v3beta10.Dogu, v120.UpdateOptions) error); ok {
+	if returnFunc, ok := ret.Get(1).(func(context.Context, *v3beta11.Dogu, v120.UpdateOptions) error); ok {
 		r1 = returnFunc(ctx, dogu, opts)
 	} else {
 		r1 = ret.Error(1)
@@ -12669,21 +13115,21 @@ type mockDoguV3Client_Update_Call struct {
 
 // Update is a helper method to define mock.On call
 //   - ctx context.Context
-//   - dogu *v3beta10.Dogu
+//   - dogu *v3beta11.Dogu
 //   - opts v120.UpdateOptions
 func (_e *mockDoguV3Client_Expecter) Update(ctx any, dogu any, opts any) *mockDoguV3Client_Update_Call {
 	return &mockDoguV3Client_Update_Call{Call: _e.mock.On("Update", ctx, dogu, opts)}
 }
 
-func (_c *mockDoguV3Client_Update_Call) Run(run func(ctx context.Context, dogu *v3beta10.Dogu, opts v120.UpdateOptions)) *mockDoguV3Client_Update_Call {
+func (_c *mockDoguV3Client_Update_Call) Run(run func(ctx context.Context, dogu *v3beta11.Dogu, opts v120.UpdateOptions)) *mockDoguV3Client_Update_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
 			arg0 = args[0].(context.Context)
 		}
-		var arg1 *v3beta10.Dogu
+		var arg1 *v3beta11.Dogu
 		if args[1] != nil {
-			arg1 = args[1].(*v3beta10.Dogu)
+			arg1 = args[1].(*v3beta11.Dogu)
 		}
 		var arg2 v120.UpdateOptions
 		if args[2] != nil {
@@ -12698,37 +13144,37 @@ func (_c *mockDoguV3Client_Update_Call) Run(run func(ctx context.Context, dogu *
 	return _c
 }
 
-func (_c *mockDoguV3Client_Update_Call) Return(dogu1 *v3beta10.Dogu, err error) *mockDoguV3Client_Update_Call {
+func (_c *mockDoguV3Client_Update_Call) Return(dogu1 *v3beta11.Dogu, err error) *mockDoguV3Client_Update_Call {
 	_c.Call.Return(dogu1, err)
 	return _c
 }
 
-func (_c *mockDoguV3Client_Update_Call) RunAndReturn(run func(ctx context.Context, dogu *v3beta10.Dogu, opts v120.UpdateOptions) (*v3beta10.Dogu, error)) *mockDoguV3Client_Update_Call {
+func (_c *mockDoguV3Client_Update_Call) RunAndReturn(run func(ctx context.Context, dogu *v3beta11.Dogu, opts v120.UpdateOptions) (*v3beta11.Dogu, error)) *mockDoguV3Client_Update_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // UpdateStatus provides a mock function for the type mockDoguV3Client
-func (_mock *mockDoguV3Client) UpdateStatus(ctx context.Context, dogu *v3beta10.Dogu, opts v120.UpdateOptions) (*v3beta10.Dogu, error) {
+func (_mock *mockDoguV3Client) UpdateStatus(ctx context.Context, dogu *v3beta11.Dogu, opts v120.UpdateOptions) (*v3beta11.Dogu, error) {
 	ret := _mock.Called(ctx, dogu, opts)
 
 	if len(ret) == 0 {
 		panic("no return value specified for UpdateStatus")
 	}
 
-	var r0 *v3beta10.Dogu
+	var r0 *v3beta11.Dogu
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, *v3beta10.Dogu, v120.UpdateOptions) (*v3beta10.Dogu, error)); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *v3beta11.Dogu, v120.UpdateOptions) (*v3beta11.Dogu, error)); ok {
 		return returnFunc(ctx, dogu, opts)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, *v3beta10.Dogu, v120.UpdateOptions) *v3beta10.Dogu); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *v3beta11.Dogu, v120.UpdateOptions) *v3beta11.Dogu); ok {
 		r0 = returnFunc(ctx, dogu, opts)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*v3beta10.Dogu)
+			r0 = ret.Get(0).(*v3beta11.Dogu)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, *v3beta10.Dogu, v120.UpdateOptions) error); ok {
+	if returnFunc, ok := ret.Get(1).(func(context.Context, *v3beta11.Dogu, v120.UpdateOptions) error); ok {
 		r1 = returnFunc(ctx, dogu, opts)
 	} else {
 		r1 = ret.Error(1)
@@ -12743,21 +13189,21 @@ type mockDoguV3Client_UpdateStatus_Call struct {
 
 // UpdateStatus is a helper method to define mock.On call
 //   - ctx context.Context
-//   - dogu *v3beta10.Dogu
+//   - dogu *v3beta11.Dogu
 //   - opts v120.UpdateOptions
 func (_e *mockDoguV3Client_Expecter) UpdateStatus(ctx any, dogu any, opts any) *mockDoguV3Client_UpdateStatus_Call {
 	return &mockDoguV3Client_UpdateStatus_Call{Call: _e.mock.On("UpdateStatus", ctx, dogu, opts)}
 }
 
-func (_c *mockDoguV3Client_UpdateStatus_Call) Run(run func(ctx context.Context, dogu *v3beta10.Dogu, opts v120.UpdateOptions)) *mockDoguV3Client_UpdateStatus_Call {
+func (_c *mockDoguV3Client_UpdateStatus_Call) Run(run func(ctx context.Context, dogu *v3beta11.Dogu, opts v120.UpdateOptions)) *mockDoguV3Client_UpdateStatus_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
 			arg0 = args[0].(context.Context)
 		}
-		var arg1 *v3beta10.Dogu
+		var arg1 *v3beta11.Dogu
 		if args[1] != nil {
-			arg1 = args[1].(*v3beta10.Dogu)
+			arg1 = args[1].(*v3beta11.Dogu)
 		}
 		var arg2 v120.UpdateOptions
 		if args[2] != nil {
@@ -12772,12 +13218,12 @@ func (_c *mockDoguV3Client_UpdateStatus_Call) Run(run func(ctx context.Context, 
 	return _c
 }
 
-func (_c *mockDoguV3Client_UpdateStatus_Call) Return(dogu1 *v3beta10.Dogu, err error) *mockDoguV3Client_UpdateStatus_Call {
+func (_c *mockDoguV3Client_UpdateStatus_Call) Return(dogu1 *v3beta11.Dogu, err error) *mockDoguV3Client_UpdateStatus_Call {
 	_c.Call.Return(dogu1, err)
 	return _c
 }
 
-func (_c *mockDoguV3Client_UpdateStatus_Call) RunAndReturn(run func(ctx context.Context, dogu *v3beta10.Dogu, opts v120.UpdateOptions) (*v3beta10.Dogu, error)) *mockDoguV3Client_UpdateStatus_Call {
+func (_c *mockDoguV3Client_UpdateStatus_Call) RunAndReturn(run func(ctx context.Context, dogu *v3beta11.Dogu, opts v120.UpdateOptions) (*v3beta11.Dogu, error)) *mockDoguV3Client_UpdateStatus_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -12887,7 +13333,7 @@ func (_m *mockCommandExecutor) EXPECT() *mockCommandExecutor_Expecter {
 }
 
 // ExecCommandForDogu provides a mock function for the type mockCommandExecutor
-func (_mock *mockCommandExecutor) ExecCommandForDogu(ctx context.Context, resource *v21.Dogu, command exec.ShellCommand) (*bytes.Buffer, error) {
+func (_mock *mockCommandExecutor) ExecCommandForDogu(ctx context.Context, resource *v22.Dogu, command exec.ShellCommand) (*bytes.Buffer, error) {
 	ret := _mock.Called(ctx, resource, command)
 
 	if len(ret) == 0 {
@@ -12896,17 +13342,17 @@ func (_mock *mockCommandExecutor) ExecCommandForDogu(ctx context.Context, resour
 
 	var r0 *bytes.Buffer
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, *v21.Dogu, exec.ShellCommand) (*bytes.Buffer, error)); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *v22.Dogu, exec.ShellCommand) (*bytes.Buffer, error)); ok {
 		return returnFunc(ctx, resource, command)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, *v21.Dogu, exec.ShellCommand) *bytes.Buffer); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *v22.Dogu, exec.ShellCommand) *bytes.Buffer); ok {
 		r0 = returnFunc(ctx, resource, command)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*bytes.Buffer)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, *v21.Dogu, exec.ShellCommand) error); ok {
+	if returnFunc, ok := ret.Get(1).(func(context.Context, *v22.Dogu, exec.ShellCommand) error); ok {
 		r1 = returnFunc(ctx, resource, command)
 	} else {
 		r1 = ret.Error(1)
@@ -12921,21 +13367,21 @@ type mockCommandExecutor_ExecCommandForDogu_Call struct {
 
 // ExecCommandForDogu is a helper method to define mock.On call
 //   - ctx context.Context
-//   - resource *v21.Dogu
+//   - resource *v22.Dogu
 //   - command exec.ShellCommand
 func (_e *mockCommandExecutor_Expecter) ExecCommandForDogu(ctx any, resource any, command any) *mockCommandExecutor_ExecCommandForDogu_Call {
 	return &mockCommandExecutor_ExecCommandForDogu_Call{Call: _e.mock.On("ExecCommandForDogu", ctx, resource, command)}
 }
 
-func (_c *mockCommandExecutor_ExecCommandForDogu_Call) Run(run func(ctx context.Context, resource *v21.Dogu, command exec.ShellCommand)) *mockCommandExecutor_ExecCommandForDogu_Call {
+func (_c *mockCommandExecutor_ExecCommandForDogu_Call) Run(run func(ctx context.Context, resource *v22.Dogu, command exec.ShellCommand)) *mockCommandExecutor_ExecCommandForDogu_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
 			arg0 = args[0].(context.Context)
 		}
-		var arg1 *v21.Dogu
+		var arg1 *v22.Dogu
 		if args[1] != nil {
-			arg1 = args[1].(*v21.Dogu)
+			arg1 = args[1].(*v22.Dogu)
 		}
 		var arg2 exec.ShellCommand
 		if args[2] != nil {
@@ -12955,7 +13401,7 @@ func (_c *mockCommandExecutor_ExecCommandForDogu_Call) Return(buffer *bytes.Buff
 	return _c
 }
 
-func (_c *mockCommandExecutor_ExecCommandForDogu_Call) RunAndReturn(run func(ctx context.Context, resource *v21.Dogu, command exec.ShellCommand) (*bytes.Buffer, error)) *mockCommandExecutor_ExecCommandForDogu_Call {
+func (_c *mockCommandExecutor_ExecCommandForDogu_Call) RunAndReturn(run func(ctx context.Context, resource *v22.Dogu, command exec.ShellCommand) (*bytes.Buffer, error)) *mockCommandExecutor_ExecCommandForDogu_Call {
 	_c.Call.Return(run)
 	return _c
 }

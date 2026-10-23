@@ -1,0 +1,18 @@
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-prod
+spec:
+  acme:
+    email: youremail@example.com
+    profile: tlsserver
+    server: https://acme-v02.api.letsencrypt.org/directory
+    privateKeySecretRef:
+      name: letsencrypt-prod-issuer-account-key
+    solvers:
+      - http01:
+          ingress:
+            ingressClassName: haproxy
+        selector:
+          dnsZones:
+            - 'yourdomain.example.com'

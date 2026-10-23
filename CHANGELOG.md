@@ -5,6 +5,35 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Added
+- [#358] Support `DoguRestart` for dogu v3.
+- [#367] Warning condition and event when activating the export mode for V3 Dogus because is not implemented
+- [#368] Detect whether a v3 dogu has to be migrated from v2 or installed
+- [#354] The `HelmRelease` for a dogu is now suspended, if either Stop or PauseReconciliation is set for it, or a PVC resize has to be done.
+    - The Condition UpdatePending is set to True, if any updates to OCI repositories are pending and reset, if there are no pending updates detected.
+    - Most steps of the dogu reconciliation are skipped, if PauseReconciliation is set (except to set the Condition UpdatePending).
+
+### Changed
+- Update go to 1.27.3
+
+### Fixed
+- [#372] Ignore updates of HelmReleases that only toggle the `Reconciling` condition, to avoid unnecessary reconciliations
+
+## [v3.35.0] - 2026-10-20
+### Added
+- [#341] Experimental helmfile support
+
+## [v3.34.0] - 2026-10-19
+### Added
+- [#365] Add new option to disable warp menu entries for v2 dogus
+  - See `controllerManager.env.warpMenuDisabledV2Dogus` in `values.yaml`
+### Changed
+- [#362] Replace the logrus based logger with zap, which is the standard logging backend for operators built on controller-runtime.
+  - The log output is now JSON by default. The new environment variable `LOG_FORMAT` switches between `json` and `text`.
+  - `LOG_LEVEL` now defaults to `info` instead of `error`.
+  - Log calls of the cesapp-lib and the k8s-apply-lib keep their log level instead of being logged as info.
+  - The lifecycle logging of fx is logged in the same format as all other logs.
+- [#362] Move the logging package to `internal/logging` and log via its `Info`, `Debug` and `Error` functions instead of `log.FromContext`.
 
 ### Added
 - [#360] Stop v3 dogu workloads while preserving StatefulSet claims.

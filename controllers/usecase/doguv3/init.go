@@ -7,7 +7,9 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv3/deletion"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv3/install"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv3/migration"
 	"github.com/cloudogu/k8s-dogu-operator/v3/internal/charts"
+	dogumigration "github.com/cloudogu/k8s-dogu-operator/v3/internal/dogu/migration"
 	"github.com/cloudogu/k8s-dogu-operator/v3/internal/dogu/values"
 	"github.com/cloudogu/k8s-dogu-operator/v3/internal/flux"
 	"github.com/cloudogu/k8s-dogu-operator/v3/internal/registry"
@@ -47,14 +49,22 @@ func NewDoguV3UseCases(
 	validateStep := install.NewValidateChartStep(chartService, assembler, k8sClient)
 	helmReleaseStep := install.NewEnsureHelmReleaseStep(k8sClient, operatorConfig, chartService, recorder)
 	helmReleaseStatusStep := install.NewHelmReleaseStatusStep(k8sClient, releaseReader, recorder)
+	exportModeStep := install.NewExportModeStep(k8sClient, recorder)
 
 	unsuspendStep := deletion.NewUnsuspendHelmReleaseStep(k8sClient, recorder)
 	deleteHelmReleaseStep := deletion.NewDeleteHelmReleaseStep(k8sClient, recorder)
 	deleteOCIRepositoryStep := deletion.NewDeleteOCIRepositoryStep(k8sClient, recorder)
 	removeFinalizerStep := deletion.NewRemoveFinalizerStep(k8sClient)
 
-	installUseCase := NewDoguInstallOrChangeUseCase(finalizerStep, ociStep, waitStep, validateStep, helmReleaseStep, helmReleaseStatusStep, k8sClient, recorder)
+	detector := dogumigration.NewDetector(k8sClient)
+	migrationPreconditionsStep := migration.NewMigrationPreconditionsStep(detector, recorder)
+	migrationPendingStep := migration.NewMigrationPendingStep(detector, recorder)
+
+	installUseCase := NewDoguInstallOrChangeUseCase(finalizerStep, ociStep, waitStep, validateStep, helmReleaseStep, helmReleaseStatusStep, exportModeStep, k8sClient, recorder)
+	migrationUseCase := NewDoguMigrationUseCase(finalizerStep, migrationPreconditionsStep, ociStep, waitStep, validateStep, migrationPendingStep, k8sClient, recorder)
 	deleteUseCase := NewDoguDeleteUseCase(unsuspendStep, deleteHelmReleaseStep, deleteOCIRepositoryStep, removeFinalizerStep, k8sClient, recorder)
 
-	return installUseCase, deleteUseCase, nil
+	changeHandler := NewDoguChangeHandler(detector, installUseCase, migrationUseCase)
+
+	return changeHandler, deleteUseCase, nil
 }

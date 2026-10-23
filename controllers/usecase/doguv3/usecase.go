@@ -11,6 +11,7 @@ import (
 	v3 "github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv3"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv3/deletion"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv3/install"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv3/migration"
 	"github.com/cloudogu/k8s-dogu-operator/v3/internal/dogu/pending"
 	flux "github.com/fluxcd/helm-controller/api/v2"
 	coreV1 "k8s.io/api/core/v1"
@@ -63,15 +64,45 @@ func NewDoguInstallOrChangeUseCase(
 	validateChartStep *install.ValidateChartStep,
 	helmReleaseStep *install.EnsureHelmReleaseStep,
 	helmReleaseStatusStep *install.HelmReleaseStatusStep,
+	exportModeStep *install.ExportModeStep,
 	client K8sClient, recorder EventRecorder) *DoguUseCase {
 	stopStep := install.NewStopWorkloadsStep(client)
 	return &DoguUseCase{
-		steps:                 []Step{finalizerStep, stopStep, ociStep, waitOCIStep, validateChartStep, helmReleaseStep, helmReleaseStatusStep},
+		steps:                 []Step{exportModeStep, finalizerStep, stopStep, ociStep, waitOCIStep, validateChartStep, helmReleaseStep, helmReleaseStatusStep},
 		k8sClient:             client,
 		eventRecorder:         recorder,
 		ociStep:               ociStep,
 		helmReleaseStep:       helmReleaseStep,
 		helmReleaseStatusStep: helmReleaseStatusStep,
+	}
+}
+
+// NewDoguMigrationUseCase creates a new DoguUseCase instance that migrates a v2 dogu to v3.
+// The steps are executed in the order they are provided.
+func NewDoguMigrationUseCase(
+	finalizerStep *install.CreateFinalizerStep,
+	migrationPreconditionsStep *migration.MigrationPreconditionsStep,
+	ociStep *install.EnsureOCIRepositoryStep,
+	waitOCIStep *install.WaitForOCIRepositoryReadyStep,
+	validateChartStep *install.ValidateChartStep,
+	migrationPendingStep *migration.MigrationPendingStep,
+	client K8sClient,
+	recorder EventRecorder,
+) *DoguUseCase {
+	return &DoguUseCase{
+		steps: []Step{
+			finalizerStep,
+			migrationPreconditionsStep,
+			// The chart is validated before the migration, so that a v2 dogu is never removed for a chart that cannot be installed.
+			ociStep,
+			waitOCIStep,
+			validateChartStep,
+			// MigrationPendingStep stands in for the actual migration steps and halts the use-case,
+			// so that no chart is installed next to the v2 resources.
+			migrationPendingStep,
+		},
+		k8sClient:     client,
+		eventRecorder: recorder,
 	}
 }
 

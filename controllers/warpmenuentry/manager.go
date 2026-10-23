@@ -9,6 +9,7 @@ import (
 	"github.com/cloudogu/cesapp-lib/core"
 	v2 "github.com/cloudogu/k8s-dogu-lib/v3/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/cesregistry"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/resource"
 	warpMenuEntry "github.com/cloudogu/k8s-warp-menu-entry-lib/api/v1"
 	warpMenuEntryV1 "github.com/cloudogu/k8s-warp-menu-entry-lib/client/typed/api/v1"
@@ -22,16 +23,19 @@ const (
 )
 
 type WarpMenuEntryManager struct {
-	client      warpmenuentryClient
-	doguFetcher localDoguFetcher
+	client        warpmenuentryClient
+	doguFetcher   localDoguFetcher
+	disabledDogus []string
 }
 
 func NewWarpMenuEntryManager(
 	client warpMenuEntryV1.WarpMenuEntryInterface,
-	localDoguFetcher cesregistry.LocalDoguFetcher) *WarpMenuEntryManager {
+	localDoguFetcher cesregistry.LocalDoguFetcher,
+	operatorConfig *config.OperatorConfig) *WarpMenuEntryManager {
 	return &WarpMenuEntryManager{
-		client:      client,
-		doguFetcher: localDoguFetcher,
+		client:        client,
+		doguFetcher:   localDoguFetcher,
+		disabledDogus: operatorConfig.WarpMenuDisabledV2Dogus,
 	}
 }
 
@@ -103,13 +107,11 @@ func (w WarpMenuEntryManager) buildNewWarpMenuEntry(dogu *v2.Dogu, doguDescripto
 	}
 
 	return &warpMenuEntry.WarpMenuEntry{
-		ObjectMeta: v1.ObjectMeta{
-			Name: dogu.Name,
-			OwnerReferences: []v1.OwnerReference{
-				*v1.NewControllerRef(dogu, v2.GroupVersion.WithKind(kindDogu)),
-			},
-			Labels: resource.GetAppLabel().Add(dogu.GetDoguNameLabel()),
+		Name: dogu.Name,
+		OwnerReferences: []v1.OwnerReference{
+			*v1.NewControllerRef(dogu, v2.GroupVersion.WithKind(kindDogu)),
 		},
+		Labels: resource.GetAppLabel().Add(dogu.GetDoguNameLabel()),
 		Spec: warpMenuEntry.WarpMenuEntrySpec{
 			DisplayName: warpMenuEntry.DisplayName{
 				DE: displayName,
@@ -117,7 +119,7 @@ func (w WarpMenuEntryManager) buildNewWarpMenuEntry(dogu *v2.Dogu, doguDescripto
 			},
 			Category: doguDescriptor.Category,
 			Path:     "/" + dogu.GetSimpleDoguName().String(),
-			Disabled: false,
+			Disabled: slices.Contains(w.disabledDogus, doguDescriptor.GetSimpleName()),
 		},
 	}
 }

@@ -65,3 +65,15 @@ install-dogu-descriptor: ${BINARY_YQ} $(TARGET_DIR) ## Installs a configmap with
 	@$(BINARY_YQ) -oj ".Image=\"${IMAGE_DEV}\" | .Version=\"${DOGU_TARGET_VERSION}\""  ${DOGU_JSON_FILE} > ${DOGU_JSON_DEV_FILE}
 	@kubectl --context="${KUBE_CONTEXT_NAME}" create configmap "$(ARTIFACT_ID)-descriptor" --from-file=$(DOGU_JSON_DEV_FILE) --dry-run=client -o yaml | kubectl --context="${KUBE_CONTEXT_NAME}" --namespace=${NAMESPACE} apply -f -
 	@echo "Done."
+
+.PHONY: restart-dogu
+restart-dogu:
+	@echo "Restarting ${ARTIFACT_ID} Dogu!"
+	@printf '%s\n' \
+		'apiVersion: k8s.cloudogu.com/v2' \
+		'kind: DoguRestart' \
+		'metadata:' \
+		'  generateName: ${ARTIFACT_ID}-restart-' \
+		'spec:' \
+		'  doguName: ${ARTIFACT_ID}' \
+		| kubectl -n ${NAMESPACE} create -f -

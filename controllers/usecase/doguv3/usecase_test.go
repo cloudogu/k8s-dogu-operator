@@ -60,6 +60,7 @@ func TestNewDoguInstallOrChangeUseCase(t *testing.T) {
 	validateChartStep := &install.ValidateChartStep{}
 	helmReleaseStep := &install.EnsureHelmReleaseStep{}
 	helmReleaseStatusStep := &install.HelmReleaseStatusStep{}
+	exportModeStep := &install.ExportModeStep{}
 
 	got := NewDoguInstallOrChangeUseCase(
 		finalizerStep,
@@ -68,11 +69,13 @@ func TestNewDoguInstallOrChangeUseCase(t *testing.T) {
 		validateChartStep,
 		helmReleaseStep,
 		helmReleaseStatusStep,
+		exportModeStep,
 		clientMock,
 		recorderMock,
 	)
 
 	wantTypes := []string{
+		"*install.ExportModeStep",
 		"*install.CreateFinalizerStep",
 		"*install.StopWorkloadsStep",
 		"*install.EnsureOCIRepositoryStep",

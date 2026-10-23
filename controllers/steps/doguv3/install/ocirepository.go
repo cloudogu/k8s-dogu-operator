@@ -3,6 +3,7 @@ package install
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"time"
 
 	"github.com/cloudogu/dogu-lib/doguv3"
@@ -11,12 +12,15 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/resource"
 	stepsv3 "github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv3"
 	"github.com/cloudogu/k8s-dogu-operator/v3/internal/dogu/pending"
+	"github.com/cloudogu/k8s-dogu-operator/v3/internal/logging"
 	"github.com/fluxcd/pkg/apis/meta"
 	flux "github.com/fluxcd/source-controller/api/v1"
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
+	metautil "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 const (
@@ -69,26 +73,15 @@ func (eor *EnsureOCIRepositoryStep) Run(ctx context.Context, doguResource *v3bet
 		Name:      doguResource.Spec.Name,
 	}
 
+	if doguResource.Spec.PauseReconciliation {
+		// if PauseReconciliation is set, we don't want to create/update the repository resource, but exit here
+		return eor.checkForPendingChanges(ctx, dogu, repository, doguResource)
+	}
+
 	// Use patch because the repository resource will be updated from the source-controller.
 	// CreateOrUpdate would produce conflict errors and increase the number of reconciles.
 	result, err := controllerutil.CreateOrPatch(ctx, eor.k8sClient, repository, func() error {
-		if repository.Labels == nil {
-			repository.Labels = make(map[string]string)
-		}
-		repository.Labels[labelKeyFluxSharding] = resource.LabelValueCes
-		repository.Labels[v3beta1.DoguLabelName] = doguResource.Spec.Name
-		repository.Labels[v3beta1.DoguLabelVersion] = doguResource.Spec.Version
-		repository.Spec = flux.OCIRepositorySpec{
-			URL: dogu.Chart,
-			Reference: &flux.OCIRepositoryRef{
-				Tag: dogu.Version,
-			},
-			Interval:  metav1.Duration{Duration: time.Hour * 6},
-			SecretRef: &meta.LocalObjectReference{Name: containerRegistrySecret},
-			Provider:  flux.GenericOCIProvider,
-			Timeout:   &metav1.Duration{Duration: 60 * time.Second},
-		}
-
+		configureRepository(repository, doguResource, dogu)
 		return controllerutil.SetControllerReference(doguResource, repository, eor.k8sClient.Scheme())
 	})
 
@@ -99,12 +92,78 @@ func (eor *EnsureOCIRepositoryStep) Run(ctx context.Context, doguResource *v3bet
 	switch result {
 	case controllerutil.OperationResultCreated:
 		eor.eventRecorder.Event(doguResource, v1.EventTypeNormal, v3beta1.ConditionChartAvailable, "OCIRepository created")
-		log.FromContext(ctx).Info("created OCIRepository", "name", repository.Name)
+		logging.Info(ctx, "created OCIRepository", "name", repository.Name)
 	case controllerutil.OperationResultUpdated:
 		eor.eventRecorder.Event(doguResource, v1.EventTypeNormal, v3beta1.ConditionChartAvailable, "OCIRepository updated")
-		log.FromContext(ctx).Info("updated OCIRepository", "name", repository.Name)
+		logging.Info(ctx, "updated OCIRepository", "name", repository.Name)
 
 	}
 
 	return stepsv3.Continue()
+}
+
+func configureRepository(repository *flux.OCIRepository, doguResource *v3beta1.Dogu, dogu *doguv3.Dogu) {
+	if repository.Labels == nil {
+		repository.Labels = make(map[string]string)
+	}
+	repository.Labels[labelKeyFluxSharding] = resource.LabelValueCes
+	repository.Labels[v3beta1.DoguLabelName] = doguResource.Spec.Name
+	repository.Labels[v3beta1.DoguLabelVersion] = doguResource.Spec.Version
+	repository.Spec = flux.OCIRepositorySpec{
+		URL: dogu.Chart,
+		Reference: &flux.OCIRepositoryRef{
+			Tag: dogu.Version,
+		},
+		Interval:  metav1.Duration{Duration: time.Hour * 6},
+		SecretRef: &meta.LocalObjectReference{Name: containerRegistrySecret},
+		Provider:  flux.GenericOCIProvider,
+		Timeout:   &metav1.Duration{Duration: 60 * time.Second},
+	}
+}
+
+func (eor *EnsureOCIRepositoryStep) checkForPendingChanges(ctx context.Context, dogu *doguv3.Dogu, repository *flux.OCIRepository, doguResource *v3beta1.Dogu) stepsv3.StepResult {
+	err := eor.k8sClient.Get(ctx, client.ObjectKey{Namespace: repository.Namespace, Name: repository.Name}, repository)
+	if err != nil {
+		if !errors.IsNotFound(err) {
+			return stepsv3.RequeueWithError(err, v3beta1.ReasonReconciliationPaused)
+		}
+	}
+
+	desiredRepo := repository.DeepCopy()
+	configureRepository(desiredRepo, doguResource, dogu)
+	if !checkForChanges(repository, desiredRepo) {
+		return stepsv3.Continue()
+	}
+	changeCondition := metav1.Condition{
+		Type:               v3beta1.ConditionUpdatePending,
+		Status:             metav1.ConditionTrue,
+		ObservedGeneration: doguResource.Generation,
+		Reason:             v3beta1.ReasonReconciliationPaused,
+		Message:            "Changes not propagated to OCIRepository, because dogu reconciliation is paused",
+	}
+	if metautil.SetStatusCondition(&doguResource.Status.Conditions, changeCondition) {
+		err := eor.k8sClient.Status().Update(ctx, doguResource)
+		if err != nil {
+			if errors.IsConflict(err) {
+				return stepsv3.RequeueAfter(defaultRequeueAfter, v3beta1.ReasonInstalling, err.Error())
+			}
+			return stepsv3.RequeueWithError(err, v3beta1.ReasonReconciliationPaused)
+		}
+		eor.eventRecorder.Event(doguResource, v1.EventTypeNormal, v3beta1.ConditionUpdatePending, "Changes not propagated to OCIRepository, because dogu reconciliation is paused")
+		logging.Info(ctx, "Changes not propagated to OCIRepository, because dogu reconciliation is paused", "dogu", doguResource.Name)
+		return stepsv3.Continue()
+	}
+	return stepsv3.Continue()
+}
+
+func checkForChanges(actual *flux.OCIRepository, desired *flux.OCIRepository) bool {
+	if !reflect.DeepEqual(actual.Spec, desired.Spec) {
+		return true
+	}
+	for key := range desired.Labels {
+		if actual.Labels[key] != desired.Labels[key] {
+			return true
+		}
+	}
+	return false
 }

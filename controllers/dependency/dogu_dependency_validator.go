@@ -9,7 +9,7 @@ import (
 	regLibErr "github.com/cloudogu/ces-commons-lib/errors"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
 
-	"sigs.k8s.io/controller-runtime/pkg/log"
+	"github.com/cloudogu/k8s-dogu-operator/v3/internal/logging"
 
 	"github.com/cloudogu/cesapp-lib/core"
 )
@@ -92,23 +92,22 @@ func (dc *doguDependencyValidator) validateDoguDependencies(ctx context.Context,
 }
 
 func (dc *doguDependencyValidator) checkDoguDependency(ctx context.Context, doguDependency core.Dependency, optional bool) error {
-	logger := log.FromContext(ctx)
 	if doguDependency.Name == LegacyDoguNginx || doguDependency.Name == LegacyDoguRegistrator {
-		logger.Info(fmt.Sprintf("skipping legacy dogu dependency: %s", doguDependency.Name))
+		logging.Info(ctx, fmt.Sprintf("skipping legacy dogu dependency: %s", doguDependency.Name))
 		return nil
 	}
 
 	if dc.authRegistrationEnabled && doguDependency.Name == ComponentDoguCas {
-		logger.Info("skipping legacy dogu dependency for 'cas' because auth registration is enabled")
+		logging.Info(ctx, "skipping legacy dogu dependency for 'cas' because auth registration is enabled")
 		return nil
 	}
 
 	if dc.disablePostfixDependencyCheck && doguDependency.Name == ComponentDoguPostfix {
-		logger.Info("skipping legacy dogu dependency for 'postfix' because postfix is assumed to be installed as a component")
+		logging.Info(ctx, "skipping legacy dogu dependency for 'postfix' because postfix is assumed to be installed as a component")
 		return nil
 	}
 
-	logger.Info(fmt.Sprintf("checking dogu dependency %s:%s", doguDependency.Name, doguDependency.Version))
+	logging.Info(ctx, fmt.Sprintf("checking dogu dependency %s:%s", doguDependency.Name, doguDependency.Version))
 
 	localDependency, err := dc.fetcher.FetchInstalled(ctx, cescommons.SimpleName(doguDependency.Name))
 	if err != nil {
