@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [#358] Support `DoguRestart` for dogu v3.
 - [#367] Warning condition and event when activating the export mode for V3 Dogus because is not implemented
 - [#368] Detect whether a v3 dogu has to be migrated from v2 or installed
+- [#375] Added a dependency to the prometheus-operator-crds when the servicemonitor is enabled
 
 ### Changed
 - Update go to 1.27.3

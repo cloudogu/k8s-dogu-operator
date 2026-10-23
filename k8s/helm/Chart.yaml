@@ -37,3 +37,7 @@ dependencies:
     repository: https://stakater.github.io/stakater-charts
     version: "2.2.16"
     condition: reloader.enabled
+  - name: prometheus-operator-crds
+    version: "32.0.1"
+    repository: https://prometheus-community.github.io/helm-charts
+    condition: metrics.serviceMonitor.enabled
