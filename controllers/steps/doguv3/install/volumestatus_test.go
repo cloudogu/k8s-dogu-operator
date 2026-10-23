@@ -109,7 +109,7 @@ func TestVolumeStatusStep_Run(t *testing.T) {
 		{ClaimName: "db-nexus-3", Size: resource.MustParse("3Gi"), DesiredSize: resource.MustParse("5Gi"), State: v3beta1.VolumeStatusStateResizeFailed, MountedBy: mountedBy("StatefulSet", "nexus")},
 		{ClaimName: "existing", Size: resource.MustParse("1Gi"), State: v3beta1.VolumeStatusStateReady, MountedBy: mountedBy("Deployment", "nexus-proxy")},
 	}
-	happyCaseResult := doguv3.RequeueWithError(errors.New("volumes failed to resize: [db-nexus-2 db-nexus-3]"), v3beta1.ReasonResizingPVC)
+	happyCaseResult := doguv3.RequeueWithError(errors.New("volumes failed to resize: [db-nexus-2 db-nexus-3]; if the storage only expands unmounted volumes, turn on offline volume expansion"), v3beta1.ReasonResizingPVC)
 
 	tests := []struct {
 		name       string
@@ -287,7 +287,7 @@ func TestVolumeStatusStep_RunWaitsForResize(t *testing.T) {
 
 		result := NewVolumeStatusStep(cs, as, d, newVolumeStatusFakeClient(doguResource, interceptor.Funcs{})).Run(testCtx, doguResource)
 
-		assert.Equal(t, doguv3.RequeueAfter(defaultRequeueAfter, v3beta1.ReasonResizingPVC, "waiting for volumes to reach their desired capacity: [db-nexus-0 db-nexus-1]"), result)
+		assert.Equal(t, doguv3.RequeueAfter(defaultRequeueAfter, v3beta1.ReasonResizingPVC, "waiting for volumes to reach their desired capacity: [db-nexus-0 db-nexus-1]; if the storage only expands unmounted volumes, turn on offline volume expansion"), result)
 	})
 
 	t.Run("requeue with error when a rendered volume failed to resize", func(t *testing.T) {
@@ -301,7 +301,7 @@ func TestVolumeStatusStep_RunWaitsForResize(t *testing.T) {
 
 		result := NewVolumeStatusStep(cs, as, d, newVolumeStatusFakeClient(doguResource, interceptor.Funcs{})).Run(testCtx, doguResource)
 
-		require.EqualError(t, result.Err, "volumes failed to resize: [db-nexus-1]")
+		require.EqualError(t, result.Err, "volumes failed to resize: [db-nexus-1]; if the storage only expands unmounted volumes, turn on offline volume expansion")
 		assert.Equal(t, v3beta1.ReasonResizingPVC, result.ReadyReason)
 	})
 

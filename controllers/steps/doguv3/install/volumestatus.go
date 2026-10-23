@@ -100,7 +100,7 @@ func updateVolumeStatus(ctx context.Context, k8sClient K8sClient, doguResource *
 	return statuses, nil
 }
 
-const offlineExpansionHint = "if the storage only expands unmounted volumes, set OFFLINE_VOLUME_EXPANSION=true on the operator"
+const offlineExpansionHint = "if the storage only expands unmounted volumes, turn on offline volume expansion"
 
 // waitForResize keeps the dogu in ResizingPVC until every rendered volume has reached its desired capacity.
 func waitForResize(statuses []v3beta1.VolumeStatus) stepsv3.StepResult {

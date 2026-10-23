@@ -48,3 +48,45 @@ Dies dient dem Pod-Restart, so dass die PVCs aktualisiert eingebunden werden kö
 Nachdem Neustart wird der Status erneut aktualisiert. Dabei wird solange gewartet, bis die tatsächliche Größe dem konfigurierten Minimum entspricht (oder größer).
 
 Dies aktualisiert sowohl die Condition `meetsMinVolumeSize` auf `True` als auch den Wert des Statusfelds `dogu.Status.DataVolumeSize` auf die neue tatsächlich Größe.
+
+## Vergrößern von Volumes von v3-Dogus
+
+v3-Dogus konfigurieren ihre Volume-Größen in den `values` der Dogu-CR. Ist eine gerenderte Größe größer als die des
+bestehenden PVCs, vergrößert der `k8s-dogu-operator` das PVC. Volumes können weder verkleinert noch in eine andere
+StorageClass verschoben werden. Während ein Volume wächst, meldet das Dogu `Ready=False` mit dem Grund `ResizingPVC`.
+`status.volumeStatus[].size` zeigt die neue Größe erst, wenn das Volume sie erreicht hat.
+
+Der Operator vergrößert Volumes in einem von zwei Modi, den der Helm-Value `controllerManager.env.offlineVolumeExpansion`
+(Env-Var `OFFLINE_VOLUME_EXPANSION`) für alle v3-Dogus festlegt.
+
+### Online (Standard, `offlineVolumeExpansion: false`)
+
+Der Operator patcht die PVCs, das Dogu läuft weiter. CSI-Treiber und Kubelet vergrößern Volume und Dateisystem der
+laufenden Pods. StatefulSets mit veralteten `volumeClaimTemplates` werden mit Orphan-Propagation gelöscht und vom
+Helm-Release neu angelegt; ihre Pods laufen weiter und werden vom neuen StatefulSet übernommen.
+
+### Offline (`offlineVolumeExpansion: true`)
+
+Für Speicher, der Volumes nur ungemountet vergrößern kann. Der Operator suspendiert das Helm-Release, patcht die PVCs,
+löscht alle Workloads und Pods, die ein wachsendes PVC mounten, und setzt das Release anschließend fort. Das Dogu ist
+nicht erreichbar, bis seine Workloads neu angelegt sind.
+
+Bekannte Fälle, die Offline-Vergrößerung brauchen:
+- vSphere CSI < 2.2
+- OpenStack Cinder ohne Online-Extend
+- Azure Disk Standard/Premium größer als 4 TiB
+- Longhorn V2 Data Engine mit UBLK
+
+Kubernetes erkennt diese Fälle nicht selbst. Im Online-Modus bleibt das Volume im Status `Resizing` bzw. `ResizeFailed` 
+und das Dogu läuft mit der alten Größe weiter; Daten gehen nicht verloren.
+
+### Im Online-Modus hängende Vergrößerung reparieren
+
+Ein nachträglicher Wechsel in den Offline-Modus repariert eine online gestartete Vergrößerung nicht, weil das Release
+bereits fortgesetzt ist. Einmalig von Hand reparieren:
+
+1. `controllerManager.env.offlineVolumeExpansion: true` setzen und den Operator upgraden.
+2. `spec.stopped: true` an der Dogu-CR setzen.
+4. Warten, bis das PVC die Condition `FileSystemResizePending` oder `status.allocatedResourceStatuses[storage]=NodeResizePending`
+   zeigt (`kubectl get pvc <name> -o yaml`).
+5. `spec.stopped: false` setzen. Das Helm-Release legt die Workloads neu an, das Dateisystem wächst beim Mount durch die neuen Pods.

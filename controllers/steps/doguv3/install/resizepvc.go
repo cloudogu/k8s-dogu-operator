@@ -60,15 +60,33 @@ func (rps *ResizePVCStep) Run(ctx context.Context, doguResource *v3beta1.Dogu) s
 		return stepsv3.RequeueWithError(fmt.Errorf("failed to check volumes: %w", err), v3beta1.ReasonResizingPVC)
 	}
 
-	// affected claims are detached from their workloads and pods, which online expansion keeps running
-	var affected []string
 	if rps.offlineExpansion {
-		affected, err = rps.affectedClaims(ctx, doguResource, checkResult)
-		if err != nil {
-			return stepsv3.RequeueWithError(err, v3beta1.ReasonResizingPVC)
-		}
+		return rps.resizeOffline(ctx, doguResource, rendered, checkResult)
 	}
-	if len(checkResult.ResizeRequests) == 0 && len(affected) == 0 && len(checkResult.OutdatedStatefulSets) == 0 {
+	return rps.resizeOnline(ctx, doguResource, rendered, checkResult)
+}
+
+// resizeOnline grows the claims while their workloads and pods keep running.
+func (rps *ResizePVCStep) resizeOnline(ctx context.Context, doguResource *v3beta1.Dogu, rendered []*unstructured.Unstructured, checkResult pvc.CheckResult) stepsv3.StepResult {
+	if len(checkResult.ResizeRequests) == 0 && len(checkResult.OutdatedStatefulSets) == 0 {
+		return stepsv3.Continue()
+	}
+
+	doguWorkloads, volumes, err := rps.growClaims(ctx, doguResource, rendered, checkResult.ResizeRequests)
+	if err != nil {
+		return stepsv3.RequeueWithError(err, v3beta1.ReasonResizingPVC)
+	}
+
+	return rps.replaceWorkloads(ctx, doguWorkloads, volumes, nil, checkResult.OutdatedStatefulSets)
+}
+
+// resizeOffline detaches the claims from all workloads and pods, for storage that only expands unmounted volumes.
+func (rps *ResizePVCStep) resizeOffline(ctx context.Context, doguResource *v3beta1.Dogu, rendered []*unstructured.Unstructured, checkResult pvc.CheckResult) stepsv3.StepResult {
+	affected, err := rps.affectedClaims(ctx, doguResource, checkResult)
+	if err != nil {
+		return stepsv3.RequeueWithError(err, v3beta1.ReasonResizingPVC)
+	}
+	if len(affected) == 0 && len(checkResult.OutdatedStatefulSets) == 0 {
 		return stepsv3.Continue()
 	}
 
@@ -90,23 +108,21 @@ func (rps *ResizePVCStep) Run(ctx context.Context, doguResource *v3beta1.Dogu) s
 		return stepsv3.RequeueWithError(err, v3beta1.ReasonResizingPVC)
 	}
 
-	deletedWorkloads, err := rps.deleteWorkloadsToRecreate(ctx, doguWorkloads, volumes, affected, checkResult.OutdatedStatefulSets)
+	if result := rps.replaceWorkloads(ctx, doguWorkloads, volumes, affected, checkResult.OutdatedStatefulSets); !result.Continue {
+		return result
+	}
+
+	return rps.deleteMountingPods(ctx, doguResource.Namespace, affected)
+}
+
+// replaceWorkloads deletes the workloads mounting claims plus the outdated StatefulSets and waits until they are gone.
+func (rps *ResizePVCStep) replaceWorkloads(ctx context.Context, doguWorkloads workloads.Workloads, volumes []workloads.Volume, claims []string, outdatedStatefulSets []types.UID) stepsv3.StepResult {
+	deletedWorkloads, err := rps.deleteWorkloadsToRecreate(ctx, doguWorkloads, volumes, claims, outdatedStatefulSets)
 	if err != nil {
 		return stepsv3.RequeueWithError(err, v3beta1.ReasonResizingPVC)
 	}
 	if len(deletedWorkloads) > 0 {
-		return stepsv3.RequeueAfter(defaultRequeueAfter, v3beta1.ReasonResizingPVC, fmt.Sprintf("waiting for workloads that mount resizing volumes to be deleted: %v", deletedWorkloads))
-	}
-	if !rps.offlineExpansion {
-		return stepsv3.Continue()
-	}
-
-	deletedPods, err := rps.deleteMountingPods(ctx, doguResource.Namespace, affected)
-	if err != nil {
-		return stepsv3.RequeueWithError(err, v3beta1.ReasonResizingPVC)
-	}
-	if len(deletedPods) > 0 {
-		return stepsv3.RequeueAfter(defaultRequeueAfter, v3beta1.ReasonResizingPVC, fmt.Sprintf("waiting for pods that mount resizing volumes to terminate: %v", deletedPods))
+		return stepsv3.RequeueAfter(defaultRequeueAfter, v3beta1.ReasonResizingPVC, fmt.Sprintf("waiting for workloads to be deleted and recreated by the release: %v", deletedWorkloads))
 	}
 
 	return stepsv3.Continue()
@@ -141,7 +157,7 @@ func (rps *ResizePVCStep) affectedClaims(ctx context.Context, doguResource *v3be
 	return claims, nil
 }
 
-// growClaims reports the grown claims itself, as VolumeStatusStep is not reached before workloads and pods are gone.
+// growClaims grows and reports the volume claims.
 func (rps *ResizePVCStep) growClaims(ctx context.Context, doguResource *v3beta1.Dogu, rendered []*unstructured.Unstructured, requests []pvc.ResizeRequest) (workloads.Workloads, []workloads.Volume, error) {
 	for _, request := range requests {
 		if err := rps.patchStorageRequest(ctx, request); err != nil {
@@ -279,10 +295,10 @@ func findWorkload(doguWorkloads workloads.Workloads, ref corev1.TypedLocalObject
 }
 
 // deleteMountingPods finds running pods by claim name; they carry no dogu label and may have outlived their workload.
-func (rps *ResizePVCStep) deleteMountingPods(ctx context.Context, namespace string, claims []string) ([]string, error) {
+func (rps *ResizePVCStep) deleteMountingPods(ctx context.Context, namespace string, claims []string) stepsv3.StepResult {
 	pods := &corev1.PodList{}
 	if err := rps.apiReader.List(ctx, pods, client.InNamespace(namespace)); err != nil {
-		return nil, fmt.Errorf("failed to list pods in namespace %q: %w", namespace, err)
+		return stepsv3.RequeueWithError(fmt.Errorf("failed to list pods in namespace %q: %w", namespace, err), v3beta1.ReasonResizingPVC)
 	}
 
 	var deleted []string
@@ -293,12 +309,15 @@ func (rps *ResizePVCStep) deleteMountingPods(ctx context.Context, namespace stri
 			continue
 		}
 		if err := rps.k8sClient.Delete(ctx, pod); err != nil && !apierrors.IsNotFound(err) {
-			return nil, fmt.Errorf("failed to delete pod %q: %w", pod.Name, err)
+			return stepsv3.RequeueWithError(fmt.Errorf("failed to delete pod %q: %w", pod.Name, err), v3beta1.ReasonResizingPVC)
 		}
 		deleted = append(deleted, pod.Name)
 	}
+	if len(deleted) > 0 {
+		return stepsv3.RequeueAfter(defaultRequeueAfter, v3beta1.ReasonResizingPVC, fmt.Sprintf("waiting for pods that mount resizing volumes to terminate: %v", deleted))
+	}
 
-	return deleted, nil
+	return stepsv3.Continue()
 }
 
 func podMountsAny(pod *corev1.Pod, claims []string) bool {

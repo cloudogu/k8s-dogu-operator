@@ -49,7 +49,7 @@ func NewDoguV3UseCases(
 	ociStep := install.NewEnsureOCIRepositoryStep(k8sClient, registryReader, recorder)
 	waitStep := install.NewWaitForOCIRepositoryReadyStep(k8sClient, recorder)
 	validateStep := install.NewValidateChartStep(chartService, assembler, resizeChecker, k8sClient)
-	resizePVCStep := install.NewResizePVCStep(chartService, assembler, resizeChecker, workloads.NewDiscovery(apiReader), apiReader, k8sClient)
+	resizePVCStep := install.NewResizePVCStep(chartService, assembler, resizeChecker, workloads.NewDiscovery(apiReader), apiReader, k8sClient, operatorConfig.OfflineVolumeExpansion)
 	helmReleaseStep := install.NewEnsureHelmReleaseStep(k8sClient, operatorConfig, chartService, recorder)
 	helmReleaseStatusStep := install.NewHelmReleaseStatusStep(k8sClient, recorder)
 	volumeStatusStep := install.NewVolumeStatusStep(chartService, assembler, workloads.NewDiscovery(k8sClient), k8sClient)

@@ -187,7 +187,7 @@ func TestResizePVCStep_Run(t *testing.T) {
 		step := prepareResizeStep(delRecClient.client, t, doguResource, renderedPVC(t, "data", "2Gi"))
 		result := step.Run(testCtx, doguResource)
 
-		assert.Equal(t, doguv3.RequeueAfter(defaultRequeueAfter, v3beta1.ReasonResizingPVC, "waiting for workloads that mount resizing volumes to be deleted: [Deployment/nexus]"), result)
+		assert.Equal(t, doguv3.RequeueAfter(defaultRequeueAfter, v3beta1.ReasonResizingPVC, "waiting for workloads to be deleted and recreated by the release: [Deployment/nexus]"), result)
 		claim := &corev1.PersistentVolumeClaim{Name: "data", Namespace: testNamespace}
 		require.True(t, delRecClient.exists(t, claim))
 		assert.Equal(t, resource.MustParse("2Gi"), claim.Spec.Resources.Requests[corev1.ResourceStorage])
@@ -317,7 +317,7 @@ func TestResizePVCStep_Run(t *testing.T) {
 		step := prepareResizeStep(delRecClient.client, t, doguResource, toUnstructured(t, claimTemplateStatefulSet("postgres", "2Gi")))
 		result := step.Run(testCtx, doguResource)
 
-		assert.Equal(t, doguv3.RequeueAfter(defaultRequeueAfter, v3beta1.ReasonResizingPVC, "waiting for workloads that mount resizing volumes to be deleted: [StatefulSet/postgres]"), result)
+		assert.Equal(t, doguv3.RequeueAfter(defaultRequeueAfter, v3beta1.ReasonResizingPVC, "waiting for workloads to be deleted and recreated by the release: [StatefulSet/postgres]"), result)
 		assert.Equal(t, []deletion{
 			{key: client.ObjectKey{Namespace: testNamespace, Name: "postgres"}, uid: "postgres-uid", propagation: metav1.DeletePropagationOrphan},
 		}, *delRecClient.deletions)
@@ -389,7 +389,7 @@ func TestResizePVCStep_Run(t *testing.T) {
 		step := prepareResizeStep(delRecClient.client, t, doguResource, toUnstructured(t, claimTemplateStatefulSet("postgres", "2Gi")))
 		result := step.Run(testCtx, doguResource)
 
-		assert.Equal(t, doguv3.RequeueAfter(defaultRequeueAfter, v3beta1.ReasonResizingPVC, "waiting for workloads that mount resizing volumes to be deleted: [StatefulSet/postgres]"), result)
+		assert.Equal(t, doguv3.RequeueAfter(defaultRequeueAfter, v3beta1.ReasonResizingPVC, "waiting for workloads to be deleted and recreated by the release: [StatefulSet/postgres]"), result)
 		assert.True(t, delRecClient.exists(t, pod))
 	})
 
@@ -490,7 +490,7 @@ func TestResizePVCStep_RunOnline(t *testing.T) {
 
 		step := prepareOnlineResizeStep(delRecClient.client, t, doguResource, toUnstructured(t, claimTemplateStatefulSet("postgres", "2Gi")))
 
-		assert.Equal(t, doguv3.RequeueAfter(defaultRequeueAfter, v3beta1.ReasonResizingPVC, "waiting for workloads that mount resizing volumes to be deleted: [StatefulSet/postgres]"), step.Run(testCtx, doguResource))
+		assert.Equal(t, doguv3.RequeueAfter(defaultRequeueAfter, v3beta1.ReasonResizingPVC, "waiting for workloads to be deleted and recreated by the release: [StatefulSet/postgres]"), step.Run(testCtx, doguResource))
 		assert.Equal(t, doguv3.Continue(), step.Run(testCtx, doguResource))
 		assert.Equal(t, []deletion{
 			{key: client.ObjectKey{Namespace: testNamespace, Name: "postgres"}, uid: "postgres-uid", propagation: metav1.DeletePropagationOrphan},
