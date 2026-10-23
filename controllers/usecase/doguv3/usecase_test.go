@@ -12,6 +12,7 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv3"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv3/deletion"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv3/install"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv3/migration"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -57,33 +58,76 @@ func TestNewDoguInstallOrChangeUseCase(t *testing.T) {
 	ensureOCIStep := &install.EnsureOCIRepositoryStep{}
 	waitOCIStep := &install.WaitForOCIRepositoryReadyStep{}
 	validateChartStep := &install.ValidateChartStep{}
+	suspendStep := &install.SuspendHelmReleaseStep{}
+	resizePVCStep := &install.ResizePVCStep{}
 	helmReleaseStep := &install.EnsureHelmReleaseStep{}
 	helmReleaseStatusStep := &install.HelmReleaseStatusStep{}
+	exportModeStep := &install.ExportModeStep{}
+	updatePendingStep := &install.UpdatePendingStep{}
 	volumeStatusStep := &install.VolumeStatusStep{}
-	resizePVCStep := &install.ResizePVCStep{}
 
 	got := NewDoguInstallOrChangeUseCase(
 		finalizerStep,
 		ensureOCIStep,
 		waitOCIStep,
 		validateChartStep,
+		suspendStep,
 		resizePVCStep,
 		helmReleaseStep,
 		helmReleaseStatusStep,
+		updatePendingStep,
+		exportModeStep,
 		volumeStatusStep,
 		clientMock,
 		recorderMock,
 	)
 
 	wantTypes := []string{
+		"*install.ExportModeStep",
 		"*install.CreateFinalizerStep",
 		"*install.EnsureOCIRepositoryStep",
 		"*install.WaitForOCIRepositoryReadyStep",
 		"*install.ValidateChartStep",
+		"*install.SuspendHelmReleaseStep",
 		"*install.ResizePVCStep",
 		"*install.EnsureHelmReleaseStep",
 		"*install.HelmReleaseStatusStep",
+		"*install.UpdatePendingStep",
 		"*install.VolumeStatusStep",
+	}
+
+	assert.NotNil(t, got)
+	assert.Equal(t, clientMock, got.k8sClient)
+	assert.Equal(t, recorderMock, got.eventRecorder)
+	require.True(t,
+		slices.Equal(typesOf(got.steps), wantTypes),
+		"order mismatch: got=%v want=%v",
+		typesOf(got.steps), wantTypes,
+	)
+}
+
+func TestNewDoguMigrationUseCase(t *testing.T) {
+	clientMock := NewMockK8sClient(t)
+	recorderMock := NewMockEventRecorder(t)
+
+	got := NewDoguMigrationUseCase(
+		&install.CreateFinalizerStep{},
+		&migration.MigrationPreconditionsStep{},
+		&install.EnsureOCIRepositoryStep{},
+		&install.WaitForOCIRepositoryReadyStep{},
+		&install.ValidateChartStep{},
+		&migration.MigrationPendingStep{},
+		clientMock,
+		recorderMock,
+	)
+
+	wantTypes := []string{
+		"*install.CreateFinalizerStep",
+		"*migration.MigrationPreconditionsStep",
+		"*install.EnsureOCIRepositoryStep",
+		"*install.WaitForOCIRepositoryReadyStep",
+		"*install.ValidateChartStep",
+		"*migration.MigrationPendingStep",
 	}
 
 	assert.NotNil(t, got)

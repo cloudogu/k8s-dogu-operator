@@ -26,7 +26,7 @@ func TestWireDoguV3(t *testing.T) {
 		},
 	}
 
-	installUseCase, deleteUseCase, err := NewDoguV3UseCases(
+	changeHandler, deleteUseCase, err := NewDoguV3UseCases(
 		fake.NewClientBuilder().Build(),
 		fake.NewClientBuilder().Build(), // 2nd client for uncached reading
 		record.NewFakeRecorder(10),
@@ -36,6 +36,6 @@ func TestWireDoguV3(t *testing.T) {
 	)
 
 	require.NoError(t, err)
-	assert.NotNil(t, installUseCase, "install-or-change use-case must be assembled")
+	assert.IsType(t, &DoguChangeHandler{}, changeHandler, "install-or-change use-case must hand dogus to the install or migration use-case")
 	assert.NotNil(t, deleteUseCase, "delete use-case must be assembled")
 }

@@ -44,6 +44,10 @@ func NewValidateChartStep(chartService ChartService, assembler ValueAssembler, r
 }
 
 func (vcs *ValidateChartStep) Run(ctx context.Context, doguResource *v3beta1.Dogu) stepsv3.StepResult {
+	if doguResource.Spec.PauseReconciliation {
+		logging.Debug(ctx, "Skipping ValidateChartStep because pausedReconciliation is set for dogu", "dogu", doguResource.Name)
+		return stepsv3.Continue()
+	}
 	metaValues, _, err := vcs.chartService.DoguMetaValues(ctx, doguResource)
 	if err != nil {
 		return stepsv3.RequeueWithError(fmt.Errorf("failed to get dogu meta values: %w", err), v3beta1.ReasonInstalling)

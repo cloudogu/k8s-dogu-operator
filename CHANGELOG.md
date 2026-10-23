@@ -11,6 +11,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [#359] Enable V3 dogus to increase the volume size of their pvcs.
 - [#359] Grow volumes of v3 dogus online by default; Helm value `offlineVolumeExpansion` enables the offline flow for storage that only expands unmounted volumes.
 - [#358] Support `DoguRestart` for dogu v3.
+- [#367] Warning condition and event when activating the export mode for V3 Dogus because is not implemented
+- [#368] Detect whether a v3 dogu has to be migrated from v2 or installed
+- [#354] The `HelmRelease` for a dogu is now suspended, if either Stop or PauseReconciliation is set for it, or a PVC resize has to be done.
+    - The Condition UpdatePending is set to True, if any updates to OCI repositories are pending and reset, if there are no pending updates detected.
+    - Most steps of the dogu reconciliation are skipped, if PauseReconciliation is set (except to set the Condition UpdatePending).
+
+### Changed
+- Update go to 1.27.3
+
+### Fixed
+- [#372] Ignore updates of HelmReleases that only toggle the `Reconciling` condition, to avoid unnecessary reconciliations
 
 ## [v3.35.0] - 2026-10-20
 ### Added

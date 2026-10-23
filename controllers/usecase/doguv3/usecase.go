@@ -11,6 +11,7 @@ import (
 	v3 "github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv3"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv3/deletion"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv3/install"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv3/migration"
 	"github.com/cloudogu/k8s-dogu-operator/v3/internal/logging"
 	coreV1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -63,13 +64,19 @@ func NewDoguInstallOrChangeUseCase(
 	ociStep *install.EnsureOCIRepositoryStep,
 	waitOCIStep *install.WaitForOCIRepositoryReadyStep,
 	validateChartStep *install.ValidateChartStep,
+	suspendHelmReleaseStep *install.SuspendHelmReleaseStep,
 	resizePVCStep *install.ResizePVCStep,
 	helmReleaseStep *install.EnsureHelmReleaseStep,
 	helmReleaseStatusStep *install.HelmReleaseStatusStep,
+	updatePendingStep *install.UpdatePendingStep,
+	exportModeStep *install.ExportModeStep,
 	volumeStatusStep *install.VolumeStatusStep,
 	client K8sClient, recorder EventRecorder) *DoguUseCase {
 	return &DoguUseCase{
 		steps: []Step{
+			// Execute the current export mode step first because it only creates a condition with "not implemented" reason.
+			// If the functionality of the export mode for dogu v3 will be developed the position may change in the execution order.
+			exportModeStep,
 			// CreateFinalizerStep MUST run before any owned resource (OCIRepository, HelmRelease) is
 			// created, so a delete racing an install can never orphan those resources. (In v2 the
 			// finalizer is added after its read-only gate steps, but likewise before resource creation;
@@ -78,10 +85,41 @@ func NewDoguInstallOrChangeUseCase(
 			ociStep,
 			waitOCIStep,
 			validateChartStep,
+			suspendHelmReleaseStep,
 			resizePVCStep,
 			helmReleaseStep,
 			helmReleaseStatusStep,
+			updatePendingStep,
 			volumeStatusStep,
+		},
+		k8sClient:     client,
+		eventRecorder: recorder,
+	}
+}
+
+// NewDoguMigrationUseCase creates a new DoguUseCase instance that migrates a v2 dogu to v3.
+// The steps are executed in the order they are provided.
+func NewDoguMigrationUseCase(
+	finalizerStep *install.CreateFinalizerStep,
+	migrationPreconditionsStep *migration.MigrationPreconditionsStep,
+	ociStep *install.EnsureOCIRepositoryStep,
+	waitOCIStep *install.WaitForOCIRepositoryReadyStep,
+	validateChartStep *install.ValidateChartStep,
+	migrationPendingStep *migration.MigrationPendingStep,
+	client K8sClient,
+	recorder EventRecorder,
+) *DoguUseCase {
+	return &DoguUseCase{
+		steps: []Step{
+			finalizerStep,
+			migrationPreconditionsStep,
+			// The chart is validated before the migration, so that a v2 dogu is never removed for a chart that cannot be installed.
+			ociStep,
+			waitOCIStep,
+			validateChartStep,
+			// MigrationPendingStep stands in for the actual migration steps and halts the use-case,
+			// so that no chart is installed next to the v2 resources.
+			migrationPendingStep,
 		},
 		k8sClient:     client,
 		eventRecorder: recorder,
@@ -103,6 +141,7 @@ func (duc *DoguUseCase) HandleUntilApplied(ctx context.Context, doguResource *v3
 
 		// Abort, requeue or error
 		if !result.Continue {
+			logging.Debug(stepCtx, "Stopping step execution and requeue", "dogu", doguResource.Name)
 			return duc.stopStepExecution(ctx, doguResource, result)
 		}
 	}
