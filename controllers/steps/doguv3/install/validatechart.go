@@ -1,7 +1,9 @@
 package install
 
 import (
+	"bytes"
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/cloudogu/k8s-dogu-lib/v3/api/v3beta1"
@@ -48,10 +50,11 @@ func (vcs *ValidateChartStep) Run(ctx context.Context, doguResource *v3beta1.Dog
 	if err != nil {
 		return stepsv3.RequeueWithError(fmt.Errorf("failed to retrieve runtime patch template: %w", err), v3beta1.ReasonInstalling)
 	}
-	if !found {
-		patchTemplate = nil
-	} else if patchTemplate == nil {
-		patchTemplate = []byte{}
+
+	isEmpty := len(bytes.TrimSpace(patchTemplate)) == 0
+	emptyPatchFileExists := found && isEmpty
+	if emptyPatchFileExists {
+		stepsv3.RequeueWithError(errors.New("found an existing yet empty runtime patch template"), v3beta1.ReasonInstalling)
 	}
 
 	values, err := vcs.assembler.Assemble(ctx, doguResource, metaValues, patchTemplate)
