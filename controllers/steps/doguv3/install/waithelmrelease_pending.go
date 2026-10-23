@@ -32,7 +32,10 @@ func (hrs *HelmReleaseStatusStep) checkPendingChanges(ctx context.Context, dogu 
 	if condition != nil && condition.Status == metav1.ConditionTrue && condition.ObservedGeneration == dogu.Generation {
 		return stepsv3.Continue()
 	}
-	change := pendingReleaseChange(release, nil, nil, dogu.Spec.Version)
+	change, err := pendingReleaseChange(release, nil, nil, dogu.Spec.Version)
+	if err != nil {
+		return stepsv3.RequeueWithError(err, v3beta1.ReasonInstalling)
+	}
 	if change.Status != metav1.ConditionTrue {
 		values, err := combineValues(ctx, dogu, hrs.chartService, hrs.assembler)
 		if err != nil {
@@ -40,13 +43,19 @@ func (hrs *HelmReleaseStatusStep) checkPendingChanges(ctx context.Context, dogu 
 		}
 		desired := &helmflux.HelmRelease{}
 		configureHelmRelease(desired, dogu, values, &hrs.retryInterval, &hrs.helmReconcileInterval)
-		change = pendingReleaseChange(release, desired, nil, dogu.Spec.Version)
+		change, err = pendingReleaseChange(release, desired, nil, dogu.Spec.Version)
+		if err != nil {
+			return stepsv3.RequeueWithError(err, v3beta1.ReasonInstalling)
+		}
 		if change.Status == metav1.ConditionUnknown {
 			stored, err := hrs.releaseReader.StoredRelease(release)
 			if err != nil {
 				return stepsv3.RequeueWithError(err, v3beta1.ReasonInstalling)
 			}
-			change = pendingReleaseChange(release, desired, stored, dogu.Spec.Version)
+			change, err = pendingReleaseChange(release, desired, stored, dogu.Spec.Version)
+			if err != nil {
+				return stepsv3.RequeueWithError(err, v3beta1.ReasonInstalling)
+			}
 		}
 	}
 	if change.Status == metav1.ConditionUnknown {
@@ -73,51 +82,51 @@ func (hrs *HelmReleaseStatusStep) checkPendingChanges(ctx context.Context, dogu 
 }
 
 // pendingReleaseChange checks both desired Flux input and what Helm has applied.
-func pendingReleaseChange(actual, desired *helmflux.HelmRelease, stored *sdk.Release, chartVersion string) pendingChange {
+func pendingReleaseChange(actual, desired *helmflux.HelmRelease, stored *sdk.Release, chartVersion string) (pendingChange, error) {
 	changed := pendingChange{Status: metav1.ConditionTrue, Message: "HelmRelease changes are waiting to be applied"}
 	unknown := pendingChange{Status: metav1.ConditionUnknown, Message: "The desired HelmRelease cannot yet be fully compared"}
 	if actual == nil || len(actual.Status.History) == 0 {
-		return pendingChange{Status: metav1.ConditionTrue, Message: "The dogu has not been installed yet"}
+		return pendingChange{Status: metav1.ConditionTrue, Message: "The dogu has not been installed yet"}, nil
 	}
 	latest := actual.Status.History.Latest()
 	version, _, _ := strings.Cut(latest.ChartVersion, "+")
 	if version != chartVersion {
-		return changed
+		return changed, nil
 	}
 	if desired == nil {
-		return unknown
+		return unknown, nil
 	}
 	inputMatches, err := releaseInputMatches(actual, desired)
 	if err != nil {
-		return unknown
+		return unknown, fmt.Errorf("failed to compare inputs for HelmRelease %s/%s: %w", actual.Namespace, actual.Name, err)
 	}
 	if !inputMatches {
-		return changed
+		return changed, nil
 	}
 	if stored == nil {
-		return unknown
+		return unknown, nil
 	}
 	valuesEqual, err := equalValues(desired.GetValues(), stored.Config)
 	if err != nil {
-		return unknown
+		return unknown, fmt.Errorf("failed to compare stored values for HelmRelease %s/%s: %w", actual.Namespace, actual.Name, err)
 	}
 	if !valuesEqual {
-		return changed
+		return changed, nil
 	}
 	if latest.Status != string(sdk.StatusDeployed) || stored.Info == nil || stored.Info.Status != sdk.StatusDeployed {
-		return unknown
+		return unknown, nil
 	}
 	if !meta.IsStatusConditionTrue(actual.Status.Conditions, helmflux.ReleasedCondition) || meta.IsStatusConditionTrue(actual.Status.Conditions, fluxmeta.ReconcilingCondition) {
-		return unknown
+		return unknown, nil
 	}
 	metadataApplied, err := commonMetadataApplied(stored.Manifest, desired.Spec.CommonMetadata)
 	if err != nil {
-		return unknown
+		return unknown, fmt.Errorf("failed to decode stored manifest for HelmRelease %s/%s: %w", actual.Namespace, actual.Name, err)
 	}
 	if !metadataApplied {
-		return changed
+		return changed, nil
 	}
-	return pendingChange{Status: metav1.ConditionFalse, Message: "The desired HelmRelease is deployed"}
+	return pendingChange{Status: metav1.ConditionFalse, Message: "The desired HelmRelease is deployed"}, nil
 }
 
 func releaseInputMatches(actual, desired *helmflux.HelmRelease) (bool, error) {

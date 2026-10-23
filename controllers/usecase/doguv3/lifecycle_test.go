@@ -208,15 +208,39 @@ func TestV3PausedValuesAndRevertedChange(t *testing.T) {
 	assert.Equal(t, f.dogu.Generation, pending.ObservedGeneration)
 }
 
+func TestV3PausedInvalidStoredManifestReportsComparisonError(t *testing.T) {
+	f := newLifecycleFixture(t)
+	f.stop(t)
+	f.recordDeployment(t)
+	stored, err := f.storage.Get("scm", 2)
+	require.NoError(t, err)
+	stored.Manifest = "apiVersion: ["
+	require.NoError(t, f.storage.Update(stored))
+	f.dogu.Spec.PauseReconciliation = true
+	f.dogu.Generation++
+	require.NoError(t, f.k8s.Update(t.Context(), f.dogu))
+
+	_, err = f.useCase.HandleUntilApplied(t.Context(), f.dogu)
+
+	require.ErrorContains(t, err, "failed to decode stored manifest for HelmRelease ecosystem/scm")
+	assert.True(t, meta.IsStatusConditionTrue(f.dogu.Status.Conditions, v3beta1.ConditionUpdatePending), "a failed comparison must not clear pending")
+}
+
 func TestV3StartWaitsForCurrentHealthBeforeReset(t *testing.T) {
 	f := newLifecycleFixture(t)
 	f.stop(t)
+
+	// Request a start; the release must first apply the prepared inputs.
 	f.dogu.Spec.Stopped = false
 	f.dogu.Generation++
 	require.NoError(t, f.k8s.Update(t.Context(), f.dogu))
+
 	delay, err := f.useCase.HandleUntilApplied(t.Context(), f.dogu)
+
 	require.NoError(t, err)
 	assert.Positive(t, delay)
+
+	// A completed deployment with health from an older generation is not enough.
 	require.NoError(t, f.k8s.Get(t.Context(), client.ObjectKeyFromObject(f.release), f.release))
 	f.recordDeployment(t)
 	meta.SetStatusCondition(&f.dogu.Status.Conditions, metav1.Condition{
@@ -224,14 +248,20 @@ func TestV3StartWaitsForCurrentHealthBeforeReset(t *testing.T) {
 		Message: "old health", ObservedGeneration: f.dogu.Generation - 1,
 	})
 	require.NoError(t, f.k8s.Status().Update(t.Context(), f.dogu))
+
 	delay, err = f.useCase.HandleUntilApplied(t.Context(), f.dogu)
+
 	require.NoError(t, err)
 	assert.Positive(t, delay)
 	assert.True(t, f.dogu.Status.Stopped)
 	assert.True(t, meta.IsStatusConditionTrue(f.dogu.Status.Conditions, v3beta1.ConditionUpdatePending))
+
+	// Only current-generation health confirms the start and clears pending.
 	meta.FindStatusCondition(f.dogu.Status.Conditions, v3beta1.ConditionHealthy).ObservedGeneration = f.dogu.Generation
 	require.NoError(t, f.k8s.Status().Update(t.Context(), f.dogu))
+
 	delay, err = f.useCase.HandleUntilApplied(t.Context(), f.dogu)
+
 	require.NoError(t, err)
 	assert.Zero(t, delay)
 	assert.False(t, f.dogu.Status.Stopped)
