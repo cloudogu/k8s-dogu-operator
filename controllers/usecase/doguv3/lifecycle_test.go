@@ -227,45 +227,71 @@ func TestV3PausedInvalidStoredManifestReportsComparisonError(t *testing.T) {
 }
 
 func TestV3StartWaitsForCurrentHealthBeforeReset(t *testing.T) {
-	f := newLifecycleFixture(t)
-	f.stop(t)
+	for _, scenario := range []struct {
+		name          string
+		stopCompleted bool
+	}{
+		{name: "start after completed stop", stopCompleted: true},
+		{name: "cancel partial stop", stopCompleted: false},
+	} {
+		t.Run(scenario.name, func(t *testing.T) {
+			f := newLifecycleFixture(t)
+			if scenario.stopCompleted {
+				f.stop(t)
+			} else {
+				delay, err := f.useCase.HandleUntilApplied(t.Context(), f.dogu)
 
-	// Request a start; the release must first apply the prepared inputs.
-	f.dogu.Spec.Stopped = false
-	f.dogu.Generation++
-	require.NoError(t, f.k8s.Update(t.Context(), f.dogu))
+				require.NoError(t, err)
+				require.Positive(t, delay)
+				require.False(t, f.dogu.Status.Stopped)
+				require.Equal(t, v3beta1.ReasonPartiallyStopped, meta.FindStatusCondition(f.dogu.Status.Conditions, v3beta1.ConditionStopped).Reason)
+			}
 
-	delay, err := f.useCase.HandleUntilApplied(t.Context(), f.dogu)
+			// Request a start; the release must first apply the prepared inputs.
+			f.dogu.Spec.Stopped = false
+			f.dogu.Generation++
+			require.NoError(t, f.k8s.Update(t.Context(), f.dogu))
 
-	require.NoError(t, err)
-	assert.Positive(t, delay)
+			delay, err := f.useCase.HandleUntilApplied(t.Context(), f.dogu)
 
-	// A completed deployment with health from an older generation is not enough.
-	require.NoError(t, f.k8s.Get(t.Context(), client.ObjectKeyFromObject(f.release), f.release))
-	f.recordDeployment(t)
-	meta.SetStatusCondition(&f.dogu.Status.Conditions, metav1.Condition{
-		Type: v3beta1.ConditionHealthy, Status: metav1.ConditionTrue, Reason: v3beta1.ReasonSucceeded,
-		Message: "old health", ObservedGeneration: f.dogu.Generation - 1,
-	})
-	require.NoError(t, f.k8s.Status().Update(t.Context(), f.dogu))
+			require.NoError(t, err)
+			assert.Positive(t, delay)
 
-	delay, err = f.useCase.HandleUntilApplied(t.Context(), f.dogu)
+			// A completed deployment with health from an older generation is not enough.
+			require.NoError(t, f.k8s.Get(t.Context(), client.ObjectKeyFromObject(f.release), f.release))
+			f.recordDeployment(t)
+			meta.SetStatusCondition(&f.dogu.Status.Conditions, metav1.Condition{
+				Type: v3beta1.ConditionHealthy, Status: metav1.ConditionTrue, Reason: v3beta1.ReasonSucceeded,
+				Message: "old health", ObservedGeneration: f.dogu.Generation - 1,
+			})
+			require.NoError(t, f.k8s.Status().Update(t.Context(), f.dogu))
 
-	require.NoError(t, err)
-	assert.Positive(t, delay)
-	assert.True(t, f.dogu.Status.Stopped)
-	assert.True(t, meta.IsStatusConditionTrue(f.dogu.Status.Conditions, v3beta1.ConditionUpdatePending))
+			delay, err = f.useCase.HandleUntilApplied(t.Context(), f.dogu)
 
-	// Only current-generation health confirms the start and clears pending.
-	meta.FindStatusCondition(f.dogu.Status.Conditions, v3beta1.ConditionHealthy).ObservedGeneration = f.dogu.Generation
-	require.NoError(t, f.k8s.Status().Update(t.Context(), f.dogu))
+			require.NoError(t, err)
+			assert.Positive(t, delay)
+			assert.Equal(t, scenario.stopCompleted, f.dogu.Status.Stopped)
+			assert.Equal(t, scenario.stopCompleted, meta.IsStatusConditionTrue(f.dogu.Status.Conditions, v3beta1.ConditionUpdatePending))
 
-	delay, err = f.useCase.HandleUntilApplied(t.Context(), f.dogu)
+			// Only current-generation health confirms the start and clears pending.
+			meta.FindStatusCondition(f.dogu.Status.Conditions, v3beta1.ConditionHealthy).ObservedGeneration = f.dogu.Generation
+			require.NoError(t, f.k8s.Status().Update(t.Context(), f.dogu))
 
-	require.NoError(t, err)
-	assert.Zero(t, delay)
-	assert.False(t, f.dogu.Status.Stopped)
-	assert.True(t, meta.IsStatusConditionFalse(f.dogu.Status.Conditions, v3beta1.ConditionUpdatePending))
+			delay, err = f.useCase.HandleUntilApplied(t.Context(), f.dogu)
+
+			require.NoError(t, err)
+			assert.Zero(t, delay)
+			assert.False(t, f.dogu.Status.Stopped)
+			assert.True(t, meta.IsStatusConditionFalse(f.dogu.Status.Conditions, v3beta1.ConditionUpdatePending))
+
+			require.NoError(t, f.k8s.Get(t.Context(), client.ObjectKeyFromObject(f.dogu), f.dogu))
+			stopped := meta.FindStatusCondition(f.dogu.Status.Conditions, v3beta1.ConditionStopped)
+			require.NotNil(t, stopped)
+			assert.Equal(t, metav1.ConditionFalse, stopped.Status)
+			assert.Equal(t, v3beta1.ReasonNotStopped, stopped.Reason)
+			assert.Equal(t, f.dogu.Generation, stopped.ObservedGeneration)
+		})
+	}
 }
 
 func TestV3InitiallyStoppedRelease(t *testing.T) {

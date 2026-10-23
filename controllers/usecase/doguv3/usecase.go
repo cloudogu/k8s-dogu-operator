@@ -154,17 +154,22 @@ func (duc *DoguUseCase) HandleUntilApplied(ctx context.Context, doguResource *v3
 	if doguResource.Spec.PauseReconciliation {
 		return duc.stopStepExecution(ctx, doguResource, v3.Abort(v3beta1.ReasonReconciliationPaused, "Dogu reconciliation is paused"))
 	}
-	if !doguResource.Spec.Stopped && doguResource.Status.Stopped {
+	// A completed start also clears progress from a cancelled stop.
+	stoppedCondition := meta.FindStatusCondition(doguResource.Status.Conditions, v3beta1.ConditionStopped)
+	if !doguResource.Spec.Stopped && (doguResource.Status.Stopped || stoppedCondition != nil) {
+		stoppedChanged := doguResource.Status.Stopped
 		doguResource.Status.Stopped = false
-		meta.SetStatusCondition(&doguResource.Status.Conditions, metav1.Condition{
+		conditionChanged := meta.SetStatusCondition(&doguResource.Status.Conditions, metav1.Condition{
 			Type: v3beta1.ConditionStopped, Status: metav1.ConditionFalse,
 			Reason: v3beta1.ReasonNotStopped, Message: "Dogu workloads are running", ObservedGeneration: doguResource.Generation,
 		})
-		if err := duc.k8sClient.Status().Update(ctx, doguResource); err != nil {
-			if apierrors.IsConflict(err) {
-				return 5 * time.Second, nil
+		if stoppedChanged || conditionChanged {
+			if err := duc.k8sClient.Status().Update(ctx, doguResource); err != nil {
+				if apierrors.IsConflict(err) {
+					return 5 * time.Second, nil
+				}
+				return 0, fmt.Errorf("failed to clear dogu stop status: %w", err)
 			}
-			return 0, fmt.Errorf("failed to clear dogu stop status: %w", err)
 		}
 	}
 
