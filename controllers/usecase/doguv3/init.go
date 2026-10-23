@@ -11,7 +11,6 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/v3/internal/charts"
 	dogumigration "github.com/cloudogu/k8s-dogu-operator/v3/internal/dogu/migration"
 	"github.com/cloudogu/k8s-dogu-operator/v3/internal/dogu/pvc"
-	"github.com/cloudogu/k8s-dogu-operator/v3/internal/dogu/pvc"
 	"github.com/cloudogu/k8s-dogu-operator/v3/internal/dogu/values"
 	"github.com/cloudogu/k8s-dogu-operator/v3/internal/dogu/workloads"
 	"github.com/cloudogu/k8s-dogu-operator/v3/internal/flux"

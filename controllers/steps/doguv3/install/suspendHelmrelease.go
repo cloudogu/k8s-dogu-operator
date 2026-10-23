@@ -59,9 +59,9 @@ func (shr *SuspendHelmReleaseStep) Run(ctx context.Context, doguResource *doguv3
 		return stepsv3.Continue()
 	}
 
-	targetState, err := shr.expectedState(ctx, doguResource)
+	targetState, err := shr.expectedState(ctx, doguResource, helmRelease)
 	if err != nil {
-		return stepsv3.RequeueWithError(err, doguv3.ReasonReconciliationPaused)
+		return stepsv3.RequeueWithError(err, doguv3.ReasonInstalling)
 	}
 
 	return shr.suspendOrRelease(ctx, doguResource, helmRelease, targetState)
@@ -92,7 +92,7 @@ func (shr *SuspendHelmReleaseStep) existingHelmRelease(ctx context.Context, dogu
 	return release, nil
 }
 
-func (shr *SuspendHelmReleaseStep) expectedState(ctx context.Context, doguResource *doguv3.Dogu) (desiredState, error) {
+func (shr *SuspendHelmReleaseStep) expectedState(ctx context.Context, doguResource *doguv3.Dogu, release *flux.HelmRelease) (desiredState, error) {
 	if doguResource.Spec.PauseReconciliation {
 		return desiredState{
 			suspendHelmRelease: true,
@@ -114,10 +114,10 @@ func (shr *SuspendHelmReleaseStep) expectedState(ctx context.Context, doguResour
 		return desiredState{}, err
 	}
 
-	return shr.checkForPVCResize(ctx, doguResource, combinedValues)
+	return shr.checkForPVCResize(ctx, doguResource, combinedValues, release)
 }
 
-func (shr *SuspendHelmReleaseStep) checkForPVCResize(ctx context.Context, doguResource *doguv3.Dogu, values *v1.JSON) (desiredState, error) {
+func (shr *SuspendHelmReleaseStep) checkForPVCResize(ctx context.Context, doguResource *doguv3.Dogu, values *v1.JSON, release *flux.HelmRelease) (desiredState, error) {
 
 	chartValues := map[string]any{}
 	if err := json.Unmarshal(values.Raw, &chartValues); err != nil {
@@ -132,7 +132,10 @@ func (shr *SuspendHelmReleaseStep) checkForPVCResize(ctx context.Context, doguRe
 	if err != nil {
 		return desiredState{}, fmt.Errorf("failed to check PVC resize requirements: %w", err)
 	}
-	if len(checkResult.ResizeRequests) > 0 {
+	// a suspended release stays suspended while growing, so that ResizePVCStep can still remove the mounting pods
+	growingWhileSuspended := len(checkResult.InProgress) > 0 && release.Spec.Suspend
+	// Helm cannot upgrade the immutable claim templates of an outdated StatefulSet before ResizePVCStep replaced it
+	if len(checkResult.ResizeRequests) > 0 || growingWhileSuspended || len(checkResult.OutdatedStatefulSets) > 0 {
 		return desiredState{
 			suspendHelmRelease: true,
 			reason:             doguv3.ReasonPVCResizeInProgress,
