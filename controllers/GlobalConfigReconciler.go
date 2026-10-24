@@ -45,10 +45,7 @@ func (r *GlobalConfigReconciler) Reconcile(ctx context.Context, _ ctrl.Request) 
 	}
 
 	for _, dogu := range doguList.Items {
-		// Skip Non-V2-Dogus for now
-		if !dogu.IsV2() {
-			continue
-		}
+		// The DoguReconciler dispatches V2/V3 and applies the V3 feature flag.
 		r.doguEvents <- event.TypedGenericEvent[*v2.Dogu]{Object: &dogu}
 	}
 	return ctrl.Result{}, nil

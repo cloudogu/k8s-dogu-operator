@@ -76,17 +76,21 @@ func (s *Service) ValidateValues(ctx context.Context, doguResource *v3beta1.Dogu
 	return c.validateValues(values)
 }
 
-// ChartPatchTemplate returns the raw chart patch template file from the chart, if present. The bool
+// RuntimePatchTemplate returns the raw runtime patch template file from the chart, if present. The bool
 // reports whether the file exists.
-func (s *Service) ChartPatchTemplate(ctx context.Context, doguResource *v3beta1.Dogu) ([]byte, bool, error) {
+func (s *Service) RuntimePatchTemplate(ctx context.Context, doguResource *v3beta1.Dogu) ([]byte, bool, error) {
 	c, err := s.chartFor(ctx, doguResource)
 	if err != nil {
 		return nil, false, err
 	}
 
-	tmpFile, ok := c.getChartPatchTpl()
+	for _, file := range c.raw.Files {
+		if file.Name == runtimePatchTemplateFileName {
+			return file.Data, true, nil
+		}
+	}
 
-	return tmpFile, ok, nil
+	return nil, false, nil
 }
 
 // DoguMetaValues returns the raw dogu-meta-values file from the chart, if present. The bool

@@ -1,6 +1,7 @@
 package install
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -137,13 +138,26 @@ func combineValues(ctx context.Context, dogu *doguv3.Dogu, doguMetadataValueSvc 
 		return nil, fmt.Errorf("failed to retrieve dogu metadata values: %w", err)
 	}
 
-	values, err := valueAssembler.Assemble(ctx, dogu, metaValues)
+	patchTemplate, found, err := doguMetadataValueSvc.RuntimePatchTemplate(ctx, dogu)
+	if err != nil {
+		return nil, fmt.Errorf("failed to retrieve runtime patch template: %w", err)
+	}
+
+	isEmpty := len(bytes.TrimSpace(patchTemplate)) == 0
+	emptyPatchFileExists := found && isEmpty
+	if emptyPatchFileExists {
+		return nil, fmt.Errorf(": %w", err)
+	}
+
+	values, err := valueAssembler.Assemble(ctx, dogu, metaValues, patchTemplate)
 	if err != nil {
 		return nil, fmt.Errorf("failed to assemble dogu values: %w", err)
 	}
 
-	// this case the error is probably unreachable because the assembler has already pushed the values object into a YAML parser.
-	bytes, _ := json.Marshal(values)
+	valueBytes, err := json.Marshal(values)
+	if err != nil {
+		return nil, fmt.Errorf("failed to serialize dogu values: %w", err)
+	}
 
-	return &apiext.JSON{Raw: bytes}, nil
+	return &apiext.JSON{Raw: valueBytes}, nil
 }
