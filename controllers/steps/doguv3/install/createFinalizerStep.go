@@ -21,7 +21,7 @@ func NewCreateFinalizerStep(client K8sClient) *CreateFinalizerStep {
 }
 
 func (fs *CreateFinalizerStep) Run(ctx context.Context, doguResource *v3beta1.Dogu) stepsv3.StepResult {
-	if controllerutil.ContainsFinalizer(doguResource, stepsv3.FinalizerName) {
+	if doguResource.Spec.PauseReconciliation || controllerutil.ContainsFinalizer(doguResource, stepsv3.FinalizerName) {
 		return stepsv3.Continue()
 	}
 
