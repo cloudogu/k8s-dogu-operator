@@ -8,6 +8,7 @@ import (
 	"github.com/cloudogu/k8s-dogu-lib/v3/api/v3beta1"
 	stepsv3 "github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv3"
 	fluxstate "github.com/cloudogu/k8s-dogu-operator/v3/internal/flux"
+	"github.com/cloudogu/k8s-dogu-operator/v3/internal/logging"
 	flux "github.com/fluxcd/helm-controller/api/v2"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metautil "k8s.io/apimachinery/pkg/api/meta"
@@ -33,6 +34,10 @@ func NewHelmReleaseStatusStep(k8sClient K8sClient, recorder EventRecorder) *Helm
 }
 
 func (hrs *HelmReleaseStatusStep) Run(ctx context.Context, doguResource *v3beta1.Dogu) stepsv3.StepResult {
+	if doguResource.Spec.PauseReconciliation {
+		logging.Debug(ctx, "Skipping HelmReleaseStatusStep because pausedReconciliation is set for dogu", "dogu", doguResource.Name)
+		return stepsv3.Continue()
+	}
 	// Get the HelmRelease
 	release := &flux.HelmRelease{}
 	err := hrs.k8sClient.Get(ctx, client.ObjectKey{Namespace: doguResource.Namespace, Name: doguResource.Spec.Name}, release)
@@ -48,10 +53,10 @@ func (hrs *HelmReleaseStatusStep) Run(ctx context.Context, doguResource *v3beta1
 
 	state := fluxstate.EvaluateRelease(release, desired)
 
-	return hrs.stepResultForRelease(state, doguResource)
+	return hrs.stepResultForRelease(ctx, state, doguResource)
 }
 
-func (hrs *HelmReleaseStatusStep) stepResultForRelease(state fluxstate.ReleaseState, doguResource *v3beta1.Dogu) stepsv3.StepResult {
+func (hrs *HelmReleaseStatusStep) stepResultForRelease(ctx context.Context, state fluxstate.ReleaseState, doguResource *v3beta1.Dogu) stepsv3.StepResult {
 	reason := v3beta1.ReasonInstalling
 	if state.EverDeployed {
 		reason = v3beta1.ReasonUpgrading
@@ -69,14 +74,14 @@ func (hrs *HelmReleaseStatusStep) stepResultForRelease(state fluxstate.ReleaseSt
 	case fluxstate.PhaseUpgradeFailed:
 		return stepsv3.Abort(v3beta1.ReasonUpgradeFailed, state.Message)
 	case fluxstate.PhaseDeployed:
-		return stepResultForDeployed(doguResource)
+		return stepResultForDeployed(ctx, doguResource)
 	default:
 		return stepsv3.RequeueWithError(fmt.Errorf("unknown release phase %q", state.Phase), reason)
 	}
 }
 
 // stepResultForDeployed derives the Ready condition of a deployed dogu from its Healthy condition.
-func stepResultForDeployed(doguResource *v3beta1.Dogu) stepsv3.StepResult {
+func stepResultForDeployed(ctx context.Context, doguResource *v3beta1.Dogu) stepsv3.StepResult {
 	if doguResource.Status.Stopped {
 		return stepsv3.Continue()
 	}
@@ -89,6 +94,6 @@ func stepResultForDeployed(doguResource *v3beta1.Dogu) stepsv3.StepResult {
 	if healthy.Status != metav1.ConditionTrue {
 		return stepsv3.RequeueAfter(longWaitRequeueAfter, v3beta1.ReasonWorkloadsNotReady, healthy.Message)
 	}
-
+	logging.Info(ctx, "Dogu's Helm release is deployed and healthy", "dogu", doguResource.Name)
 	return stepsv3.Continue()
 }

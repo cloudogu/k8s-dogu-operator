@@ -99,6 +99,16 @@ func TestHelmReleaseStatusStep_Run(t *testing.T) {
 
 		assert.Equal(t, stepsv3.Continue(), result)
 	})
+	t.Run("should continue if pauseReconciliation is set", func(t *testing.T) {
+		doguResource := testDoguResource.DeepCopy()
+		doguResource.Spec.PauseReconciliation = true
+		c := fake.NewClientBuilder().Build()
+		step := NewHelmReleaseStatusStep(c, NewMockEventRecorder(t))
+
+		result := step.Run(context.Background(), doguResource)
+
+		assert.Equal(t, stepsv3.Continue(), result)
+	})
 }
 
 func healthyCondition(status metav1.ConditionStatus, message string) metav1.Condition {
@@ -122,7 +132,7 @@ func TestHelmReleaseStatusStep_stepResultForRelease(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			step := NewHelmReleaseStatusStep(NewMockK8sClient(t), NewMockEventRecorder(t))
 
-			got := step.stepResultForRelease(tt.state, testDoguResource.DeepCopy())
+			got := step.stepResultForRelease(testCtx, tt.state, testDoguResource.DeepCopy())
 
 			assert.Equal(t, tt.want, got)
 		})
@@ -177,7 +187,7 @@ func TestHelmReleaseStatusStep_stepResultForRelease(t *testing.T) {
 			step := NewHelmReleaseStatusStep(NewMockK8sClient(t), NewMockEventRecorder(t))
 			state := fluxstate.ReleaseState{Phase: fluxstate.PhaseDeployed, EverDeployed: tt.everDeployed}
 
-			got := step.stepResultForRelease(state, doguResource)
+			got := step.stepResultForRelease(testCtx, state, doguResource)
 
 			assert.Equal(t, tt.want, got)
 		})
@@ -186,7 +196,7 @@ func TestHelmReleaseStatusStep_stepResultForRelease(t *testing.T) {
 	t.Run("unknown phase", func(t *testing.T) {
 		step := NewHelmReleaseStatusStep(NewMockK8sClient(t), NewMockEventRecorder(t))
 
-		got := step.stepResultForRelease(fluxstate.ReleaseState{Phase: "Unknown"}, testDoguResource.DeepCopy())
+		got := step.stepResultForRelease(testCtx, fluxstate.ReleaseState{Phase: "Unknown"}, testDoguResource.DeepCopy())
 
 		assert.ErrorContains(t, got.Err, `unknown release phase "Unknown"`)
 		assert.Equal(t, v3beta1.ReasonInstalling, got.ReadyReason)

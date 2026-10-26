@@ -127,7 +127,7 @@ data:
 	service := charts.NewService(archive, &rest.Config{}, chartutil.DefaultCapabilities, flux.NewHelmReleaseReader(cl))
 	step := NewEnsureHelmReleaseStep(cl, &config.OperatorConfig{
 		DoguHelmRetryInterval: time.Minute, DoguHelmReconciliationInterval: time.Minute,
-	}, service, record.NewFakeRecorder(10))
+	}, service, values.NewAssembler(cl), record.NewFakeRecorder(10))
 	validateStep := NewValidateChartStep(service, values.NewAssembler(cl), cl)
 
 	// The fixture checks string preservation, not hostname validity. The schema rejects only empty strings.
@@ -248,7 +248,7 @@ func TestRuntimePatchesWriteFailuresPreserveHelmRelease(t *testing.T) {
 			service := newMockChartService(t)
 			service.EXPECT().DoguMetaValues(mock.Anything, dogu).Return(nil, false, nil).Once()
 			service.EXPECT().RuntimePatchTemplate(mock.Anything, dogu).Return([]byte(tt.template), true, nil).Once()
-			step := NewEnsureHelmReleaseStep(cl, &config.OperatorConfig{}, service, record.NewFakeRecorder(10))
+			step := NewEnsureHelmReleaseStep(cl, &config.OperatorConfig{}, service, values.NewAssembler(cl), record.NewFakeRecorder(10))
 
 			result := step.Run(ctx, dogu)
 

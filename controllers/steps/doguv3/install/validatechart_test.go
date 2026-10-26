@@ -176,6 +176,18 @@ func TestValidateChartStep_Run(t *testing.T) {
 				assert.Nil(t, apimeta.FindStatusCondition(doguResource.Status.Conditions, v3beta1.ConditionValid))
 			},
 		},
+		{
+			name: "continue without checking if PauseReconciliation is set",
+			setup: func(t *testing.T) (*mockChartService, *mockValueAssembler, K8sClient, *v3beta1.Dogu) {
+				doguResource := testDoguResource.DeepCopy()
+				doguResource.Spec.PauseReconciliation = true
+				return nil, nil, nil, doguResource
+			},
+			want: doguv3.Continue(),
+			assertFn: func(t *testing.T, doguResource *v3beta1.Dogu) {
+				assert.Nil(t, apimeta.FindStatusCondition(doguResource.Status.Conditions, v3beta1.ConditionValid))
+			},
+		},
 	}
 
 	for _, tt := range tests {

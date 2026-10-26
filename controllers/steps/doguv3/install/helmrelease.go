@@ -29,21 +29,22 @@ type EnsureHelmReleaseStep struct {
 	helmReconcileInterval metav1.Duration
 	retryInterval         metav1.Duration
 	chartService          chartService
+	assembler             valueAssembler
 }
 
-func NewEnsureHelmReleaseStep(k8sClient K8sClient, operatorConfig *config.OperatorConfig, chartService chartService, recorder EventRecorder) *EnsureHelmReleaseStep {
+func NewEnsureHelmReleaseStep(k8sClient K8sClient, operatorConfig *config.OperatorConfig, chartService chartService, assembler valueAssembler, recorder EventRecorder) *EnsureHelmReleaseStep {
 	return &EnsureHelmReleaseStep{
 		k8sClient:             k8sClient,
 		eventRecorder:         recorder,
 		helmReconcileInterval: metav1.Duration{Duration: operatorConfig.DoguHelmReconciliationInterval},
 		retryInterval:         metav1.Duration{Duration: operatorConfig.DoguHelmRetryInterval},
 		chartService:          chartService,
+		assembler:             assembler,
 	}
 }
 
 func (ehr *EnsureHelmReleaseStep) Run(ctx context.Context, doguResource *doguv3.Dogu) stepsv3.StepResult {
-	assembler := values3.NewAssembler(ehr.k8sClient)
-	combinedValues, err := combineValues(ctx, doguResource, ehr.chartService, assembler)
+	combinedValues, err := combineValues(ctx, doguResource, ehr.chartService, ehr.assembler)
 	if err != nil {
 		return stepsv3.RequeueWithError(fmt.Errorf("failed to prepare HelmRelease values for dogu %s/%s: %w", doguResource.Namespace, doguResource.Name, err), doguv3.ReasonInstalling)
 	}
@@ -114,7 +115,9 @@ func configureHelmRelease(release *flux.HelmRelease, doguResource *doguv3.Dogu, 
 			Mode:   flux.DriftDetectionEnabled,
 			Ignore: []flux.IgnoreRule{},
 		},
-		Values: values,
+		// PVC resize, as the third possible reason for a suspension, is handled in earlier steps
+		Suspend: doguResource.Spec.Stopped || doguResource.Spec.PauseReconciliation,
+		Values:  values,
 		CommonMetadata: &flux.CommonMetadata{
 			Annotations: nil,
 			Labels: map[string]string{
