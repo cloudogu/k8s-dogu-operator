@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"github.com/cloudogu/k8s-dogu-lib/v3/api/v3beta1"
+	"github.com/cloudogu/k8s-dogu-operator/v3/internal/dogu/values"
 	"github.com/cloudogu/k8s-dogu-operator/v3/internal/flux"
 	"helm.sh/helm/v3/pkg/chart/loader"
 	"helm.sh/helm/v3/pkg/chartutil"
@@ -79,13 +80,13 @@ func (s *Service) ValidateValues(ctx context.Context, doguResource *v3beta1.Dogu
 // RuntimePatchTemplate returns the raw runtime patch template file from the chart, if present. The bool
 // reports whether the file exists.
 func (s *Service) RuntimePatchTemplate(ctx context.Context, doguResource *v3beta1.Dogu) ([]byte, bool, error) {
-	c, err := s.chartFor(ctx, doguResource)
+	chart, err := s.chartFor(ctx, doguResource)
 	if err != nil {
 		return nil, false, err
 	}
 
-	for _, file := range c.raw.Files {
-		if file.Name == runtimePatchTemplateFileName {
+	for _, file := range chart.raw.Files {
+		if file.Name == values.RuntimePatchTemplateFileName {
 			return file.Data, true, nil
 		}
 	}
@@ -96,14 +97,14 @@ func (s *Service) RuntimePatchTemplate(ctx context.Context, doguResource *v3beta
 // DoguMetaValues returns the raw dogu-meta-values file from the chart, if present. The bool
 // reports whether the file exists.
 func (s *Service) DoguMetaValues(ctx context.Context, doguResource *v3beta1.Dogu) ([]byte, bool, error) {
-	c, err := s.chartFor(ctx, doguResource)
+	chart, err := s.chartFor(ctx, doguResource)
 	if err != nil {
 		return nil, false, err
 	}
 
-	tmpFile, ok := c.getDoguValuesMeta()
+	valuesMeta, found := chart.getDoguValuesMeta()
 
-	return tmpFile, ok, nil
+	return valuesMeta, found, nil
 }
 
 // Evict drops a dogu's cached chart. Call it when the delete-finalizer runs so the cache does not grow

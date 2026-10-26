@@ -17,10 +17,7 @@ import (
 	"k8s.io/client-go/rest"
 )
 
-const (
-	runtimePatchTemplateFileName = "runtime-patch-tpl.yaml"
-	doguValuesMetaFileName       = "dogu-values-metadata.yaml"
-)
+const doguValuesMetaFileName = "dogu-values-metadata.yaml"
 
 type ReleaseRef struct {
 	Name      string

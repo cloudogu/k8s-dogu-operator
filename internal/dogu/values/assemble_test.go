@@ -66,7 +66,6 @@ func Test_getDoguCRValues(t *testing.T) {
 		{
 			name: "valid nested map",
 			raw:  []byte("parent:\n  child: value\n"),
-			// yaml.v3 decoding into a Values map produces nested Values, not map[string]any.
 			want: Values{"parent": Values{"child": "value"}},
 		},
 		{
@@ -342,11 +341,6 @@ func Test_mergeValues(t *testing.T) {
 		want   Values
 	}{
 		{
-			name:   "no input returns empty non-nil map",
-			values: nil,
-			want:   Values{},
-		},
-		{
 			name:   "all nil inputs returns empty non-nil map",
 			values: []Values{nil, nil},
 			want:   Values{},
@@ -407,7 +401,10 @@ func Test_mergeValues(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := mergeValues(tt.values...)
+			got := make(Values)
+			for _, source := range tt.values {
+				got = mergeValues(t.Context(), got, source, "test source", "")
+			}
 
 			assert.NotNil(t, got)
 			assert.Equal(t, tt.want, got)
@@ -517,6 +514,7 @@ global:
   cesConfig:
     crOverride: fromCR
 `), map[string]string{"logging": "debug"})
+
 	metadata := []byte(`apiVersion: v1
 metavalues:
   logging:
@@ -525,6 +523,7 @@ metavalues:
         mapping:
           debug: trace
 `)
+
 	patch := []byte(`application:
   host: fromRuntime
   logging: fromRuntime
@@ -535,10 +534,12 @@ global:
     runtimeOverride: fromRuntime
     crOverride: fromRuntime
 `)
-	a := NewAssembler(newFakeClientWithGlobalConfig(testNamespace, map[string]string{
+	assembler := NewAssembler(newFakeClientWithGlobalConfig(testNamespace, map[string]string{
 		globalConfigFileName: "fqdn: ces.example.org\nruntimeOverride: fromGlobal\ncrOverride: fromGlobal\nuntouched: original\n",
 	}))
-	got, err := a.Assemble(t.Context(), cr, metadata, patch)
+
+	got, err := assembler.Assemble(t.Context(), cr, metadata, patch)
+
 	require.NoError(t, err)
 	assert.Equal(t, Values{
 		"application": Values{"host": "fromCR", "logging": "trace", "sibling": "ces.example.org", "list": []any{"cr"}},
@@ -576,10 +577,12 @@ func TestAssembler_ConflictsDoNotLogValues(t *testing.T) {
     token: '{{ globalConfig "token" }}'
   scalarToMap: '{{ globalConfig "token" }}'
 `)
-	a := NewAssembler(newFakeClientWithGlobalConfig(testNamespace, map[string]string{
+	assembler := NewAssembler(newFakeClientWithGlobalConfig(testNamespace, map[string]string{
 		globalConfigFileName: "token: sensitive-sentinel\n",
 	}))
-	got, err := a.Assemble(log.IntoContext(t.Context(), logger), cr, nil, patch)
+
+	got, err := assembler.Assemble(log.IntoContext(t.Context(), logger), cr, nil, patch)
+
 	require.NoError(t, err)
 	assert.Equal(t, Values{"mapToScalar": "replacement", "scalarToMap": Values{"enabled": true}}, got["application"])
 	assert.Contains(t, structuredLogs.String(), "application.mapToScalar")
@@ -587,4 +590,23 @@ func TestAssembler_ConflictsDoNotLogValues(t *testing.T) {
 	assert.Contains(t, structuredLogs.String(), "spec.values")
 	assert.NotContains(t, structuredLogs.String(), "sensitive-sentinel")
 	assert.Empty(t, standardLogs.String(), "merging must not emit value-bearing Helm warnings")
+}
+
+func TestAssembler_ApplicationTemplates(t *testing.T) {
+	runtimePatchTemplate := []byte(`application:
+  host: '{{ globalConfig "fqdn" }}'
+logConfiguration: |
+  date: {{ "{{ .Date }}" }}
+  line: {{ "{{ .LogLineJSON }}" }}
+`)
+	assembler := NewAssembler(newFakeClientWithGlobalConfig(testNamespace, map[string]string{
+		globalConfigFileName: "fqdn: ces.example.org\n",
+	}))
+	dogu := newTestDogu(testNamespace, nil, nil)
+
+	got, err := assembler.Assemble(t.Context(), dogu, nil, runtimePatchTemplate)
+
+	require.NoError(t, err)
+	assert.Equal(t, Values{"host": "ces.example.org"}, got["application"])
+	assert.Equal(t, "date: {{ .Date }}\nline: {{ .LogLineJSON }}\n", got["logConfiguration"])
 }

@@ -39,6 +39,7 @@ dotted: '{{ globalConfig "root.dot" }}'
 			global := Values{"fqdn": text, "certificates": Values{"server.crt": text}, "root.dot": "literal"}
 			for _, input := range []string{source, strings.ReplaceAll(source, "\n", "\r\n")} {
 				got, err := renderRuntimePatches([]byte(input), global)
+
 				require.NoError(t, err)
 				assert.Equal(t, Values{
 					"host": text, "prefixed": "1" + text, "nested": Values{"cert": text},
@@ -56,6 +57,7 @@ func TestRenderRuntimePatchesLookupErrors(t *testing.T) {
 		t.Run(path, func(t *testing.T) {
 			source := "value: '{{ globalConfig " + `"` + path + `"` + " }}'\n"
 			_, err := renderRuntimePatches([]byte(source), global)
+
 			require.Error(t, err)
 			assert.Contains(t, err.Error(), "globalConfig")
 		})
@@ -80,32 +82,51 @@ func TestRenderRuntimePatchesRejected(t *testing.T) {
 		{"documents", "{}\n---\nother: {}", "exactly one YAML document"},
 		{"bare lookup", "key: '{{ globalConfig fqdn }}'", `function "fqdn" not defined`},
 		{"syntax", "key: '{{ if }}'", "parse runtime-patch-tpl.yaml"},
+		{"unescaped application template", "logConfiguration: |\n  {{ .Date }}", "execute runtime-patch-tpl.yaml.logConfiguration template"},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			_, err := renderRuntimePatches([]byte(tt.source), nil)
+
 			require.ErrorContains(t, err, tt.errorContains)
 		})
 	}
-	for _, helper := range []string{"quote", "default", "fail", "toYaml", "env", "include", "tpl", "lookup"} {
-		t.Run(helper, func(t *testing.T) {
-			_, err := renderRuntimePatches([]byte("key: '{{ "+helper+" \"x\" }}'"), nil)
+}
+
+func TestRenderRuntimePatches_UnsupportedFunctions(t *testing.T) {
+	for _, function := range []string{"quote", "default", "fail", "toYaml", "env", "include", "tpl", "lookup"} {
+		t.Run(function, func(t *testing.T) {
+			_, err := renderRuntimePatches([]byte("key: '{{ "+function+" \"x\" }}'"), nil)
+
 			require.ErrorContains(t, err, "not defined")
 		})
 	}
 }
 
 func TestRenderRuntimePatchesCompatibility(t *testing.T) {
-	got, err := renderRuntimePatches(nil, nil)
-	require.NoError(t, err)
-	assert.Nil(t, got)
-	for _, source := range []string{"{}", "---\n{}"} {
-		got, err := renderRuntimePatches([]byte(source), nil)
+	t.Run("absent file is optional", func(t *testing.T) {
+		got, err := renderRuntimePatches(nil, nil)
+
 		require.NoError(t, err)
-		assert.Equal(t, Values{}, got)
-	}
-	got, err = renderRuntimePatches([]byte(`original: &host '{{ globalConfig "fqdn" }}'
+		assert.Nil(t, got)
+	})
+
+	t.Run("empty mappings are valid", func(t *testing.T) {
+		for _, source := range []string{"{}", "---\n{}"} {
+			got, err := renderRuntimePatches([]byte(source), nil)
+
+			require.NoError(t, err)
+			assert.Equal(t, Values{}, got)
+		}
+	})
+
+	t.Run("YAML aliases are rendered", func(t *testing.T) {
+		source := `original: &host '{{ globalConfig "fqdn" }}'
 copy: *host
-`), Values{"fqdn": "O'Reilly\nexample"})
-	require.NoError(t, err)
-	assert.Equal(t, Values{"original": "O'Reilly\nexample", "copy": "O'Reilly\nexample"}, got)
+`
+
+		got, err := renderRuntimePatches([]byte(source), Values{"fqdn": "O'Reilly\nexample"})
+
+		require.NoError(t, err)
+		assert.Equal(t, Values{"original": "O'Reilly\nexample", "copy": "O'Reilly\nexample"}, got)
+	})
 }

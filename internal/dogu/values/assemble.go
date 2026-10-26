@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 
 	"github.com/cloudogu/k8s-dogu-lib/v3/api/v3beta1"
 	"github.com/cloudogu/k8s-dogu-operator/v3/internal/logging"
@@ -37,6 +38,8 @@ type MetadataMapping struct {
 
 type Values = map[string]any
 
+// Assembler combines values in increasing precedence: global.cesConfig, runtime patches,
+// spec.values, spec.mappedValues. Helm applies the chart defaults separately.
 type Assembler struct {
 	k8s client.Client
 }
@@ -46,7 +49,9 @@ func NewAssembler(k8s client.Client) *Assembler {
 	return &Assembler{k8s: k8s}
 }
 
-func (a Assembler) Assemble(ctx context.Context, cr *v3beta1.Dogu, valuesMeta, patchTemplate []byte) (Values, error) {
+// Assemble reads global configuration once, renders the optional runtime patch template and
+// merges the value sources. A nil runtimePatchTemplate means the file is absent.
+func (a Assembler) Assemble(ctx context.Context, cr *v3beta1.Dogu, valuesMeta, runtimePatchTemplate []byte) (Values, error) {
 	crValues, err := getDoguCRValues(cr)
 	if err != nil {
 		return nil, fmt.Errorf("failed to dogu spec values: %w", err)
@@ -62,47 +67,29 @@ func (a Assembler) Assemble(ctx context.Context, cr *v3beta1.Dogu, valuesMeta, p
 		return nil, fmt.Errorf("failed to get values from global config: %w", err)
 	}
 
-	runtimeValues, err := renderRuntimePatches(patchTemplate, globalConfigValues)
+	runtimeValues, err := renderRuntimePatches(runtimePatchTemplate, globalConfigValues)
 	if err != nil {
-		return nil, fmt.Errorf("failed to render runtime-patch-tpl.yaml: %w", err)
+		return nil, fmt.Errorf("failed to render %s: %w", RuntimePatchTemplateFileName, err)
 	}
 
 	// Place global config under global.cesConfig.
 	nestedGlobalConfig := Values{"global": Values{"cesConfig": globalConfigValues}}
 
 	// Later sources win: global config < runtime patches < CR values < mapped values.
-	finalValues := nestedGlobalConfig
+	finalValues := make(Values)
 	for _, source := range []struct {
 		name   string
 		values Values
 	}{
+		{"global.cesConfig", nestedGlobalConfig},
 		{"runtimePatches", runtimeValues},
 		{"spec.values", crValues},
 		{"spec.mappedValues", doguMetaValues},
 	} {
-		logValueOverlaps(ctx, finalValues, source.values, source.name, "")
-		finalValues = mergeValues(finalValues, source.values)
+		finalValues = mergeValues(ctx, finalValues, source.values, source.name, "")
 	}
 
 	return finalValues, nil
-}
-
-// Log paths, never configuration contents, when a higher-priority source overrides values.
-func logValueOverlaps(ctx context.Context, lower, higher Values, source, prefix string) {
-	for key, value := range higher {
-		previous, exists := lower[key]
-		if !exists {
-			continue
-		}
-		path := prefix + key
-		lowMap, lowOK := previous.(map[string]any)
-		highMap, highOK := value.(map[string]any)
-		if lowOK && highOK {
-			logValueOverlaps(ctx, lowMap, highMap, source, path+".")
-		} else {
-			logging.Info(ctx, "Values overlap; higher-priority source wins", "path", path, "source", source)
-		}
-	}
 }
 
 func getDoguCRValues(cr *v3beta1.Dogu) (Values, error) {
@@ -114,7 +101,7 @@ func getDoguCRValues(cr *v3beta1.Dogu) (Values, error) {
 	return doguCRValues, nil
 }
 
-func getDoguMetaValues(ctx context.Context, cr *v3beta1.Dogu, patchTpl []byte) (Values, error) {
+func getDoguMetaValues(ctx context.Context, cr *v3beta1.Dogu, valuesMeta []byte) (Values, error) {
 	mappedValues := make(Values)
 
 	if len(cr.Spec.MappedValues) == 0 {
@@ -122,7 +109,7 @@ func getDoguMetaValues(ctx context.Context, cr *v3beta1.Dogu, patchTpl []byte) (
 	}
 
 	var mappings MetadataMapping
-	if mErr := yaml.Unmarshal(patchTpl, &mappings); mErr != nil {
+	if mErr := yaml.Unmarshal(valuesMeta, &mappings); mErr != nil {
 		return nil, fmt.Errorf("failed to unmarshal mapping meta data: %w", mErr)
 	}
 
@@ -180,26 +167,33 @@ func getGlobalConfigValues(ctx context.Context, cr *v3beta1.Dogu, s client.Clien
 	return globalCfgValues, nil
 }
 
-// mergeValues merges maps in order without Helm's value-bearing conflict warnings.
-// Later Values win; maps merge recursively and lists replace earlier lists.
-// A null removes an existing non-null key, but otherwise remains an explicit null.
-func mergeValues(values ...Values) Values {
-	mergedValues := make(Values)
+// mergeValues merges higher-priority values into a copy of lower-priority values.
+// Maps merge recursively; lists and scalars replace earlier values. A YAML null (Go nil)
+// removes an existing non-nil value, but is retained when the key was absent or already nil.
+// Only paths and the source name are logged: Helm's merge warnings can expose config contents.
+func mergeValues(ctx context.Context, lower, higher Values, source, prefix string) Values {
+	mergedValues := maps.Clone(lower)
+	if mergedValues == nil {
+		mergedValues = make(Values)
+	}
 
-	for _, vMap := range values {
-		for key, value := range vMap {
-			previous, exists := mergedValues[key]
-			if value == nil && exists && previous != nil {
-				delete(mergedValues, key)
-				continue
-			}
-			lower, lowOK := previous.(Values)
-			higher, highOK := value.(Values)
-			if lowOK && highOK {
-				mergedValues[key] = mergeValues(lower, higher)
-			} else {
-				mergedValues[key] = value
-			}
+	for key, value := range higher {
+		previous, exists := mergedValues[key]
+		path := prefix + key
+		lowerMap, lowerIsMap := previous.(Values)
+		higherMap, higherIsMap := value.(Values)
+		if lowerIsMap && higherIsMap {
+			mergedValues[key] = mergeValues(ctx, lowerMap, higherMap, source, path+".")
+			continue
+		}
+
+		if exists {
+			logging.Info(ctx, "Values overlap; higher-priority source wins", "path", path, "source", source)
+		}
+		if value == nil && exists && previous != nil {
+			delete(mergedValues, key)
+		} else {
+			mergedValues[key] = value
 		}
 	}
 
