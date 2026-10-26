@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	doguv2 "github.com/cloudogu/k8s-dogu-lib/v3/api/v2"
@@ -27,10 +28,10 @@ type EnsureHelmReleaseStep struct {
 	eventRecorder         EventRecorder
 	helmReconcileInterval metav1.Duration
 	retryInterval         metav1.Duration
-	chartService          ChartService
+	chartService          chartService
 }
 
-func NewEnsureHelmReleaseStep(k8sClient K8sClient, operatorConfig *config.OperatorConfig, chartService ChartService, recorder EventRecorder) *EnsureHelmReleaseStep {
+func NewEnsureHelmReleaseStep(k8sClient K8sClient, operatorConfig *config.OperatorConfig, chartService chartService, recorder EventRecorder) *EnsureHelmReleaseStep {
 	return &EnsureHelmReleaseStep{
 		k8sClient:             k8sClient,
 		eventRecorder:         recorder,
@@ -41,10 +42,10 @@ func NewEnsureHelmReleaseStep(k8sClient K8sClient, operatorConfig *config.Operat
 }
 
 func (ehr *EnsureHelmReleaseStep) Run(ctx context.Context, doguResource *doguv3.Dogu) stepsv3.StepResult {
-	templateAsm := values3.NewAssembler(ehr.k8sClient)
-	combinedValues, err := combineValues(ctx, doguResource, ehr.chartService, templateAsm)
+	assembler := values3.NewAssembler(ehr.k8sClient)
+	combinedValues, err := combineValues(ctx, doguResource, ehr.chartService, assembler)
 	if err != nil {
-		return stepsv3.RequeueWithError(err, doguv3.ReasonInstalling)
+		return stepsv3.RequeueWithError(fmt.Errorf("failed to prepare HelmRelease values for dogu %s/%s: %w", doguResource.Namespace, doguResource.Name, err), doguv3.ReasonInstalling)
 	}
 
 	release := &flux.HelmRelease{
@@ -129,24 +130,24 @@ func configureHelmRelease(release *flux.HelmRelease, doguResource *doguv3.Dogu, 
 	}
 }
 
-func combineValues(ctx context.Context, dogu *doguv3.Dogu, doguMetadataValueSvc ChartService, valueAssembler ValueAssembler) (*apiext.JSON, error) {
-	metaValues, _, err := doguMetadataValueSvc.DoguMetaValues(ctx, dogu)
+func combineValues(ctx context.Context, dogu *doguv3.Dogu, chartService chartService, assembler valueAssembler) (*apiext.JSON, error) {
+	valuesMeta, _, err := chartService.DoguMetaValues(ctx, dogu)
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve dogu metadata values: %w", err)
 	}
 
-	patchTemplate, found, err := doguMetadataValueSvc.RuntimePatchTemplate(ctx, dogu)
+	runtimePatchTemplate, found, err := chartService.RuntimePatchTemplate(ctx, dogu)
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve runtime patch template: %w", err)
 	}
 
-	isEmpty := len(bytes.TrimSpace(patchTemplate)) == 0
+	isEmpty := len(bytes.TrimSpace(runtimePatchTemplate)) == 0
 	emptyPatchFileExists := found && isEmpty
 	if emptyPatchFileExists {
-		return nil, fmt.Errorf(": %w", err)
+		return nil, errors.New(values3.RuntimePatchTemplateFileName + " must not be empty")
 	}
 
-	values, err := valueAssembler.Assemble(ctx, dogu, metaValues, patchTemplate)
+	values, err := assembler.Assemble(ctx, dogu, valuesMeta, runtimePatchTemplate)
 	if err != nil {
 		return nil, fmt.Errorf("failed to assemble dogu values: %w", err)
 	}

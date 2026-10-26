@@ -44,8 +44,9 @@ func (r *GlobalConfigReconciler) Reconcile(ctx context.Context, _ ctrl.Request) 
 		return ctrl.Result{}, err
 	}
 
+	// Enqueue both V2 and V3 Dogus for config changes. Version selection and the V3 feature flag
+	// are handled by the DoguReconciler, not by this ConfigMap watch.
 	for _, dogu := range doguList.Items {
-		// The DoguReconciler dispatches V2/V3 and applies the V3 feature flag.
 		r.doguEvents <- event.TypedGenericEvent[*v2.Dogu]{Object: &dogu}
 	}
 	return ctrl.Result{}, nil

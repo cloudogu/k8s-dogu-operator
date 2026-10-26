@@ -31,9 +31,9 @@ func Test_combineValues(t *testing.T) {
 		// given
 		inputDogu := &doguv3.Dogu{}
 		assembledDoguValues := values3.Values{"foo": "bar", "fqdn": "example.invalid", "logging": "error"}
-		valueAsmMock := NewMockValueAssembler(t)
+		valueAsmMock := newMockValueAssembler(t)
 		var doguMetadataValues []byte
-		doguValuesMetadataSvcMock := NewMockChartService(t)
+		doguValuesMetadataSvcMock := newMockChartService(t)
 		doguValuesMetadataSvcMock.EXPECT().DoguMetaValues(testCtx, inputDogu).Return(doguMetadataValues, true, nil)
 		doguValuesMetadataSvcMock.EXPECT().RuntimePatchTemplate(testCtx, inputDogu).Return(nil, false, nil)
 		valueAsmMock.EXPECT().Assemble(testCtx, inputDogu, doguMetadataValues, []byte(nil)).Return(assembledDoguValues, nil)
@@ -52,8 +52,8 @@ func Test_combineValues(t *testing.T) {
 	t.Run("should fail on dogu metadata value service retrieval", func(t *testing.T) {
 		// given
 		inputDogu := &doguv3.Dogu{}
-		valueAsmMock := NewMockValueAssembler(t)
-		doguValuesMetadataSvcMock := NewMockChartService(t)
+		valueAsmMock := newMockValueAssembler(t)
+		doguValuesMetadataSvcMock := newMockChartService(t)
 		doguValuesMetadataSvcMock.EXPECT().DoguMetaValues(testCtx, inputDogu).Return(nil, false, assert.AnError)
 
 		// when
@@ -68,10 +68,10 @@ func Test_combineValues(t *testing.T) {
 		// given
 		inputDogu := &doguv3.Dogu{}
 		var doguMetadataValues []byte
-		doguValuesMetadataSvcMock := NewMockChartService(t)
+		doguValuesMetadataSvcMock := newMockChartService(t)
 		doguValuesMetadataSvcMock.EXPECT().DoguMetaValues(testCtx, inputDogu).Return(doguMetadataValues, true, nil)
 		doguValuesMetadataSvcMock.EXPECT().RuntimePatchTemplate(testCtx, inputDogu).Return(nil, false, nil)
-		valueAsmMock := NewMockValueAssembler(t)
+		valueAsmMock := newMockValueAssembler(t)
 		valueAsmMock.EXPECT().Assemble(testCtx, inputDogu, doguMetadataValues, []byte(nil)).Return(nil, assert.AnError)
 
 		// when
@@ -85,31 +85,36 @@ func Test_combineValues(t *testing.T) {
 
 func TestCombineValues_PatchRetrieval(t *testing.T) {
 	for _, tt := range []struct {
-		name     string
-		found    bool
-		source   []byte
-		expected []byte
-		err      error
+		name          string
+		found         bool
+		source        []byte
+		retrievalErr  error
+		errorContains string
 	}{
-		{name: "absent ignores source", found: false, source: nil, expected: nil},
-		{name: "present nil file fails", found: true, source: nil, expected: nil, err: assert.AnError},
-		{name: "present empty file fails", found: true, source: nil, expected: []byte("\t\n    "), err: assert.AnError},
-		{name: "present YAML remains present", found: true, source: []byte("---\nkey: value"), expected: []byte("---\nkey: value")},
-		{name: "retrieval error stops assembly", err: assert.AnError},
+		{name: "absent file is optional"},
+		{name: "present nil file fails", found: true, errorContains: "runtime-patch-tpl.yaml must not be empty"},
+		{name: "present empty file fails", found: true, source: []byte{}, errorContains: "runtime-patch-tpl.yaml must not be empty"},
+		{name: "present whitespace file fails", found: true, source: []byte("\t\n    "), errorContains: "runtime-patch-tpl.yaml must not be empty"},
+		{name: "present YAML remains present", found: true, source: []byte("---\nkey: value")},
+		{name: "retrieval error stops assembly", retrievalErr: assert.AnError, errorContains: "failed to retrieve runtime patch template"},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			dogu := &doguv3.Dogu{}
-			service := NewMockChartService(t)
+			service := newMockChartService(t)
 			service.EXPECT().DoguMetaValues(testCtx, dogu).Return(nil, false, nil).Once()
-			service.EXPECT().RuntimePatchTemplate(testCtx, dogu).Return(tt.source, tt.found, tt.err).Once()
-			assembler := NewMockValueAssembler(t)
-			if tt.err == nil {
-				assembler.EXPECT().Assemble(testCtx, dogu, []byte(nil), tt.expected).Return(values3.Values{}, nil).Once()
+			service.EXPECT().RuntimePatchTemplate(testCtx, dogu).Return(tt.source, tt.found, tt.retrievalErr).Once()
+			assembler := newMockValueAssembler(t)
+			if tt.errorContains == "" {
+				assembler.EXPECT().Assemble(testCtx, dogu, []byte(nil), tt.source).Return(values3.Values{}, nil).Once()
 			}
+
 			got, err := combineValues(testCtx, dogu, service, assembler)
-			if tt.err != nil {
-				require.ErrorIs(t, err, tt.err)
-				assert.ErrorContains(t, err, "failed to retrieve runtime patch template")
+
+			if tt.errorContains != "" {
+				require.ErrorContains(t, err, tt.errorContains)
+				if tt.retrievalErr != nil {
+					assert.ErrorIs(t, err, tt.retrievalErr)
+				}
 				assert.Nil(t, got)
 			} else {
 				require.NoError(t, err)
@@ -259,7 +264,7 @@ func TestNewEnsureHelmReleaseStep(t *testing.T) {
 		DoguHelmRetryInterval:          1 * time.Second,
 		DoguHelmReconciliationInterval: 2 * time.Minute,
 	}
-	valueService := NewMockChartService(t)
+	valueService := newMockChartService(t)
 	recorder := NewMockEventRecorder(t)
 
 	step := NewEnsureHelmReleaseStep(k8sClient, operatorConfig, valueService, recorder)
@@ -296,26 +301,26 @@ func TestEnsureHelmReleaseStep_Run(t *testing.T) {
 
 	tests := []struct {
 		name       string
-		setupMocks func(*testing.T) (K8sClient, ChartService, EventRecorder)
+		setupMocks func(*testing.T) (K8sClient, chartService, EventRecorder)
 		want       v3steps.StepResult
 	}{
 		{
 			name: "should retry on failing value assembling",
-			setupMocks: func(*testing.T) (K8sClient, ChartService, EventRecorder) {
-				metaValueService := NewMockChartService(t)
+			setupMocks: func(*testing.T) (K8sClient, chartService, EventRecorder) {
+				metaValueService := newMockChartService(t)
 				metaValueService.EXPECT().DoguMetaValues(mock.Anything, doguResource).Return(nil, false, assert.AnError)
 				return nil, metaValueService, nil
 			},
 			want: v3steps.StepResult{
-				Err:          fmt.Errorf("failed to retrieve dogu metadata values: %w", assert.AnError),
+				Err:          fmt.Errorf("failed to prepare HelmRelease values for dogu namespace/dogu: %w", fmt.Errorf("failed to retrieve dogu metadata values: %w", assert.AnError)),
 				ReadyReason:  "Installing",
-				ReadyMessage: "failed to retrieve dogu metadata values: assert.AnError general error for testing",
+				ReadyMessage: "failed to prepare HelmRelease values for dogu namespace/dogu: failed to retrieve dogu metadata values: assert.AnError general error for testing",
 				Continue:     false,
 			},
 		},
 		{
 			name: "should retry on failing create or patch",
-			setupMocks: func(*testing.T) (K8sClient, ChartService, EventRecorder) {
+			setupMocks: func(*testing.T) (K8sClient, chartService, EventRecorder) {
 				fakeClient := fake.NewClientBuilder().WithScheme(testScheme).WithObjects(&globalConfig).Build()
 				k8sClient := NewMockK8sClient(t)
 				k8sClient.EXPECT().Scheme().Return(testScheme)
@@ -324,7 +329,7 @@ func TestEnsureHelmReleaseStep_Run(t *testing.T) {
 				})
 				k8sClient.EXPECT().Create(mock.Anything, mock.Anything, mock.Anything).Return(assert.AnError)
 
-				service := NewMockChartService(t)
+				service := newMockChartService(t)
 				service.EXPECT().DoguMetaValues(mock.Anything, doguResource).Return(nil, false, nil)
 				service.EXPECT().RuntimePatchTemplate(mock.Anything, doguResource).Return(nil, false, nil)
 				return k8sClient, service, nil
@@ -338,9 +343,9 @@ func TestEnsureHelmReleaseStep_Run(t *testing.T) {
 		},
 		{
 			name: "should continue on successful creation of helm release",
-			setupMocks: func(t *testing.T) (K8sClient, ChartService, EventRecorder) {
+			setupMocks: func(t *testing.T) (K8sClient, chartService, EventRecorder) {
 				k8sClient := fake.NewClientBuilder().WithScheme(testScheme).WithObjects(&globalConfig).Build()
-				service := NewMockChartService(t)
+				service := newMockChartService(t)
 				service.EXPECT().DoguMetaValues(mock.Anything, doguResource).Return(nil, false, nil)
 				service.EXPECT().RuntimePatchTemplate(mock.Anything, doguResource).Return(nil, false, nil)
 				recorder := NewMockEventRecorder(t)
@@ -351,13 +356,13 @@ func TestEnsureHelmReleaseStep_Run(t *testing.T) {
 		},
 		{
 			name: "should continue on successful update of existing helm release",
-			setupMocks: func(t *testing.T) (K8sClient, ChartService, EventRecorder) {
+			setupMocks: func(t *testing.T) (K8sClient, chartService, EventRecorder) {
 				release := fluxhelm.HelmRelease{
 					Name:      "dogu",
 					Namespace: "namespace",
 				}
 				k8sClient := fake.NewClientBuilder().WithScheme(testScheme).WithObjects(&globalConfig, &release).Build()
-				service := NewMockChartService(t)
+				service := newMockChartService(t)
 				service.EXPECT().DoguMetaValues(mock.Anything, doguResource).Return(nil, false, nil)
 				service.EXPECT().RuntimePatchTemplate(mock.Anything, doguResource).Return(nil, false, nil)
 				recorder := NewMockEventRecorder(t)
