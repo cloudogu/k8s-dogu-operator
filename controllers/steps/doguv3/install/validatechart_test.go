@@ -19,6 +19,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 )
 
+const (
+	validationValuesMetaContent   = "meta"
+	validationRuntimePatchContent = "runtime"
+)
+
 // The consumer-side interfaces must stay satisfied by the real production types.
 var (
 	_ chartService   = (*charts.Service)(nil)
@@ -48,12 +53,12 @@ func TestValidateChartStep_Run(t *testing.T) {
 			setup: func(t *testing.T) (*mockChartService, *mockValueAssembler, K8sClient, *v3beta1.Dogu) {
 				doguResource := testDoguResource.DeepCopy()
 				cs := newMockChartService(t)
-				cs.EXPECT().DoguMetaValues(mock.Anything, doguResource).Return([]byte("meta"), true, nil)
-				cs.EXPECT().RuntimePatchTemplate(mock.Anything, doguResource).Return([]byte("runtime"), true, nil)
+				cs.EXPECT().DoguMetaValues(mock.Anything, doguResource).Return([]byte(validationValuesMetaContent), true, nil)
+				cs.EXPECT().RuntimePatchTemplate(mock.Anything, doguResource).Return([]byte(validationRuntimePatchContent), true, nil)
 				cs.EXPECT().ValidateValues(mock.Anything, doguResource, map[string]any(assembledValues)).Return(nil)
 				cs.EXPECT().Render(mock.Anything, doguResource, map[string]any(assembledValues)).Return(nil, nil)
 				as := newMockValueAssembler(t)
-				as.EXPECT().Assemble(mock.Anything, doguResource, []byte("meta"), []byte("runtime")).Return(assembledValues, nil)
+				as.EXPECT().Assemble(mock.Anything, doguResource, []byte(validationValuesMetaContent), []byte(validationRuntimePatchContent)).Return(assembledValues, nil)
 				return cs, as, newValidationFakeClient(doguResource), doguResource
 			},
 			want: doguv3.Continue(),
@@ -88,12 +93,12 @@ func TestValidateChartStep_Run(t *testing.T) {
 				doguResource := testDoguResource.DeepCopy()
 				doguResource.Spec.SkipSchemaValidation = true
 				cs := newMockChartService(t)
-				cs.EXPECT().DoguMetaValues(mock.Anything, doguResource).Return([]byte("meta"), true, nil)
+				cs.EXPECT().DoguMetaValues(mock.Anything, doguResource).Return([]byte(validationValuesMetaContent), true, nil)
 				cs.EXPECT().RuntimePatchTemplate(mock.Anything, doguResource).Return(nil, false, nil)
 				// ValidateValues must not be called when schema validation is skipped.
 				cs.EXPECT().Render(mock.Anything, doguResource, map[string]any(assembledValues)).Return(nil, nil)
 				as := newMockValueAssembler(t)
-				as.EXPECT().Assemble(mock.Anything, doguResource, []byte("meta"), []byte(nil)).Return(assembledValues, nil)
+				as.EXPECT().Assemble(mock.Anything, doguResource, []byte(validationValuesMetaContent), []byte(nil)).Return(assembledValues, nil)
 				return cs, as, newValidationFakeClient(doguResource), doguResource
 			},
 			want: doguv3.Continue(),
@@ -109,11 +114,11 @@ func TestValidateChartStep_Run(t *testing.T) {
 				doguResource := testDoguResource.DeepCopy()
 				doguResource.Spec.SkipSchemaValidation = true
 				cs := newMockChartService(t)
-				cs.EXPECT().DoguMetaValues(mock.Anything, doguResource).Return([]byte("meta"), true, nil)
+				cs.EXPECT().DoguMetaValues(mock.Anything, doguResource).Return([]byte(validationValuesMetaContent), true, nil)
 				cs.EXPECT().RuntimePatchTemplate(mock.Anything, doguResource).Return(nil, false, nil)
 				cs.EXPECT().Render(mock.Anything, doguResource, map[string]any(assembledValues)).Return(nil, assert.AnError)
 				as := newMockValueAssembler(t)
-				as.EXPECT().Assemble(mock.Anything, doguResource, []byte("meta"), []byte(nil)).Return(assembledValues, nil)
+				as.EXPECT().Assemble(mock.Anything, doguResource, []byte(validationValuesMetaContent), []byte(nil)).Return(assembledValues, nil)
 				return cs, as, newValidationFakeClient(doguResource), doguResource
 			},
 			want: doguv3.Abort(ReasonRenderFailed, "chart could not be rendered: "+assert.AnError.Error()),
@@ -127,12 +132,12 @@ func TestValidateChartStep_Run(t *testing.T) {
 			setup: func(t *testing.T) (*mockChartService, *mockValueAssembler, K8sClient, *v3beta1.Dogu) {
 				doguResource := testDoguResource.DeepCopy()
 				cs := newMockChartService(t)
-				cs.EXPECT().DoguMetaValues(mock.Anything, doguResource).Return([]byte("meta"), true, nil)
+				cs.EXPECT().DoguMetaValues(mock.Anything, doguResource).Return([]byte(validationValuesMetaContent), true, nil)
 				cs.EXPECT().RuntimePatchTemplate(mock.Anything, doguResource).Return(nil, false, nil)
 				cs.EXPECT().ValidateValues(mock.Anything, doguResource, map[string]any(assembledValues)).Return(nil)
 				cs.EXPECT().Render(mock.Anything, doguResource, map[string]any(assembledValues)).Return(nil, assert.AnError)
 				as := newMockValueAssembler(t)
-				as.EXPECT().Assemble(mock.Anything, doguResource, []byte("meta"), []byte(nil)).Return(assembledValues, nil)
+				as.EXPECT().Assemble(mock.Anything, doguResource, []byte(validationValuesMetaContent), []byte(nil)).Return(assembledValues, nil)
 				return cs, as, newValidationFakeClient(doguResource), doguResource
 			},
 			want: doguv3.Abort(ReasonRenderFailed, "chart could not be rendered: "+assert.AnError.Error()),
@@ -160,10 +165,10 @@ func TestValidateChartStep_Run(t *testing.T) {
 			setup: func(t *testing.T) (*mockChartService, *mockValueAssembler, K8sClient, *v3beta1.Dogu) {
 				doguResource := testDoguResource.DeepCopy()
 				cs := newMockChartService(t)
-				cs.EXPECT().DoguMetaValues(mock.Anything, doguResource).Return([]byte("meta"), true, nil)
+				cs.EXPECT().DoguMetaValues(mock.Anything, doguResource).Return([]byte(validationValuesMetaContent), true, nil)
 				cs.EXPECT().RuntimePatchTemplate(mock.Anything, doguResource).Return(nil, false, nil)
 				as := newMockValueAssembler(t)
-				as.EXPECT().Assemble(mock.Anything, doguResource, []byte("meta"), []byte(nil)).Return(nil, assert.AnError)
+				as.EXPECT().Assemble(mock.Anything, doguResource, []byte(validationValuesMetaContent), []byte(nil)).Return(nil, assert.AnError)
 				return cs, as, newValidationFakeClient(doguResource), doguResource
 			},
 			want: doguv3.RequeueWithError(fmt.Errorf("failed to assemble values for dogu %s/%s: %w", testDoguResource.Namespace, testDoguResource.Name, assert.AnError), v3beta1.ReasonInstalling),
@@ -216,12 +221,12 @@ func TestValidateChartStep_Run_rejectsEmptyRuntimePatch(t *testing.T) {
 func TestValidateChartStep_Run_requeuesWhenStatusUpdateFails(t *testing.T) {
 	doguResource := testDoguResource.DeepCopy()
 	cs := newMockChartService(t)
-	cs.EXPECT().DoguMetaValues(mock.Anything, doguResource).Return([]byte("meta"), true, nil)
+	cs.EXPECT().DoguMetaValues(mock.Anything, doguResource).Return([]byte(validationValuesMetaContent), true, nil)
 	cs.EXPECT().RuntimePatchTemplate(mock.Anything, doguResource).Return(nil, false, nil)
 	cs.EXPECT().ValidateValues(mock.Anything, doguResource, map[string]any(assembledValues)).Return(nil)
 	cs.EXPECT().Render(mock.Anything, doguResource, map[string]any(assembledValues)).Return(nil, nil)
 	as := newMockValueAssembler(t)
-	as.EXPECT().Assemble(mock.Anything, doguResource, []byte("meta"), []byte(nil)).Return(assembledValues, nil)
+	as.EXPECT().Assemble(mock.Anything, doguResource, []byte(validationValuesMetaContent), []byte(nil)).Return(assembledValues, nil)
 
 	k8sClient := fake.NewClientBuilder().
 		WithScheme(testScheme).

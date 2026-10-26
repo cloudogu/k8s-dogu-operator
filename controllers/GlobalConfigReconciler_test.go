@@ -27,8 +27,8 @@ func TestGlobalConfigReconcilerV3Dispatch(t *testing.T) {
 			legacy := v2.Dogu{Name: "legacy", Namespace: testNamespace}
 			modern := v2.Dogu{
 				Name: "modern", Namespace: testNamespace,
-					Annotations: map[string]string{"k8s.cloudogu.com/v3beta1-doguApiVersion": "v3"},
-				Spec: v2.DoguSpec{Name: "official/modern"},
+				Annotations: map[string]string{"k8s.cloudogu.com/v3beta1-doguApiVersion": "v3"},
+				Spec:        v2.DoguSpec{Name: "official/modern"},
 			}
 			dogus := newMockDoguInterface(t)
 			dogus.EXPECT().List(testCtx, v1.ListOptions{}).Return(&v2.DoguList{Items: []v2.Dogu{legacy, modern}}, nil)
@@ -50,7 +50,7 @@ func TestGlobalConfigReconcilerV3Dispatch(t *testing.T) {
 			cl := fake.NewClientBuilder().WithScheme(getTestScheme()).WithObjects(&modern).Build()
 			dispatcher := &DoguReconciler{client: cl, doguV3Enabled: enabled, doguV3ChangeHandler: handler}
 			_, err = dispatcher.Reconcile(testCtx, controllerruntime.Request{
-				NamespacedName: types.NamespacedName{Name: modernEvent.Object.Name, Namespace: modernEvent.Object.Namespace},
+				Name: modernEvent.Object.Name, Namespace: modernEvent.Object.Namespace,
 			})
 			require.NoError(t, err)
 		})

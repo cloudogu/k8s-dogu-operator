@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestRuntimePatchesYAMLScalarFidelity(t *testing.T) {
+func TestRenderRuntimePatches_yamlScalarFidelity(t *testing.T) {
 	got, err := renderRuntimePatches([]byte(`on: yes
 off: no
 yes: on
@@ -25,7 +25,7 @@ unsigned: 18446744073709551615
 	assert.Equal(t, `{"integer":9007199254740993,"no":"off","off":"no","on":"yes","signed":-9223372036854775808,"true":"distinct","unsigned":18446744073709551615,"yes":"on"}`, string(encoded))
 }
 
-func TestRenderRuntimePatchesStringsAndIsolation(t *testing.T) {
+func TestRenderRuntimePatches_stringsAndIsolation(t *testing.T) {
 	source := `---
 host: '{{ globalConfig "fqdn" }}'
 prefixed: '1{{ globalConfig "fqdn" }}'
@@ -51,7 +51,7 @@ dotted: '{{ globalConfig "root.dot" }}'
 	}
 }
 
-func TestRenderRuntimePatchesLookupErrors(t *testing.T) {
+func TestRenderRuntimePatches_lookupErrors(t *testing.T) {
 	global := Values{"scalar": "value", "null": nil, "number": 14, "bool": false, "map": Values{"key": "value"}, "list": []any{"value"}}
 	for _, path := range []string{"missing", "missing/child", "scalar/child", "null", "number", "bool", "map", "list", "", "/scalar", "scalar/", "absent//child"} {
 		t.Run(path, func(t *testing.T) {
@@ -64,7 +64,7 @@ func TestRenderRuntimePatchesLookupErrors(t *testing.T) {
 	}
 }
 
-func TestRenderRuntimePatchesRejected(t *testing.T) {
+func TestRenderRuntimePatches_rejected(t *testing.T) {
 	for _, tt := range []struct {
 		name, source, errorContains string
 	}{
@@ -92,7 +92,7 @@ func TestRenderRuntimePatchesRejected(t *testing.T) {
 	}
 }
 
-func TestRenderRuntimePatches_UnsupportedFunctions(t *testing.T) {
+func TestRenderRuntimePatches_unsupportedFunctions(t *testing.T) {
 	for _, function := range []string{"quote", "default", "fail", "toYaml", "env", "include", "tpl", "lookup"} {
 		t.Run(function, func(t *testing.T) {
 			_, err := renderRuntimePatches([]byte("key: '{{ "+function+" \"x\" }}'"), nil)
@@ -102,7 +102,7 @@ func TestRenderRuntimePatches_UnsupportedFunctions(t *testing.T) {
 	}
 }
 
-func TestRenderRuntimePatchesCompatibility(t *testing.T) {
+func TestRenderRuntimePatches_compatibility(t *testing.T) {
 	t.Run("absent file is optional", func(t *testing.T) {
 		got, err := renderRuntimePatches(nil, nil)
 
