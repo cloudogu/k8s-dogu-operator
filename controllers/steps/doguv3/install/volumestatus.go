@@ -47,9 +47,15 @@ func (vss *VolumeStatusStep) Run(ctx context.Context, doguResource *v3beta1.Dogu
 		return stepsv3.RequeueWithError(fmt.Errorf("failed to discover workloads: %w", err), v3beta1.ReasonInstalling)
 	}
 
+	// find all mounted claims, even existing ones that the chart does not include
 	volumes, err := vss.discovery.Volumes(ctx, doguResource.Namespace, doguWorkloads)
 	if err != nil {
 		return stepsv3.RequeueWithError(fmt.Errorf("failed to discover volumes: %w", err), v3beta1.ReasonInstalling)
+	}
+	// add all claims of the currently deleted workloads, too
+	volumes, err = vss.addUnmountedVolumes(ctx, doguResource.Namespace, rendered, volumes)
+	if err != nil {
+		return stepsv3.RequeueWithError(err, v3beta1.ReasonInstalling)
 	}
 
 	previous := doguResource.Status.VolumeStatus
@@ -64,6 +70,28 @@ func (vss *VolumeStatusStep) Run(ctx context.Context, doguResource *v3beta1.Dogu
 	}
 
 	return waitForResize(statuses)
+}
+
+// addUnmountedVolumes adds the live claims the chart renders but no workload mounts, e.g. while a resize recreates their StatefulSet.
+func (vss *VolumeStatusStep) addUnmountedVolumes(ctx context.Context, namespace string, rendered []*unstructured.Unstructured, volumes []workloads.Volume) ([]workloads.Volume, error) {
+	claims := &corev1.PersistentVolumeClaimList{}
+	if err := vss.k8sClient.List(ctx, claims, client.InNamespace(namespace)); err != nil {
+		return nil, fmt.Errorf("failed to list PVCs in namespace %q: %w", namespace, err)
+	}
+	desiredSizes, err := pvc.DesiredSizes(rendered, namespace, claims.Items)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read desired volume sizes: %w", err)
+	}
+
+	for _, claim := range claims.Items {
+		_, isRendered := desiredSizes[client.ObjectKeyFromObject(&claim)]
+		isMounted := slices.ContainsFunc(volumes, func(volume workloads.Volume) bool { return volume.PVC.Name == claim.Name })
+		if isRendered && !isMounted {
+			volumes = append(volumes, workloads.Volume{PVC: claim})
+		}
+	}
+
+	return volumes, nil
 }
 
 func (vss *VolumeStatusStep) reportResizedVolumes(ctx context.Context, doguResource *v3beta1.Dogu, previous, statuses []v3beta1.VolumeStatus) {

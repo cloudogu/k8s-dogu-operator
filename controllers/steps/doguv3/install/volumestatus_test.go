@@ -147,6 +147,26 @@ func TestVolumeStatusStep_Run(t *testing.T) {
 			wantStatus: nil,
 		},
 		{
+			name: "keep reporting a rendered volume while its StatefulSet is recreated",
+			setup: func(t *testing.T) (*VolumeStatusStep, *v3beta1.Dogu) {
+				doguResource := testDoguResource.DeepCopy()
+				cs, as := mockChartRendering(t, doguResource, renderedChart(t), nil)
+				d := NewMockVolumeDiscovery(t)
+				// returns no workloads
+				d.EXPECT().Workloads(mock.Anything, testNamespace, testDoguName).Return(workloads.Workloads{}, nil)
+				d.EXPECT().Volumes(mock.Anything, testNamespace, workloads.Workloads{}).Return(nil, nil)
+				growing := volumePVC("db-nexus-0", "5Gi", "3Gi")
+				foreign := volumePVC("other", "1Gi", "1Gi")
+				k8sClient := fake.NewClientBuilder().WithScheme(testScheme).WithObjects(doguResource, &growing, &foreign).
+					WithStatusSubresource(&v3beta1.Dogu{}).Build()
+				return NewVolumeStatusStep(cs, as, d, k8sClient, record.NewFakeRecorder(10)), doguResource
+			},
+			want: doguv3.RequeueAfter(defaultRequeueAfter, v3beta1.ReasonResizingPVC, "waiting for volumes to reach their desired capacity: [db-nexus-0]; if the storage only expands unmounted volumes, turn on offline volume expansion"),
+			wantStatus: []v3beta1.VolumeStatus{
+				{ClaimName: "db-nexus-0", Size: resource.MustParse("3Gi"), DesiredSize: resource.MustParse("5Gi"), State: v3beta1.VolumeStatusStateResizing},
+			},
+		},
+		{
 			name: "skip the status update when the volume status is unchanged",
 			setup: func(t *testing.T) (*VolumeStatusStep, *v3beta1.Dogu) {
 				doguResource := testDoguResource.DeepCopy()

@@ -9,7 +9,6 @@ import (
 	"github.com/cloudogu/k8s-dogu-lib/v3/api/v3beta1"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv3"
 	"github.com/cloudogu/k8s-dogu-operator/v3/internal/dogu/pvc"
-	"github.com/cloudogu/k8s-dogu-operator/v3/internal/dogu/workloads"
 	flux "github.com/fluxcd/helm-controller/api/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -96,7 +95,8 @@ func prepareResizeStep(client client.Client, t *testing.T, doguResource *v3beta1
 	assembler := NewMockValueAssembler(t)
 	assembler.EXPECT().Assemble(mock.Anything, doguResource, []byte("meta")).Return(assembledValues, nil).Maybe()
 
-	return NewResizePVCStep(chartService, assembler, pvc.NewResizeChecker(client), workloads.NewDiscovery(client), client, client, record.NewFakeRecorder(10), true)
+	planner := NewVolumeResizePlanner(chartService, assembler, pvc.NewResizeChecker(client), client)
+	return NewResizePVCStep(planner, client, client, record.NewFakeRecorder(10), true)
 }
 
 func recordedEvents(step *ResizePVCStep) []string {
@@ -444,7 +444,7 @@ func TestResizePVCStep_Run(t *testing.T) {
 		rendered := toUnstructured(t, claimTemplateStatefulSet("postgres", "2Gi"))
 
 		step := prepareResizeStep(delRecClient.client, t, doguResource, rendered)
-		step.resizeChecker = pvc.NewResizeChecker(cache)
+		step.resizePlanner.resizeChecker = pvc.NewResizeChecker(cache)
 		result := step.Run(testCtx, doguResource)
 
 		assert.Equal(t, doguv3.Continue(), result)
