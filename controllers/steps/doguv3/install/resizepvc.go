@@ -20,7 +20,7 @@ import (
 // the workloads on the grown volumes.
 type ResizePVCStep struct {
 	resizePlanner    *VolumeResizePlanner
-	discovery        workloads.Discovery
+	discovery        VolumeDiscovery
 	detacher         *workloads.Detacher
 	k8sClient        K8sClient
 	eventRecorder    EventRecorder
@@ -61,8 +61,12 @@ func (rps *ResizePVCStep) resizeOnline(ctx context.Context, doguResource *v3beta
 		return stepsv3.Continue()
 	}
 
-	doguWorkloads, volumes, result := rps.growClaims(ctx, doguResource, plan)
-	if !result.Continue {
+	doguWorkloads, volumes, err := rps.discover(ctx, doguResource)
+	if err != nil {
+		return stepsv3.RequeueWithError(err, v3beta1.ReasonResizingPVC)
+	}
+
+	if result := rps.growClaims(ctx, doguResource, plan, volumes); !result.Continue {
 		return result
 	}
 
@@ -89,12 +93,9 @@ func (rps *ResizePVCStep) resizeOffline(ctx context.Context, doguResource *v3bet
 		return stepsv3.Abort(v3beta1.ReasonResizingPVC, fmt.Sprintf("cannot resize volumes owned by other objects than their StatefulSet, their deletion would lead to data loss: %v", foreignOwners))
 	}
 
-	var result stepsv3.StepResult
-	doguWorkloads, volumes, result = rps.growClaims(ctx, doguResource, plan)
-	if !result.Continue {
+	if result := rps.growClaims(ctx, doguResource, plan, volumes); !result.Continue {
 		return result
 	}
-
 	if result := rps.deleteWorkloads(ctx, doguResource, doguWorkloads, volumes, plan.Detach, plan.OutdatedStatefulSets); !result.Continue {
 		return result
 	}
@@ -134,54 +135,57 @@ func (rps *ResizePVCStep) deleteMountingPods(ctx context.Context, doguResource *
 }
 
 // growClaims grows and reports the volume claims. It aborts if the cluster rejects a claim, before any workload is deleted.
-func (rps *ResizePVCStep) growClaims(ctx context.Context, doguResource *v3beta1.Dogu, plan VolumeResizePlan) (workloads.Workloads, []workloads.Volume, stepsv3.StepResult) {
+func (rps *ResizePVCStep) growClaims(ctx context.Context, doguResource *v3beta1.Dogu, plan VolumeResizePlan, volumes []workloads.Volume) stepsv3.StepResult {
+	if len(plan.Grow) == 0 {
+		return stepsv3.Continue()
+	}
+
 	var rejectedClaims []string
 	var rejection error
 	for _, request := range plan.Grow {
-		err := rps.patchStorageRequest(ctx, doguResource, request)
+		grown, err := rps.patchStorageRequest(ctx, doguResource, request)
 		// Stop and report if resizing is not allowed
 		if apierrors.IsForbidden(err) || apierrors.IsInvalid(err) {
 			rejectedClaims, rejection = []string{request.PVC.Name}, err
 			break
 		}
 		if err != nil {
-			return workloads.Workloads{}, nil, stepsv3.RequeueWithError(err, v3beta1.ReasonResizingPVC)
+			return stepsv3.RequeueWithError(err, v3beta1.ReasonResizingPVC)
+		}
+		// update the claims, so the status shows the grown request without discovering again
+		for i := range volumes {
+			if volumes[i].PVC.Name == grown.Name {
+				volumes[i].PVC = *grown
+			}
 		}
 	}
 
-	doguWorkloads, volumes, err := rps.discover(ctx, doguResource)
-	if err != nil {
-		return workloads.Workloads{}, nil, stepsv3.RequeueWithError(err, v3beta1.ReasonResizingPVC)
-	}
-	// without new requests the workloads may be deleted, so the discovered volumes would wipe the status of a running resize
-	if len(plan.Grow) > 0 {
-		if _, err := updateVolumeStatus(ctx, rps.k8sClient, doguResource, plan.rendered, volumes, rejectedClaims); err != nil {
-			return workloads.Workloads{}, nil, stepsv3.RequeueWithError(err, v3beta1.ReasonResizingPVC)
-		}
+	if _, err := updateVolumeStatus(ctx, rps.k8sClient, doguResource, plan.rendered, volumes, rejectedClaims); err != nil {
+		return stepsv3.RequeueWithError(err, v3beta1.ReasonResizingPVC)
 	}
 	if rejection != nil {
-		return workloads.Workloads{}, nil, stepsv3.Abort(v3beta1.ReasonResizingPVC, rejection.Error())
+		return stepsv3.Abort(v3beta1.ReasonResizingPVC, rejection.Error())
 	}
 
-	return doguWorkloads, volumes, stepsv3.Continue()
+	return stepsv3.Continue()
 }
 
-func (rps *ResizePVCStep) patchStorageRequest(ctx context.Context, doguResource *v3beta1.Dogu, request pvc.ResizeRequest) error {
+func (rps *ResizePVCStep) patchStorageRequest(ctx context.Context, doguResource *v3beta1.Dogu, request pvc.ResizeRequest) (*corev1.PersistentVolumeClaim, error) {
 	claim := &corev1.PersistentVolumeClaim{}
 	if err := rps.k8sClient.Get(ctx, request.PVC, claim); err != nil {
-		return fmt.Errorf("failed to get PVC %q: %w", request.PVC, err)
+		return nil, fmt.Errorf("failed to get PVC %q: %w", request.PVC, err)
 	}
 
 	current := claim.Spec.Resources.Requests.Storage().String()
 	patch := client.MergeFrom(claim.DeepCopy())
 	claim.Spec.Resources.Requests[corev1.ResourceStorage] = request.Desired.DeepCopy()
 	if err := rps.k8sClient.Patch(ctx, claim, patch); err != nil {
-		return fmt.Errorf("failed to grow PVC %q to %s: %w", request.PVC, request.Desired.String(), err)
+		return nil, fmt.Errorf("failed to grow PVC %q to %s: %w", request.PVC, request.Desired.String(), err)
 	}
 
 	logging.Info(ctx, "growing volume", "pvc", claim.Name, "from", current, "to", request.Desired.String())
 	rps.eventRecorder.Event(doguResource, corev1.EventTypeNormal, v3beta1.ReasonResizingPVC, fmt.Sprintf("Growing volume %s from %s to %s", claim.Name, current, request.Desired.String()))
-	return nil
+	return claim, nil
 }
 
 func (rps *ResizePVCStep) discover(ctx context.Context, doguResource *v3beta1.Dogu) (workloads.Workloads, []workloads.Volume, error) {

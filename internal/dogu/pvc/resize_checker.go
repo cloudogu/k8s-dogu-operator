@@ -236,17 +236,18 @@ func checkLivePVC(desired desiredClaim, livePVC *corev1.PersistentVolumeClaim) (
 func resizeInProgress(desired resource.Quantity, pvc *corev1.PersistentVolumeClaim) bool {
 	requested, found := pvc.Spec.Resources.Requests[corev1.ResourceStorage]
 	if !found || requested.Cmp(desired) > 0 || pvc.Status.Phase != corev1.ClaimBound ||
-		hasTrueCondition(pvc, corev1.PersistentVolumeClaimControllerResizeError, corev1.PersistentVolumeClaimNodeResizeError) {
+		HasTrueCondition(pvc, corev1.PersistentVolumeClaimControllerResizeError, corev1.PersistentVolumeClaimNodeResizeError) {
 		return false
 	}
 
 	capacity, found := pvc.Status.Capacity[corev1.ResourceStorage]
 	return found && capacity.Cmp(requested) < 0 ||
 		pvc.Status.AllocatedResourceStatuses[corev1.ResourceStorage] != "" ||
-		hasTrueCondition(pvc, corev1.PersistentVolumeClaimResizing, corev1.PersistentVolumeClaimFileSystemResizePending)
+		HasTrueCondition(pvc, corev1.PersistentVolumeClaimResizing, corev1.PersistentVolumeClaimFileSystemResizePending)
 }
 
-func hasTrueCondition(pvc *corev1.PersistentVolumeClaim, conditionTypes ...corev1.PersistentVolumeClaimConditionType) bool {
+// HasTrueCondition reports whether any of the given conditions is true on the PVC.
+func HasTrueCondition(pvc *corev1.PersistentVolumeClaim, conditionTypes ...corev1.PersistentVolumeClaimConditionType) bool {
 	for _, condition := range pvc.Status.Conditions {
 		if condition.Status == corev1.ConditionTrue && slices.Contains(conditionTypes, condition.Type) {
 			return true

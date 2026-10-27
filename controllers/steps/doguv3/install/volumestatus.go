@@ -193,24 +193,14 @@ func renderChart(ctx context.Context, chartService ChartService, assembler Value
 }
 
 func volumeState(claim *corev1.PersistentVolumeClaim) v3beta1.VolumeStatusState {
-	if hasTrueCondition(claim, corev1.PersistentVolumeClaimControllerResizeError, corev1.PersistentVolumeClaimNodeResizeError) {
+	if pvc.HasTrueCondition(claim, corev1.PersistentVolumeClaimControllerResizeError, corev1.PersistentVolumeClaimNodeResizeError) {
 		return v3beta1.VolumeStatusStateResizeFailed
 	}
 
 	if claim.Spec.Resources.Requests.Storage().Cmp(*claim.Status.Capacity.Storage()) > 0 ||
-		hasTrueCondition(claim, corev1.PersistentVolumeClaimResizing, corev1.PersistentVolumeClaimFileSystemResizePending) {
+		pvc.HasTrueCondition(claim, corev1.PersistentVolumeClaimResizing, corev1.PersistentVolumeClaimFileSystemResizePending) {
 		return v3beta1.VolumeStatusStateResizing
 	}
 
 	return v3beta1.VolumeStatusStateReady
-}
-
-func hasTrueCondition(claim *corev1.PersistentVolumeClaim, conditionTypes ...corev1.PersistentVolumeClaimConditionType) bool {
-	for _, condition := range claim.Status.Conditions {
-		if condition.Status == corev1.ConditionTrue && slices.Contains(conditionTypes, condition.Type) {
-			return true
-		}
-	}
-
-	return false
 }
