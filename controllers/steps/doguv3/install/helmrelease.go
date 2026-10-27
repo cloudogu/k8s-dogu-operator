@@ -44,6 +44,9 @@ func NewEnsureHelmReleaseStep(k8sClient K8sClient, operatorConfig *config.Operat
 }
 
 func (ehr *EnsureHelmReleaseStep) Run(ctx context.Context, doguResource *doguv3.Dogu) stepsv3.StepResult {
+	if doguResource.Spec.PauseReconciliation {
+		return stepsv3.Continue()
+	}
 	combinedValues, err := combineValues(ctx, doguResource, ehr.chartService, ehr.assembler)
 	if err != nil {
 		return stepsv3.RequeueWithError(fmt.Errorf("failed to prepare HelmRelease values for dogu %s/%s: %w", doguResource.Namespace, doguResource.Name, err), doguv3.ReasonInstalling)

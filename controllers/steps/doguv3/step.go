@@ -21,6 +21,8 @@ const (
 // Any means for cluster or any other service access must be provided during the step creation.
 type Step interface {
 	// Run executes the step and returns a StepResult indicating any errors and whether a follow-up requeue is in order to continue the reconcilication.
+	// Install/change steps skip regular resource writes during pause and continue
+	// so source and release checks can still report pending changes.
 	Run(ctx context.Context, resource *v3beta1.Dogu) StepResult
 }
 

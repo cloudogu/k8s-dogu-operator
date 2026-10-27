@@ -25,6 +25,7 @@ import (
 	apiext "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	kubernetesfake "k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -124,7 +125,7 @@ data:
 		Templates: []*helmchart.File{{Name: "templates/configmap.yaml", Data: []byte(subchartTemplate)}},
 	})
 	archive := saveTestChartToArchive(t, chart)
-	service := charts.NewService(archive, &rest.Config{}, chartutil.DefaultCapabilities, flux.NewHelmReleaseReader(cl))
+	service := charts.NewService(archive, &rest.Config{}, chartutil.DefaultCapabilities, flux.NewHelmReleaseReader(cl, kubernetesfake.NewClientset()))
 	step := NewEnsureHelmReleaseStep(cl, &config.OperatorConfig{
 		DoguHelmRetryInterval: time.Minute, DoguHelmReconciliationInterval: time.Minute,
 	}, service, values.NewAssembler(cl), record.NewFakeRecorder(10))
@@ -301,7 +302,7 @@ data:
 		Templates: []*helmchart.File{{Name: "templates/configmap.yaml", Data: []byte(template)}},
 	}
 	archive := saveTestChartToArchive(t, chart)
-	service := charts.NewService(archive, &rest.Config{}, chartutil.DefaultCapabilities, flux.NewHelmReleaseReader(cl))
+	service := charts.NewService(archive, &rest.Config{}, chartutil.DefaultCapabilities, flux.NewHelmReleaseReader(cl, kubernetesfake.NewClientset()))
 
 	// Validate and render exact JSON numbers beyond float64's integer precision, including uint64's limit.
 	for _, integer := range []string{"9007199254740993", "-9223372036854775808", "18446744073709551615"} {
