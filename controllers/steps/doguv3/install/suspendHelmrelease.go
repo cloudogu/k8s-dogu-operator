@@ -27,12 +27,12 @@ const (
 type SuspendHelmReleaseStep struct {
 	k8sClient     K8sClient
 	eventRecorder EventRecorder
-	chartService  ChartService
-	assembler     ValueAssembler
+	chartService  chartService
+	assembler     valueAssembler
 	resizeChecker ResizeChecker
 }
 
-func NewSuspendHelmReleaseStep(k8sClient K8sClient, chartService ChartService, assembler ValueAssembler, resizeChecker ResizeChecker, recorder EventRecorder) *SuspendHelmReleaseStep {
+func NewSuspendHelmReleaseStep(k8sClient K8sClient, chartService chartService, assembler valueAssembler, resizeChecker ResizeChecker, recorder EventRecorder) *SuspendHelmReleaseStep {
 	return &SuspendHelmReleaseStep{
 		k8sClient:     k8sClient,
 		eventRecorder: recorder,

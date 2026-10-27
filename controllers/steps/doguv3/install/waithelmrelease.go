@@ -25,8 +25,8 @@ const longWaitRequeueAfter = 5 * time.Minute
 type HelmReleaseStatusStep struct {
 	k8sClient             K8sClient
 	eventRecorder         EventRecorder
-	chartService          ChartService
-	assembler             ValueAssembler
+	chartService          chartService
+	assembler             valueAssembler
 	releaseReader         *fluxstate.HelmReleaseReader
 	helmReconcileInterval metav1.Duration
 	retryInterval         metav1.Duration
@@ -34,8 +34,8 @@ type HelmReleaseStatusStep struct {
 
 func NewHelmReleaseStatusStep(
 	k8sClient K8sClient,
-	chartService ChartService,
-	assembler ValueAssembler,
+	chartService chartService,
+	assembler valueAssembler,
 	operatorConfig *config.OperatorConfig,
 	releaseReader *fluxstate.HelmReleaseReader,
 	recorder EventRecorder,

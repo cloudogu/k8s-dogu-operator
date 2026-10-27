@@ -40,10 +40,17 @@ func (lifecycleRegistry) Get(_ context.Context, id doguv3.Identifier) (*doguv3.D
 	return &doguv3.Dogu{Chart: "oci://registry.example/scm", Version: id.Version}, nil
 }
 
-type lifecycleChart struct{ metaError error }
+type lifecycleChart struct {
+	metaError            error
+	runtimePatchTemplate []byte
+}
 
 func (c *lifecycleChart) DoguMetaValues(context.Context, *v3beta1.Dogu) ([]byte, bool, error) {
 	return nil, false, c.metaError
+}
+
+func (c *lifecycleChart) RuntimePatchTemplate(context.Context, *v3beta1.Dogu) ([]byte, bool, error) {
+	return c.runtimePatchTemplate, c.runtimePatchTemplate != nil, nil
 }
 
 func (*lifecycleChart) ValidateValues(context.Context, *v3beta1.Dogu, map[string]any) error {
@@ -394,7 +401,9 @@ func TestV3MissingStoredRevisionDoesNotClearPending(t *testing.T) {
 
 func TestV3GlobalValuesChangeWithoutNewGeneration(t *testing.T) {
 	f := newLifecycleFixture(t)
+	f.chart.runtimePatchTemplate = []byte(`runtimeHost: '{{ globalConfig "fqdn" }}'`)
 	f.stop(t)
+	assert.Equal(t, "ces.example", f.release.GetValues()["runtimeHost"])
 	f.recordDeployment(t)
 	meta.SetStatusCondition(&f.dogu.Status.Conditions, metav1.Condition{
 		Type: v3beta1.ConditionUpdatePending, Status: metav1.ConditionFalse,
@@ -409,4 +418,7 @@ func TestV3GlobalValuesChangeWithoutNewGeneration(t *testing.T) {
 	require.NoError(t, err)
 	assert.True(t, meta.IsStatusConditionTrue(f.dogu.Status.Conditions, v3beta1.ConditionUpdatePending))
 	assert.Equal(t, int64(2), f.dogu.Generation)
+	require.NoError(t, f.k8s.Get(t.Context(), client.ObjectKeyFromObject(f.release), f.release))
+	assert.Equal(t, "changed.example", f.release.GetValues()["runtimeHost"])
+	assert.True(t, f.release.Spec.Suspend, "runtime updates must not resume a stopped dogu")
 }

@@ -369,14 +369,15 @@ metadata:
 				require.NoError(t, storage.Init(driver.NewSecrets(helmClient.CoreV1().Secrets(dogu.Namespace))).Create(storedRelease))
 			}
 
-			chartService := NewMockChartService(t)
-			assembler := NewMockValueAssembler(t)
+			chartService := newMockChartService(t)
+			assembler := newMockValueAssembler(t)
 			var metadataError error
 			if tt.metadataError {
 				metadataError = assert.AnError
 			}
 			chartService.EXPECT().DoguMetaValues(mock.Anything, mock.Anything).Return(nil, false, metadataError).Maybe()
-			assembler.EXPECT().Assemble(mock.Anything, mock.Anything, mock.Anything).Return(values.Values{"replicas": 2}, nil).Maybe()
+			chartService.EXPECT().RuntimePatchTemplate(mock.Anything, mock.Anything).Return(nil, false, nil).Maybe()
+			assembler.EXPECT().Assemble(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(values.Values{"replicas": 2}, nil).Maybe()
 			step := NewHelmReleaseStatusStep(k8sClient, chartService, assembler, &config.OperatorConfig{},
 				fluxstate.NewHelmReleaseReader(k8sClient, helmClient), NewMockEventRecorder(t))
 
