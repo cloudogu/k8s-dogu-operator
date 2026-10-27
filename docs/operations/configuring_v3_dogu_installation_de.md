@@ -24,3 +24,19 @@ wie die Helm-Installation gehandhabt wird:
 
 Beide Intervalle werden als Zahl mit einer Zeiteinheit angegeben, z. B. „20s“ (für 20 Sekunden), „2m“ (für 2 Minuten)
 oder „1h“ (für 1 Stunde). Kombinationen wie „1h20m“ (für 1 Stunde und 20 Minuten) sind ebenfalls möglich.
+
+## Stoppen und Starten
+
+Mit `spec.stopped: true` an der Dogu-Ressource werden die Workloads gestoppt. Der Operator wartet auf die Suspendierung
+des HelmRelease, skaliert Deployments und StatefulSets auf null und wartet, bis deren Pods verschwunden sind.
+StatefulSet-PVCs bleiben erhalten. `status.stopped: true` bestätigt den abgeschlossenen Stopp.
+
+Im gestoppten Zustand aktualisiert der Operator weiterhin Chart-Quellen und HelmRelease-Eingaben; Flux wendet diese
+während der Suspendierung nicht an. Mit `spec.stopped: false` wird das Dogu wieder gestartet. Der Stoppstatus wird
+nach erfolgreichem Deployment und erfolgreicher Health-Prüfung zurückgesetzt.
+
+`spec.pauseReconciliation: true` hat Vorrang vor Start und Stopp: Reguläre Ressourcenänderungen werden übersprungen,
+die Prüfungen von Quelle und Release können aber weiterhin `UpdatePending=True` setzen. Ein True für die aktuelle
+Generation bleibt während Pause oder Stopp erhalten. Eine ältere Condition wird erst zurückgesetzt, wenn alle
+relevanten Prüfungen ohne ausstehende Änderungen abgeschlossen sind. Eine unvollständige Prüfung lässt die Condition
+unverändert und wird wiederholt.
