@@ -4,11 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 
 	"github.com/cloudogu/k8s-dogu-lib/v3/api/v3beta1"
 	"github.com/cloudogu/k8s-dogu-operator/v3/internal/logging"
 	"gopkg.in/yaml.v3"
-	"helm.sh/helm/v3/pkg/chartutil"
 	"helm.sh/helm/v3/pkg/strvals"
 	coreV1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -38,6 +38,8 @@ type MetadataMapping struct {
 
 type Values = map[string]any
 
+// Assembler combines values in increasing precedence: global.cesConfig, runtime patches,
+// spec.values, spec.mappedValues. Helm applies the chart defaults separately.
 type Assembler struct {
 	k8s client.Client
 }
@@ -47,7 +49,9 @@ func NewAssembler(k8s client.Client) *Assembler {
 	return &Assembler{k8s: k8s}
 }
 
-func (a Assembler) Assemble(ctx context.Context, cr *v3beta1.Dogu, valuesMeta []byte) (Values, error) {
+// Assemble reads global configuration once, renders the optional runtime patch template and
+// merges the value sources. A nil runtimePatchTemplate means the file is absent.
+func (a Assembler) Assemble(ctx context.Context, cr *v3beta1.Dogu, valuesMeta, runtimePatchTemplate []byte) (Values, error) {
 	crValues, err := getDoguCRValues(cr)
 	if err != nil {
 		return nil, fmt.Errorf("failed to dogu spec values: %w", err)
@@ -63,11 +67,27 @@ func (a Assembler) Assemble(ctx context.Context, cr *v3beta1.Dogu, valuesMeta []
 		return nil, fmt.Errorf("failed to get values from global config: %w", err)
 	}
 
+	runtimeValues, err := renderRuntimePatches(runtimePatchTemplate, globalConfigValues)
+	if err != nil {
+		return nil, fmt.Errorf("failed to render %s: %w", RuntimePatchTemplateFileName, err)
+	}
+
 	// Place global config under global.cesConfig.
 	nestedGlobalConfig := Values{"global": Values{"cesConfig": globalConfigValues}}
 
-	// Merge order sets (later wins): global config < dogu CR values < mapped meta values.
-	finalValues := mergeValues(nestedGlobalConfig, crValues, doguMetaValues)
+	// Later sources win: global config < runtime patches < CR values < mapped values.
+	finalValues := make(Values)
+	for _, source := range []struct {
+		name   string
+		values Values
+	}{
+		{"global.cesConfig", nestedGlobalConfig},
+		{"runtimePatches", runtimeValues},
+		{"spec.values", crValues},
+		{"spec.mappedValues", doguMetaValues},
+	} {
+		finalValues = mergeValues(ctx, finalValues, source.values, source.name, "")
+	}
 
 	return finalValues, nil
 }
@@ -81,7 +101,7 @@ func getDoguCRValues(cr *v3beta1.Dogu) (Values, error) {
 	return doguCRValues, nil
 }
 
-func getDoguMetaValues(ctx context.Context, cr *v3beta1.Dogu, patchTpl []byte) (Values, error) {
+func getDoguMetaValues(ctx context.Context, cr *v3beta1.Dogu, valuesMeta []byte) (Values, error) {
 	mappedValues := make(Values)
 
 	if len(cr.Spec.MappedValues) == 0 {
@@ -89,7 +109,7 @@ func getDoguMetaValues(ctx context.Context, cr *v3beta1.Dogu, patchTpl []byte) (
 	}
 
 	var mappings MetadataMapping
-	if mErr := yaml.Unmarshal(patchTpl, &mappings); mErr != nil {
+	if mErr := yaml.Unmarshal(valuesMeta, &mappings); mErr != nil {
 		return nil, fmt.Errorf("failed to unmarshal mapping meta data: %w", mErr)
 	}
 
@@ -147,16 +167,34 @@ func getGlobalConfigValues(ctx context.Context, cr *v3beta1.Dogu, s client.Clien
 	return globalCfgValues, nil
 }
 
-// mergeValues merges maps in order. Later Values override earlier Values.
-func mergeValues(values ...Values) Values {
-	mergedValues := make(Values)
+// mergeValues merges higher-priority values into a copy of lower-priority values.
+// Maps merge recursively; lists and scalars replace earlier values. A YAML null (Go nil)
+// removes an existing non-nil value, but is retained when the key was absent or already nil.
+// Only paths and the source name are logged: Helm's merge warnings can expose config contents.
+func mergeValues(ctx context.Context, lower, higher Values, source, prefix string) Values {
+	mergedValues := maps.Clone(lower)
+	if mergedValues == nil {
+		mergedValues = make(Values)
+	}
 
-	for _, vMap := range values {
-		if vMap == nil {
+	for key, value := range higher {
+		previous, exists := mergedValues[key]
+		path := prefix + key
+		lowerMap, lowerIsMap := previous.(Values)
+		higherMap, higherIsMap := value.(Values)
+		if lowerIsMap && higherIsMap {
+			mergedValues[key] = mergeValues(ctx, lowerMap, higherMap, source, path+".")
 			continue
 		}
-		// Merge current map on top of accumulated result
-		mergedValues = chartutil.CoalesceTables(vMap, mergedValues)
+
+		if exists {
+			logging.Info(ctx, "Values overlap; higher-priority source wins", "path", path, "source", source)
+		}
+		if value == nil && exists && previous != nil {
+			delete(mergedValues, key)
+		} else {
+			mergedValues[key] = value
+		}
 	}
 
 	return mergedValues

@@ -35,6 +35,10 @@ func NewWaitForOCIRepositoryReadyStep(k8sClient K8sClient, recorder EventRecorde
 // Run checks the ready condition of the previously created flux OCIRepository.
 // If it is ready, the step continues, and if not, the step reconciles the dogu resource.
 func (wor *WaitForOCIRepositoryReadyStep) Run(ctx context.Context, doguResource *v3beta1.Dogu) stepsv3.StepResult {
+	if doguResource.Spec.PauseReconciliation {
+		logging.Debug(ctx, "Skipping WaitForOCIRepositoryReadyStep because pausedReconciliation is set for dogu", "dogu", doguResource.Name)
+		return stepsv3.Continue()
+	}
 	repo := &flux.OCIRepository{}
 	err := wor.k8sClient.Get(ctx, client.ObjectKey{Namespace: doguResource.Namespace, Name: doguResource.Spec.Name}, repo)
 	// cache lag

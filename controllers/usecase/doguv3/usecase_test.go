@@ -58,17 +58,21 @@ func TestNewDoguInstallOrChangeUseCase(t *testing.T) {
 	ensureOCIStep := &install.EnsureOCIRepositoryStep{}
 	waitOCIStep := &install.WaitForOCIRepositoryReadyStep{}
 	validateChartStep := &install.ValidateChartStep{}
+	suspendStep := &install.SuspendHelmReleaseStep{}
 	helmReleaseStep := &install.EnsureHelmReleaseStep{}
 	helmReleaseStatusStep := &install.HelmReleaseStatusStep{}
 	exportModeStep := &install.ExportModeStep{}
+	updatePendingStep := &install.UpdatePendingStep{}
 
 	got := NewDoguInstallOrChangeUseCase(
 		finalizerStep,
 		ensureOCIStep,
 		waitOCIStep,
 		validateChartStep,
+		suspendStep,
 		helmReleaseStep,
 		helmReleaseStatusStep,
+		updatePendingStep,
 		exportModeStep,
 		clientMock,
 		recorderMock,
@@ -80,8 +84,11 @@ func TestNewDoguInstallOrChangeUseCase(t *testing.T) {
 		"*install.EnsureOCIRepositoryStep",
 		"*install.WaitForOCIRepositoryReadyStep",
 		"*install.ValidateChartStep",
+		"*install.SuspendHelmReleaseStep",
+		"*install.StopWorkloadsStep",
 		"*install.EnsureHelmReleaseStep",
 		"*install.HelmReleaseStatusStep",
+		"*install.UpdatePendingStep",
 	}
 
 	assert.NotNil(t, got)
@@ -209,10 +216,12 @@ func TestDoguUseCase_HandleUntilApplied(t *testing.T) {
 			},
 		},
 		{
-			name: "should finish without success condition or event when the dogu is being deleted",
+			name: "should finish deletion even when the dogu is paused and stopped",
 			setup: func(t *testing.T) (K8sClient, EventRecorder, *v3beta1.Dogu, []Step) {
 				successStepResult := doguv3.StepResult{Continue: true}
 				doguResource := testDoguResource.DeepCopy()
+				doguResource.Spec.PauseReconciliation = true
+				doguResource.Spec.Stopped = true
 				now := metav1.Now()
 				doguResource.DeletionTimestamp = &now
 				// The fake client only accepts an object carrying a deletion timestamp if it has a finalizer.

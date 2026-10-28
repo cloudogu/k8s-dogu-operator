@@ -35,6 +35,7 @@ rules:
       - get
       - watch
       - patch
+      - update
       - delete
   - apiGroups:
       - "helm.toolkit.fluxcd.io"
@@ -56,6 +57,24 @@ rules:
       - list
       - watch
       - patch
+  # dogu v3: follow Deployment Pod ownership and wait for stopped Pods to disappear.
+  - apiGroups:
+      - apps
+    resources:
+      - replicasets
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - ""
+    resources:
+      - pods
+      - persistentvolumeclaims
+    verbs:
+      - get
+      - list
+      - watch
   # dogu v3: read the v2 sensitive config and manage the migration secret
   # patch is needed to apply the migration secret via server-side apply
   - apiGroups:

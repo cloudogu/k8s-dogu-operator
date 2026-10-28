@@ -64,8 +64,10 @@ func NewDoguInstallOrChangeUseCase(
 	ociStep *install.EnsureOCIRepositoryStep,
 	waitOCIStep *install.WaitForOCIRepositoryReadyStep,
 	validateChartStep *install.ValidateChartStep,
+	suspendHelmReleaseStep *install.SuspendHelmReleaseStep,
 	helmReleaseStep *install.EnsureHelmReleaseStep,
 	helmReleaseStatusStep *install.HelmReleaseStatusStep,
+	updatePendingStep *install.UpdatePendingStep,
 	exportModeStep *install.ExportModeStep,
 	client K8sClient, recorder EventRecorder) *DoguUseCase {
 	return &DoguUseCase{
@@ -81,8 +83,11 @@ func NewDoguInstallOrChangeUseCase(
 			ociStep,
 			waitOCIStep,
 			validateChartStep,
+			suspendHelmReleaseStep,
+			install.NewStopWorkloadsStep(client),
 			helmReleaseStep,
 			helmReleaseStatusStep,
+			updatePendingStep,
 		},
 		k8sClient:     client,
 		eventRecorder: recorder,
@@ -135,6 +140,7 @@ func (duc *DoguUseCase) HandleUntilApplied(ctx context.Context, doguResource *v3
 
 		// Abort, requeue or error
 		if !result.Continue {
+			logging.Debug(stepCtx, "Stopping step execution and requeue", "dogu", doguResource.Name)
 			return duc.stopStepExecution(ctx, doguResource, result)
 		}
 	}
@@ -146,8 +152,34 @@ func (duc *DoguUseCase) HandleUntilApplied(ctx context.Context, doguResource *v3
 		return 0, nil
 	}
 
+	// Paused steps may continue after read-only checks; that does not confirm a start.
+	if doguResource.Spec.PauseReconciliation {
+		return duc.stopStepExecution(ctx, doguResource, v3.Abort(v3beta1.ReasonReconciliationPaused, "Dogu reconciliation is paused"))
+	}
+	// A completed start also clears progress from a cancelled stop.
+	stoppedCondition := meta.FindStatusCondition(doguResource.Status.Conditions, v3beta1.ConditionStopped)
+	if !doguResource.Spec.Stopped && (doguResource.Status.Stopped || stoppedCondition != nil) {
+		stoppedChanged := doguResource.Status.Stopped
+		doguResource.Status.Stopped = false
+		conditionChanged := meta.SetStatusCondition(&doguResource.Status.Conditions, metav1.Condition{
+			Type: v3beta1.ConditionStopped, Status: metav1.ConditionFalse,
+			Reason: v3beta1.ReasonNotStopped, Message: "Dogu workloads are running", ObservedGeneration: doguResource.Generation,
+		})
+		if stoppedChanged || conditionChanged {
+			if err := duc.k8sClient.Status().Update(ctx, doguResource); err != nil {
+				if apierrors.IsConflict(err) {
+					return 5 * time.Second, nil
+				}
+				return 0, fmt.Errorf("failed to clear dogu stop status: %w", err)
+			}
+		}
+	}
+
 	// success
 	successMessage := "Dogu reconciliation completed successfully"
+	if doguResource.Spec.Stopped {
+		successMessage = "Dogu workloads are stopped; the desired HelmRelease is prepared"
+	}
 	err := duc.updateReadyCondition(ctx, doguResource, metav1.ConditionTrue, v3beta1.ReasonSucceeded, successMessage)
 	if err != nil {
 		if apierrors.IsConflict(err) {
@@ -182,7 +214,7 @@ func (duc *DoguUseCase) stopStepExecution(ctx context.Context, doguResource *v3b
 		return result.RequeueAfter, errors.Join(result.Err, err)
 	}
 	// Only send events on abort and do not send events on requeues because this would flood the apiserver.
-	if result.Err == nil && result.RequeueAfter == 0 {
+	if result.Err == nil && result.RequeueAfter == 0 && reason != v3beta1.ReasonReconciliationPaused {
 		logging.Error(ctx, errors.New(result.ReadyMessage), "dogu reconciliation aborted")
 		duc.eventRecorder.Event(doguResource, coreV1.EventTypeWarning, result.ReadyReason, result.ReadyMessage)
 	}

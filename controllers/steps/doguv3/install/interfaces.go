@@ -6,6 +6,7 @@ import (
 	"github.com/cloudogu/dogu-lib/doguv3"
 	"github.com/cloudogu/k8s-dogu-lib/v3/api/v3beta1"
 	doguv3steps "github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv3"
+	"github.com/cloudogu/k8s-dogu-operator/v3/internal/dogu/pvc"
 	"github.com/cloudogu/k8s-dogu-operator/v3/internal/dogu/values"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -16,14 +17,19 @@ type DoguRegistryReader interface {
 	Get(ctx context.Context, doguIdentifier doguv3.Identifier) (*doguv3.Dogu, error)
 }
 
-type ChartService interface {
+type chartService interface {
 	DoguMetaValues(ctx context.Context, doguResource *v3beta1.Dogu) ([]byte, bool, error)
+	RuntimePatchTemplate(ctx context.Context, doguResource *v3beta1.Dogu) ([]byte, bool, error)
 	ValidateValues(ctx context.Context, doguResource *v3beta1.Dogu, values map[string]any) error
 	Render(ctx context.Context, doguResource *v3beta1.Dogu, values map[string]any) ([]*unstructured.Unstructured, error)
 }
 
-type ValueAssembler interface {
-	Assemble(ctx context.Context, cr *v3beta1.Dogu, valuesMeta []byte) (values.Values, error)
+type valueAssembler interface {
+	Assemble(ctx context.Context, cr *v3beta1.Dogu, valuesMeta, runtimePatchTemplate []byte) (values.Values, error)
+}
+
+type ResizeChecker interface {
+	Check(ctx context.Context, targetNamespace string, renderedObjects []*unstructured.Unstructured) (pvc.CheckResult, error)
 }
 
 type K8sClient interface {
