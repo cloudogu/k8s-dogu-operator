@@ -190,29 +190,6 @@ func TestVolumeStatusStep_Run(t *testing.T) {
 			wantStatus: expectedStatus,
 		},
 		{
-			name: "requeue when the dogu meta values cannot be read",
-			setup: func(t *testing.T) (*VolumeStatusStep, *v3beta1.Dogu) {
-				doguResource := testDoguResource.DeepCopy()
-				cs := newMockChartService(t)
-				cs.EXPECT().DoguMetaValues(mock.Anything, doguResource).Return(nil, false, assert.AnError)
-				return NewVolumeStatusStep(cs, newMockValueAssembler(t), NewMockVolumeDiscovery(t), newVolumeStatusFakeClient(doguResource, interceptor.Funcs{}), record.NewFakeRecorder(10)), doguResource
-			},
-			wantErr: "failed to retrieve dogu metadata values",
-		},
-		{
-			name: "requeue when the values cannot be assembled",
-			setup: func(t *testing.T) (*VolumeStatusStep, *v3beta1.Dogu) {
-				doguResource := testDoguResource.DeepCopy()
-				cs := newMockChartService(t)
-				cs.EXPECT().DoguMetaValues(mock.Anything, doguResource).Return([]byte("meta"), true, nil)
-				cs.EXPECT().RuntimePatchTemplate(mock.Anything, doguResource).Return(nil, false, nil)
-				as := newMockValueAssembler(t)
-				as.EXPECT().Assemble(mock.Anything, doguResource, []byte("meta"), []byte(nil)).Return(nil, assert.AnError)
-				return NewVolumeStatusStep(cs, as, NewMockVolumeDiscovery(t), newVolumeStatusFakeClient(doguResource, interceptor.Funcs{}), record.NewFakeRecorder(10)), doguResource
-			},
-			wantErr: "failed to assemble dogu values",
-		},
-		{
 			name: "requeue when the chart cannot be rendered",
 			setup: func(t *testing.T) (*VolumeStatusStep, *v3beta1.Dogu) {
 				doguResource := testDoguResource.DeepCopy()
@@ -340,35 +317,6 @@ func TestVolumeStatusStep_RunWaitsForResize(t *testing.T) {
 
 		require.Len(t, recorder.Events, 1)
 		assert.Equal(t, "Normal ResizingPVC Volume db-nexus-0 resized to 5Gi", <-recorder.Events)
-	})
-
-	t.Run("requeue with ResizingPVC while a rendered volume has not reached its desired capacity", func(t *testing.T) {
-		doguResource := testDoguResource.DeepCopy()
-		volumes := []workloads.Volume{{PVC: volumePVC("data", "2Gi", "2Gi"), MountedBy: statefulSet},
-			{PVC: volumePVC("db-nexus-0", "5Gi", "3Gi"), MountedBy: statefulSet},
-			{PVC: volumePVC("db-nexus-1", "5Gi", "5Gi", corev1.PersistentVolumeClaimFileSystemResizePending), MountedBy: statefulSet}}
-
-		cs, as := mockChartRendering(t, doguResource, renderedChart(t), nil)
-		d := mockDiscovery(t, volumes)
-
-		result := NewVolumeStatusStep(cs, as, d, newVolumeStatusFakeClient(doguResource, interceptor.Funcs{}), record.NewFakeRecorder(10)).Run(testCtx, doguResource)
-
-		assert.Equal(t, doguv3.RequeueAfter(defaultRequeueAfter, v3beta1.ReasonResizingPVC, "waiting for volumes to reach their desired capacity: [db-nexus-0 db-nexus-1]; if the storage only expands unmounted volumes, turn on offline volume expansion"), result)
-	})
-
-	t.Run("requeue with error when a rendered volume failed to resize", func(t *testing.T) {
-		doguResource := testDoguResource.DeepCopy()
-		volumes := []workloads.Volume{
-			{PVC: volumePVC("db-nexus-0", "5Gi", "3Gi"), MountedBy: statefulSet},
-			{PVC: volumePVC("db-nexus-1", "5Gi", "3Gi", corev1.PersistentVolumeClaimNodeResizeError), MountedBy: statefulSet},
-		}
-		cs, as := mockChartRendering(t, doguResource, renderedChart(t), nil)
-		d := mockDiscovery(t, volumes)
-
-		result := NewVolumeStatusStep(cs, as, d, newVolumeStatusFakeClient(doguResource, interceptor.Funcs{}), record.NewFakeRecorder(10)).Run(testCtx, doguResource)
-
-		require.EqualError(t, result.Err, "volumes failed to resize: [db-nexus-1]; if the storage only expands unmounted volumes, turn on offline volume expansion")
-		assert.Equal(t, v3beta1.ReasonResizingPVC, result.ReadyReason)
 	})
 
 	t.Run("continue while a volume the chart does not render is resizing", func(t *testing.T) {

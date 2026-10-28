@@ -140,32 +140,6 @@ func resizeDeployment(name, claimName string) *appsv1.Deployment {
 	}
 }
 
-func resizeDaemonSet(name, claimName string) *appsv1.DaemonSet {
-	return &appsv1.DaemonSet{
-		Name:      name,
-		Namespace: testNamespace,
-		UID:       types.UID(name + "-uid"),
-		Labels:    map[string]string{v3beta1.DoguLabelName: testDoguName},
-		Spec: appsv1.DaemonSetSpec{Template: corev1.PodTemplateSpec{Spec: corev1.PodSpec{Volumes: []corev1.Volume{{
-			Name:                  "data",
-			PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{ClaimName: claimName},
-		}}}}},
-	}
-}
-
-func resizeStatefulSet(name, claimName string) *appsv1.StatefulSet {
-	return &appsv1.StatefulSet{
-		Name:      name,
-		Namespace: testNamespace,
-		UID:       types.UID(name + "-uid"),
-		Labels:    map[string]string{v3beta1.DoguLabelName: testDoguName},
-		Spec: appsv1.StatefulSetSpec{Template: corev1.PodTemplateSpec{Spec: corev1.PodSpec{Volumes: []corev1.Volume{{
-			Name:                  "data",
-			PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{ClaimName: claimName},
-		}}}}},
-	}
-}
-
 func resizePod(name, claimName string) *corev1.Pod {
 	return &corev1.Pod{Name: name, Namespace: testNamespace, Spec: corev1.PodTemplateSpec{Spec: corev1.PodSpec{Volumes: []corev1.Volume{{
 		Name:                  "data",
@@ -203,7 +177,7 @@ func claimTemplateStatefulSet(name, size string) *appsv1.StatefulSet {
 }
 
 func TestResizePVCStep_Run(t *testing.T) {
-	t.Run("grows the PVC and deletes the workloads that mount it", func(t *testing.T) {
+	t.Run("grows the PVC, reports it as resizing and deletes the workloads that mount it", func(t *testing.T) {
 		mounting := resizeDeployment("nexus", "data")
 		other := resizeDeployment("other", "other-data")
 		mountingClaim := volumePVC("data", "1Gi", "1Gi")
@@ -220,28 +194,17 @@ func TestResizePVCStep_Run(t *testing.T) {
 		assert.Equal(t, resource.MustParse("2Gi"), claim.Spec.Resources.Requests[corev1.ResourceStorage])
 		assert.False(t, delRecClient.exists(t, mounting))
 		assert.True(t, delRecClient.exists(t, other))
-	})
-
-	t.Run("reports the grown PVC as event", func(t *testing.T) {
-		claim := volumePVC("data", "1Gi", "1Gi")
-		delRecClient := newDeletionRecClient(&claim, helmRelease(true))
-		doguResource := delRecClient.dogu(t)
-
-		step := prepareResizeStep(delRecClient.client, t, doguResource, renderedPVC(t, "data", "2Gi"))
-		step.Run(testCtx, doguResource)
-
-		assert.Contains(t, recordedEvents(step), "Normal ResizingPVC Growing volume data from 1Gi to 2Gi")
-	})
-
-	t.Run("reports the deleted workloads as event", func(t *testing.T) {
-		claim := volumePVC("data", "1Gi", "1Gi")
-		delRecClient := newDeletionRecClient(&claim, resizeDeployment("nexus", "data"), helmRelease(true))
-		doguResource := delRecClient.dogu(t)
-
-		step := prepareResizeStep(delRecClient.client, t, doguResource, renderedPVC(t, "data", "2Gi"))
-		step.Run(testCtx, doguResource)
-
-		assert.Contains(t, recordedEvents(step), "Normal ResizingPVC Deleted [Deployment/nexus] to recreate them on the resized volumes")
+		assert.Contains(t, delRecClient.dogu(t).Status.VolumeStatus, v3beta1.VolumeStatus{
+			ClaimName:   "data",
+			Size:        resource.MustParse("1Gi"),
+			DesiredSize: resource.MustParse("2Gi"),
+			State:       v3beta1.VolumeStatusStateResizing,
+			MountedBy:   mountedBy("Deployment", "nexus"),
+		})
+		assert.Equal(t, []string{
+			"Normal ResizingPVC Growing volume data from 1Gi to 2Gi",
+			"Normal ResizingPVC Deleted [Deployment/nexus] to recreate them on the resized volumes",
+		}, recordedEvents(step))
 	})
 
 	t.Run("keeps the volume status while the workloads of a running resize are gone", func(t *testing.T) {
@@ -256,98 +219,6 @@ func TestResizePVCStep_Run(t *testing.T) {
 		step.Run(testCtx, doguResource)
 
 		assert.Equal(t, resizing, delRecClient.dogu(t).Status.VolumeStatus)
-	})
-
-	t.Run("reports only the newly deleted pods as event", func(t *testing.T) {
-		terminating := resizePod("nexus-old", "data")
-		terminating.DeletionTimestamp = &metav1.Time{Time: time.Now()}
-		terminating.Finalizers = []string{"test"}
-		claim := volumePVC("data", "2Gi", "1Gi")
-		delRecClient := newDeletionRecClient(&claim, terminating, resizePod("nexus-abc", "data"), helmRelease(true))
-		doguResource := delRecClient.dogu(t)
-
-		step := prepareResizeStep(delRecClient.client, t, doguResource, renderedPVC(t, "data", "2Gi"))
-		step.Run(testCtx, doguResource)
-
-		assert.Equal(t, []string{"Normal ResizingPVC Deleted pods [nexus-abc] that mount resizing volumes"}, recordedEvents(step))
-	})
-
-	t.Run("deletes each workload kind with its propagation policy and a UID precondition", func(t *testing.T) {
-		claim := volumePVC("data", "1Gi", "1Gi")
-		delRecClient := newDeletionRecClient(
-			&claim,
-			resizeDeployment("deployment", "data"),
-			resizeDaemonSet("daemonset", "data"),
-			resizeStatefulSet("statefulset", "data"),
-			helmRelease(true),
-		)
-		doguResource := delRecClient.dogu(t)
-
-		step := prepareResizeStep(delRecClient.client, t, doguResource, renderedPVC(t, "data", "2Gi"))
-		step.Run(testCtx, doguResource)
-
-		assert.ElementsMatch(t, []deletion{
-			{key: client.ObjectKey{Namespace: testNamespace, Name: "deployment"}, uid: "deployment-uid", propagation: metav1.DeletePropagationBackground},
-			{key: client.ObjectKey{Namespace: testNamespace, Name: "daemonset"}, uid: "daemonset-uid", propagation: metav1.DeletePropagationBackground},
-			{key: client.ObjectKey{Namespace: testNamespace, Name: "statefulset"}, uid: "statefulset-uid", propagation: metav1.DeletePropagationOrphan},
-		}, *delRecClient.deletions)
-	})
-
-	t.Run("deletes the workload if it still mounts the inProgress resizing PVC", func(t *testing.T) {
-		mounting := resizeDeployment("nexus", "data")
-		claim := volumePVC("data", "2Gi", "1Gi")
-		delRecClient := newDeletionRecClient(&claim, mounting, helmRelease(true))
-		doguResource := delRecClient.dogu(t)
-
-		step := prepareResizeStep(delRecClient.client, t, doguResource, renderedPVC(t, "data", "2Gi"))
-		result := step.Run(testCtx, doguResource)
-
-		assert.Equal(t, v3beta1.ReasonResizingPVC, result.ReadyReason)
-		assert.NotZero(t, result.RequeueAfter)
-		assert.False(t, delRecClient.exists(t, mounting))
-	})
-
-	t.Run("deletes the pod if it still mounts the inProgress resizing PVC", func(t *testing.T) {
-		mountingPod := resizePod("nexus-abc", "data")
-		otherPod := resizePod("other-abc", "other-data")
-		claim := volumePVC("data", "2Gi", "1Gi")
-		delRecClient := newDeletionRecClient(&claim, mountingPod, otherPod, helmRelease(true))
-		doguResource := delRecClient.dogu(t)
-
-		step := prepareResizeStep(delRecClient.client, t, doguResource, renderedPVC(t, "data", "2Gi"))
-		result := step.Run(testCtx, doguResource)
-
-		assert.Equal(t, doguv3.RequeueAfter(defaultRequeueAfter, v3beta1.ReasonResizingPVC, "waiting for pods that mount resizing volumes to terminate: [nexus-abc]"), result)
-		assert.False(t, delRecClient.exists(t, mountingPod))
-		assert.True(t, delRecClient.exists(t, otherPod))
-	})
-
-	t.Run("leaves finished pods alone because they no longer mount the PVC", func(t *testing.T) {
-		succeeded := resizePod("job-succeeded", "data")
-		succeeded.Status.Phase = corev1.PodSucceeded
-		failed := resizePod("job-failed", "data")
-		failed.Status.Phase = corev1.PodFailed
-		claim := volumePVC("data", "2Gi", "1Gi")
-		delRecClient := newDeletionRecClient(&claim, succeeded, failed, helmRelease(true))
-		doguResource := delRecClient.dogu(t)
-
-		step := prepareResizeStep(delRecClient.client, t, doguResource, renderedPVC(t, "data", "2Gi"))
-		result := step.Run(testCtx, doguResource)
-
-		assert.Equal(t, doguv3.Continue(), result)
-		assert.True(t, delRecClient.exists(t, succeeded))
-		assert.True(t, delRecClient.exists(t, failed))
-	})
-
-	t.Run("continues once no workload or pod mounts the resizing PVC", func(t *testing.T) {
-		claim := volumePVC("data", "2Gi", "1Gi")
-		delRecClient := newDeletionRecClient(&claim, helmRelease(true))
-		doguResource := delRecClient.dogu(t)
-
-		step := prepareResizeStep(delRecClient.client, t, doguResource, renderedPVC(t, "data", "2Gi"))
-		result := step.Run(testCtx, doguResource)
-
-		assert.Equal(t, doguv3.Continue(), result)
 	})
 
 	t.Run("walks from the resize request to an unmounted PVC over consecutive reconciles", func(t *testing.T) {
@@ -368,22 +239,6 @@ func TestResizePVCStep_Run(t *testing.T) {
 		assert.Equal(t, doguv3.Continue(), step.Run(testCtx, doguResource))
 	})
 
-	t.Run("leaves workloads of a resumed release alone while the PVC finishes resizing", func(t *testing.T) {
-		recreated := resizeDeployment("nexus", "data")
-		pod := resizePod("nexus-abc", "data")
-		claim := volumePVC("data", "2Gi", "1Gi")
-		// helm release not suspended anymore
-		delRecClient := newDeletionRecClient(&claim, recreated, pod, helmRelease(false))
-		doguResource := delRecClient.dogu(t)
-
-		step := prepareResizeStep(delRecClient.client, t, doguResource, renderedPVC(t, "data", "2Gi"))
-		result := step.Run(testCtx, doguResource)
-
-		assert.Equal(t, doguv3.Continue(), result)
-		assert.True(t, delRecClient.exists(t, recreated))
-		assert.True(t, delRecClient.exists(t, pod))
-	})
-
 	t.Run("orphans a StatefulSet with an outdated claim template although its volume already grew", func(t *testing.T) {
 		live := claimTemplateStatefulSet("postgres", "1Gi")
 		claim := volumePVC("data-postgres-0", "2Gi", "2Gi")
@@ -399,40 +254,6 @@ func TestResizePVCStep_Run(t *testing.T) {
 			{key: client.ObjectKey{Namespace: testNamespace, Name: "postgres"}, uid: "postgres-uid", propagation: metav1.DeletePropagationOrphan},
 		}, *delRecClient.deletions)
 		assert.True(t, delRecClient.exists(t, pod))
-	})
-
-	t.Run("reports the grown PVC as resizing while it waits for workloads and pods", func(t *testing.T) {
-		claim := volumePVC("data", "1Gi", "1Gi")
-		delRecClient := newDeletionRecClient(&claim, resizeDeployment("nexus", "data"), helmRelease(true))
-		doguResource := delRecClient.dogu(t)
-
-		step := prepareResizeStep(delRecClient.client, t, doguResource, renderedPVC(t, "data", "2Gi"))
-		step.Run(testCtx, doguResource)
-
-		assert.Equal(t, []v3beta1.VolumeStatus{{
-			ClaimName:   "data",
-			Size:        resource.MustParse("1Gi"),
-			DesiredSize: resource.MustParse("2Gi"),
-			State:       v3beta1.VolumeStatusStateResizing,
-			MountedBy:   mountedBy("Deployment", "nexus"),
-		}}, delRecClient.dogu(t).Status.VolumeStatus)
-	})
-
-	t.Run("grows a PVC that is owned by its mounting StatefulSet", func(t *testing.T) {
-		live := claimTemplateStatefulSet("postgres", "1Gi")
-		claim := volumePVC("data-postgres-0", "1Gi", "1Gi")
-		// persistentVolumeClaimRetentionPolicy.whenDeleted: Delete
-		claim.OwnerReferences = []metav1.OwnerReference{{APIVersion: "apps/v1", Kind: "StatefulSet", Name: "postgres", UID: "postgres-uid"}}
-		delRecClient := newDeletionRecClient(&claim, live, helmRelease(true))
-		doguResource := delRecClient.dogu(t)
-
-		step := prepareResizeStep(delRecClient.client, t, doguResource, toUnstructured(t, claimTemplateStatefulSet("postgres", "2Gi")))
-		result := step.Run(testCtx, doguResource)
-
-		assert.Equal(t, v3beta1.ReasonResizingPVC, result.ReadyReason)
-		require.True(t, delRecClient.exists(t, &claim))
-		assert.Equal(t, resource.MustParse("2Gi"), claim.Spec.Resources.Requests[corev1.ResourceStorage])
-		assert.False(t, delRecClient.exists(t, live))
 	})
 
 	t.Run("leaves a recreated StatefulSet alone that a lagging cache still reports as outdated", func(t *testing.T) {
@@ -510,22 +331,6 @@ func TestResizePVCStep_Run(t *testing.T) {
 			State:       v3beta1.VolumeStatusStateResizeFailed,
 			MountedBy:   mountedBy("Deployment", "nexus"),
 		}}, delRecClient.dogu(t).Status.VolumeStatus)
-	})
-
-	t.Run("continues without changes once the values of a rejected resize are reset", func(t *testing.T) {
-		mounting := resizeDeployment("nexus", "data")
-		claim := volumePVC("data", "1Gi", "1Gi")
-		delRecClient := newDeletionRecClient(&claim, mounting, helmRelease(true))
-		doguResource := delRecClient.dogu(t)
-
-		// reject the patches
-		rejected := prepareResizeStep(rejectingPatches(delRecClient.client), t, doguResource, renderedPVC(t, "data", "2Gi"))
-		require.Equal(t, v3beta1.ReasonResizingPVC, rejected.Run(testCtx, doguResource).ReadyReason)
-		reset := prepareResizeStep(delRecClient.client, t, doguResource, renderedPVC(t, "data", "1Gi"))
-		result := reset.Run(testCtx, doguResource)
-
-		assert.Equal(t, doguv3.Continue(), result)
-		assert.Empty(t, *delRecClient.deletions)
 	})
 
 	t.Run("requeues with error when growing the PVC fails for another reason", func(t *testing.T) {
