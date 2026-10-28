@@ -1,9 +1,0 @@
-apiVersion: k8s.cloudogu.com/v2
-kind: Dogu
-metadata:
-  name: admin
-  labels:
-    app: ces
-spec:
-  name: premium/admin
-  version: 2.13.0-1

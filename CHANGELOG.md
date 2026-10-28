@@ -5,6 +5,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Removed
+- [#374] Remove Dogu samples. Instead, use https://github.com/cloudogu/k8s-ecosystem-samples
+
 ### Added
 - [#360] Support stopping and starting v3 dogu workloads.
 - [#358] Support `DoguRestart` for dogu v3.
