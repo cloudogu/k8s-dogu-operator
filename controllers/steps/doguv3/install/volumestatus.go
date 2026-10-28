@@ -137,14 +137,47 @@ func updateVolumeStatus(ctx context.Context, k8sClient K8sClient, doguResource *
 	})
 
 	if !equality.Semantic.DeepEqual(doguResource.Status.VolumeStatus, statuses) {
-		doguResource.Status.VolumeStatus = statuses
-		if err := k8sClient.Status().Update(ctx, doguResource); err != nil {
-			return nil, fmt.Errorf("failed to update volume status: %w", err)
+		if err := applyVolumeStatus(ctx, k8sClient, doguResource, statuses); err != nil {
+			return nil, err
 		}
 	}
 
 	return statuses, nil
 }
+
+// applyVolumeStatus owns status.volumeStatus via server-side apply, so it does not conflict with other status writers.
+func applyVolumeStatus(ctx context.Context, k8sClient K8sClient, doguResource *v3beta1.Dogu, statuses []v3beta1.VolumeStatus) error {
+	configurations := make([]*v3beta1ac.VolumeStatusApplyConfiguration, 0, len(statuses))
+	for _, status := range statuses {
+		configuration := v3beta1ac.VolumeStatus().
+			WithClaimName(status.ClaimName).
+			WithState(status.State).
+			WithMountedBy(status.MountedBy...)
+		// omit zero default-values
+		if !status.Size.IsZero() {
+			configuration.WithSize(status.Size)
+		}
+		if !status.DesiredSize.IsZero() {
+			configuration.WithDesiredSize(status.DesiredSize)
+		}
+		configurations = append(configurations, configuration)
+	}
+	doguConfiguration := v3beta1ac.Dogu(doguResource.Name, doguResource.Namespace).
+		WithStatus(v3beta1ac.DoguStatus().WithVolumeStatus(configurations...))
+
+	if err := k8sClient.Status().Apply(ctx, doguConfiguration, client.FieldOwner(volumeStatusFieldOwner), client.ForceOwnership); err != nil {
+		return fmt.Errorf("failed to update volume status: %w", err)
+	}
+
+	// SSA does not update the resource -> we have to do it so that later update calls do not get conflicts
+	doguResource.Status.VolumeStatus = statuses
+	if doguConfiguration.ResourceVersion != nil {
+		doguResource.ResourceVersion = *doguConfiguration.ResourceVersion
+	}
+	return nil
+}
+
+const volumeStatusFieldOwner = "k8s-dogu-operator-volume-status-step"
 
 const offlineExpansionHint = "if the storage only expands unmounted volumes, turn on offline volume expansion"
 

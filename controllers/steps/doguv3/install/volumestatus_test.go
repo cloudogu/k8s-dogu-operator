@@ -104,7 +104,7 @@ func TestVolumeStatusStep_Run(t *testing.T) {
 		{PVC: volumePVC("db-nexus-2", "5Gi", "3Gi", corev1.PersistentVolumeClaimResizing, corev1.PersistentVolumeClaimControllerResizeError), MountedBy: mountedBy("StatefulSet", "nexus")},
 		{PVC: volumePVC("db-nexus-3", "5Gi", "3Gi", corev1.PersistentVolumeClaimNodeResizeError), MountedBy: mountedBy("StatefulSet", "nexus")},
 	}
-	happyCaseStatus := []v3beta1.VolumeStatus{
+	expectedStatus := []v3beta1.VolumeStatus{
 		{ClaimName: "data", Size: resource.MustParse("2Gi"), DesiredSize: resource.MustParse("2Gi"), State: v3beta1.VolumeStatusStateReady, MountedBy: mountedBy("StatefulSet", "nexus")},
 		{ClaimName: "db-nexus-0", Size: resource.MustParse("3Gi"), DesiredSize: resource.MustParse("5Gi"), State: v3beta1.VolumeStatusStateResizing, MountedBy: mountedBy("StatefulSet", "nexus")},
 		{ClaimName: "db-nexus-1", Size: resource.MustParse("5Gi"), DesiredSize: resource.MustParse("5Gi"), State: v3beta1.VolumeStatusStateResizing, MountedBy: mountedBy("StatefulSet", "nexus")},
@@ -112,8 +112,6 @@ func TestVolumeStatusStep_Run(t *testing.T) {
 		{ClaimName: "db-nexus-3", Size: resource.MustParse("3Gi"), DesiredSize: resource.MustParse("5Gi"), State: v3beta1.VolumeStatusStateResizeFailed, MountedBy: mountedBy("StatefulSet", "nexus")},
 		{ClaimName: "existing", Size: resource.MustParse("1Gi"), State: v3beta1.VolumeStatusStateReady, MountedBy: mountedBy("Deployment", "nexus-proxy")},
 	}
-	happyCaseResult := doguv3.RequeueWithError(errors.New("volumes failed to resize: [db-nexus-2 db-nexus-3]; if the storage only expands unmounted volumes, turn on offline volume expansion"), v3beta1.ReasonResizingPVC)
-
 	tests := []struct {
 		name       string
 		setup      func(t *testing.T) (*VolumeStatusStep, *v3beta1.Dogu)
@@ -131,19 +129,21 @@ func TestVolumeStatusStep_Run(t *testing.T) {
 				d.EXPECT().Volumes(mock.Anything, testNamespace, testWorkloads).Return(volumes, nil)
 				return NewVolumeStatusStep(cs, as, d, newVolumeStatusFakeClient(doguResource, interceptor.Funcs{}), record.NewFakeRecorder(10)), doguResource
 			},
-			want:       happyCaseResult,
-			wantStatus: happyCaseStatus,
+			want:       doguv3.RequeueWithError(errors.New("volumes failed to resize: [db-nexus-2 db-nexus-3]; if the storage only expands unmounted volumes, turn on offline volume expansion"), v3beta1.ReasonResizingPVC),
+			wantStatus: expectedStatus,
 		},
 		{
 			name: "remove volumes that are no longer mounted",
 			setup: func(t *testing.T) (*VolumeStatusStep, *v3beta1.Dogu) {
 				doguResource := testDoguResource.DeepCopy()
-				doguResource.Status.VolumeStatus = happyCaseStatus
+				k8sClient := newVolumeStatusFakeClient(doguResource, interceptor.Funcs{})
+				// apply the old entries, so the step owns them and may remove them
+				require.NoError(t, applyVolumeStatus(testCtx, k8sClient, doguResource, expectedStatus))
 				cs, as := mockChartRendering(t, doguResource, renderedChart(t), nil)
 				d := NewMockVolumeDiscovery(t)
 				d.EXPECT().Workloads(mock.Anything, testNamespace, testDoguName).Return(testWorkloads, nil)
 				d.EXPECT().Volumes(mock.Anything, testNamespace, testWorkloads).Return(nil, nil)
-				return NewVolumeStatusStep(cs, as, d, newVolumeStatusFakeClient(doguResource, interceptor.Funcs{}), record.NewFakeRecorder(10)), doguResource
+				return NewVolumeStatusStep(cs, as, d, k8sClient, record.NewFakeRecorder(10)), doguResource
 			},
 			want:       doguv3.Continue(),
 			wantStatus: nil,
@@ -172,22 +172,22 @@ func TestVolumeStatusStep_Run(t *testing.T) {
 			name: "skip the status update when the volume status is unchanged",
 			setup: func(t *testing.T) (*VolumeStatusStep, *v3beta1.Dogu) {
 				doguResource := testDoguResource.DeepCopy()
-				doguResource.Status.VolumeStatus = happyCaseStatus
+				doguResource.Status.VolumeStatus = expectedStatus
 				cs, as := mockChartRendering(t, doguResource, renderedChart(t), nil)
 				d := NewMockVolumeDiscovery(t)
 				d.EXPECT().Workloads(mock.Anything, testNamespace, testDoguName).Return(testWorkloads, nil)
 				d.EXPECT().Volumes(mock.Anything, testNamespace, testWorkloads).Return(volumes, nil)
 
-				// throw error on update function, so that we notice if the update is not skipped
+				// throw error on apply function, so that we notice if the apply is not skipped
 				k8sClient := newVolumeStatusFakeClient(doguResource, interceptor.Funcs{
-					SubResourceUpdate: func(context.Context, client.Client, string, client.Object, ...client.SubResourceUpdateOption) error {
+					SubResourceApply: func(context.Context, client.Client, string, runtime.ApplyConfiguration, ...client.SubResourceApplyOption) error {
 						return assert.AnError
 					},
 				})
 				return NewVolumeStatusStep(cs, as, d, k8sClient, record.NewFakeRecorder(10)), doguResource
 			},
-			want:       happyCaseResult,
-			wantStatus: happyCaseStatus,
+			want:       doguv3.RequeueWithError(errors.New("volumes failed to resize: [db-nexus-2 db-nexus-3]; if the storage only expands unmounted volumes, turn on offline volume expansion"), v3beta1.ReasonResizingPVC),
+			wantStatus: expectedStatus,
 		},
 		{
 			name: "requeue when the dogu meta values cannot be read",
@@ -268,7 +268,7 @@ func TestVolumeStatusStep_Run(t *testing.T) {
 				d.EXPECT().Workloads(mock.Anything, testNamespace, testDoguName).Return(testWorkloads, nil)
 				d.EXPECT().Volumes(mock.Anything, testNamespace, testWorkloads).Return(volumes, nil)
 				k8sClient := newVolumeStatusFakeClient(doguResource, interceptor.Funcs{
-					SubResourceUpdate: func(context.Context, client.Client, string, client.Object, ...client.SubResourceUpdateOption) error {
+					SubResourceApply: func(context.Context, client.Client, string, runtime.ApplyConfiguration, ...client.SubResourceApplyOption) error {
 						return assert.AnError
 					},
 				})
@@ -295,6 +295,30 @@ func TestVolumeStatusStep_Run(t *testing.T) {
 			assert.Equal(t, tt.wantStatus, persisted.Status.VolumeStatus)
 		})
 	}
+}
+
+func TestApplyVolumeStatus_KeepsLaterStatusUpdatesConflictFree(t *testing.T) {
+	doguResource := testDoguResource.DeepCopy()
+	statuses := []v3beta1.VolumeStatus{{ClaimName: "data", Size: resource.MustParse("2Gi"), State: v3beta1.VolumeStatusStateReady}}
+	k8sClient := newVolumeStatusFakeClient(doguResource, interceptor.Funcs{
+		// the real client decodes the apply response into the configuration, the fake client does not
+		SubResourceApply: func(ctx context.Context, c client.Client, subResource string, obj runtime.ApplyConfiguration, opts ...client.SubResourceApplyOption) error {
+			if err := c.SubResource(subResource).Apply(ctx, obj, opts...); err != nil {
+				return err
+			}
+			applied := &v3beta1.Dogu{}
+			if err := c.Get(ctx, testNamespacedName, applied); err != nil {
+				return err
+			}
+			obj.(*v3beta1ac.DoguApplyConfiguration).WithResourceVersion(applied.ResourceVersion)
+			return nil
+		},
+	})
+
+	require.NoError(t, applyVolumeStatus(testCtx, k8sClient, doguResource, statuses))
+
+	assert.Equal(t, statuses, doguResource.Status.VolumeStatus)
+	require.NoError(t, k8sClient.Status().Update(testCtx, doguResource))
 }
 
 func TestVolumeStatusStep_RunWaitsForResize(t *testing.T) {
