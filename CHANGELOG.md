@@ -6,7 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
-- [#359] Set `status.volumeStatus` for all PVCs of v3 dogus.
+- [#360] Support stopping and starting v3 dogu workloads.
 - [#359] Reject v3 dogu changes that shrink a volume or change its storage class (`Valid=False`).
 - [#359] Enable V3 dogus to increase the volume size of their pvcs.
 - [#359] Grow volumes of v3 dogus online by default; Helm value `offlineVolumeExpansion` enables the offline flow for storage that only expands unmounted volumes.
@@ -55,6 +55,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - This prevents an infinite loop of pod termination and creation during export mode.
 
 ### Added
+- [#353] Support runtime-patch-tpl.yaml to inject CES global configuration into Dogu v3 Helm values and update them on global configuration changes.
 - [#339] Add step to validate values and template of a dogu helm chart
 - [#339] Add mock for dcc v3
 

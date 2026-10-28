@@ -42,7 +42,8 @@ func NewDoguV3UseCases(
 		return nil, nil, fmt.Errorf("failed to discover chart capabilities: %w", err)
 	}
 
-	chartService := charts.NewService(charts.NewChartProvider(k8sClient, charts.NewHTTPClient()), restConfig, capabilities, flux.NewHelmReleaseReader(k8sClient))
+	releaseReader := flux.NewHelmReleaseReader(k8sClient, clientSet)
+	chartService := charts.NewService(charts.NewChartProvider(k8sClient, charts.NewHTTPClient()), restConfig, capabilities, releaseReader)
 	assembler := values.NewAssembler(k8sClient)
 	resizeChecker := pvc.NewResizeChecker(k8sClient)
 
@@ -54,7 +55,7 @@ func NewDoguV3UseCases(
 	resizePVCStep := install.NewResizePVCStep(resizePlanner, apiReader, k8sClient, recorder, operatorConfig.OfflineVolumeExpansion)
 	suspendStep := install.NewSuspendHelmReleaseStep(k8sClient, resizePlanner, recorder)
 	helmReleaseStep := install.NewEnsureHelmReleaseStep(k8sClient, operatorConfig, chartService, assembler, recorder)
-	helmReleaseStatusStep := install.NewHelmReleaseStatusStep(k8sClient, recorder)
+	helmReleaseStatusStep := install.NewHelmReleaseStatusStep(k8sClient, chartService, assembler, operatorConfig, releaseReader, recorder)
 	exportModeStep := install.NewExportModeStep(k8sClient, recorder)
 	updatePendingStep := install.NewUpdatePendingStep(k8sClient)
 	volumeStatusStep := install.NewVolumeStatusStep(chartService, assembler, workloads.NewDiscovery(k8sClient), k8sClient, recorder)

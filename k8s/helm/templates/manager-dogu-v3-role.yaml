@@ -59,6 +59,15 @@ rules:
       - watch
       - patch
       - delete
+  # dogu v3: follow Deployment Pod ownership and wait for stopped Pods to disappear.
+  - apiGroups:
+      - apps
+    resources:
+      - replicasets
+    verbs:
+      - get
+      - list
+      - watch
   # read and grow a dogu's volumes.
   # watch is needed for the caching k8s-client
   - apiGroups:
@@ -76,8 +85,10 @@ rules:
     resources:
       - pods
     verbs:
+      - get
       - list
       - delete
+      - watch
   # dogu v3: read-only access so Helm `lookup` resolves during the chart validation render.
   # Namespaced on purpose: dogu charts may only `lookup` resources in their own (release)
   # namespace; cluster-scoped or cross-namespace lookups are unsupported and will fail validation.

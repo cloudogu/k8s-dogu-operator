@@ -162,13 +162,14 @@ func newSuspendRunTestClient(t *testing.T, dogu *doguv3.Dogu, existingRelease, a
 	return newSuspendTestClient(t, objects...)
 }
 
-func newSuspendRunChartService(t *testing.T, dogu *doguv3.Dogu, test suspendHelmReleaseRunCase) *MockChartService {
-	chartService := NewMockChartService(t)
+func newSuspendRunChartService(t *testing.T, dogu *doguv3.Dogu, test suspendHelmReleaseRunCase) *mockChartService {
+	chartService := newMockChartService(t)
 	// without a release of if the dogu is stopped or paused, we need not call the chart service
 	if !test.existingRelease || test.doguStopped || test.doguPaused {
 		return chartService
 	}
 	chartService.EXPECT().DoguMetaValues(mock.Anything, dogu).Return(nil, false, nil)
+	chartService.EXPECT().RuntimePatchTemplate(mock.Anything, dogu).Return(nil, false, nil)
 	if !test.doguPaused && !test.doguStopped {
 		chartService.EXPECT().Render(mock.Anything, dogu, mock.Anything).Return(nil, nil)
 	}
@@ -234,7 +235,7 @@ func TestSuspendHelmReleaseStep_RunErrors(t *testing.T) {
 			newGlobalConfigForSuspendTest(dogu.Namespace),
 			&flux.HelmRelease{Name: dogu.Spec.Name, Namespace: dogu.Namespace},
 		)
-		chartService := NewMockChartService(t)
+		chartService := newMockChartService(t)
 		chartService.EXPECT().DoguMetaValues(mock.Anything, dogu).Return(nil, false, errors.New("metadata failed"))
 
 		result := NewSuspendHelmReleaseStep(k8sClient, NewVolumeResizePlanner(chartService, nil, NewMockResizeChecker(t), k8sClient), nil).Run(t.Context(), dogu)
@@ -250,8 +251,9 @@ func TestSuspendHelmReleaseStep_RunErrors(t *testing.T) {
 			&flux.HelmRelease{ObjectMeta: metav1.ObjectMeta{Name: dogu.Spec.Name, Namespace: dogu.Namespace}},
 		)
 		assembler := values3.NewAssembler(k8sClient) // easier to use this here, that to mock the result
-		chartService := NewMockChartService(t)
+		chartService := newMockChartService(t)
 		chartService.EXPECT().DoguMetaValues(mock.Anything, dogu).Return(nil, false, nil)
+		chartService.EXPECT().RuntimePatchTemplate(mock.Anything, dogu).Return(nil, false, nil)
 		chartService.EXPECT().Render(mock.Anything, dogu, mock.Anything).Return(nil, nil)
 		checker := NewMockResizeChecker(t)
 		checker.EXPECT().Check(mock.Anything, mock.Anything, mock.Anything).Return(pvc.CheckResult{}, fmt.Errorf("resize check failed"))
@@ -398,7 +400,7 @@ func TestSuspendHelmReleaseStep_expectedState(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			dogu := newSuspendTestDogu()
 
-			chartService := NewMockChartService(t)
+			chartService := newMockChartService(t)
 			chartService.EXPECT().DoguMetaValues(mock.Anything, dogu).Return(nil, false, nil)
 			chartService.EXPECT().Render(mock.Anything, dogu, map[string]any{}).Return(nil, test.renderError)
 			assembler := NewMockValueAssembler(t)

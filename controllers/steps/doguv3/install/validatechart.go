@@ -1,12 +1,14 @@
 package install
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
 
 	"github.com/cloudogu/k8s-dogu-lib/v3/api/v3beta1"
 	stepsv3 "github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv3"
+	"github.com/cloudogu/k8s-dogu-operator/v3/internal/dogu/values"
 	"github.com/cloudogu/k8s-dogu-operator/v3/internal/dogu/pvc"
 	"github.com/cloudogu/k8s-dogu-operator/v3/internal/logging"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -28,13 +30,13 @@ const (
 // make a forbidden pvc change (shrink or storage class change) aborts the reconciliation via
 // ConditionValid so no HelmRelease is produced.
 type ValidateChartStep struct {
-	chartService  ChartService
-	assembler     ValueAssembler
+	chartService  chartService
+	assembler     valueAssembler
 	resizeChecker ResizeChecker
 	k8sClient     K8sClient
 }
 
-func NewValidateChartStep(chartService ChartService, assembler ValueAssembler, resizeChecker ResizeChecker, k8sClient K8sClient) *ValidateChartStep {
+func NewValidateChartStep(chartService chartService, assembler valueAssembler, resizeChecker ResizeChecker, k8sClient K8sClient) *ValidateChartStep {
 	return &ValidateChartStep{
 		chartService:  chartService,
 		assembler:     assembler,
@@ -48,14 +50,27 @@ func (vcs *ValidateChartStep) Run(ctx context.Context, doguResource *v3beta1.Dog
 		logging.Debug(ctx, "Skipping ValidateChartStep because pausedReconciliation is set for dogu", "dogu", doguResource.Name)
 		return stepsv3.Continue()
 	}
-	metaValues, _, err := vcs.chartService.DoguMetaValues(ctx, doguResource)
+
+	valuesMeta, _, err := vcs.chartService.DoguMetaValues(ctx, doguResource)
 	if err != nil {
-		return stepsv3.RequeueWithError(fmt.Errorf("failed to get dogu meta values: %w", err), v3beta1.ReasonInstalling)
+		return stepsv3.RequeueWithError(fmt.Errorf("failed to get dogu meta values for dogu %s/%s: %w", doguResource.Namespace, doguResource.Name, err), v3beta1.ReasonInstalling)
 	}
 
-	values, err := vcs.assembler.Assemble(ctx, doguResource, metaValues)
+	runtimePatchTemplate, found, err := vcs.chartService.RuntimePatchTemplate(ctx, doguResource)
 	if err != nil {
-		return stepsv3.RequeueWithError(fmt.Errorf("failed to assemble values: %w", err), v3beta1.ReasonInstalling)
+		return stepsv3.RequeueWithError(fmt.Errorf("failed to retrieve runtime patch template for dogu %s/%s: %w", doguResource.Namespace, doguResource.Name, err), v3beta1.ReasonInstalling)
+	}
+
+	isEmpty := len(bytes.TrimSpace(runtimePatchTemplate)) == 0
+	emptyPatchFileExists := found && isEmpty
+	if emptyPatchFileExists {
+		err := fmt.Errorf("%s must not be empty for dogu %s/%s", values.RuntimePatchTemplateFileName, doguResource.Namespace, doguResource.Name)
+		return stepsv3.RequeueWithError(err, v3beta1.ReasonInstalling)
+	}
+
+	values, err := vcs.assembler.Assemble(ctx, doguResource, valuesMeta, runtimePatchTemplate)
+	if err != nil {
+		return stepsv3.RequeueWithError(fmt.Errorf("failed to assemble values for dogu %s/%s: %w", doguResource.Namespace, doguResource.Name, err), v3beta1.ReasonInstalling)
 	}
 
 	// Record whether schema validation is skipped and, unless skipped, validate the values.
