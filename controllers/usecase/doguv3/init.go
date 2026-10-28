@@ -57,10 +57,11 @@ func NewDoguV3UseCases(
 
 	detector := dogumigration.NewDetector(k8sClient)
 	migrationPreconditionsStep := migration.NewMigrationPreconditionsStep(detector, recorder)
+	migrationSecretStep := migration.NewMigrationSecretStep(k8sClient, recorder)
 	migrationPendingStep := migration.NewMigrationPendingStep(detector, recorder)
 
 	installUseCase := NewDoguInstallOrChangeUseCase(finalizerStep, ociStep, waitStep, validateStep, helmReleaseStep, helmReleaseStatusStep, exportModeStep, k8sClient, recorder)
-	migrationUseCase := NewDoguMigrationUseCase(finalizerStep, migrationPreconditionsStep, ociStep, waitStep, validateStep, migrationPendingStep, k8sClient, recorder)
+	migrationUseCase := NewDoguMigrationUseCase(finalizerStep, migrationPreconditionsStep, ociStep, waitStep, validateStep, migrationSecretStep, migrationPendingStep, k8sClient, recorder)
 	deleteUseCase := NewDoguDeleteUseCase(unsuspendStep, deleteHelmReleaseStep, deleteOCIRepositoryStep, removeFinalizerStep, k8sClient, recorder)
 
 	changeHandler := NewDoguChangeHandler(detector, installUseCase, migrationUseCase)
