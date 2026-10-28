@@ -87,6 +87,6 @@ bereits fortgesetzt ist. Einmalig von Hand reparieren:
 
 1. `controllerManager.env.offlineVolumeExpansion: true` setzen und den Operator upgraden.
 2. `spec.stopped: true` an der Dogu-CR setzen.
-4. Warten, bis das PVC die Condition `FileSystemResizePending` oder `status.allocatedResourceStatuses[storage]=NodeResizePending`
+3. Warten, bis das PVC die Condition `FileSystemResizePending` oder `status.allocatedResourceStatuses[storage]=NodeResizePending`
    zeigt (`kubectl get pvc <name> -o yaml`).
-5. `spec.stopped: false` setzen. Das Helm-Release legt die Workloads neu an, das Dateisystem wächst beim Mount durch die neuen Pods.
+4. `spec.stopped: false` setzen. Das Helm-Release legt die Workloads neu an, das Dateisystem wächst beim Mount durch die neuen Pods.

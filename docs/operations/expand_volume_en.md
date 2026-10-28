@@ -90,6 +90,6 @@ resumed. Repair it once by hand:
 
 1. Set `controllerManager.env.offlineVolumeExpansion: true` and upgrade the operator.
 2. Set `spec.stopped: true` on the Dogu CR.
-4. Wait until the PVC shows the condition `FileSystemResizePending` or `status.allocatedResourceStatuses[storage]=NodeResizePending`
+3. Wait until the PVC shows the condition `FileSystemResizePending` or `status.allocatedResourceStatuses[storage]=NodeResizePending`
    (`kubectl get pvc <name> -o yaml`).
-5. Set `spec.stopped: false`. The Helm release recreates the workloads, and the file system grows when the new pods mount the volume.
+4. Set `spec.stopped: false`. The Helm release recreates the workloads, and the file system grows when the new pods mount the volume.
