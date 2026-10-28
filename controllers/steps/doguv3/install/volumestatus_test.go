@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/cloudogu/k8s-dogu-lib/v3/api/v3beta1"
+	v3beta1ac "github.com/cloudogu/k8s-dogu-lib/v3/applyconfiguration/api/v3beta1"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv3"
 	"github.com/cloudogu/k8s-dogu-operator/v3/internal/dogu/workloads"
 	"github.com/stretchr/testify/assert"
@@ -84,12 +85,13 @@ func newVolumeStatusFakeClient(doguResource *v3beta1.Dogu, funcs interceptor.Fun
 		Build()
 }
 
-func mockChartRendering(t *testing.T, doguResource *v3beta1.Dogu, rendered []*unstructured.Unstructured, renderErr error) (*MockChartService, *MockValueAssembler) {
-	cs := NewMockChartService(t)
+func mockChartRendering(t *testing.T, doguResource *v3beta1.Dogu, rendered []*unstructured.Unstructured, renderErr error) (*mockChartService, *mockValueAssembler) {
+	cs := newMockChartService(t)
 	cs.EXPECT().DoguMetaValues(mock.Anything, doguResource).Return([]byte("meta"), true, nil)
+	cs.EXPECT().RuntimePatchTemplate(mock.Anything, doguResource).Return(nil, false, nil)
 	cs.EXPECT().Render(mock.Anything, doguResource, assembledValues).Return(rendered, renderErr)
-	as := NewMockValueAssembler(t)
-	as.EXPECT().Assemble(mock.Anything, doguResource, []byte("meta")).Return(assembledValues, nil)
+	as := newMockValueAssembler(t)
+	as.EXPECT().Assemble(mock.Anything, doguResource, []byte("meta"), []byte(nil)).Return(assembledValues, nil)
 	return cs, as
 }
 
@@ -191,23 +193,24 @@ func TestVolumeStatusStep_Run(t *testing.T) {
 			name: "requeue when the dogu meta values cannot be read",
 			setup: func(t *testing.T) (*VolumeStatusStep, *v3beta1.Dogu) {
 				doguResource := testDoguResource.DeepCopy()
-				cs := NewMockChartService(t)
+				cs := newMockChartService(t)
 				cs.EXPECT().DoguMetaValues(mock.Anything, doguResource).Return(nil, false, assert.AnError)
-				return NewVolumeStatusStep(cs, NewMockValueAssembler(t), NewMockVolumeDiscovery(t), newVolumeStatusFakeClient(doguResource, interceptor.Funcs{}), record.NewFakeRecorder(10)), doguResource
+				return NewVolumeStatusStep(cs, newMockValueAssembler(t), NewMockVolumeDiscovery(t), newVolumeStatusFakeClient(doguResource, interceptor.Funcs{}), record.NewFakeRecorder(10)), doguResource
 			},
-			wantErr: "failed to get dogu meta values",
+			wantErr: "failed to retrieve dogu metadata values",
 		},
 		{
 			name: "requeue when the values cannot be assembled",
 			setup: func(t *testing.T) (*VolumeStatusStep, *v3beta1.Dogu) {
 				doguResource := testDoguResource.DeepCopy()
-				cs := NewMockChartService(t)
+				cs := newMockChartService(t)
 				cs.EXPECT().DoguMetaValues(mock.Anything, doguResource).Return([]byte("meta"), true, nil)
-				as := NewMockValueAssembler(t)
-				as.EXPECT().Assemble(mock.Anything, doguResource, []byte("meta")).Return(nil, assert.AnError)
+				cs.EXPECT().RuntimePatchTemplate(mock.Anything, doguResource).Return(nil, false, nil)
+				as := newMockValueAssembler(t)
+				as.EXPECT().Assemble(mock.Anything, doguResource, []byte("meta"), []byte(nil)).Return(nil, assert.AnError)
 				return NewVolumeStatusStep(cs, as, NewMockVolumeDiscovery(t), newVolumeStatusFakeClient(doguResource, interceptor.Funcs{}), record.NewFakeRecorder(10)), doguResource
 			},
-			wantErr: "failed to assemble values",
+			wantErr: "failed to assemble dogu values",
 		},
 		{
 			name: "requeue when the chart cannot be rendered",

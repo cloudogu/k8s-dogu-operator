@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/cloudogu/k8s-dogu-lib/v3/api/v3beta1"
+	v3beta1ac "github.com/cloudogu/k8s-dogu-lib/v3/applyconfiguration/api/v3beta1"
 	stepsv3 "github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv3"
 	"github.com/cloudogu/k8s-dogu-operator/v3/internal/dogu/pvc"
 	"github.com/cloudogu/k8s-dogu-operator/v3/internal/dogu/workloads"
@@ -19,14 +20,14 @@ import (
 
 // VolumeStatusStep reports every volume of a dogu, also of a stopped one, in status.volumeStatus.
 type VolumeStatusStep struct {
-	chartService  ChartService
-	assembler     ValueAssembler
+	chartService  chartService
+	assembler     valueAssembler
 	discovery     VolumeDiscovery
 	k8sClient     K8sClient
 	eventRecorder EventRecorder
 }
 
-func NewVolumeStatusStep(chartService ChartService, assembler ValueAssembler, discovery VolumeDiscovery, k8sClient K8sClient, recorder EventRecorder) *VolumeStatusStep {
+func NewVolumeStatusStep(chartService chartService, assembler valueAssembler, discovery VolumeDiscovery, k8sClient K8sClient, recorder EventRecorder) *VolumeStatusStep {
 	return &VolumeStatusStep{
 		chartService:  chartService,
 		assembler:     assembler,
@@ -173,15 +174,10 @@ func waitForResize(statuses []v3beta1.VolumeStatus) stepsv3.StepResult {
 	return stepsv3.Continue()
 }
 
-func renderChart(ctx context.Context, chartService ChartService, assembler ValueAssembler, doguResource *v3beta1.Dogu) ([]*unstructured.Unstructured, error) {
-	metaValues, _, err := chartService.DoguMetaValues(ctx, doguResource)
+func renderChart(ctx context.Context, chartService chartService, assembler valueAssembler, doguResource *v3beta1.Dogu) ([]*unstructured.Unstructured, error) {
+	values, err := assembleValues(ctx, doguResource, chartService, assembler)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get dogu meta values: %w", err)
-	}
-
-	values, err := assembler.Assemble(ctx, doguResource, metaValues)
-	if err != nil {
-		return nil, fmt.Errorf("failed to assemble values: %w", err)
+		return nil, err
 	}
 
 	rendered, err := chartService.Render(ctx, doguResource, values)

@@ -31,14 +31,14 @@ func (p VolumeResizePlan) Active() bool {
 
 // VolumeResizePlanner derives the VolumeResizePlan, so that SuspendHelmReleaseStep and ResizePVCStep act on the same plan.
 type VolumeResizePlanner struct {
-	chartService  ChartService
-	assembler     ValueAssembler
+	chartService  chartService
+	assembler     valueAssembler
 	resizeChecker ResizeChecker
 	// apiReader reads the release uncached, so that both steps see the same suspend state.
 	apiReader client.Reader
 }
 
-func NewVolumeResizePlanner(chartService ChartService, assembler ValueAssembler, resizeChecker ResizeChecker, apiReader client.Reader) *VolumeResizePlanner {
+func NewVolumeResizePlanner(chartService chartService, assembler valueAssembler, resizeChecker ResizeChecker, apiReader client.Reader) *VolumeResizePlanner {
 	return &VolumeResizePlanner{
 		chartService:  chartService,
 		assembler:     assembler,

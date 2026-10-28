@@ -231,7 +231,7 @@ func TestValidateChartStep_Run_rejectsEmptyRuntimePatch(t *testing.T) {
 			service.EXPECT().DoguMetaValues(mock.Anything, dogu).Return(nil, false, nil)
 			service.EXPECT().RuntimePatchTemplate(mock.Anything, dogu).Return(tt.source, true, nil)
 			assembler := newMockValueAssembler(t)
-			step := NewValidateChartStep(service, assembler, newValidationFakeClient(dogu))
+			step := NewValidateChartStep(service, assembler, NewMockResizeChecker(t), newValidationFakeClient(dogu))
 
 			result := step.Run(t.Context(), dogu)
 
@@ -320,12 +320,13 @@ func TestValidateChartStep_Run_volumeCheck(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			doguResource := testDoguResource.DeepCopy()
 			rendered := renderedChart(t)
-			cs := NewMockChartService(t)
+			cs := newMockChartService(t)
 			cs.EXPECT().DoguMetaValues(mock.Anything, doguResource).Return([]byte("meta"), true, nil)
+			cs.EXPECT().RuntimePatchTemplate(mock.Anything, doguResource).Return(nil, false, nil)
 			cs.EXPECT().ValidateValues(mock.Anything, doguResource, map[string]any(assembledValues)).Return(nil)
 			cs.EXPECT().Render(mock.Anything, doguResource, map[string]any(assembledValues)).Return(rendered, nil)
-			as := NewMockValueAssembler(t)
-			as.EXPECT().Assemble(mock.Anything, doguResource, []byte("meta")).Return(assembledValues, nil)
+			as := newMockValueAssembler(t)
+			as.EXPECT().Assemble(mock.Anything, doguResource, []byte("meta"), []byte(nil)).Return(assembledValues, nil)
 			rc := NewMockResizeChecker(t)
 			rc.EXPECT().Check(mock.Anything, testNamespace, rendered).Return(pvc.CheckResult{}, tt.checkErr)
 			step := NewValidateChartStep(cs, as, rc, newValidationFakeClient(doguResource))
@@ -340,12 +341,13 @@ func TestValidateChartStep_Run_volumeCheck(t *testing.T) {
 
 func TestValidateChartStep_Run_requeuesWhenVolumeCheckFails(t *testing.T) {
 	doguResource := testDoguResource.DeepCopy()
-	cs := NewMockChartService(t)
+	cs := newMockChartService(t)
 	cs.EXPECT().DoguMetaValues(mock.Anything, doguResource).Return([]byte("meta"), true, nil)
+	cs.EXPECT().RuntimePatchTemplate(mock.Anything, doguResource).Return(nil, false, nil)
 	cs.EXPECT().ValidateValues(mock.Anything, doguResource, map[string]any(assembledValues)).Return(nil)
 	cs.EXPECT().Render(mock.Anything, doguResource, map[string]any(assembledValues)).Return(nil, nil)
-	as := NewMockValueAssembler(t)
-	as.EXPECT().Assemble(mock.Anything, doguResource, []byte("meta")).Return(assembledValues, nil)
+	as := newMockValueAssembler(t)
+	as.EXPECT().Assemble(mock.Anything, doguResource, []byte("meta"), []byte(nil)).Return(assembledValues, nil)
 	rc := NewMockResizeChecker(t)
 	rc.EXPECT().Check(mock.Anything, testNamespace, []*unstructured.Unstructured(nil)).Return(pvc.CheckResult{}, assert.AnError)
 	step := NewValidateChartStep(cs, as, rc, newValidationFakeClient(doguResource))

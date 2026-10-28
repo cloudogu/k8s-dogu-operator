@@ -8,8 +8,8 @@ import (
 
 	"github.com/cloudogu/k8s-dogu-lib/v3/api/v3beta1"
 	stepsv3 "github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv3"
-	"github.com/cloudogu/k8s-dogu-operator/v3/internal/dogu/values"
 	"github.com/cloudogu/k8s-dogu-operator/v3/internal/dogu/pvc"
+	"github.com/cloudogu/k8s-dogu-operator/v3/internal/dogu/values"
 	"github.com/cloudogu/k8s-dogu-operator/v3/internal/logging"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -68,7 +68,7 @@ func (vcs *ValidateChartStep) Run(ctx context.Context, doguResource *v3beta1.Dog
 		return stepsv3.RequeueWithError(err, v3beta1.ReasonInstalling)
 	}
 
-	values, err := vcs.assembler.Assemble(ctx, doguResource, valuesMeta, runtimePatchTemplate)
+	assembledValues, err := vcs.assembler.Assemble(ctx, doguResource, valuesMeta, runtimePatchTemplate)
 	if err != nil {
 		return stepsv3.RequeueWithError(fmt.Errorf("failed to assemble values for dogu %s/%s: %w", doguResource.Namespace, doguResource.Name, err), v3beta1.ReasonInstalling)
 	}
@@ -76,7 +76,7 @@ func (vcs *ValidateChartStep) Run(ctx context.Context, doguResource *v3beta1.Dog
 	// Record whether schema validation is skipped and, unless skipped, validate the values.
 	vcs.setSchemaValidationSkippedCondition(doguResource)
 	if !doguResource.Spec.SkipSchemaValidation {
-		if vErr := vcs.chartService.ValidateValues(ctx, doguResource, values); vErr != nil {
+		if vErr := vcs.chartService.ValidateValues(ctx, doguResource, assembledValues); vErr != nil {
 			msg := fmt.Sprintf("values do not satisfy the chart schema: %v", vErr)
 
 			return vcs.abort(ctx, doguResource, v3beta1.ReasonSchemaInvalid, msg)
@@ -85,7 +85,7 @@ func (vcs *ValidateChartStep) Run(ctx context.Context, doguResource *v3beta1.Dog
 		logging.Info(ctx, "Successfully validated values against schema for dogu", "dogu", doguResource.Spec.Name)
 	}
 
-	rendered, rErr := vcs.chartService.Render(ctx, doguResource, values)
+	rendered, rErr := vcs.chartService.Render(ctx, doguResource, assembledValues)
 	if rErr != nil {
 		msg := fmt.Sprintf("chart could not be rendered: %v", rErr)
 		return vcs.abort(ctx, doguResource, ReasonRenderFailed, msg)

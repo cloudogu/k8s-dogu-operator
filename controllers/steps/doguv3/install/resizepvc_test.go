@@ -89,11 +89,12 @@ func (rc deletionRecClient) dogu(t *testing.T) *v3beta1.Dogu {
 
 func prepareResizeStep(client client.Client, t *testing.T, doguResource *v3beta1.Dogu, rendered []*unstructured.Unstructured) *ResizePVCStep {
 	t.Helper()
-	chartService := NewMockChartService(t)
+	chartService := newMockChartService(t)
 	chartService.EXPECT().DoguMetaValues(mock.Anything, doguResource).Return([]byte("meta"), true, nil).Maybe()
+	chartService.EXPECT().RuntimePatchTemplate(mock.Anything, doguResource).Return(nil, false, nil).Maybe()
 	chartService.EXPECT().Render(mock.Anything, doguResource, assembledValues).Return(rendered, nil).Maybe()
-	assembler := NewMockValueAssembler(t)
-	assembler.EXPECT().Assemble(mock.Anything, doguResource, []byte("meta")).Return(assembledValues, nil).Maybe()
+	assembler := newMockValueAssembler(t)
+	assembler.EXPECT().Assemble(mock.Anything, doguResource, []byte("meta"), []byte(nil)).Return(assembledValues, nil).Maybe()
 
 	planner := NewVolumeResizePlanner(chartService, assembler, pvc.NewResizeChecker(client), client)
 	return NewResizePVCStep(planner, client, client, record.NewFakeRecorder(10), true)

@@ -402,9 +402,10 @@ func TestSuspendHelmReleaseStep_expectedState(t *testing.T) {
 
 			chartService := newMockChartService(t)
 			chartService.EXPECT().DoguMetaValues(mock.Anything, dogu).Return(nil, false, nil)
+			chartService.EXPECT().RuntimePatchTemplate(mock.Anything, dogu).Return(nil, false, nil)
 			chartService.EXPECT().Render(mock.Anything, dogu, map[string]any{}).Return(nil, test.renderError)
-			assembler := NewMockValueAssembler(t)
-			assembler.EXPECT().Assemble(mock.Anything, dogu, []byte(nil)).Return(map[string]any{}, nil)
+			assembler := newMockValueAssembler(t)
+			assembler.EXPECT().Assemble(mock.Anything, dogu, []byte(nil), []byte(nil)).Return(map[string]any{}, nil)
 			checker := NewMockResizeChecker(t)
 			if !test.noCheckExpected {
 				checker.EXPECT().Check(mock.Anything, dogu.Namespace, mock.Anything).Return(test.checkResult, test.checkError)
