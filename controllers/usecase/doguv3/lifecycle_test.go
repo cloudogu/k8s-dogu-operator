@@ -11,6 +11,7 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv3/install"
 	"github.com/cloudogu/k8s-dogu-operator/v3/internal/dogu/pvc"
 	"github.com/cloudogu/k8s-dogu-operator/v3/internal/dogu/values"
+	"github.com/cloudogu/k8s-dogu-operator/v3/internal/dogu/workloads"
 	fluxstate "github.com/cloudogu/k8s-dogu-operator/v3/internal/flux"
 	helm "github.com/fluxcd/helm-controller/api/v2"
 	fluxmeta "github.com/fluxcd/pkg/apis/meta"
@@ -113,15 +114,20 @@ func newLifecycleFixture(t *testing.T) *lifecycleFixture {
 	recorder := record.NewFakeRecorder(100)
 	assembler := values.NewAssembler(f.k8s)
 	operatorConfig := &config.OperatorConfig{}
+	resizeChecker := pvc.NewResizeChecker(f.k8s)
+	resizePlanner := install.NewVolumeResizePlanner(f.chart, assembler, resizeChecker, f.k8s)
 	f.useCase = NewDoguInstallOrChangeUseCase(
 		install.NewCreateFinalizerStep(f.k8s),
 		install.NewEnsureOCIRepositoryStep(f.k8s, lifecycleRegistry{}, recorder),
 		install.NewWaitForOCIRepositoryReadyStep(f.k8s, recorder),
-		install.NewValidateChartStep(f.chart, assembler, f.k8s),
-		install.NewSuspendHelmReleaseStep(f.k8s, f.chart, assembler, pvc.NewResizeChecker(f.k8s), recorder),
+		install.NewValidateChartStep(f.chart, assembler, resizeChecker, f.k8s),
+		install.NewSuspendHelmReleaseStep(f.k8s, resizePlanner, recorder),
+		install.NewResizePVCStep(resizePlanner, f.k8s, f.k8s, recorder, operatorConfig.OfflineVolumeExpansion),
 		install.NewEnsureHelmReleaseStep(f.k8s, operatorConfig, f.chart, assembler, recorder),
 		install.NewHelmReleaseStatusStep(f.k8s, f.chart, assembler, operatorConfig, fluxstate.NewHelmReleaseReader(f.k8s, helmClient), recorder),
-		install.NewUpdatePendingStep(f.k8s), install.NewExportModeStep(f.k8s, recorder), f.k8s, recorder,
+		install.NewUpdatePendingStep(f.k8s), install.NewExportModeStep(f.k8s, recorder),
+		install.NewVolumeStatusStep(f.chart, assembler, workloads.NewDiscovery(f.k8s), f.k8s, recorder),
+		f.k8s, recorder,
 	)
 	return f
 }
@@ -155,8 +161,8 @@ func (f *lifecycleFixture) recordDeployment(t *testing.T) {
 	f.release.Status.History = helm.Snapshots{{Name: "scm", Version: 2, ChartVersion: "2.0.0", Status: "deployed"}}
 	f.release.Status.ObservedGeneration = f.release.Generation
 	manifest, err := json.Marshal(&core.ConfigMap{
-		TypeMeta:   metav1.TypeMeta{APIVersion: "v1", Kind: "ConfigMap"},
-		ObjectMeta: metav1.ObjectMeta{Name: "scm-config", Labels: f.release.Spec.CommonMetadata.Labels},
+		APIVersion: "v1", Kind: "ConfigMap",
+		Name: "scm-config", Labels: f.release.Spec.CommonMetadata.Labels,
 	})
 	require.NoError(t, err)
 	require.NoError(t, f.storage.Create(&helmrelease.Release{

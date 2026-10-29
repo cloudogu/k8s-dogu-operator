@@ -10,6 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - [#360] Support stopping and starting v3 dogu workloads.
+- [#359] Reject v3 dogu changes that shrink a volume or change its storage class (`Valid=False`).
+- [#359] Enable V3 dogus to increase the volume size of their pvcs.
+- [#359] Grow volumes of v3 dogus online by default; Helm value `offlineVolumeExpansion` enables the offline flow for storage that only expands unmounted volumes.
 - [#358] Support `DoguRestart` for dogu v3.
 - [#367] Warning condition and event when activating the export mode for V3 Dogus because is not implemented
 - [#368] Detect whether a v3 dogu has to be migrated from v2 or installed

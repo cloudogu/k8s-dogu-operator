@@ -67,6 +67,7 @@ const (
 	envVarImageConfigCacheSize                    = "IMAGE_CONFIG_CACHE_SIZE"
 	envVarDoguHelmReconciliationInterval          = "DOGU_HELM_RECONCILIATION_INTERVAL"
 	envVarDoguHelmRetryInterval                   = "DOGU_HELM_RETRY_INTERVAL"
+	envVarOfflineVolumeExpansion                  = "OFFLINE_VOLUME_EXPANSION"
 	errMsgFailedToParseEnvVarValue                = "failed to parse value of environment variable %s: %w"
 )
 
@@ -124,6 +125,8 @@ type OperatorConfig struct {
 	DoguHelmReconciliationInterval time.Duration `json:"dogu_helm_reconciliation_interval"`
 	// DoguHelmRetryInterval defines the interval in which Helm installs or upgrade for a dogu should be retried on error
 	DoguHelmRetryInterval time.Duration `json:"dogu_helm_retry_interval"`
+	// OfflineVolumeExpansion defines whether v3 dogus detach their volumes before growing them, for storage that cannot expand mounted volumes.
+	OfflineVolumeExpansion bool `json:"offline_volume_expansion"`
 }
 
 type Version string
@@ -171,6 +174,12 @@ func NewOperatorConfig(version Version) (*OperatorConfig, error) {
 	}
 	log.Info(fmt.Sprintf("Found stored helm retry interval! Using interval %s", doguHelmRetryInterval))
 
+	offlineVolumeExpansion, err := readOfflineVolumeExpansion()
+	if err != nil {
+		return nil, fmt.Errorf("failed to read offline volume expansion: %w", err)
+	}
+	log.Info(fmt.Sprintf("Using offline volume expansion for v3 dogus: %t", offlineVolumeExpansion))
+
 	return &OperatorConfig{
 		Namespace:                      namespace,
 		DoguRegistry:                   doguRegistryData,
@@ -190,6 +199,7 @@ func NewOperatorConfig(version Version) (*OperatorConfig, error) {
 		ExperimentalHelmfileSupport:    getExperimentalHelmfileSupport(),
 		HelmfileGlobalConfig:           getHelmfileGlobalConfig(),
 		HelmfileOpenDeskConfig:         getHelmfileOpenDeskConfig(),
+		OfflineVolumeExpansion:         offlineVolumeExpansion,
 	}, nil
 }
 
@@ -633,6 +643,21 @@ func readDuration(envVar string) (time.Duration, error) {
 		return 0, fmt.Errorf("value of env var [%s] is no valid duration: %w", envVar, err)
 	}
 	return duration, nil
+}
+
+// readOfflineVolumeExpansion fails on an invalid value, as falling back to online expansion leaves resizes on offline-only storage stuck.
+func readOfflineVolumeExpansion() (bool, error) {
+	value, found := os.LookupEnv(envVarOfflineVolumeExpansion)
+	if !found {
+		return false, nil
+	}
+
+	offline, err := strconv.ParseBool(value)
+	if err != nil {
+		return false, fmt.Errorf(errMsgFailedToParseEnvVarValue, envVarOfflineVolumeExpansion, err)
+	}
+
+	return offline, nil
 }
 
 func GetStage() (string, error) {

@@ -75,6 +75,7 @@ var (
 	testScheme             = runtime.NewScheme()
 	_                      = v3beta1.AddToScheme(testScheme)
 	_                      = flux.AddToScheme(testScheme)
+	_                      = v1.AddToScheme(testScheme)
 )
 
 func TestEnsureOCIRepositoryStep_Run(t *testing.T) {

@@ -28,6 +28,8 @@ controllerManager:
     # List of simple dogu names without dogu namespaces e.g. ["grafana", "..."]
     warpMenuDisabledV2Dogus: []
     doguV3Enabled: false
+    # offlineVolumeExpansion detaches volumes of v3 dogus before growing them. Enable it for storage that cannot expand mounted volumes.
+    offlineVolumeExpansion: false
     disablePostfixDependencyCheck: false
     doguStartupProbeTimeout: 1
     doguRestartSuccessfulHistoryLimit: 3
