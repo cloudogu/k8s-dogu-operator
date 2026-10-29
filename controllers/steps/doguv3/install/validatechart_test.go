@@ -261,6 +261,85 @@ func TestValidateChartStep_Run_requeuesWhenStatusUpdateFails(t *testing.T) {
 	assert.False(t, got.Continue)
 }
 
+func TestValidateChartStep_Run_skipsStatusUpdateWhenConditionsAreUnchanged(t *testing.T) {
+	tests := []struct {
+		name          string
+		validateErr   error
+		validStatus   metav1.ConditionStatus
+		validReason   string
+		validMessage  string
+		want          doguv3.StepResult
+		wantUpdates   int
+		existingValid bool
+	}{
+		{
+			name:          "valid chart with persisted conditions",
+			validStatus:   metav1.ConditionTrue,
+			validReason:   ReasonValid,
+			validMessage:  "chart values satisfy the schema and the chart renders successfully",
+			want:          doguv3.Continue(),
+			existingValid: true,
+		},
+		{
+			name:          "invalid chart with persisted conditions",
+			validateErr:   assert.AnError,
+			validStatus:   metav1.ConditionFalse,
+			validReason:   v3beta1.ReasonSchemaInvalid,
+			validMessage:  "values do not satisfy the chart schema: " + assert.AnError.Error(),
+			want:          doguv3.Abort(v3beta1.ReasonSchemaInvalid, "values do not satisfy the chart schema: "+assert.AnError.Error()),
+			existingValid: true,
+		},
+		{
+			name:        "valid chart without persisted conditions",
+			want:        doguv3.Continue(),
+			wantUpdates: 1,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			doguResource := testDoguResource.DeepCopy()
+			if tt.existingValid {
+				apimeta.SetStatusCondition(&doguResource.Status.Conditions, metav1.Condition{
+					Type: v3beta1.ConditionSchemaValidationSkipped, Status: metav1.ConditionFalse,
+					Reason: v3beta1.ReasonSchemaValidationEnabled, Message: "schema validation is enabled", ObservedGeneration: doguResource.Generation,
+				})
+				apimeta.SetStatusCondition(&doguResource.Status.Conditions, metav1.Condition{
+					Type: v3beta1.ConditionValid, Status: tt.validStatus,
+					Reason: tt.validReason, Message: tt.validMessage, ObservedGeneration: doguResource.Generation,
+				})
+			}
+			cs := newMockChartService(t)
+			cs.EXPECT().DoguMetaValues(mock.Anything, doguResource).Return(nil, false, nil)
+			cs.EXPECT().RuntimePatchTemplate(mock.Anything, doguResource).Return(nil, false, nil)
+			cs.EXPECT().ValidateValues(mock.Anything, doguResource, map[string]any(assembledValues)).Return(tt.validateErr)
+			if tt.validateErr == nil {
+				cs.EXPECT().Render(mock.Anything, doguResource, map[string]any(assembledValues)).Return(nil, nil)
+			}
+			as := newMockValueAssembler(t)
+			as.EXPECT().Assemble(mock.Anything, doguResource, []byte(nil), []byte(nil)).Return(assembledValues, nil)
+
+			updates := 0
+			k8sClient := fake.NewClientBuilder().
+				WithScheme(testScheme).
+				WithObjects(doguResource).
+				WithStatusSubresource(&v3beta1.Dogu{}).
+				WithInterceptorFuncs(interceptor.Funcs{
+					SubResourceUpdate: func(ctx context.Context, c client.Client, subResourceName string, obj client.Object, opts ...client.SubResourceUpdateOption) error {
+						updates++
+						return c.SubResource(subResourceName).Update(ctx, obj, opts...)
+					},
+				}).
+				Build()
+
+			got := NewValidateChartStep(cs, as, k8sClient).Run(testCtx, doguResource)
+
+			assert.Equal(t, tt.want, got)
+			assert.Equal(t, tt.wantUpdates, updates)
+		})
+	}
+}
+
 func assertCondition(t *testing.T, doguResource *v3beta1.Dogu, condType string, status metav1.ConditionStatus, reason string) {
 	t.Helper()
 	cond := apimeta.FindStatusCondition(doguResource.Status.Conditions, condType)
