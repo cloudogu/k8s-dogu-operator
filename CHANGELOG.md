@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - Most steps of the dogu reconciliation are skipped, if PauseReconciliation is set (except to set the Condition UpdatePending).
 
 ### Changed
+- [#383] Reduce logger noise on every reconcile
 - Update go to 1.27.3
 
 ### Fixed
