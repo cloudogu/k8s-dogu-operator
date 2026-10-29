@@ -10,6 +10,7 @@ import (
 	"github.com/cloudogu/k8s-dogu-lib/v3/api/v3beta1"
 	"github.com/cloudogu/k8s-dogu-operator/v3/internal/dogu/migration"
 	mock "github.com/stretchr/testify/mock"
+	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -153,8 +154,8 @@ func (_m *MockResourceFinder) EXPECT() *MockResourceFinder_Expecter {
 }
 
 // FindV2Resources provides a mock function for the type MockResourceFinder
-func (_mock *MockResourceFinder) FindV2Resources(ctx context.Context, doguName string) ([]client.Object, error) {
-	ret := _mock.Called(ctx, doguName)
+func (_mock *MockResourceFinder) FindV2Resources(ctx context.Context, doguRef v1.ObjectReference) ([]client.Object, error) {
+	ret := _mock.Called(ctx, doguRef)
 
 	if len(ret) == 0 {
 		panic("no return value specified for FindV2Resources")
@@ -162,18 +163,18 @@ func (_mock *MockResourceFinder) FindV2Resources(ctx context.Context, doguName s
 
 	var r0 []client.Object
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string) ([]client.Object, error)); ok {
-		return returnFunc(ctx, doguName)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, v1.ObjectReference) ([]client.Object, error)); ok {
+		return returnFunc(ctx, doguRef)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string) []client.Object); ok {
-		r0 = returnFunc(ctx, doguName)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, v1.ObjectReference) []client.Object); ok {
+		r0 = returnFunc(ctx, doguRef)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]client.Object)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, string) error); ok {
-		r1 = returnFunc(ctx, doguName)
+	if returnFunc, ok := ret.Get(1).(func(context.Context, v1.ObjectReference) error); ok {
+		r1 = returnFunc(ctx, doguRef)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -187,20 +188,20 @@ type MockResourceFinder_FindV2Resources_Call struct {
 
 // FindV2Resources is a helper method to define mock.On call
 //   - ctx context.Context
-//   - doguName string
-func (_e *MockResourceFinder_Expecter) FindV2Resources(ctx any, doguName any) *MockResourceFinder_FindV2Resources_Call {
-	return &MockResourceFinder_FindV2Resources_Call{Call: _e.mock.On("FindV2Resources", ctx, doguName)}
+//   - doguRef v1.ObjectReference
+func (_e *MockResourceFinder_Expecter) FindV2Resources(ctx any, doguRef any) *MockResourceFinder_FindV2Resources_Call {
+	return &MockResourceFinder_FindV2Resources_Call{Call: _e.mock.On("FindV2Resources", ctx, doguRef)}
 }
 
-func (_c *MockResourceFinder_FindV2Resources_Call) Run(run func(ctx context.Context, doguName string)) *MockResourceFinder_FindV2Resources_Call {
+func (_c *MockResourceFinder_FindV2Resources_Call) Run(run func(ctx context.Context, doguRef v1.ObjectReference)) *MockResourceFinder_FindV2Resources_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
 			arg0 = args[0].(context.Context)
 		}
-		var arg1 string
+		var arg1 v1.ObjectReference
 		if args[1] != nil {
-			arg1 = args[1].(string)
+			arg1 = args[1].(v1.ObjectReference)
 		}
 		run(
 			arg0,
@@ -215,7 +216,7 @@ func (_c *MockResourceFinder_FindV2Resources_Call) Return(objects []client.Objec
 	return _c
 }
 
-func (_c *MockResourceFinder_FindV2Resources_Call) RunAndReturn(run func(ctx context.Context, doguName string) ([]client.Object, error)) *MockResourceFinder_FindV2Resources_Call {
+func (_c *MockResourceFinder_FindV2Resources_Call) RunAndReturn(run func(ctx context.Context, doguRef v1.ObjectReference) ([]client.Object, error)) *MockResourceFinder_FindV2Resources_Call {
 	_c.Call.Return(run)
 	return _c
 }
