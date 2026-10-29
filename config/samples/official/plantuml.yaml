@@ -1,9 +1,0 @@
-apiVersion: k8s.cloudogu.com/v2
-kind: Dogu
-metadata:
-  name: plantuml
-  labels:
-    app: ces
-spec:
-  name: official/plantuml
-  version: 2024.7-1

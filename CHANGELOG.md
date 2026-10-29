@@ -5,6 +5,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Removed
+- [#374] Remove Dogu samples. Instead, use https://github.com/cloudogu/k8s-ecosystem-samples
+
 ### Added
 - [#360] Support stopping and starting v3 dogu workloads.
 - [#359] Reject v3 dogu changes that shrink a volume or change its storage class (`Valid=False`).
@@ -18,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - Most steps of the dogu reconciliation are skipped, if PauseReconciliation is set (except to set the Condition UpdatePending).
 
 ### Changed
+- [#383] Reduce logger noise on every reconcile
 - Update go to 1.27.3
 
 ### Fixed
