@@ -12,7 +12,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	corev1ac "k8s.io/client-go/applyconfigurations/core/v1"
-	metav1ac "k8s.io/client-go/applyconfigurations/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -112,11 +111,6 @@ func NewMigrationSecret(dogu *v3beta1.Dogu, data map[string][]byte) *corev1ac.Se
 			v3beta1.DoguLabelName:        dogu.Spec.Name,
 			configTypeLabel:              migrationType,
 		}).
-		WithOwnerReferences(metav1ac.OwnerReference().
-			WithAPIVersion(v3beta1.GroupVersion.String()).
-			WithKind(doguKind).
-			WithName(dogu.Name).
-			WithUID(dogu.UID)).
 		WithType(corev1.SecretTypeOpaque).
 		WithData(data)
 }
