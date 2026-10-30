@@ -40,7 +40,7 @@ func (s *MigrationSecretStep) Run(ctx context.Context, doguResource *v3beta1.Dog
 	credentials, err := dogumigration.ServiceAccountCredentials(sensitiveConfig)
 	if err != nil {
 		// The sensitive config has to be corrected manually. Its change triggers a new reconciliation, because the dogu owns it.
-		return s.abort(doguResource, err)
+		return s.abort(err)
 	}
 
 	existing, err := dogumigration.MigrationSecret(ctx, s.k8sClient, doguResource)
@@ -70,9 +70,7 @@ func (s *MigrationSecretStep) Run(ctx context.Context, doguResource *v3beta1.Dog
 }
 
 // abort records a warning and stops the reconciliation, because the error cannot be solved by a retry.
-func (s *MigrationSecretStep) abort(doguResource *v3beta1.Dogu, err error) stepsv3.StepResult {
-	s.eventRecorder.Event(doguResource, corev1.EventTypeWarning, v3beta1.ReasonMigrationFailed, err.Error())
-
+func (s *MigrationSecretStep) abort(err error) stepsv3.StepResult {
 	return stepsv3.Abort(v3beta1.ReasonMigrationFailed, err.Error())
 }
 

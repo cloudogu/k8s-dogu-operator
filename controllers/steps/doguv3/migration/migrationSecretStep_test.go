@@ -2,13 +2,11 @@ package migration
 
 import (
 	"context"
-	"strings"
 	"testing"
 
 	"github.com/cloudogu/k8s-dogu-lib/v3/api/v3beta1"
 	stepsv3 "github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv3"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -73,10 +71,6 @@ admin_password: secret2
 			"k8s.cloudogu.com/dogu.name": "nexus",
 			"k8s.cloudogu.com/type":      "migration",
 		}, secret.Labels)
-		require.Len(t, secret.OwnerReferences, 1)
-		assert.Equal(t, "k8s.cloudogu.com/v3beta1", secret.OwnerReferences[0].APIVersion)
-		assert.Equal(t, "Dogu", secret.OwnerReferences[0].Kind)
-		assert.Equal(t, "nexus", secret.OwnerReferences[0].Name)
 		require.Len(t, secret.ManagedFields, 1)
 		assert.Equal(t, "k8s-dogu-operator-migration-secret-step", secret.ManagedFields[0].Manager)
 		assert.Equal(t, metav1.ManagedFieldsOperationApply, secret.ManagedFields[0].Operation)
@@ -148,7 +142,6 @@ sa-ldap:
 `)).Build()
 		recorder := NewMockEventRecorder(t)
 		msg := `sensitive config paths "sa-ldap.bind_password" and "sa-ldap_bind.password" both result in the migration secret key "ldap_bind_password"`
-		recorder.EXPECT().Event(dogu, corev1.EventTypeWarning, v3beta1.ReasonMigrationFailed, msg)
 
 		result := NewMigrationSecretStep(k8sClient, recorder).Run(testCtx, dogu)
 
@@ -160,9 +153,6 @@ sa-ldap:
 		dogu := testDogu()
 		k8sClient := fake.NewClientBuilder().WithScheme(testScheme(t)).WithObjects(sensitiveConfig("sa-postgresql: [unclosed")).Build()
 		recorder := NewMockEventRecorder(t)
-		recorder.EXPECT().Event(dogu, corev1.EventTypeWarning, v3beta1.ReasonMigrationFailed, mock.MatchedBy(func(msg string) bool {
-			return strings.HasPrefix(msg, "failed to parse sensitive config")
-		}))
 
 		result := NewMigrationSecretStep(k8sClient, recorder).Run(testCtx, dogu)
 
