@@ -7,7 +7,6 @@
 #
 # Environment:
 #   NAMESPACE              namespace of the CES
-#   KUBE_CONTEXT           kube context to use (default: current context)
 #   YQ                     yq v4 binary
 #   STAGING_REGISTRY_HOST  host of the staging Harbor
 #   STAGING_DCC_ENDPOINT   endpoint of the staging dogu registry v3
@@ -31,7 +30,7 @@ DCC_SECRET="dogu-registry-v3"
 export DCC_SECRET
 
 kube() {
-  kubectl ${KUBE_CONTEXT:+--context="${KUBE_CONTEXT}"} --namespace "${NAMESPACE}" "$@"
+  kubectl --namespace "${NAMESPACE}" "$@"
 }
 
 fail() {

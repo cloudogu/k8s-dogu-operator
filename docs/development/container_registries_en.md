@@ -8,8 +8,7 @@ staging registries:
 | Helm charts (Harbor) | `ces-container-registries` | `registry.cloudogu.com`                  | `staging-registry.cloudogu.com`                  |
 | Dogu registry v3     | `dogu-registry-v3`         | `https://dogu.cloudogu.com/api/v3/dogus` | `https://staging-dogu.cloudogu.com/api/v3/dogus` |
 
-The targets operate in the namespace given by `NAMESPACE` and the kube context given by `KUBE_CONTEXT_NAME` (by
-default the current context), both usually set in your `.env`.
+The targets operate on the current kubectl context, in the namespace given by `NAMESPACE` in your `.env`.
 
 ## Credentials
 

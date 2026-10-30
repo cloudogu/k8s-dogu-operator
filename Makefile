@@ -86,7 +86,7 @@ template-image-pull-policy: $(BINARY_YQ)
 .PHONY: kill-operator-pod
 kill-operator-pod:
 	@echo "Restarting k8s-dogu-operator!"
-	@kubectl --context="${KUBE_CONTEXT_NAME}" -n ${NAMESPACE} delete pods -l 'app.kubernetes.io/name=${ARTIFACT_ID}'
+	@kubectl -n ${NAMESPACE} delete pods -l 'app.kubernetes.io/name=${ARTIFACT_ID}'
 
 ##@ Debug
 
@@ -101,7 +101,7 @@ STAGING_REGISTRY_HOST ?= staging-registry.cloudogu.com
 STAGING_DCC_ENDPOINT ?= https://staging-dogu.cloudogu.com/api/v3/dogus
 PROD_REGISTRY_HOST ?= registry.cloudogu.com
 PROD_DCC_ENDPOINT ?= https://dogu.cloudogu.com/api/v3/dogus
-REGISTRY_ENV = NAMESPACE="${NAMESPACE}" KUBE_CONTEXT="${KUBE_CONTEXT_NAME}" YQ="$(BINARY_YQ)" \
+REGISTRY_ENV = NAMESPACE="${NAMESPACE}" YQ="$(BINARY_YQ)" \
 	STAGING_REGISTRY_HOST="$(STAGING_REGISTRY_HOST)" STAGING_DCC_ENDPOINT="$(STAGING_DCC_ENDPOINT)" \
 	PROD_REGISTRY_HOST="$(PROD_REGISTRY_HOST)" PROD_DCC_ENDPOINT="$(PROD_DCC_ENDPOINT)" dev/registry-env.sh
 

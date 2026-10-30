@@ -8,8 +8,7 @@ Staging-Registries verwenden:
 | Helm-Charts (Harbor) | `ces-container-registries` | `registry.cloudogu.com`                  | `staging-registry.cloudogu.com`                  |
 | Dogu-Registry v3     | `dogu-registry-v3`         | `https://dogu.cloudogu.com/api/v3/dogus` | `https://staging-dogu.cloudogu.com/api/v3/dogus` |
 
-Die Targets arbeiten im Namespace aus `NAMESPACE` und im Kube-Kontext aus `KUBE_CONTEXT_NAME` (standardmäßig der
-aktuelle Kontext), beide üblicherweise in der `.env` gesetzt.
+Die Targets arbeiten im aktuellen kubectl-Kontext, im Namespace, der in der `.env` über `NAMESPACE` gesetzt ist.
 
 ## Zugangsdaten
 
