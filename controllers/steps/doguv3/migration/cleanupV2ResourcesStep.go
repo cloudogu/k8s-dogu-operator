@@ -51,7 +51,7 @@ func (s *CleanupV2ResourcesStep) Run(ctx context.Context, doguResource *v3beta1.
 		if err != nil {
 			return stepsv3.RequeueWithError(err, "failed to delete v2 resource")
 		}
-		logging.Info(ctx, "Dogu v2 resource deleted", resource.GetObjectKind().GroupVersionKind().Kind, resource.GetName())
+		logging.Info(ctx, "Deleting Dogu v2 resource", resource.GetObjectKind().GroupVersionKind().Kind, resource.GetName())
 	}
 	return stepsv3.RequeueAfter(defaultRequeueAfter, v3beta1.ReasonMigrationPending, "Resources of v2 dogu are being deleted")
 }
