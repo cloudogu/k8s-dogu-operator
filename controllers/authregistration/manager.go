@@ -134,7 +134,11 @@ func (sm *AuthRegistrationManager) ensureAuthRegistration(ctx context.Context, d
 
 	authReg.Spec = desiredAuthReg.Spec
 	authReg.OwnerReferences = desiredAuthReg.OwnerReferences
-	maps.Copy(authReg.Labels, desiredAuthReg.Labels)
+	if authReg.Labels == nil {
+		authReg.Labels = desiredAuthReg.Labels
+	} else {
+		maps.Copy(authReg.Labels, desiredAuthReg.Labels)
+	}
 
 	updatedAuthReg, err := sm.client.Update(ctx, authReg, metav1.UpdateOptions{})
 	if err != nil {

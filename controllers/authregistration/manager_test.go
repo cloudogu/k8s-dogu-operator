@@ -154,7 +154,11 @@ func TestAuthRegistrationManager_EnsureAuthRegistration(t *testing.T) {
 		expectedName := createAuthRegistrationName("redmine")
 
 		desired := &authRegApiV1.AuthRegistration{
-			ObjectMeta: metav1.ObjectMeta{Name: expectedName},
+			Name: expectedName,
+			Labels: map[string]string{
+				"app":       "ces",
+				"dogu.name": "redmine",
+			},
 			Spec: authRegApiV1.AuthRegistrationSpec{
 				Protocol: authRegApiV1.AuthProtocolCAS,
 				Consumer: "redmine",
@@ -165,7 +169,8 @@ func TestAuthRegistrationManager_EnsureAuthRegistration(t *testing.T) {
 		client.EXPECT().Create(
 			ctx,
 			mock.MatchedBy(func(arg *authRegApiV1.AuthRegistration) bool {
-				return arg != nil && arg.Name == desired.Name && reflect.DeepEqual(arg.Spec, desired.Spec)
+				return arg != nil && arg.Name == desired.Name && reflect.DeepEqual(arg.Spec, desired.Spec) &&
+					arg.Labels["app"] == "ces" && arg.Labels["dogu.name"] == "redmine"
 			}),
 			metav1.CreateOptions{},
 		).Return(desired, nil)
@@ -186,7 +191,11 @@ func TestAuthRegistrationManager_EnsureAuthRegistration(t *testing.T) {
 		expectedName := createAuthRegistrationName("redmine")
 
 		desired := &authRegApiV1.AuthRegistration{
-			ObjectMeta: metav1.ObjectMeta{Name: expectedName},
+			Name: expectedName,
+			Labels: map[string]string{
+				"app":       "ces",
+				"dogu.name": "redmine",
+			},
 			Spec: authRegApiV1.AuthRegistrationSpec{
 				Protocol: authRegApiV1.AuthProtocolCAS,
 				Consumer: "redmine",
@@ -240,7 +249,7 @@ func TestAuthRegistrationManager_EnsureAuthRegistration(t *testing.T) {
 		fetcher.AssertExpectations(t)
 	})
 
-	t.Run("should not update when current spec already matches", func(t *testing.T) {
+	t.Run("should not update when current spec & labels already match", func(t *testing.T) {
 		client := newMockAuthRegistrationClient(t)
 		syncer := newMockCredentialsSyncer(t)
 		fetcher := &mockLocalDoguFetcher{}
@@ -248,10 +257,9 @@ func TestAuthRegistrationManager_EnsureAuthRegistration(t *testing.T) {
 		manager := &AuthRegistrationManager{client: client, credentialsSyncer: syncer, doguFetcher: fetcher}
 		expectedName := createAuthRegistrationName("redmine")
 		existing := &authRegApiV1.AuthRegistration{
-			ObjectMeta: metav1.ObjectMeta{
-				OwnerReferences: []metav1.OwnerReference{*metav1.NewControllerRef(doguResource, doguv2.GroupVersion.WithKind("Dogu"))},
-			},
-			Spec: authRegApiV1.AuthRegistrationSpec{Protocol: authRegApiV1.AuthProtocolCAS, Consumer: "redmine"},
+			Labels:          map[string]string{"app": "ces", "dogu.name": "redmine", "other": "something"},
+			OwnerReferences: []metav1.OwnerReference{*metav1.NewControllerRef(doguResource, doguv2.GroupVersion.WithKind("Dogu"))},
+			Spec:            authRegApiV1.AuthRegistrationSpec{Protocol: authRegApiV1.AuthProtocolCAS, Consumer: "redmine"},
 		}
 
 		client.EXPECT().Get(ctx, expectedName, metav1.GetOptions{}).Return(existing, nil)
@@ -293,6 +301,39 @@ func TestAuthRegistrationManager_EnsureAuthRegistration(t *testing.T) {
 		fetcher.AssertExpectations(t)
 	})
 
+	t.Run("should update auth registration when a label is missing or wrong", func(t *testing.T) {
+		client := newMockAuthRegistrationClient(t)
+		syncer := newMockCredentialsSyncer(t)
+		fetcher := &mockLocalDoguFetcher{}
+		fetcher.On("FetchInstalled", ctx, doguResource.GetSimpleDoguName()).Return(newCASDoguDescriptor([]string{"cas"}), nil)
+		manager := &AuthRegistrationManager{client: client, credentialsSyncer: syncer, doguFetcher: fetcher}
+		expectedName := createAuthRegistrationName("redmine")
+		existing := &authRegApiV1.AuthRegistration{
+			Labels: map[string]string{"app": "duh", "other": "something"},
+			Spec:   authRegApiV1.AuthRegistrationSpec{Protocol: authRegApiV1.AuthProtocolCAS, Consumer: "old-consumer"},
+		}
+		updated := &authRegApiV1.AuthRegistration{
+			Labels: map[string]string{"app": "ces", "dogu.name": "redmine"},
+			Spec:   authRegApiV1.AuthRegistrationSpec{Protocol: authRegApiV1.AuthProtocolCAS, Consumer: "redmine"},
+		}
+
+		client.EXPECT().Get(ctx, expectedName, metav1.GetOptions{}).Return(existing, nil)
+		client.EXPECT().Update(
+			ctx,
+			mock.MatchedBy(func(arg *authRegApiV1.AuthRegistration) bool {
+				return arg != nil && arg.Spec.Protocol == authRegApiV1.AuthProtocolCAS && arg.Spec.Consumer == "redmine" &&
+					arg.Labels["app"] == "ces" && arg.Labels["dogu.name"] == "redmine"
+			}),
+			metav1.UpdateOptions{},
+		).Return(updated, nil)
+		syncer.EXPECT().SyncCredentials(ctx, updated, "redmine", "cas").Return(nil)
+
+		err := manager.EnsureAuthRegistration(ctx, doguResource)
+
+		require.NoError(t, err)
+		fetcher.AssertExpectations(t)
+	})
+
 	t.Run("should return update error", func(t *testing.T) {
 		client := newMockAuthRegistrationClient(t)
 		syncer := newMockCredentialsSyncer(t)
@@ -323,10 +364,9 @@ func TestAuthRegistrationManager_EnsureAuthRegistration(t *testing.T) {
 		manager := &AuthRegistrationManager{client: client, credentialsSyncer: syncer, doguFetcher: fetcher}
 		expectedName := createAuthRegistrationName("redmine")
 		existing := &authRegApiV1.AuthRegistration{
-			ObjectMeta: metav1.ObjectMeta{
-				OwnerReferences: []metav1.OwnerReference{*metav1.NewControllerRef(doguResource, doguv2.GroupVersion.WithKind("Dogu"))},
-			},
-			Spec: authRegApiV1.AuthRegistrationSpec{Protocol: authRegApiV1.AuthProtocolCAS, Consumer: "redmine"},
+			Labels:          map[string]string{"app": "ces", "dogu.name": "redmine"},
+			OwnerReferences: []metav1.OwnerReference{*metav1.NewControllerRef(doguResource, doguv2.GroupVersion.WithKind("Dogu"))},
+			Spec:            authRegApiV1.AuthRegistrationSpec{Protocol: authRegApiV1.AuthProtocolCAS, Consumer: "redmine"},
 		}
 
 		client.EXPECT().Get(ctx, expectedName, metav1.GetOptions{}).Return(existing, nil)
