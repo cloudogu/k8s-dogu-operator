@@ -21,7 +21,7 @@ var deletableResourceKinds = []schema.GroupVersionKind{
 	{Group: "k8s.cloudogu.com", Version: "v1", Kind: "Exposition"},
 	{Group: "k8s.cloudogu.com", Version: "v1", Kind: "WarpMenuEntry"},
 	{Group: "networking.k8s.io", Version: "v1", Kind: "NetworkPolicy"},
-	// TODO: AuthRegistration seems to lack the proper dogu.name label (or any others)
+	// TODO: AuthRegistration & Exposition seems to lack the proper dogu.name label (or any others)
 	// TODO: what about any existing DoguRestart resources?
 }
 
@@ -56,14 +56,14 @@ func (vrf V2ResourceFinder) FindV2Resources(ctx context.Context, ref v1.ObjectRe
 	return owned, nil
 }
 
-func (vrf V2ResourceFinder) findOwnedByKind(ctx context.Context, gkv schema.GroupVersionKind, ref v1.ObjectReference) ([]client.Object, error) {
+func (vrf V2ResourceFinder) findOwnedByKind(ctx context.Context, gvk schema.GroupVersionKind, ref v1.ObjectReference) ([]client.Object, error) {
 	list := &metav1.PartialObjectMetadataList{}
-	list.SetGroupVersionKind(gkv.GroupVersion().WithKind(gkv.Kind + "List"))
+	list.SetGroupVersionKind(gvk.GroupVersion().WithKind(gvk.Kind + "List"))
 
 	if err := vrf.client.List(ctx, list, client.InNamespace(ref.Namespace), client.MatchingLabels{
 		"dogu.name": ref.Name,
 	}); err != nil {
-		return nil, fmt.Errorf("failed to list %s: %w", gkv, err)
+		return nil, fmt.Errorf("failed to list %s: %w", gvk, err)
 	}
 
 	var owned []client.Object
@@ -72,7 +72,7 @@ func (vrf V2ResourceFinder) findOwnedByKind(ctx context.Context, gkv schema.Grou
 		if !hasOwnerReference(item, ref) {
 			continue
 		}
-		item.SetGroupVersionKind(gkv)
+		item.SetGroupVersionKind(gvk)
 		owned = append(owned, item)
 	}
 
