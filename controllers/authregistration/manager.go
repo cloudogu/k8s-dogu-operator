@@ -3,6 +3,7 @@ package authregistration
 import (
 	"context"
 	"fmt"
+	"maps"
 	"reflect"
 	"strings"
 
@@ -12,6 +13,7 @@ import (
 	authRegClientV1 "github.com/cloudogu/k8s-auth-registration-lib/client/typed/api/v1"
 	doguv2 "github.com/cloudogu/k8s-dogu-lib/v3/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/cesregistry"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/resource"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/serviceaccount"
 	k8sErr "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -67,11 +69,10 @@ func (sm *AuthRegistrationManager) EnsureAuthRegistration(ctx context.Context, d
 	}
 
 	desiredAuthReg := &authRegApiV1.AuthRegistration{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: createAuthRegistrationName(doguResource.Name),
-			OwnerReferences: []metav1.OwnerReference{
-				*metav1.NewControllerRef(doguResource, doguv2.GroupVersion.WithKind("Dogu")),
-			},
+		Name:   createAuthRegistrationName(doguResource.Name),
+		Labels: resource.GetAppLabel().Add(doguResource.GetDoguNameLabel()),
+		OwnerReferences: []metav1.OwnerReference{
+			*metav1.NewControllerRef(doguResource, doguv2.GroupVersion.WithKind("Dogu")),
 		},
 		Spec: authRegApiV1.AuthRegistrationSpec{
 			Protocol:  protocol,
@@ -124,12 +125,16 @@ func (sm *AuthRegistrationManager) ensureAuthRegistration(ctx context.Context, d
 		return nil, fmt.Errorf("failed to get AuthRegistration: %w", err)
 	}
 
-	if reflect.DeepEqual(authReg.Spec, desiredAuthReg.Spec) && reflect.DeepEqual(authReg.OwnerReferences, desiredAuthReg.OwnerReferences) {
+	if reflect.DeepEqual(authReg.Spec, desiredAuthReg.Spec) &&
+		reflect.DeepEqual(authReg.OwnerReferences, desiredAuthReg.OwnerReferences) &&
+		resource.CheckLabels(authReg, desiredAuthReg.Labels) {
+
 		return authReg, nil
 	}
 
 	authReg.Spec = desiredAuthReg.Spec
 	authReg.OwnerReferences = desiredAuthReg.OwnerReferences
+	maps.Copy(authReg.Labels, desiredAuthReg.Labels)
 
 	updatedAuthReg, err := sm.client.Update(ctx, authReg, metav1.UpdateOptions{})
 	if err != nil {
