@@ -13,17 +13,11 @@ default the current context), both usually set in your `.env`.
 
 ## Credentials
 
-The staging Harbor and the staging DCC use the same credentials. Add them to your `.env`:
+Both targets prompt for the username and password of the environment they switch to (the password is hidden). The
+credentials are used for Harbor and for the DCC. Nothing is changed if one of them is empty.
 
-```bash
-STAGING_USERNAME=my-user
-STAGING_PASSWORD=my-password
-```
-
-If they are not set, the targets prompt for them (the password is hidden). The `.env` is read by `make`, so a `$` in
-the password has to be written as `$$` and a `#` as `\#`. Trailing spaces become part of the value.
-
-The staging hosts can be overridden with `STAGING_REGISTRY_HOST` and `STAGING_DCC_ENDPOINT`.
+The hosts can be overridden with `STAGING_REGISTRY_HOST`, `STAGING_DCC_ENDPOINT`, `PROD_REGISTRY_HOST` and
+`PROD_DCC_ENDPOINT`.
 
 ## Switching to staging
 
@@ -31,17 +25,10 @@ The staging hosts can be overridden with `STAGING_REGISTRY_HOST` and `STAGING_DC
 make registry-staging
 ```
 
-- Adds an entry for `staging-registry.cloudogu.com` to `ces-container-registries`. All other entries stay unchanged,
-  as v2 dogus use this secret as their `imagePullSecret`.
-- Saves the data of the current `dogu-registry-v3` to the secret `dogu-registry-v3-prod-backup`. An existing backup is
-  never overwritten, so running the target twice is safe. If `dogu-registry-v3` does not exist, it is created and the
-  backup records its absence.
-- Sets `endpoint`, `username` and `password` of `dogu-registry-v3` to staging. `urlschema` and `insecureSkipVerify`
-  stay unchanged.
+- Writes the entry for `staging-registry.cloudogu.com` with the prompted credentials to `ces-container-registries`.
+  All other entries stay unchanged, as v2 dogus use this secret as their `imagePullSecret`.
+- Sets `endpoint`, `username` and `password` of `dogu-registry-v3` to staging.
 - Restarts the operator, as it reads `dogu-registry-v3` only on startup.
-
-The target fails if `ces-container-registries` does not exist, as this usually points to the wrong cluster or
-namespace.
 
 ## Switching back to prod
 
@@ -49,11 +36,19 @@ namespace.
 make registry-prod
 ```
 
-- Removes the staging entry from `ces-container-registries`.
-- Restores the data of `dogu-registry-v3` from `dogu-registry-v3-prod-backup` and deletes the backup. Labels and
-  annotations of `dogu-registry-v3` stay untouched. If the secret did not exist before switching to staging, it is
-  deleted. Without a backup, `dogu-registry-v3` stays untouched.
+- Removes the staging entry from `ces-container-registries` and writes the entry for `registry.cloudogu.com` with the
+  prompted credentials.
+- Sets `endpoint`, `username` and `password` of `dogu-registry-v3` to prod.
 - Restarts the operator.
+
+## Behaviour of both targets
+
+- They fail if `ces-container-registries` does not exist, as this usually points to the wrong cluster or namespace.
+- A registry entry is stored under the bare host. An existing entry of the same host with `https://` scheme is
+  replaced.
+- Only `endpoint`, `username` and `password` of `dogu-registry-v3` are changed. `urlschema`, `insecureSkipVerify`,
+  labels and annotations stay untouched. If the secret does not exist, it is created with `urlschema=default` and
+  `insecureSkipVerify=false`.
 
 ## Showing the current state
 
@@ -61,8 +56,7 @@ make registry-prod
 make registry-env-status
 ```
 
-Prints the endpoint of `dogu-registry-v3`, whether a prod backup exists, and the host and username of every entry in
-`ces-container-registries`. Passwords are never printed.
+Prints the endpoint of `dogu-registry-v3` and the host and username of every entry in `ces-container-registries`. Passwords are never printed.
 
 ## Notes
 

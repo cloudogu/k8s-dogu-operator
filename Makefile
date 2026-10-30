@@ -99,10 +99,11 @@ print-debug-info: ## Generates info and the list of environment variables requir
 
 STAGING_REGISTRY_HOST ?= staging-registry.cloudogu.com
 STAGING_DCC_ENDPOINT ?= https://staging-dogu.cloudogu.com/api/v3/dogus
-# Staging credentials for Harbor and DCC, prompted if not set in your .env.
-export STAGING_USERNAME STAGING_PASSWORD
-REGISTRY_ENV = NAMESPACE="${NAMESPACE}" KUBE_CONTEXT="${KUBE_CONTEXT_NAME}" YQ="$(BINARY_YQ)" STAGING_REGISTRY_HOST="$(STAGING_REGISTRY_HOST)" \
-	STAGING_DCC_ENDPOINT="$(STAGING_DCC_ENDPOINT)" dev/registry-env.sh
+PROD_REGISTRY_HOST ?= registry.cloudogu.com
+PROD_DCC_ENDPOINT ?= https://dogu.cloudogu.com/api/v3/dogus
+REGISTRY_ENV = NAMESPACE="${NAMESPACE}" KUBE_CONTEXT="${KUBE_CONTEXT_NAME}" YQ="$(BINARY_YQ)" \
+	STAGING_REGISTRY_HOST="$(STAGING_REGISTRY_HOST)" STAGING_DCC_ENDPOINT="$(STAGING_DCC_ENDPOINT)" \
+	PROD_REGISTRY_HOST="$(PROD_REGISTRY_HOST)" PROD_DCC_ENDPOINT="$(PROD_DCC_ENDPOINT)" dev/registry-env.sh
 
 .PHONY: registry-staging
 registry-staging: $(BINARY_YQ) ## Switches Harbor (ces-container-registries) and DCC v3 (dogu-registry-v3) to staging.

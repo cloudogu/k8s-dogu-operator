@@ -11,8 +11,10 @@
 #   YQ                     yq v4 binary
 #   STAGING_REGISTRY_HOST  host of the staging Harbor
 #   STAGING_DCC_ENDPOINT   endpoint of the staging dogu registry v3
-#   STAGING_USERNAME       staging credentials for Harbor and DCC, prompted if empty
-#   STAGING_PASSWORD
+#   PROD_REGISTRY_HOST     host of the prod Harbor
+#   PROD_DCC_ENDPOINT      endpoint of the prod dogu registry v3
+#
+# The credentials for the target environment are prompted on every switch. They are used for Harbor and the DCC.
 set -o errexit
 set -o nounset
 set -o pipefail
@@ -21,14 +23,12 @@ set -o pipefail
 : "${YQ:?YQ must be set}"
 : "${STAGING_REGISTRY_HOST:?STAGING_REGISTRY_HOST must be set}"
 : "${STAGING_DCC_ENDPOINT:?STAGING_DCC_ENDPOINT must be set}"
-export STAGING_REGISTRY_HOST STAGING_DCC_ENDPOINT
+: "${PROD_REGISTRY_HOST:?PROD_REGISTRY_HOST must be set}"
+: "${PROD_DCC_ENDPOINT:?PROD_DCC_ENDPOINT must be set}"
 
 REGISTRIES_SECRET="ces-container-registries"
 DCC_SECRET="dogu-registry-v3"
-DCC_BACKUP_SECRET="dogu-registry-v3-prod-backup"
-# Marks a backup of a dogu-registry-v3 secret that did not exist before switching to staging.
-ABSENT_ANNOTATION="k8s.cloudogu.com/registry-env-secret-absent"
-export DCC_SECRET DCC_BACKUP_SECRET ABSENT_ANNOTATION
+export DCC_SECRET
 
 kube() {
   kubectl ${KUBE_CONTEXT:+--context="${KUBE_CONTEXT}"} --namespace "${NAMESPACE}" "$@"
@@ -59,6 +59,14 @@ require_registries_secret() {
     fail "secret ${REGISTRIES_SECRET} not found in namespace ${NAMESPACE}. Wrong cluster or namespace?"
 }
 
+read_credentials() {
+  read -r -p "$1 username: " USERNAME || true
+  read -r -s -p "$1 password: " PASSWORD || true
+  echo
+  [[ -n "${USERNAME}" && -n "${PASSWORD}" ]] || fail "username and password must not be empty"
+  export USERNAME PASSWORD
+}
+
 registries_config() {
   kube get secret "${REGISTRIES_SECRET}" -o json | "${YQ}" -p=json -o=yaml '.data[".dockerconfigjson"] | @base64d'
 }
@@ -72,108 +80,60 @@ update_registries_config() {
     patch_secret "${REGISTRIES_SECRET}"
 }
 
-read_staging_credentials() {
-  if [[ -z "${STAGING_USERNAME:-}" ]]; then
-    read -r -p "Staging username: " STAGING_USERNAME || true
-  fi
-  if [[ -z "${STAGING_PASSWORD:-}" ]]; then
-    read -r -s -p "Staging password: " STAGING_PASSWORD || true
-    echo
-  fi
-  [[ -n "${STAGING_USERNAME}" && -n "${STAGING_PASSWORD}" ]] || fail "staging username and password must not be empty"
-  export STAGING_USERNAME STAGING_PASSWORD
+# Removes the entries of host $1, with and without https:// scheme, from ces-container-registries.
+remove_registry() {
+  echo "Removing ${1} from ${REGISTRIES_SECRET}..."
+  HOST="$1" update_registries_config 'del(.auths[strenv(HOST)], .auths["https://" + strenv(HOST)])'
 }
 
-backup_dcc_secret() {
-  if secret_exists "${DCC_BACKUP_SECRET}"; then
-    echo "Backup ${DCC_BACKUP_SECRET} already exists, keeping it."
-  elif secret_exists "${DCC_SECRET}"; then
-    echo "Backing up ${DCC_SECRET} to ${DCC_BACKUP_SECRET}..."
-    kube get secret "${DCC_SECRET}" -o json |
-      "${YQ}" -p=json -o=json '{"apiVersion": "v1", "kind": "Secret", "type": .type,
-        "metadata": {"name": strenv(DCC_BACKUP_SECRET)}, "data": .data}' |
-      create_secret
-  else
-    echo "${DCC_SECRET} does not exist, recording its absence in ${DCC_BACKUP_SECRET}..."
-    "${YQ}" -n -o=json '{"apiVersion": "v1", "kind": "Secret", "type": "Opaque",
-      "metadata": {"name": strenv(DCC_BACKUP_SECRET), "annotations": {strenv(ABSENT_ANNOTATION): "true"}}}' |
-      create_secret
-  fi
+# Writes the entry of host $1 with the prompted credentials to ces-container-registries. An entry with https:// scheme
+# is replaced as well.
+set_registry() {
+  echo "Writing ${1} to ${REGISTRIES_SECRET}..."
+  HOST="$1" update_registries_config 'del(.auths["https://" + strenv(HOST)]) | .auths[strenv(HOST)] = {
+    "username": strenv(USERNAME),
+    "password": strenv(PASSWORD),
+    "auth": (strenv(USERNAME) + ":" + strenv(PASSWORD) | @base64)}'
 }
 
-switch_dcc_to_staging() {
+# Points dogu-registry-v3 to endpoint $1 with the prompted credentials. Other keys of an existing secret stay untouched.
+set_dcc() {
   if secret_exists "${DCC_SECRET}"; then
-    echo "Pointing ${DCC_SECRET} to ${STAGING_DCC_ENDPOINT}..."
-    "${YQ}" -n -o=json '[
-      {"op": "add", "path": "/data/endpoint", "value": (strenv(STAGING_DCC_ENDPOINT) | @base64)},
-      {"op": "add", "path": "/data/username", "value": (strenv(STAGING_USERNAME) | @base64)},
-      {"op": "add", "path": "/data/password", "value": (strenv(STAGING_PASSWORD) | @base64)}]' |
+    echo "Pointing ${DCC_SECRET} to ${1}..."
+    ENDPOINT="$1" "${YQ}" -n -o=json '[
+      {"op": "add", "path": "/data/endpoint", "value": (strenv(ENDPOINT) | @base64)},
+      {"op": "add", "path": "/data/username", "value": (strenv(USERNAME) | @base64)},
+      {"op": "add", "path": "/data/password", "value": (strenv(PASSWORD) | @base64)}]' |
       patch_secret "${DCC_SECRET}"
   else
-    echo "Creating ${DCC_SECRET} for ${STAGING_DCC_ENDPOINT}..."
-    "${YQ}" -n -o=json '{"apiVersion": "v1", "kind": "Secret", "type": "Opaque",
+    echo "Creating ${DCC_SECRET} for ${1}..."
+    ENDPOINT="$1" "${YQ}" -n -o=json '{"apiVersion": "v1", "kind": "Secret", "type": "Opaque",
       "metadata": {"name": strenv(DCC_SECRET)},
       "stringData": {
-        "endpoint": strenv(STAGING_DCC_ENDPOINT),
-        "username": strenv(STAGING_USERNAME),
-        "password": strenv(STAGING_PASSWORD),
+        "endpoint": strenv(ENDPOINT),
+        "username": strenv(USERNAME),
+        "password": strenv(PASSWORD),
         "urlschema": "default",
         "insecureSkipVerify": "false"}}' |
       create_secret
   fi
 }
 
-# Restores only the data of dogu-registry-v3, so its labels and annotations stay untouched.
-restore_dcc_secret() {
-  if ! secret_exists "${DCC_BACKUP_SECRET}"; then
-    echo "No backup ${DCC_BACKUP_SECRET} found (already on prod?), leaving ${DCC_SECRET} untouched."
-    return
-  fi
-
-  local backup absent
-  backup="$(kube get secret "${DCC_BACKUP_SECRET}" -o json)"
-  absent="$("${YQ}" -p=json -o=yaml '.metadata.annotations[strenv(ABSENT_ANNOTATION)]' <<<"${backup}")"
-  if [[ "${absent}" == "true" ]]; then
-    echo "${DCC_SECRET} did not exist before switching to staging, deleting it..."
-    kube delete secret "${DCC_SECRET}" --ignore-not-found >/dev/null
-  elif secret_exists "${DCC_SECRET}"; then
-    echo "Restoring ${DCC_SECRET} from ${DCC_BACKUP_SECRET}..."
-    "${YQ}" -p=json -o=json '[{"op": "replace", "path": "/data", "value": .data}]' <<<"${backup}" |
-      patch_secret "${DCC_SECRET}"
-  else
-    echo "Recreating ${DCC_SECRET} from ${DCC_BACKUP_SECRET}..."
-    "${YQ}" -p=json -o=json '.metadata = {"name": strenv(DCC_SECRET)}' <<<"${backup}" | create_secret
-  fi
-  kube delete secret "${DCC_BACKUP_SECRET}" >/dev/null
-}
-
 staging() {
   require_registries_secret
-  read_staging_credentials
+  read_credentials "Staging"
 
-  echo "Adding ${STAGING_REGISTRY_HOST} to ${REGISTRIES_SECRET}..."
-  update_registries_config '.auths[strenv(STAGING_REGISTRY_HOST)] = {
-    "username": strenv(STAGING_USERNAME),
-    "password": strenv(STAGING_PASSWORD),
-    "auth": (strenv(STAGING_USERNAME) + ":" + strenv(STAGING_PASSWORD) | @base64)}'
-
-  backup_dcc_secret
-  switch_dcc_to_staging
+  set_registry "${STAGING_REGISTRY_HOST}"
+  set_dcc "${STAGING_DCC_ENDPOINT}"
 }
 
 prod() {
   require_registries_secret
+  read_credentials "Prod"
 
-  local has_staging_registry
-  has_staging_registry="$(registries_config | "${YQ}" -p=json -o=yaml '.auths | has(strenv(STAGING_REGISTRY_HOST))')"
-  if [[ "${has_staging_registry}" == "true" ]]; then
-    echo "Removing ${STAGING_REGISTRY_HOST} from ${REGISTRIES_SECRET}..."
-    update_registries_config 'del(.auths[strenv(STAGING_REGISTRY_HOST)])'
-  else
-    echo "${STAGING_REGISTRY_HOST} is not part of ${REGISTRIES_SECRET}, nothing to remove."
-  fi
-
-  restore_dcc_secret
+  remove_registry "${STAGING_REGISTRY_HOST}"
+  set_registry "${PROD_REGISTRY_HOST}"
+  set_dcc "${PROD_DCC_ENDPOINT}"
 }
 
 status() {
@@ -183,11 +143,6 @@ status() {
     echo "DCC v3 endpoint: $(kube get secret "${DCC_SECRET}" -o jsonpath='{.data.endpoint}' | base64 -d)"
   else
     echo "DCC v3 endpoint: <secret ${DCC_SECRET} not found>"
-  fi
-  if secret_exists "${DCC_BACKUP_SECRET}"; then
-    echo "Prod backup:     ${DCC_BACKUP_SECRET} exists"
-  else
-    echo "Prod backup:     none"
   fi
 
   echo "Registries in ${REGISTRIES_SECRET}:"

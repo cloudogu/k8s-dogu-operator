@@ -13,17 +13,11 @@ aktuelle Kontext), beide üblicherweise in der `.env` gesetzt.
 
 ## Zugangsdaten
 
-Das Staging-Harbor und das Staging-DCC verwenden dieselben Zugangsdaten. Diese werden in der `.env` hinterlegt:
+Beide Targets fragen Benutzernamen und Passwort der Umgebung ab, auf die gewechselt wird (das Passwort verdeckt). Die
+Zugangsdaten werden für Harbor und das DCC verwendet. Ist einer der Werte leer, wird nichts geändert.
 
-```bash
-STAGING_USERNAME=my-user
-STAGING_PASSWORD=my-password
-```
-
-Sind sie nicht gesetzt, fragen die Targets sie ab (das Passwort verdeckt). Die `.env` wird von `make` gelesen, ein `$`
-im Passwort muss daher als `$$` und ein `#` als `\#` geschrieben werden. Leerzeichen am Ende werden Teil des Werts.
-
-Die Staging-Hosts können über `STAGING_REGISTRY_HOST` und `STAGING_DCC_ENDPOINT` überschrieben werden.
+Die Hosts können über `STAGING_REGISTRY_HOST`, `STAGING_DCC_ENDPOINT`, `PROD_REGISTRY_HOST` und `PROD_DCC_ENDPOINT`
+überschrieben werden.
 
 ## Wechsel auf Staging
 
@@ -31,17 +25,11 @@ Die Staging-Hosts können über `STAGING_REGISTRY_HOST` und `STAGING_DCC_ENDPOIN
 make registry-staging
 ```
 
-- Fügt `ces-container-registries` einen Eintrag für `staging-registry.cloudogu.com` hinzu. Alle anderen Einträge
-  bleiben unverändert, da v2-Dogus das Secret als `imagePullSecret` nutzen.
-- Sichert die Daten des aktuellen `dogu-registry-v3` im Secret `dogu-registry-v3-prod-backup`. Ein bestehendes Backup
-  wird nie überschrieben, das Target kann also gefahrlos mehrfach ausgeführt werden. Existiert `dogu-registry-v3`
-  nicht, wird es angelegt und das Backup vermerkt, dass es vorher nicht existierte.
-- Setzt `endpoint`, `username` und `password` von `dogu-registry-v3` auf Staging. `urlschema` und `insecureSkipVerify`
-  bleiben unverändert.
+- Schreibt den Eintrag für `staging-registry.cloudogu.com` mit den abgefragten Zugangsdaten in
+  `ces-container-registries`. Alle anderen Einträge bleiben unverändert, da v2-Dogus das Secret als `imagePullSecret`
+  nutzen.
+- Setzt `endpoint`, `username` und `password` von `dogu-registry-v3` auf Staging.
 - Startet den Operator neu, da er `dogu-registry-v3` nur beim Start liest.
-
-Das Target schlägt fehl, wenn `ces-container-registries` nicht existiert, da dies meist auf den falschen Cluster oder
-Namespace hindeutet.
 
 ## Zurück auf Prod
 
@@ -49,11 +37,20 @@ Namespace hindeutet.
 make registry-prod
 ```
 
-- Entfernt den Staging-Eintrag aus `ces-container-registries`.
-- Stellt die Daten von `dogu-registry-v3` aus `dogu-registry-v3-prod-backup` wieder her und löscht das Backup. Labels
-  und Annotationen von `dogu-registry-v3` bleiben unverändert. Existierte das Secret vor dem Wechsel auf Staging nicht,
-  wird es gelöscht. Ohne Backup bleibt `dogu-registry-v3` unverändert.
+- Entfernt den Staging-Eintrag aus `ces-container-registries` und schreibt den Eintrag für `registry.cloudogu.com` mit
+  den abgefragten Zugangsdaten.
+- Setzt `endpoint`, `username` und `password` von `dogu-registry-v3` auf Prod.
 - Startet den Operator neu.
+
+## Verhalten beider Targets
+
+- Sie schlagen fehl, wenn `ces-container-registries` nicht existiert, da dies meist auf den falschen Cluster oder
+  Namespace hindeutet.
+- Ein Registry-Eintrag wird unter dem reinen Host gespeichert. Ein bestehender Eintrag desselben Hosts mit
+  `https://`-Schema wird ersetzt.
+- Von `dogu-registry-v3` werden nur `endpoint`, `username` und `password` geändert. `urlschema`, `insecureSkipVerify`,
+  Labels und Annotationen bleiben unverändert. Existiert das Secret nicht, wird es mit `urlschema=default` und
+  `insecureSkipVerify=false` angelegt.
 
 ## Aktuellen Stand anzeigen
 
@@ -61,8 +58,8 @@ make registry-prod
 make registry-env-status
 ```
 
-Gibt den Endpoint von `dogu-registry-v3` aus, ob ein Prod-Backup existiert, sowie Host und Benutzernamen jedes Eintrags
-in `ces-container-registries`. Passwörter werden nie ausgegeben.
+Gibt den Endpoint von `dogu-registry-v3` sowie Host und Benutzernamen jedes Eintrags in `ces-container-registries`
+aus. Passwörter werden nie ausgegeben.
 
 ## Hinweise
 
