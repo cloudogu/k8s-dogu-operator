@@ -103,6 +103,7 @@ func NewDoguMigrationUseCase(
 	waitOCIStep *install.WaitForOCIRepositoryReadyStep,
 	validateChartStep *install.ValidateChartStep,
 	migrationSecretStep *migration.MigrationSecretStep,
+	migrateDoguPVCStep *migration.MigrateDoguPVCStep,
 	migrationPendingStep *migration.MigrationPendingStep,
 	client K8sClient,
 	recorder EventRecorder,
@@ -115,6 +116,8 @@ func NewDoguMigrationUseCase(
 			ociStep,
 			waitOCIStep,
 			validateChartStep,
+			migrateDoguPVCStep,
+			// MigrationPendingStep stands in for the remaining migration steps and halts the use-case,
 			migrationSecretStep,
 			// MigrationPendingStep stands in for the actual migration steps and halts the use-case,
 			// so that no chart is installed next to the v2 resources.
