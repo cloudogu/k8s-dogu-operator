@@ -29,6 +29,7 @@ func NewMigrateDoguPVCStep(k8sClient client.Client, recorder EventRecorder) *Mig
 	return &MigrateDoguPVCStep{client: k8sClient, eventRecorder: recorder}
 }
 
+// Run Create a migration PVC for the dogu being migrated
 func (s *MigrateDoguPVCStep) Run(ctx context.Context, doguResource *v3beta1.Dogu) stepsv3.StepResult {
 	if result := s.scaleDownV2Deployment(ctx, doguResource); !result.Continue {
 		return result
@@ -54,7 +55,6 @@ func (s *MigrateDoguPVCStep) Run(ctx context.Context, doguResource *v3beta1.Dogu
 		return result
 	}
 
-	// stay here
 	s.eventRecorder.Event(doguResource, corev1.EventTypeNormal, v3beta1.ReasonMigrationPending, "test")
 	return stepsv3.Continue()
 }
@@ -86,8 +86,6 @@ func (s *MigrateDoguPVCStep) scaleDownV2Deployment(ctx context.Context, doguReso
 
 // save the name of the source pv as an annotation on the v3 resource, otherwise the name gets lost when the pvc is deleted
 func (s *MigrateDoguPVCStep) persistSourcePVName(ctx context.Context, doguResource *v3beta1.Dogu) (string, stepsv3.StepResult) {
-	// Persist the source PV before deleting the old PVC so later reconciles can
-	// resume the migration without relying on labels on the PV.
 	pvName := doguResource.Annotations[migrationSourcePVAnnotation]
 	if pvName == "" {
 		pvcs := &corev1.PersistentVolumeClaimList{}
@@ -121,8 +119,7 @@ func (s *MigrateDoguPVCStep) retainSourcePV(ctx context.Context, pvName string) 
 	if err := s.client.Get(ctx, client.ObjectKey{Name: pvName}, v2PV); err != nil {
 		return nil, stepsv3.RequeueWithError(fmt.Errorf("could not get migration source PV %s: %w", pvName, err), v3beta1.ReasonMigrationPending)
 	}
-	// set reclaim policy
-	// wait until it is set
+
 	if v2PV.Spec.PersistentVolumeReclaimPolicy != corev1.PersistentVolumeReclaimRetain {
 		v2PV.Spec.PersistentVolumeReclaimPolicy = corev1.PersistentVolumeReclaimRetain
 		err := s.client.Update(ctx, v2PV)
@@ -136,8 +133,6 @@ func (s *MigrateDoguPVCStep) retainSourcePV(ctx context.Context, pvName string) 
 
 // delete all pvcs of the dogu, which should just be one
 func (s *MigrateDoguPVCStep) deleteDoguPVCs(ctx context.Context, doguResource *v3beta1.Dogu) stepsv3.StepResult {
-	//delete dogu pvc
-	// wait until deletion
 	pvcs := &corev1.PersistentVolumeClaimList{}
 	err := s.client.List(ctx, pvcs, client.InNamespace(doguResource.Namespace), client.MatchingLabels{"dogu.name": doguResource.Spec.Name})
 	if err != nil {
@@ -178,7 +173,6 @@ func (s *MigrateDoguPVCStep) reservePVForMigration(ctx context.Context, doguReso
 
 // create a migration pvc and ensure it is bound to the pv
 func (s *MigrateDoguPVCStep) ensureMigrationPVCBound(ctx context.Context, doguResource *v3beta1.Dogu, v2PV *corev1.PersistentVolume) stepsv3.StepResult {
-	// create migration pvc
 	migrationPVC := &corev1.PersistentVolumeClaim{}
 	err := s.client.Get(ctx, client.ObjectKey{Namespace: doguResource.Namespace, Name: doguResource.Spec.Name + "-migration"}, migrationPVC)
 	if apierrors.IsNotFound(err) {
@@ -218,7 +212,6 @@ func (s *MigrateDoguPVCStep) ensureMigrationPVCBound(ctx context.Context, doguRe
 
 // update the dogu resource status
 func (s *MigrateDoguPVCStep) updateMigrationStatus(ctx context.Context, doguResource *v3beta1.Dogu) stepsv3.StepResult {
-	// set condition on dogu resource
 	if meta.SetStatusCondition(&doguResource.Status.Conditions, metav1.Condition{
 		Type:               v3beta1.ConditionReady,
 		Status:             metav1.ConditionFalse,
