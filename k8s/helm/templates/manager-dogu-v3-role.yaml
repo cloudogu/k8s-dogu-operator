@@ -75,6 +75,20 @@ rules:
       - get
       - list
       - watch
+  # dogu v3: read the v2 sensitive config and manage the migration secret
+  # patch is needed to apply the migration secret via server-side apply
+  - apiGroups:
+      - ""
+    resources:
+      - secrets
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - patch
+      - delete
   # dogu v3: read-only access so Helm `lookup` resolves during the chart validation render.
   # Namespaced on purpose: dogu charts may only `lookup` resources in their own (release)
   # namespace; cluster-scoped or cross-namespace lookups are unsupported and will fail validation.
