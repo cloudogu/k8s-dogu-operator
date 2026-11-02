@@ -21,3 +21,7 @@ type ResourceFinder interface {
 type EventRecorder interface {
 	Event(object runtime.Object, eventtype, reason, message string)
 }
+
+type K8sClient interface {
+	client.Client
+}

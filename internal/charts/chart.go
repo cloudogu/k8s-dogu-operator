@@ -17,10 +17,7 @@ import (
 	"k8s.io/client-go/rest"
 )
 
-const (
-	patchTemplateFileName  = "chart-patch-tpl.yaml"
-	doguValuesMetaFileName = "dogu-values-metadata.yaml"
-)
+const doguValuesMetaFileName = "dogu-values-metadata.yaml"
 
 type ReleaseRef struct {
 	Name      string
@@ -96,10 +93,6 @@ func (c *chart) validateValues(values map[string]any) error {
 
 func (c *chart) getDoguValuesMeta() ([]byte, bool) {
 	return c.getTemplateFile(doguValuesMetaFileName)
-}
-
-func (c *chart) getChartPatchTpl() ([]byte, bool) {
-	return c.getTemplateFile(patchTemplateFileName)
 }
 
 func (c *chart) getTemplateFile(name string) ([]byte, bool) {

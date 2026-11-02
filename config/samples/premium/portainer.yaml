@@ -1,9 +1,0 @@
-apiVersion: k8s.cloudogu.com/v2
-kind: Dogu
-metadata:
-  name: portainer
-  labels:
-    app: ces
-spec:
-  name: premium/portainer
-  version: 2.21.2-2

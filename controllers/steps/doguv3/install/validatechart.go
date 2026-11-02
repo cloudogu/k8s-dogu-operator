@@ -1,11 +1,13 @@
 package install
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 
 	"github.com/cloudogu/k8s-dogu-lib/v3/api/v3beta1"
 	stepsv3 "github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv3"
+	"github.com/cloudogu/k8s-dogu-operator/v3/internal/dogu/values"
 	"github.com/cloudogu/k8s-dogu-operator/v3/internal/logging"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -25,12 +27,12 @@ const (
 // cluster resource. A chart whose values violate the schema or that fails to render aborts the
 // reconciliation via ConditionValid so no HelmRelease is produced.
 type ValidateChartStep struct {
-	chartService ChartService
-	assembler    ValueAssembler
+	chartService chartService
+	assembler    valueAssembler
 	k8sClient    K8sClient
 }
 
-func NewValidateChartStep(chartService ChartService, assembler ValueAssembler, k8sClient K8sClient) *ValidateChartStep {
+func NewValidateChartStep(chartService chartService, assembler valueAssembler, k8sClient K8sClient) *ValidateChartStep {
 	return &ValidateChartStep{
 		chartService: chartService,
 		assembler:    assembler,
@@ -43,42 +45,55 @@ func (vcs *ValidateChartStep) Run(ctx context.Context, doguResource *v3beta1.Dog
 		logging.Debug(ctx, "Skipping ValidateChartStep because pausedReconciliation is set for dogu", "dogu", doguResource.Name)
 		return stepsv3.Continue()
 	}
-	metaValues, _, err := vcs.chartService.DoguMetaValues(ctx, doguResource)
+
+	valuesMeta, _, err := vcs.chartService.DoguMetaValues(ctx, doguResource)
 	if err != nil {
-		return stepsv3.RequeueWithError(fmt.Errorf("failed to get dogu meta values: %w", err), v3beta1.ReasonInstalling)
+		return stepsv3.RequeueWithError(fmt.Errorf("failed to get dogu meta values for dogu %s/%s: %w", doguResource.Namespace, doguResource.Name, err), v3beta1.ReasonInstalling)
 	}
 
-	values, err := vcs.assembler.Assemble(ctx, doguResource, metaValues)
+	runtimePatchTemplate, found, err := vcs.chartService.RuntimePatchTemplate(ctx, doguResource)
 	if err != nil {
-		return stepsv3.RequeueWithError(fmt.Errorf("failed to assemble values: %w", err), v3beta1.ReasonInstalling)
+		return stepsv3.RequeueWithError(fmt.Errorf("failed to retrieve runtime patch template for dogu %s/%s: %w", doguResource.Namespace, doguResource.Name, err), v3beta1.ReasonInstalling)
+	}
+
+	isEmpty := len(bytes.TrimSpace(runtimePatchTemplate)) == 0
+	emptyPatchFileExists := found && isEmpty
+	if emptyPatchFileExists {
+		err := fmt.Errorf("%s must not be empty for dogu %s/%s", values.RuntimePatchTemplateFileName, doguResource.Namespace, doguResource.Name)
+		return stepsv3.RequeueWithError(err, v3beta1.ReasonInstalling)
+	}
+
+	values, err := vcs.assembler.Assemble(ctx, doguResource, valuesMeta, runtimePatchTemplate)
+	if err != nil {
+		return stepsv3.RequeueWithError(fmt.Errorf("failed to assemble values for dogu %s/%s: %w", doguResource.Namespace, doguResource.Name, err), v3beta1.ReasonInstalling)
 	}
 
 	// Record whether schema validation is skipped and, unless skipped, validate the values.
-	vcs.setSchemaValidationSkippedCondition(doguResource)
+	schemaSkippedChanged := vcs.setSchemaValidationSkippedCondition(doguResource)
 	if !doguResource.Spec.SkipSchemaValidation {
 		if vErr := vcs.chartService.ValidateValues(ctx, doguResource, values); vErr != nil {
 			msg := fmt.Sprintf("values do not satisfy the chart schema: %v", vErr)
 
-			return vcs.abort(ctx, doguResource, v3beta1.ReasonSchemaInvalid, msg)
+			return vcs.abort(ctx, doguResource, schemaSkippedChanged, v3beta1.ReasonSchemaInvalid, msg)
 		}
 
-		logging.Info(ctx, "Successfully validated values against schema for dogu", "dogu", doguResource.Spec.Name)
+		logging.Debug(ctx, "Successfully validated values against schema for dogu", "dogu", doguResource.Spec.Name)
 	}
 
 	if _, rErr := vcs.chartService.Render(ctx, doguResource, values); rErr != nil {
 		msg := fmt.Sprintf("chart could not be rendered: %v", rErr)
-		return vcs.abort(ctx, doguResource, ReasonRenderFailed, msg)
+		return vcs.abort(ctx, doguResource, schemaSkippedChanged, ReasonRenderFailed, msg)
 	}
 
-	logging.Info(ctx, "Successfully rendered dogu helm chart", "dogu", doguResource.Spec.Name)
+	logging.Debug(ctx, "Successfully rendered dogu helm chart", "dogu", doguResource.Spec.Name)
 
-	return vcs.succeed(ctx, doguResource)
+	return vcs.succeed(ctx, doguResource, schemaSkippedChanged)
 }
 
 // setSchemaValidationSkippedCondition mirrors the Spec.SkipSchemaValidation flag onto the
 // ConditionSchemaValidationSkipped condition. It only mutates the in-memory resource; the change is
-// persisted together with ConditionValid when the step reaches an exit point.
-func (vcs *ValidateChartStep) setSchemaValidationSkippedCondition(doguResource *v3beta1.Dogu) {
+// persisted together with ConditionValid when the step reaches an exit point. It reports whether the condition changed.
+func (vcs *ValidateChartStep) setSchemaValidationSkippedCondition(doguResource *v3beta1.Dogu) bool {
 	status := metav1.ConditionFalse
 	reason := v3beta1.ReasonSchemaValidationEnabled
 	message := "schema validation is enabled"
@@ -88,7 +103,7 @@ func (vcs *ValidateChartStep) setSchemaValidationSkippedCondition(doguResource *
 		message = "schema validation is skipped via spec.skipSchemaValidation"
 	}
 
-	meta.SetStatusCondition(&doguResource.Status.Conditions, metav1.Condition{
+	return meta.SetStatusCondition(&doguResource.Status.Conditions, metav1.Condition{
 		Type:               v3beta1.ConditionSchemaValidationSkipped,
 		Status:             status,
 		Reason:             reason,
@@ -97,30 +112,35 @@ func (vcs *ValidateChartStep) setSchemaValidationSkippedCondition(doguResource *
 	})
 }
 
-// abort sets ConditionValid to false with the given reason, persists the conditions and returns an
+// abort sets ConditionValid to false with the given reason, persists changed conditions and returns an
 // aborting StepResult so the use-case stops the reconciliation and emits a warning event.
-func (vcs *ValidateChartStep) abort(ctx context.Context, doguResource *v3beta1.Dogu, reason, message string) stepsv3.StepResult {
-	vcs.setValidCondition(doguResource, metav1.ConditionFalse, reason, message)
-	if err := vcs.persistConditions(ctx, doguResource); err != nil {
-		return stepsv3.RequeueWithError(err, v3beta1.ReasonInstalling)
+func (vcs *ValidateChartStep) abort(ctx context.Context, doguResource *v3beta1.Dogu, skippedChanged bool, reason, message string) stepsv3.StepResult {
+	validChanged := vcs.setValidCondition(doguResource, metav1.ConditionFalse, reason, message)
+	if skippedChanged || validChanged {
+		if err := vcs.persistConditions(ctx, doguResource); err != nil {
+			return stepsv3.RequeueWithError(err, v3beta1.ReasonInstalling)
+		}
 	}
 
 	return stepsv3.Abort(reason, message)
 }
 
-// succeed sets ConditionValid to true, persists the conditions and continues the reconciliation.
-func (vcs *ValidateChartStep) succeed(ctx context.Context, doguResource *v3beta1.Dogu) stepsv3.StepResult {
+// succeed sets ConditionValid to true, persists changed conditions and continues the reconciliation.
+func (vcs *ValidateChartStep) succeed(ctx context.Context, doguResource *v3beta1.Dogu, skippedChanged bool) stepsv3.StepResult {
 	const message = "chart values satisfy the schema and the chart renders successfully"
-	vcs.setValidCondition(doguResource, metav1.ConditionTrue, ReasonValid, message)
-	if err := vcs.persistConditions(ctx, doguResource); err != nil {
-		return stepsv3.RequeueWithError(err, v3beta1.ReasonInstalling)
+	validChanged := vcs.setValidCondition(doguResource, metav1.ConditionTrue, ReasonValid, message)
+	if skippedChanged || validChanged {
+		if err := vcs.persistConditions(ctx, doguResource); err != nil {
+			return stepsv3.RequeueWithError(err, v3beta1.ReasonInstalling)
+		}
+		logging.Info(ctx, "Successfully validated dogu chart", "dogu", doguResource.Spec.Name)
 	}
 
 	return stepsv3.Continue()
 }
 
-func (vcs *ValidateChartStep) setValidCondition(doguResource *v3beta1.Dogu, status metav1.ConditionStatus, reason, message string) {
-	meta.SetStatusCondition(&doguResource.Status.Conditions, metav1.Condition{
+func (vcs *ValidateChartStep) setValidCondition(doguResource *v3beta1.Dogu, status metav1.ConditionStatus, reason, message string) bool {
+	return meta.SetStatusCondition(&doguResource.Status.Conditions, metav1.Condition{
 		Type:               v3beta1.ConditionValid,
 		Status:             status,
 		Reason:             reason,

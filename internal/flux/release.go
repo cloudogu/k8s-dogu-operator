@@ -7,7 +7,11 @@ import (
 	"fmt"
 
 	helmflux "github.com/fluxcd/helm-controller/api/v2"
+	sdk "helm.sh/helm/v3/pkg/release"
+	"helm.sh/helm/v3/pkg/storage"
+	"helm.sh/helm/v3/pkg/storage/driver"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -25,14 +29,31 @@ func installOperation() ReleaseOperation {
 	return ReleaseOperation{IsInstall: true, Revision: 1}
 }
 
-// HelmReleaseReader resolves the pending Helm release operation for a dogu by reading its HelmRelease.
+// HelmReleaseReader reads a dogu's HelmRelease and its stored Helm release.
 type HelmReleaseReader struct {
-	client client.Client
+	client    client.Client
+	clientSet kubernetes.Interface
 }
 
 // NewHelmReleaseReader creates a HelmReleaseReader backed by the given cluster client.
-func NewHelmReleaseReader(c client.Client) *HelmReleaseReader {
-	return &HelmReleaseReader{client: c}
+func NewHelmReleaseReader(c client.Client, clientSet kubernetes.Interface) *HelmReleaseReader {
+	return &HelmReleaseReader{client: c, clientSet: clientSet}
+}
+
+// StoredRelease reads the values, manifest and status of the latest revision in Flux's history.
+func (r *HelmReleaseReader) StoredRelease(hr *helmflux.HelmRelease) (*sdk.Release, error) {
+	// The latest revision may have failed; the pending comparison checks its status separately.
+	latest := hr.Status.History.Latest()
+	if latest == nil {
+		return nil, nil
+	}
+	// Helm decodes the release secret in the storage namespace, which can differ from the workload namespace.
+	store := storage.Init(driver.NewSecrets(r.clientSet.CoreV1().Secrets(hr.GetStorageNamespace())))
+	stored, err := store.Get(latest.Name, latest.Version)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read stored Helm release %s/%s revision %d: %w", hr.GetStorageNamespace(), latest.Name, latest.Version, err)
+	}
+	return stored, nil
 }
 
 // ResolveOperation derives the pending release operation for the dogu's chart from its HelmRelease:

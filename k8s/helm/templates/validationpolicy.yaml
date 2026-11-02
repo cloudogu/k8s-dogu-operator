@@ -1,0 +1,40 @@
+{{- if .Values.admissionPolicy.validateDoguLabels }}
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: "dogu-require-name-label"
+spec:
+  failurePolicy: Fail
+  matchConstraints:
+    resourceRules:
+      - apiGroups: [ "k8s.cloudogu.com" ]
+        apiVersions: [ "v2", "v3beta1" ]
+        operations: [ "CREATE", "UPDATE" ]
+        resources: [ "dogus" ]
+  variables:
+    # Get real dogu name
+    - name: expectedName
+      expression: >-
+        object.apiVersion.endsWith('v3beta1')
+        ? object.spec.name
+        : (object.spec.name.contains('/') ? object.spec.name.split('/')[1] : object.spec.name)
+  validations:
+    # Check existence of the label
+    - expression: "has(object.metadata.labels) && 'k8s.cloudogu.com/dogu.name' in object.metadata.labels"
+      message: "Label 'k8s.cloudogu.com/dogu.name' is mandatory"
+
+    # Check correct label value
+    - expression: "object.metadata.labels['k8s.cloudogu.com/dogu.name'] == variables.expectedName"
+      messageExpression: "'Value of k8s.cloudogu.com/dogu.name has to be \"' + variables.expectedName + '\"'"
+
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: "dogu-require-name-label-binding"
+spec:
+  policyName: "dogu-require-name-label"
+  validationActions: [ Deny ]
+  matchResources:
+    namespaceSelector: { }
+{{- end }}

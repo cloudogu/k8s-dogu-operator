@@ -17,7 +17,7 @@ kind: Dogu
 metadata:
   name: my-dogu
   labels:
-    dogu.name: my-dogu
+    k8s.cloudogu.com/dogu.name: my-dogu
     app: ces
 spec:
   name: official/my-dogu
@@ -33,7 +33,7 @@ kind: Dogu
 metadata:
   name: my-dogu
   labels:
-    dogu.name: my-dogu
+    k8s.cloudogu.com/dogu.name: my-dogu
     app: ces
 spec:
   name: official/my-dogu
@@ -143,7 +143,7 @@ kind: Dogu
 metadata:
   name: cas
   labels:
-    dogu.name: cas
+    k8s.cloudogu.com/dogu.name: cas
     app: ces
 spec:
   name: official/cas
@@ -167,7 +167,7 @@ kind: Dogu
 metadata:
   name: cas
   labels:
-    dogu.name: cas
+    k8s.cloudogu.com/dogu.name: cas
     app: ces
 spec:
   name: official/cas
