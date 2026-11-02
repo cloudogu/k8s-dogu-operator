@@ -23,6 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - [#383] Reduce logger noise on every reconcile
 - Update go to 1.27.3
+- [#387] Update the helmfile image's Go builder to 1.27.3.
 
 ### Fixed
 - [#372] Ignore updates of HelmReleases that only toggle the `Reconciling` condition, to avoid unnecessary reconciliations
