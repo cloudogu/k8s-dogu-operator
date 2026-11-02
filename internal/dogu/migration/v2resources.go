@@ -39,7 +39,7 @@ func NewV2ResourceFinder(client client.Reader) V2ResourceFinder {
 
 // FindV2Resources returns all resources managed by the dogu operator for a v2 dogu. It returns resources of all managed
 // types, which habe the label `dogu.name` set to the name of the given dogu reference, and which have an owner
-// reference to that dogu set.
+// reference to that dogu set. Resources with the label `k8s.cloudogu.com/type` set to `migration` are explicitly excluded.
 func (vrf V2ResourceFinder) FindV2Resources(ctx context.Context, dogu v1.ObjectReference) ([]client.Object, error) {
 	var owned []client.Object
 
@@ -64,6 +64,8 @@ func (vrf V2ResourceFinder) findOwnedByKind(ctx context.Context, gvk schema.Grou
 		return nil, fmt.Errorf("failed to list %s: %w", gvk, err)
 	}
 
+	removeMigrationResources(list)
+
 	var owned []client.Object
 	for i := range list.Items {
 		item := &list.Items[i]
@@ -75,6 +77,12 @@ func (vrf V2ResourceFinder) findOwnedByKind(ctx context.Context, gvk schema.Grou
 	}
 
 	return owned, nil
+}
+
+func removeMigrationResources(list *metav1.PartialObjectMetadataList) {
+	list.Items = slices.DeleteFunc(list.Items, func(item metav1.PartialObjectMetadata) bool {
+		return item.Labels[configTypeLabel] == migrationType
+	})
 }
 
 func hasOwnerReference(obj metav1.Object, ref v1.ObjectReference) bool {

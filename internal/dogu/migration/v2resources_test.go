@@ -80,6 +80,15 @@ func TestV2ResourceFinder_FindOwnedByKind(t *testing.T) {
 			},
 		},
 		{
+			name:   "Should return empty list when only objects with migration label are found",
+			gvk:    schema.GroupVersionKind{Version: "v1", Kind: "ConfigMap"},
+			toFind: []client.Object{},
+			notToFind: []client.Object{
+				addMigrationLabel(newConfigMap("cm-a", true, true)),
+				addMigrationLabel(newConfigMap("cm-b", true, true)),
+			},
+		},
+		{
 			name: "Should return specified kind only",
 			gvk:  schema.GroupVersionKind{Version: "v1", Kind: "ConfigMap"},
 			toFind: []client.Object{
@@ -100,6 +109,7 @@ func TestV2ResourceFinder_FindOwnedByKind(t *testing.T) {
 				newSecret("secret", true, true),
 				newConfigMap("cm-no-label", false, true),
 				newConfigMap("cm-no-owner", true, false),
+				addMigrationLabel(newConfigMap("cm-migration", true, true)),
 			},
 		},
 	} {
@@ -113,6 +123,13 @@ func TestV2ResourceFinder_FindOwnedByKind(t *testing.T) {
 			compare(t, test.toFind, result)
 		})
 	}
+}
+
+func addMigrationLabel(object client.Object) client.Object {
+	labels := object.GetLabels()
+	labels[configTypeLabel] = migrationType
+	object.SetLabels(labels)
+	return object
 }
 
 func TestV2ResourceFinder_FindV2Resources(t *testing.T) {
