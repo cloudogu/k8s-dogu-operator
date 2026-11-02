@@ -114,7 +114,8 @@ node('docker') {
 
             stage('Trivy Image Scan') {
                 Trivy trivy = new Trivy(this)
-                trivy.scanImage(imageName, TrivySeverityLevel.ALL, TrivyScanStrategy.IGNORE)
+                // Scan the local Docker tag; imageName is the address used inside the k3d cluster.
+                trivy.scanImage("cloudogu/${repositoryName}:${controllerVersion}", TrivySeverityLevel.ALL, TrivyScanStrategy.IGNORE)
                 trivy.saveFormattedTrivyReport(TrivyScanFormat.HTML)
             }
 
