@@ -247,11 +247,19 @@ func newNetworkPolicy(name string, withLabel bool, withOwner bool) client.Object
 func setupObject(obj client.Object, name string, withLabel bool, withOwner bool) client.Object {
 	obj.SetName(name)
 	obj.SetNamespace("ecosystem")
+	var labels map[string]string
 	if withLabel {
-		obj.SetLabels(map[string]string{"dogu.name": "dogu"})
+		labels = map[string]string{"dogu.name": "dogu", "other.label": "something"}
+	} else {
+		labels = map[string]string{"other.label": "dogu", "dogu.name": "other"}
 	}
+	obj.SetLabels(labels)
+	var uid types.UID
 	if withOwner {
-		obj.SetOwnerReferences(append(obj.GetOwnerReferences(), metav1.OwnerReference{Name: "x", UID: owner}))
+		uid = owner
+	} else {
+		uid = otherOwner
 	}
+	obj.SetOwnerReferences([]metav1.OwnerReference{{Name: "x", UID: uid}})
 	return obj
 }
