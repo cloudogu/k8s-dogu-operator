@@ -1,0 +1,20 @@
+{{- if .Values.controllerManager.env.doguV3Enabled }}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "k8s-dogu-operator.name" . }}-manager-dogu-v3-cluster-role
+  labels:
+    {{- include "k8s-dogu-operator.labels" . | nindent 4 }}
+rules:
+  # dogu v3: retain and rebind existing volumes during migration from v2.
+  # list and watch are required by the caching client.
+  - apiGroups:
+      - ""
+    resources:
+      - persistentvolumes
+    verbs:
+      - get
+      - list
+      - watch
+      - update
+{{- end }}

@@ -112,6 +112,7 @@ func TestNewDoguMigrationUseCase(t *testing.T) {
 		&install.WaitForOCIRepositoryReadyStep{},
 		&install.ValidateChartStep{},
 		&migration.MigrationSecretStep{},
+		&migration.MigrateDoguPVCStep{},
 		&migration.MigrationPendingStep{},
 		clientMock,
 		recorderMock,
@@ -123,6 +124,7 @@ func TestNewDoguMigrationUseCase(t *testing.T) {
 		"*install.EnsureOCIRepositoryStep",
 		"*install.WaitForOCIRepositoryReadyStep",
 		"*install.ValidateChartStep",
+		"*migration.MigrateDoguPVCStep",
 		"*migration.MigrationSecretStep",
 		"*migration.MigrationPendingStep",
 	}
