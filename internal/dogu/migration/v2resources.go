@@ -21,8 +21,6 @@ var deletableResourceKinds = []schema.GroupVersionKind{
 	{Group: "k8s.cloudogu.com", Version: "v1", Kind: "Exposition"},
 	{Group: "k8s.cloudogu.com", Version: "v1", Kind: "WarpMenuEntry"},
 	{Group: "networking.k8s.io", Version: "v1", Kind: "NetworkPolicy"},
-	// TODO: AuthRegistration & Exposition seems to lack the proper dogu.name label (or any others)
-	// TODO: what about any existing DoguRestart resources?
 }
 
 // V2ResourceFinder finds all resources that are owned by a dogu.
