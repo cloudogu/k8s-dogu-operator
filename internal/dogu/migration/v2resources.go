@@ -11,6 +11,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+// deletableResourceKinds contains all the resource kinds the dogu-operator (possibly) manages for v2 dogus, so this
+// is also the list of resource types to delete before a migration to v3.
 var deletableResourceKinds = []schema.GroupVersionKind{
 	{Version: "v1", Kind: "ConfigMap"},
 	{Version: "v1", Kind: "Secret"},
@@ -23,28 +25,26 @@ var deletableResourceKinds = []schema.GroupVersionKind{
 	{Group: "networking.k8s.io", Version: "v1", Kind: "NetworkPolicy"},
 }
 
-// V2ResourceFinder finds all resources that are owned by a dogu.
+// V2ResourceFinder finds all managed resources that are owned by a dogu.
 type V2ResourceFinder struct {
 	client client.Reader
 }
 
-// NewV2ResourceFinder creates a V2ResourceFinder. The client should read directly from the API server (not from a
-// cache), because resources of arbitrary kinds are listed.
+// NewV2ResourceFinder creates a V2ResourceFinder.
 func NewV2ResourceFinder(client client.Reader) V2ResourceFinder {
 	return V2ResourceFinder{
 		client: client,
 	}
 }
 
-// FindV2Resources returns all resources in the cluster that have an owner reference to the given object.
-// Kubernetes offers no way to select resources by their owner. Therefore, all listable namespaced resource types of
-// the cluster are discovered and listed (metadata only) in the namespace of the owner. The resulting objects
-// are of type metav1.PartialObjectMetadata and contain the type information needed to delete them.
-func (vrf V2ResourceFinder) FindV2Resources(ctx context.Context, ref v1.ObjectReference) ([]client.Object, error) {
+// FindV2Resources returns all resources managed by the dogu operator for a v2 dogu. It returns resources of all managed
+// types, which habe the label `dogu.name` set to the name of the given dogu reference, and which have an owner
+// reference to that dogu set.
+func (vrf V2ResourceFinder) FindV2Resources(ctx context.Context, dogu v1.ObjectReference) ([]client.Object, error) {
 	var owned []client.Object
 
 	for _, kind := range deletableResourceKinds {
-		byKind, err := vrf.findOwnedByKind(ctx, kind, ref)
+		byKind, err := vrf.findOwnedByKind(ctx, kind, dogu)
 		if err != nil {
 			return nil, err
 		}

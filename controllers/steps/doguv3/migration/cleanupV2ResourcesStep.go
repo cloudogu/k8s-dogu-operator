@@ -17,6 +17,9 @@ const (
 	defaultRequeueAfter = 3 * time.Second
 )
 
+// CleanupV2ResourcesStep is a step that cleans up existing resources of the v2 dogu, which are no longer needed.
+// The v3 dogu brings in its own resources via its Helm chart, so we need to clean up the v2 resources before upgrading
+// to avoid any conflicts.
 type CleanupV2ResourcesStep struct {
 	client         client.Client
 	resourceFinder ResourceFinder
@@ -42,6 +45,7 @@ func (s *CleanupV2ResourcesStep) Run(ctx context.Context, doguResource *v3beta1.
 		return stepsv3.RequeueWithError(err, v3beta1.ReasonMigrationPending)
 	}
 
+	// if there are no more resources of the v2 dogu, we can continue with the upgrade
 	if len(resources) == 0 {
 		return s.updateReadyCondition(ctx, doguResource)
 	}
@@ -53,6 +57,8 @@ func (s *CleanupV2ResourcesStep) Run(ctx context.Context, doguResource *v3beta1.
 		}
 		logging.Info(ctx, "Deleting Dogu v2 resource", resource.GetObjectKind().GroupVersionKind().Kind, resource.GetName())
 	}
+	// requeue after a short time to allow the deletion of the resources to be processed
+	// we only continue with the upgrade if there are no more resources found above
 	return stepsv3.RequeueAfter(defaultRequeueAfter, v3beta1.ReasonMigrationPending, "Resources of v2 dogu are being deleted")
 }
 
@@ -63,7 +69,6 @@ func (s *CleanupV2ResourcesStep) updateReadyCondition(ctx context.Context, dogu 
 		Reason:  v3beta1.ReasonMigrationPending,
 		Message: "Old v2 resources deleted. Migration still pending",
 	}) {
-		// TODO: user server side apply?
 		err := s.client.Status().Update(ctx, dogu)
 		if err != nil {
 			return stepsv3.RequeueWithError(err, "failed to update dogu status")
