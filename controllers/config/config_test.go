@@ -446,19 +446,19 @@ func Test_getDoguV3Enabled(t *testing.T) {
 func Test_readOfflineVolumeExpansion(t *testing.T) {
 	tests := []struct {
 		name    string
-		value   *string
+		value   string
 		want    bool
 		wantErr string
 	}{
 		{name: "default to online expansion when unset", want: false},
-		{name: "enable offline expansion", value: new("true"), want: true},
-		{name: "disable offline expansion", value: new("false"), want: false},
-		{name: "fail on invalid value", value: new("invalid"), wantErr: "failed to parse value of environment variable OFFLINE_VOLUME_EXPANSION"},
+		{name: "enable offline expansion", value: "true", want: true},
+		{name: "disable offline expansion", value: "false", want: false},
+		{name: "fail on invalid value", value: "invalid", wantErr: "failed to parse value of environment variable OFFLINE_VOLUME_EXPANSION"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if tt.value != nil {
-				t.Setenv(envVarOfflineVolumeExpansion, *tt.value)
+			if tt.value != "" {
+				t.Setenv(envVarOfflineVolumeExpansion, tt.value)
 			}
 
 			got, err := readOfflineVolumeExpansion()

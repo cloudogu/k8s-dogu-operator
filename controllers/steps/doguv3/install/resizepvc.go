@@ -46,7 +46,7 @@ func (rps *ResizePVCStep) Run(ctx context.Context, doguResource *v3beta1.Dogu) s
 
 	plan, err := rps.resizePlanner.Plan(ctx, doguResource)
 	if err != nil {
-		return stepsv3.RequeueWithError(err, v3beta1.ReasonResizingPVC)
+		return stepsv3.RequeueWithError(fmt.Errorf("failed to plan resizing of pvcs: %w", err), v3beta1.ReasonResizingPVC)
 	}
 
 	if rps.offlineExpansion {

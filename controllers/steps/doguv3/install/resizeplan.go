@@ -50,12 +50,12 @@ func NewVolumeResizePlanner(chartService chartService, assembler valueAssembler,
 func (vrp *VolumeResizePlanner) Plan(ctx context.Context, doguResource *v3beta1.Dogu) (VolumeResizePlan, error) {
 	rendered, err := renderChart(ctx, vrp.chartService, vrp.assembler, doguResource)
 	if err != nil {
-		return VolumeResizePlan{}, err
+		return VolumeResizePlan{}, fmt.Errorf("failed to render chart: %w", err)
 	}
 
 	checkResult, err := vrp.resizeChecker.Check(ctx, doguResource.Namespace, rendered)
 	if err != nil {
-		return VolumeResizePlan{}, fmt.Errorf("failed to check volumes: %w", err)
+		return VolumeResizePlan{}, fmt.Errorf("failed to check volumes for resizing: %w", err)
 	}
 
 	plan := VolumeResizePlan{

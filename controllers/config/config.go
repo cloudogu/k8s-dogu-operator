@@ -68,7 +68,10 @@ const (
 	envVarDoguHelmReconciliationInterval          = "DOGU_HELM_RECONCILIATION_INTERVAL"
 	envVarDoguHelmRetryInterval                   = "DOGU_HELM_RETRY_INTERVAL"
 	envVarOfflineVolumeExpansion                  = "OFFLINE_VOLUME_EXPANSION"
-	errMsgFailedToParseEnvVarValue                = "failed to parse value of environment variable %s: %w"
+)
+
+const (
+	errMsgFailedToParseEnvVarValue = "failed to parse value of environment variable %s: %w"
 )
 
 // defaultImageConfigCacheSize is the number of image configs kept in the in-memory cache when
@@ -125,7 +128,7 @@ type OperatorConfig struct {
 	DoguHelmReconciliationInterval time.Duration `json:"dogu_helm_reconciliation_interval"`
 	// DoguHelmRetryInterval defines the interval in which Helm installs or upgrade for a dogu should be retried on error
 	DoguHelmRetryInterval time.Duration `json:"dogu_helm_retry_interval"`
-	// OfflineVolumeExpansion defines whether v3 dogus detach their volumes before growing them, for storage that cannot expand mounted volumes.
+	// OfflineVolumeExpansion defines whether v3 dogus detach their volumes before growing them, for storage providers that cannot expand mounted volumes.
 	OfflineVolumeExpansion bool `json:"offline_volume_expansion"`
 }
 
