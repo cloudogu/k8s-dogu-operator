@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/cloudogu/k8s-dogu-lib/v3/api/v3beta1"
+	v3beta1ac "github.com/cloudogu/k8s-dogu-lib/v3/applyconfiguration/api/v3beta1"
 	stepsv3 "github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv3"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -21,7 +22,7 @@ type MigrateDoguPVCStep struct {
 }
 
 const (
-	requeueTime                 = time.Second
+	requeueTime                 = 5 * time.Second
 	migrationSourcePVAnnotation = "k8s.cloudogu.com/migration-source-pv"
 )
 
@@ -31,6 +32,14 @@ func NewMigrateDoguPVCStep(k8sClient client.Client, recorder EventRecorder) *Mig
 
 // Run Create a migration PVC for the dogu being migrated
 func (s *MigrateDoguPVCStep) Run(ctx context.Context, doguResource *v3beta1.Dogu) stepsv3.StepResult {
+	completed, err := s.checkMigrationStatus(ctx, doguResource)
+	if err != nil {
+		return stepsv3.RequeueWithError(err, v3beta1.ReasonMigrationPending)
+	}
+	if completed {
+		return stepsv3.Continue()
+	}
+
 	if result := s.scaleDownV2Deployment(ctx, doguResource); !result.Continue {
 		return result
 	}
@@ -55,8 +64,38 @@ func (s *MigrateDoguPVCStep) Run(ctx context.Context, doguResource *v3beta1.Dogu
 		return result
 	}
 
-	s.eventRecorder.Event(doguResource, corev1.EventTypeNormal, v3beta1.ReasonMigrationPending, "test")
 	return stepsv3.Continue()
+}
+
+// checkMigrationStatus reports whether the migration PVC is bound to the saved source PV.
+func (s *MigrateDoguPVCStep) checkMigrationStatus(ctx context.Context, doguResource *v3beta1.Dogu) (bool, error) {
+	pvName := doguResource.Annotations[migrationSourcePVAnnotation]
+	if pvName == "" {
+		return false, nil
+	}
+
+	pvc := &corev1.PersistentVolumeClaim{}
+	if err := s.client.Get(ctx, client.ObjectKey{Namespace: doguResource.Namespace, Name: migrationPVCName(doguResource)}, pvc); err != nil {
+		if apierrors.IsNotFound(err) {
+			return false, nil
+		}
+		return false, fmt.Errorf("could not get migration PVC for dogu %s: %w", doguResource.Spec.Name, err)
+	}
+	if !pvc.DeletionTimestamp.IsZero() || pvc.Status.Phase != corev1.ClaimBound || pvc.Spec.VolumeName != pvName || pvc.UID == "" {
+		return false, nil
+	}
+
+	pv := &corev1.PersistentVolume{}
+	if err := s.client.Get(ctx, client.ObjectKey{Name: pvName}, pv); err != nil {
+		if apierrors.IsNotFound(err) {
+			return false, nil
+		}
+		return false, fmt.Errorf("could not get migration source PV %s: %w", pvName, err)
+	}
+	return pv.Spec.ClaimRef != nil &&
+		pv.Spec.ClaimRef.Name == pvc.Name &&
+		pv.Spec.ClaimRef.Namespace == pvc.Namespace &&
+		pv.Spec.ClaimRef.UID == pvc.UID, nil
 }
 
 // scale down the dogu v2 deployment and reconcile until it is scaled down
@@ -80,6 +119,9 @@ func (s *MigrateDoguPVCStep) scaleDownV2Deployment(ctx context.Context, doguReso
 		}
 		return stepsv3.RequeueAfter(requeueTime, v3beta1.ReasonMigrationPending, "wait for deployment to be scaled down")
 	}
+	if v2Deployment.Status.Replicas > 0 {
+		return stepsv3.RequeueAfter(requeueTime, v3beta1.ReasonMigrationPending, "wait for deployment to be scaled down")
+	}
 
 	return stepsv3.Continue()
 }
@@ -99,15 +141,11 @@ func (s *MigrateDoguPVCStep) persistSourcePVName(ctx context.Context, doguResour
 		if pvName == "" {
 			return "", stepsv3.RequeueAfter(requeueTime, v3beta1.ReasonMigrationPending, "wait for source PVC to be bound to a PV")
 		}
-		updatedDogu := doguResource.DeepCopy()
-		if updatedDogu.Annotations == nil {
-			updatedDogu.Annotations = make(map[string]string)
-		}
-		updatedDogu.Annotations[migrationSourcePVAnnotation] = pvName
-		if err := s.client.Update(ctx, updatedDogu); err != nil {
+		configuration := v3beta1ac.Dogu(doguResource.Name, doguResource.Namespace).
+			WithAnnotations(map[string]string{migrationSourcePVAnnotation: pvName})
+		if err := s.client.Apply(ctx, configuration, client.FieldOwner("k8s-dogu-operator-pvc-migration-step"), client.ForceOwnership); err != nil {
 			return "", stepsv3.RequeueWithError(fmt.Errorf("could not persist migration source PV: %w", err), v3beta1.ReasonMigrationPending)
 		}
-		*doguResource = *updatedDogu
 		return "", stepsv3.RequeueAfter(requeueTime, v3beta1.ReasonMigrationPending, "migration source PV persisted")
 	}
 	return pvName, stepsv3.Continue()
@@ -154,11 +192,11 @@ func (s *MigrateDoguPVCStep) deleteDoguPVCs(ctx context.Context, doguResource *v
 
 // set the claimref on the pv
 func (s *MigrateDoguPVCStep) reservePVForMigration(ctx context.Context, doguResource *v3beta1.Dogu, v2PV *corev1.PersistentVolume) stepsv3.StepResult {
-	if v2PV.Spec.ClaimRef == nil || v2PV.Spec.ClaimRef.Name != doguResource.Spec.Name+"-migration" || v2PV.Spec.ClaimRef.Namespace != doguResource.Namespace {
+	if v2PV.Spec.ClaimRef == nil || v2PV.Spec.ClaimRef.Name != migrationPVCName(doguResource) || v2PV.Spec.ClaimRef.Namespace != doguResource.Namespace {
 		v2PV.Spec.ClaimRef = &corev1.ObjectReference{
 			APIVersion: "v1",
 			Kind:       "PersistentVolumeClaim",
-			Name:       doguResource.Spec.Name + "-migration",
+			Name:       migrationPVCName(doguResource),
 			Namespace:  doguResource.Namespace,
 		}
 		err := s.client.Update(ctx, v2PV)
@@ -174,11 +212,11 @@ func (s *MigrateDoguPVCStep) reservePVForMigration(ctx context.Context, doguReso
 // create a migration pvc and ensure it is bound to the pv
 func (s *MigrateDoguPVCStep) ensureMigrationPVCBound(ctx context.Context, doguResource *v3beta1.Dogu, v2PV *corev1.PersistentVolume) stepsv3.StepResult {
 	migrationPVC := &corev1.PersistentVolumeClaim{}
-	err := s.client.Get(ctx, client.ObjectKey{Namespace: doguResource.Namespace, Name: doguResource.Spec.Name + "-migration"}, migrationPVC)
+	err := s.client.Get(ctx, client.ObjectKey{Namespace: doguResource.Namespace, Name: migrationPVCName(doguResource)}, migrationPVC)
 	if apierrors.IsNotFound(err) {
 		newPVC := &corev1.PersistentVolumeClaim{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      doguResource.Spec.Name + "-migration",
+				Name:      migrationPVCName(doguResource),
 				Namespace: doguResource.Namespace,
 			},
 			Spec: corev1.PersistentVolumeClaimSpec{
@@ -224,5 +262,11 @@ func (s *MigrateDoguPVCStep) updateMigrationStatus(ctx context.Context, doguReso
 		}
 	}
 
+	s.eventRecorder.Event(doguResource, corev1.EventTypeNormal, v3beta1.ReasonMigrationPending, "Prepared the dogu pvc for the v3 migration")
 	return stepsv3.Continue()
+}
+
+// migrationPVCName returns "<doguname>-migration"
+func migrationPVCName(doguResource *v3beta1.Dogu) string {
+	return doguResource.Spec.Name + "-migration"
 }

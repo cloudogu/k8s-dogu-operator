@@ -7,6 +7,8 @@ import (
 	"testing"
 
 	"github.com/cloudogu/k8s-dogu-lib/v3/api/v3beta1"
+	v3beta1ac "github.com/cloudogu/k8s-dogu-lib/v3/applyconfiguration/api/v3beta1"
+	stepsv3 "github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv3"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
@@ -35,6 +37,7 @@ func TestMigrateDoguPVCStepWithSharedClient(t *testing.T) {
 	deployment := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{Name: "nexus", Namespace: dogu.Namespace, Labels: labels},
 		Spec:       appsv1.DeploymentSpec{Replicas: new(int32(1))},
+		Status:     appsv1.DeploymentStatus{Replicas: 1},
 	}
 	otherDeployment := deployment.DeepCopy()
 	otherDeployment.Namespace = "other"
@@ -65,6 +68,8 @@ func TestMigrateDoguPVCStepWithSharedClient(t *testing.T) {
 	assert.Equal(t, requeueTime, result.RequeueAfter)
 	require.NoError(t, k8sClient.Get(ctx, client.ObjectKeyFromObject(deployment), deployment))
 	assert.Zero(t, *deployment.Spec.Replicas)
+	deployment.Status.Replicas = 0
+	require.NoError(t, k8sClient.Status().Update(ctx, deployment))
 
 	// Persist the PV name from the PVC before changing the volume or deleting the claim.
 	result = step.Run(ctx, dogu)
@@ -132,8 +137,7 @@ func TestMigrateDoguPVCStepWithSharedClient(t *testing.T) {
 	assert.Equal(t, migrationPVC.UID, pv.Spec.ClaimRef.UID)
 	require.NoError(t, k8sClient.Get(ctx, client.ObjectKeyFromObject(dogu), dogu))
 	condition := meta.FindStatusCondition(dogu.Status.Conditions, v3beta1.ConditionReady)
-	require.NotNil(t, condition)
-	assert.Equal(t, "PVC migration completed", condition.Message)
+	assert.Nil(t, condition, "completed binding must skip status updates")
 
 	// Repeating the completed step preserves the binding.
 	result = step.Run(ctx, dogu)
@@ -148,13 +152,13 @@ func TestMigrateDoguPVCStepSourcePVDiscovery(t *testing.T) {
 		name       string
 		claimCount int
 		volumeName string
-		updateErr  bool
+		applyErr   bool
 		errMessage string
 	}{
 		{name: "missing source PVC", errMessage: "found 0 source PVCs"},
 		{name: "ambiguous source PVCs", claimCount: 2, volumeName: "source-pv", errMessage: "found 2 source PVCs"},
 		{name: "unbound source PVC", claimCount: 1},
-		{name: "annotation update fails", claimCount: 1, volumeName: "source-pv", updateErr: true, errMessage: "could not persist migration source PV"},
+		{name: "annotation apply fails", claimCount: 1, volumeName: "source-pv", applyErr: true, errMessage: "could not persist migration source PV"},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			scheme := runtime.NewScheme()
@@ -177,11 +181,11 @@ func TestMigrateDoguPVCStepSourcePVDiscovery(t *testing.T) {
 			}
 			k8sClient := fake.NewClientBuilder().WithScheme(scheme).WithObjects(objects...).
 				WithInterceptorFuncs(interceptor.Funcs{
-					Update: func(ctx context.Context, c client.WithWatch, obj client.Object, opts ...client.UpdateOption) error {
-						if tt.updateErr {
-							return errors.New("update rejected")
+					Apply: func(ctx context.Context, c client.WithWatch, configuration runtime.ApplyConfiguration, opts ...client.ApplyOption) error {
+						if tt.applyErr {
+							return errors.New("apply rejected")
 						}
-						return c.Update(ctx, obj, opts...)
+						return c.Apply(ctx, configuration, opts...)
 					},
 				}).Build()
 			step := NewMigrateDoguPVCStep(k8sClient, record.NewFakeRecorder(10))
@@ -259,6 +263,109 @@ func newPVCMigrationFixture(t *testing.T) *pvcMigrationFixture {
 	return f
 }
 
+func TestMigrateDoguPVCStepCheckMigrationStatus(t *testing.T) {
+	for _, tt := range []struct {
+		name     string
+		prepare  func(*pvcMigrationFixture)
+		complete bool
+	}{
+		{name: "confirmed binding", complete: true},
+		{name: "missing annotations", prepare: func(f *pvcMigrationFixture) { f.dogu.Annotations = nil }},
+		{name: "missing source annotation", prepare: func(f *pvcMigrationFixture) { delete(f.dogu.Annotations, migrationSourcePVAnnotation) }},
+		{name: "missing migration PVC", prepare: func(f *pvcMigrationFixture) { f.claim = nil }},
+		{name: "missing source PV", prepare: func(f *pvcMigrationFixture) { f.pv = nil }},
+		{name: "pending PVC", prepare: func(f *pvcMigrationFixture) { f.claim.Status.Phase = corev1.ClaimPending }},
+		{name: "lost PVC", prepare: func(f *pvcMigrationFixture) { f.claim.Status.Phase = corev1.ClaimLost }},
+		{name: "deleting PVC", prepare: func(f *pvcMigrationFixture) {
+			f.claim.DeletionTimestamp = new(metav1.Now())
+			f.claim.Finalizers = []string{"kubernetes.io/pvc-protection"}
+		}},
+		{name: "different volume", prepare: func(f *pvcMigrationFixture) { f.claim.Spec.VolumeName = "other-pv" }},
+		{name: "missing volume", prepare: func(f *pvcMigrationFixture) { f.claim.Spec.VolumeName = "" }},
+		{name: "missing PVC UID", prepare: func(f *pvcMigrationFixture) { f.claim.UID = "" }},
+		{name: "missing claim reference", prepare: func(f *pvcMigrationFixture) { f.pv.Spec.ClaimRef = nil }},
+		{name: "different claim name", prepare: func(f *pvcMigrationFixture) { f.pv.Spec.ClaimRef.Name = "other-claim" }},
+		{name: "different namespace", prepare: func(f *pvcMigrationFixture) { f.pv.Spec.ClaimRef.Namespace = "other" }},
+		{name: "reservation without UID", prepare: func(f *pvcMigrationFixture) { f.pv.Spec.ClaimRef.UID = "" }},
+		{name: "different claim UID", prepare: func(f *pvcMigrationFixture) { f.pv.Spec.ClaimRef.UID = "old-uid" }},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			f := newPVCMigrationFixture(t)
+			if tt.prepare != nil {
+				tt.prepare(f)
+			}
+			builder := fake.NewClientBuilder().WithScheme(f.client.Scheme())
+			if f.claim != nil {
+				builder.WithObjects(f.claim)
+			}
+			if f.pv != nil {
+				builder.WithObjects(f.pv)
+			}
+			f.step.client = builder.Build()
+
+			complete, err := f.step.checkMigrationStatus(t.Context(), f.dogu)
+			require.NoError(t, err)
+			assert.Equal(t, tt.complete, complete)
+		})
+	}
+}
+
+func TestMigrateDoguPVCStepCompletedMigrationIsNoOp(t *testing.T) {
+	f := newPVCMigrationFixture(t)
+	originalDogu := f.dogu.DeepCopy()
+	// Only the two reads needed to confirm the binding are allowed. Any other
+	// client operation calls the nil embedded client and fails the test.
+	reads := []client.ObjectKey{}
+	f.step.client = interceptor.NewClient(nil, interceptor.Funcs{
+		Get: func(ctx context.Context, _ client.WithWatch, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
+			reads = append(reads, key)
+			return f.client.Get(ctx, key, obj, opts...)
+		},
+	})
+
+	for range 2 {
+		result := f.step.Run(t.Context(), f.dogu)
+		assert.Equal(t, stepsv3.Continue(), result)
+	}
+	assert.Equal(t, []client.ObjectKey{
+		client.ObjectKeyFromObject(f.claim), client.ObjectKeyFromObject(f.pv),
+		client.ObjectKeyFromObject(f.claim), client.ObjectKeyFromObject(f.pv),
+	}, reads)
+	assert.Equal(t, originalDogu, f.dogu)
+	assert.Empty(t, f.recorder.Events)
+}
+
+func TestMigrateDoguPVCStepCheckMigrationStatusAPIErrors(t *testing.T) {
+	for _, resource := range []client.Object{&corev1.PersistentVolumeClaim{}, &corev1.PersistentVolume{}} {
+		t.Run(reflect.TypeOf(resource).Elem().Name(), func(t *testing.T) {
+			f := newPVCMigrationFixture(t)
+			apiErr := errors.New("API request rejected")
+			failed := false
+			f.step.client = interceptor.NewClient(nil, interceptor.Funcs{
+				Get: func(ctx context.Context, _ client.WithWatch, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
+					require.False(t, failed, "no further reads after a failure")
+					if reflect.TypeOf(obj) == reflect.TypeOf(resource) {
+						failed = true
+						return apiErr
+					}
+					return f.client.Get(ctx, key, obj, opts...)
+				},
+			})
+
+			complete, err := f.step.checkMigrationStatus(t.Context(), f.dogu)
+			assert.False(t, complete)
+			require.ErrorIs(t, err, apiErr)
+			failed = false
+			result := f.step.Run(t.Context(), f.dogu)
+			require.True(t, failed)
+			require.ErrorIs(t, result.Err, apiErr)
+			assert.False(t, result.Continue)
+			assert.Equal(t, v3beta1.ReasonMigrationPending, result.ReadyReason)
+			assert.Empty(t, f.recorder.Events)
+		})
+	}
+}
+
 func TestMigrateDoguPVCStepBindingConfirmation(t *testing.T) {
 	for _, tt := range []struct {
 		name     string
@@ -283,7 +390,10 @@ func TestMigrateDoguPVCStepBindingConfirmation(t *testing.T) {
 			f.pv.Spec.ClaimRef.UID = tt.refUID
 			require.NoError(t, f.client.Update(t.Context(), f.pv))
 
-			result := f.step.Run(t.Context(), f.dogu)
+			result := f.step.ensureMigrationPVCBound(t.Context(), f.dogu, f.pv)
+			if result.Continue {
+				result = f.step.updateMigrationStatus(t.Context(), f.dogu)
+			}
 			require.NoError(t, result.Err)
 			assert.Equal(t, tt.complete, result.Continue)
 			require.NoError(t, f.client.Get(t.Context(), client.ObjectKeyFromObject(f.dogu), f.dogu))
@@ -386,12 +496,15 @@ func TestMigrateDoguPVCStepPersistSourcePVName(t *testing.T) {
 			Spec:       corev1.PersistentVolumeClaimSpec{VolumeName: f.pv.Name},
 		}
 		require.NoError(t, f.client.Create(t.Context(), source))
+		originalDogu := f.dogu.DeepCopy()
 		_, result := f.step.persistSourcePVName(t.Context(), f.dogu)
 		require.NoError(t, result.Err)
 		assert.False(t, result.Continue)
 		assert.Equal(t, requeueTime, result.RequeueAfter)
+		assert.Equal(t, originalDogu, f.dogu, "apply must not replace the local dogu resource")
 		require.NoError(t, f.client.Get(t.Context(), client.ObjectKeyFromObject(f.dogu), f.dogu))
 		assert.Equal(t, map[string]string{migrationSourcePVAnnotation: f.pv.Name, "existing": "preserved"}, f.dogu.Annotations)
+		assert.Equal(t, originalDogu.Spec, f.dogu.Spec, "applying the annotation must preserve the spec")
 	})
 }
 
@@ -399,6 +512,7 @@ func TestMigrateDoguPVCStepDeploymentCount(t *testing.T) {
 	for _, count := range []int{0, 2} {
 		t.Run(string(rune('0'+count))+" deployments", func(t *testing.T) {
 			f := newPVCMigrationFixture(t)
+			require.NoError(t, f.client.Delete(t.Context(), f.claim))
 			if count == 0 {
 				require.NoError(t, f.client.Delete(t.Context(), f.deployment))
 			} else {
@@ -441,9 +555,11 @@ func TestMigrateDoguPVCStepAPIErrors(t *testing.T) {
 		{name: "scale deployment", operation: "update", resource: &appsv1.Deployment{}, message: "could not scale down v2 deployment", prepare: func(t *testing.T, f *pvcMigrationFixture) {
 			f.deployment.Spec.Replicas = new(int32(1))
 			require.NoError(t, f.client.Update(t.Context(), f.deployment))
+			f.deployment.Status.Replicas = 1
+			require.NoError(t, f.client.Status().Update(t.Context(), f.deployment))
 		}},
 		{name: "discover source claim", operation: "list", resource: &corev1.PersistentVolumeClaimList{}, prepare: discoverSource, message: "could not list source PVCs"},
-		{name: "save source annotation", operation: "update", resource: &v3beta1.Dogu{}, prepare: discoverSource, message: "could not persist migration source PV"},
+		{name: "save source annotation", operation: "apply", resource: &v3beta1ac.DoguApplyConfiguration{}, prepare: discoverSource, message: "could not persist migration source PV"},
 		{name: "get source PV", operation: "get", resource: &corev1.PersistentVolume{}, message: "could not get migration source PV"},
 		{name: "retain source PV", operation: "update", resource: &corev1.PersistentVolume{}, message: "could not set PV reclaim policy to Retain", prepare: func(t *testing.T, f *pvcMigrationFixture) {
 			f.pv.Spec.PersistentVolumeReclaimPolicy = corev1.PersistentVolumeReclaimDelete
@@ -463,6 +579,8 @@ func TestMigrateDoguPVCStepAPIErrors(t *testing.T) {
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			f := newPVCMigrationFixture(t)
+			f.claim.Status.Phase = corev1.ClaimPending
+			require.NoError(t, f.client.Status().Update(t.Context(), f.claim))
 			if tt.prepare != nil {
 				tt.prepare(t, f)
 			}
@@ -477,6 +595,12 @@ func TestMigrateDoguPVCStepAPIErrors(t *testing.T) {
 				return nil
 			}
 			f.step.client = interceptor.NewClient(f.client, interceptor.Funcs{
+				Apply: func(ctx context.Context, c client.WithWatch, configuration runtime.ApplyConfiguration, opts ...client.ApplyOption) error {
+					if err := fail("apply", configuration); err != nil {
+						return err
+					}
+					return c.Apply(ctx, configuration, opts...)
+				},
 				Get: func(ctx context.Context, c client.WithWatch, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
 					if err := fail("get", obj); err != nil {
 						return err
@@ -515,7 +639,12 @@ func TestMigrateDoguPVCStepAPIErrors(t *testing.T) {
 				},
 			})
 
-			result := f.step.Run(t.Context(), f.dogu)
+			var result stepsv3.StepResult
+			if tt.operation == "status" {
+				result = f.step.updateMigrationStatus(t.Context(), f.dogu)
+			} else {
+				result = f.step.Run(t.Context(), f.dogu)
+			}
 			require.True(t, failed, "expected API operation was not reached")
 			require.ErrorIs(t, result.Err, apiErr)
 			if tt.message != "" {
@@ -534,7 +663,7 @@ func TestMigrateDoguPVCStepAPIErrors(t *testing.T) {
 
 func TestMigrateDoguPVCStepStatusUpdateIsIdempotent(t *testing.T) {
 	f := newPVCMigrationFixture(t)
-	result := f.step.Run(t.Context(), f.dogu)
+	result := f.step.updateMigrationStatus(t.Context(), f.dogu)
 	require.NoError(t, result.Err)
 	require.True(t, result.Continue)
 	condition := *meta.FindStatusCondition(f.dogu.Status.Conditions, v3beta1.ConditionReady)
@@ -544,7 +673,7 @@ func TestMigrateDoguPVCStepStatusUpdateIsIdempotent(t *testing.T) {
 			return nil
 		},
 	})
-	result = f.step.Run(t.Context(), f.dogu)
+	result = f.step.updateMigrationStatus(t.Context(), f.dogu)
 	require.NoError(t, result.Err)
 	assert.True(t, result.Continue)
 	assert.Equal(t, condition, *meta.FindStatusCondition(f.dogu.Status.Conditions, v3beta1.ConditionReady))
