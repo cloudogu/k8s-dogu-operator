@@ -96,7 +96,8 @@ func TestMigrateDoguPVCStepWithSharedClient(t *testing.T) {
 	// Simulate a restart: recover the source PV solely from the persisted annotation.
 	dogu = &v3beta1.Dogu{}
 	require.NoError(t, k8sClient.Get(ctx, client.ObjectKey{Name: "nexus", Namespace: "ecosystem"}, dogu))
-	step = NewMigrateDoguPVCStep(k8sClient, record.NewFakeRecorder(10))
+	recorder := record.NewFakeRecorder(10)
+	step = NewMigrateDoguPVCStep(k8sClient, recorder)
 
 	// Reserve the PV before creating the migration claim.
 	result = step.Run(ctx, dogu)
@@ -120,6 +121,16 @@ func TestMigrateDoguPVCStepWithSharedClient(t *testing.T) {
 	assert.Equal(t, pv.Spec.Capacity, migrationPVC.Spec.Resources.Requests)
 	assert.Equal(t, pv.Spec.VolumeMode, migrationPVC.Spec.VolumeMode)
 	assert.Nil(t, meta.FindStatusCondition(dogu.Status.Conditions, v3beta1.ConditionReady))
+	// Creating the migration claim is the only point that emits the event.
+	require.Len(t, recorder.Events, 1)
+	assert.Equal(t, "Normal MigrationPending Prepared the dogu pvc for the v3 migration", <-recorder.Events)
+
+	// Waiting for the binding must not emit the event again.
+	result = step.Run(ctx, dogu)
+	require.NoError(t, result.Err)
+	assert.False(t, result.Continue)
+	assert.Equal(t, requeueTime, result.RequeueAfter)
+	assert.Empty(t, recorder.Events)
 
 	// The API assigns the UID; the volume controller confirms the binding asynchronously.
 	migrationPVC.UID = types.UID("migration-pvc-uid")
@@ -138,6 +149,7 @@ func TestMigrateDoguPVCStepWithSharedClient(t *testing.T) {
 	require.NoError(t, k8sClient.Get(ctx, client.ObjectKeyFromObject(dogu), dogu))
 	condition := meta.FindStatusCondition(dogu.Status.Conditions, v3beta1.ConditionReady)
 	assert.Nil(t, condition, "completed binding must skip status updates")
+	assert.Empty(t, recorder.Events)
 
 	// Repeating the completed step preserves the binding.
 	result = step.Run(ctx, dogu)
@@ -391,31 +403,14 @@ func TestMigrateDoguPVCStepBindingConfirmation(t *testing.T) {
 			require.NoError(t, f.client.Update(t.Context(), f.pv))
 
 			result := f.step.ensureMigrationPVCBound(t.Context(), f.dogu, f.pv)
-			if result.Continue {
-				result = f.step.updateMigrationStatus(t.Context(), f.dogu)
-			}
 			require.NoError(t, result.Err)
 			assert.Equal(t, tt.complete, result.Continue)
-			require.NoError(t, f.client.Get(t.Context(), client.ObjectKeyFromObject(f.dogu), f.dogu))
-			condition := meta.FindStatusCondition(f.dogu.Status.Conditions, v3beta1.ConditionReady)
-			if tt.complete {
-				require.NotNil(t, condition)
-				assert.Equal(t, metav1.ConditionFalse, condition.Status)
-				assert.Equal(t, v3beta1.ReasonMigrationPending, condition.Reason)
-				assert.Equal(t, f.dogu.Generation, condition.ObservedGeneration)
-				assert.Equal(t, "PVC migration completed", condition.Message)
-				select {
-				case event := <-f.recorder.Events:
-					assert.Contains(t, event, v3beta1.ReasonMigrationPending)
-				default:
-					t.Fatal("completed migration did not emit an event")
-				}
-			} else {
+			if !tt.complete {
 				assert.Equal(t, requeueTime, result.RequeueAfter)
 				assert.Equal(t, v3beta1.ReasonMigrationPending, result.ReadyReason)
-				assert.Nil(t, condition, "binding must be confirmed before reporting completion")
-				assert.Empty(t, f.recorder.Events)
 			}
+			// The event is only emitted when the claim is created, never while confirming the binding.
+			assert.Empty(t, f.recorder.Events)
 		})
 	}
 }
@@ -456,6 +451,7 @@ func TestMigrateDoguPVCStepPVReservation(t *testing.T) {
 			require.NotNil(t, f.pv.Spec.ClaimRef)
 			assert.Equal(t, "nexus-migration", f.pv.Spec.ClaimRef.Name)
 			assert.True(t, apierrors.IsNotFound(f.client.Get(t.Context(), client.ObjectKeyFromObject(f.claim), f.claim)))
+			assert.Empty(t, f.recorder.Events)
 
 			// The next reconciliation creates the claim while keeping the reservation.
 			result = f.step.Run(t.Context(), f.dogu)
@@ -468,7 +464,8 @@ func TestMigrateDoguPVCStepPVReservation(t *testing.T) {
 			assert.Empty(t, *f.claim.Spec.StorageClassName, "preserve an explicit empty storage class")
 			require.NoError(t, f.client.Get(t.Context(), client.ObjectKeyFromObject(f.pv), f.pv))
 			assert.Equal(t, "nexus-migration", f.pv.Spec.ClaimRef.Name)
-			assert.Empty(t, f.recorder.Events)
+			require.Len(t, f.recorder.Events, 1)
+			assert.Equal(t, "Normal MigrationPending Prepared the dogu pvc for the v3 migration", <-f.recorder.Events)
 		})
 	}
 }
@@ -575,7 +572,6 @@ func TestMigrateDoguPVCStepAPIErrors(t *testing.T) {
 		{name: "create migration claim", operation: "create", resource: &corev1.PersistentVolumeClaim{}, message: "could not create migration PVC", prepare: func(t *testing.T, f *pvcMigrationFixture) {
 			require.NoError(t, f.client.Delete(t.Context(), f.claim))
 		}},
-		{name: "update status", operation: "status", resource: &v3beta1.Dogu{}},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			f := newPVCMigrationFixture(t)
@@ -631,20 +627,9 @@ func TestMigrateDoguPVCStepAPIErrors(t *testing.T) {
 					}
 					return c.Delete(ctx, obj, opts...)
 				},
-				SubResourceUpdate: func(ctx context.Context, c client.Client, subresource string, obj client.Object, opts ...client.SubResourceUpdateOption) error {
-					if err := fail(subresource, obj); err != nil {
-						return err
-					}
-					return c.SubResource(subresource).Update(ctx, obj, opts...)
-				},
 			})
 
-			var result stepsv3.StepResult
-			if tt.operation == "status" {
-				result = f.step.updateMigrationStatus(t.Context(), f.dogu)
-			} else {
-				result = f.step.Run(t.Context(), f.dogu)
-			}
+			result := f.step.Run(t.Context(), f.dogu)
 			require.True(t, failed, "expected API operation was not reached")
 			require.ErrorIs(t, result.Err, apiErr)
 			if tt.message != "" {
@@ -659,22 +644,4 @@ func TestMigrateDoguPVCStepAPIErrors(t *testing.T) {
 			assert.Nil(t, meta.FindStatusCondition(stored.Status.Conditions, v3beta1.ConditionReady))
 		})
 	}
-}
-
-func TestMigrateDoguPVCStepStatusUpdateIsIdempotent(t *testing.T) {
-	f := newPVCMigrationFixture(t)
-	result := f.step.updateMigrationStatus(t.Context(), f.dogu)
-	require.NoError(t, result.Err)
-	require.True(t, result.Continue)
-	condition := *meta.FindStatusCondition(f.dogu.Status.Conditions, v3beta1.ConditionReady)
-	f.step.client = interceptor.NewClient(f.client, interceptor.Funcs{
-		SubResourceUpdate: func(context.Context, client.Client, string, client.Object, ...client.SubResourceUpdateOption) error {
-			t.Fatal("unchanged status should not be written again")
-			return nil
-		},
-	})
-	result = f.step.updateMigrationStatus(t.Context(), f.dogu)
-	require.NoError(t, result.Err)
-	assert.True(t, result.Continue)
-	assert.Equal(t, condition, *meta.FindStatusCondition(f.dogu.Status.Conditions, v3beta1.ConditionReady))
 }
