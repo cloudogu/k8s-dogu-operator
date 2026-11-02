@@ -112,6 +112,12 @@ node('docker') {
                 imageName = k3d.buildAndPushToLocalRegistry("cloudogu/${repositoryName}", controllerVersion)
             }
 
+            stage('Trivy Image Scan') {
+                Trivy trivy = new Trivy(this)
+                trivy.scanImage(imageName, TrivySeverityLevel.ALL, TrivyScanStrategy.IGNORE)
+                trivy.saveFormattedTrivyReport(TrivyScanFormat.HTML)
+            }
+
             stage('Create initial global config map') {
                 k3d.kubectl("--namespace default create configmap global-config --from-literal=config.yaml={}")
             }
