@@ -7,8 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ### Removed
 - [#374] Remove Dogu samples. Instead, use https://github.com/cloudogu/k8s-ecosystem-samples
+- Remove the mock DCC for v3 dogus (`make mock-dcc-v3`). Use `make registry-staging` instead.
 
 ### Added
+- Make targets `registry-staging`, `registry-prod` and `registry-env-status` to switch Harbor and the DCC v3 between staging and prod.
 - [#360] Support stopping and starting v3 dogu workloads.
 - [#358] Support `DoguRestart` for dogu v3.
 - [#367] Warning condition and event when activating the export mode for V3 Dogus because is not implemented
