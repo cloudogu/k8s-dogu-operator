@@ -76,9 +76,9 @@ func (d *Detector) Detect(ctx context.Context, dogu *v3beta1.Dogu) (State, error
 
 // hasMigrationResources reports whether the migration secret or the migration volume claim of the dogu exists.
 func (d *Detector) hasMigrationResources(ctx context.Context, dogu *v3beta1.Dogu) (bool, error) {
-	found, err := d.get(ctx, migrationResourceKey(dogu), &corev1.Secret{})
-	if err != nil || found {
-		return found, err
+	secret, err := MigrationSecret(ctx, d.client, dogu)
+	if err != nil || secret != nil {
+		return secret != nil, err
 	}
 
 	return d.get(ctx, migrationResourceKey(dogu), &corev1.PersistentVolumeClaim{})
@@ -100,16 +100,15 @@ func (d *Detector) hasVolumeClaim(ctx context.Context, dogu *v3beta1.Dogu) (bool
 	return claim.Labels[managedByLabel] != managedByHelm, nil
 }
 
+// sensitiveConfigKey names the V2 sensitive config secret of the dogu.
+func sensitiveConfigKey(dogu *v3beta1.Dogu) client.ObjectKey {
+	return client.ObjectKey{Namespace: dogu.Namespace, Name: strings.ToLower(dogu.Spec.Name + "-config")}
+}
+
 // hasSensitiveConfig reports whether the V2 sensitive config secret of the dogu exists.
 func (d *Detector) hasSensitiveConfig(ctx context.Context, dogu *v3beta1.Dogu) (bool, error) {
-	secret := &corev1.Secret{}
-	key := client.ObjectKey{Namespace: dogu.Namespace, Name: strings.ToLower(dogu.Spec.Name + "-config")}
-	found, err := d.get(ctx, key, secret)
-	if err != nil || !found {
-		return false, err
-	}
-
-	return secret.Labels[configTypeLabel] == sensitiveConfigType, nil
+	secret, err := SensitiveConfig(ctx, d.client, dogu)
+	return secret != nil, err
 }
 
 // get fetches the object and reports whether it exists. Any error but NotFound is returned.
