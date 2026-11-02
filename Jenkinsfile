@@ -119,6 +119,25 @@ node('docker') {
                 trivy.saveFormattedTrivyReport(TrivyScanFormat.HTML)
             }
 
+            stage('Trivy Helmfile Image Scan') {
+                make 'build-helmfile-image'
+
+                Trivy trivy = new Trivy(this)
+                trivy.scanImage(
+                    "registry.cloudogu.com/internal/helmfile:0.1.0",
+                    TrivySeverityLevel.ALL,
+                    TrivyScanStrategy.IGNORE,
+                    "--db-repository public.ecr.aws/aquasecurity/trivy-db",
+                    "trivy/helmfileReport.json"
+                )
+                trivy.saveFormattedTrivyReport(
+                    TrivyScanFormat.HTML,
+                    TrivySeverityLevel.ALL,
+                    "helmfileReport.html",
+                    "trivy/helmfileReport.json"
+                )
+            }
+
             stage('Create initial global config map') {
                 k3d.kubectl("--namespace default create configmap global-config --from-literal=config.yaml={}")
             }
