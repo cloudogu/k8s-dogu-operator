@@ -236,6 +236,10 @@ func (s *MigrateDoguPVCStep) ensureMigrationPVCBound(ctx context.Context, doguRe
 		if err != nil {
 			return stepsv3.RequeueWithError(fmt.Errorf("could not create migration PVC: %w", err), v3beta1.ReasonMigrationPending)
 		}
+		// Write the event after there is no error when creating the PVC. It cannot be written after the PVC is bound.
+		// "checkMigrationStatus" gets called before this function and ends in a no-op because it also checks that the
+		// PVC is bound.
+		s.eventRecorder.Event(doguResource, corev1.EventTypeNormal, v3beta1.ReasonMigrationPending, "Prepared the dogu pvc for the v3 migration")
 		return stepsv3.RequeueAfter(requeueTime, v3beta1.ReasonMigrationPending, "wait for migration PVC to be bound to the source PV")
 	} else if err != nil {
 		return stepsv3.RequeueWithError(fmt.Errorf("could not get migration PVC for dogu %s: %w", doguResource.Spec.Name, err), v3beta1.ReasonMigrationPending)
@@ -245,24 +249,8 @@ func (s *MigrateDoguPVCStep) ensureMigrationPVCBound(ctx context.Context, doguRe
 		return stepsv3.RequeueAfter(requeueTime, v3beta1.ReasonMigrationPending, "wait for migration PVC to be bound to the source PV")
 	}
 
-	return stepsv3.Continue()
-}
-
-// update the dogu resource status
-func (s *MigrateDoguPVCStep) updateMigrationStatus(ctx context.Context, doguResource *v3beta1.Dogu) stepsv3.StepResult {
-	if meta.SetStatusCondition(&doguResource.Status.Conditions, metav1.Condition{
-		Type:               v3beta1.ConditionReady,
-		Status:             metav1.ConditionFalse,
-		Reason:             v3beta1.ReasonMigrationPending,
-		Message:            "PVC migration completed",
-		ObservedGeneration: doguResource.Generation,
-	}) {
-		if err := s.client.Status().Update(ctx, doguResource); err != nil {
-			return stepsv3.RequeueWithError(err, v3beta1.ReasonMigrationPending)
-		}
-	}
-
-	s.eventRecorder.Event(doguResource, corev1.EventTypeNormal, v3beta1.ReasonMigrationPending, "Prepared the dogu pvc for the v3 migration")
+	// This code will never be reached because "checkMigrationStatus" gets called before this function and ends in a no-op,
+	// because it checks that the PVC is bound.
 	return stepsv3.Continue()
 }
 
