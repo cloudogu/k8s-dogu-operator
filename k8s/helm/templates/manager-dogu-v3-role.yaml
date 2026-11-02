@@ -6,6 +6,13 @@ metadata:
   labels:
     {{- include "k8s-dogu-operator.labels" . | nindent 4 }}
 rules:
+  # dogu v3: persist the migration source PV annotation via server-side apply.
+  - apiGroups:
+      - k8s.cloudogu.com
+    resources:
+      - dogus
+    verbs:
+      - patch
   # dogu v3: manage the OCIRepository (source-controller) that mirrors a dogu's chart artifact
   - apiGroups:
       - "source.toolkit.fluxcd.io"
