@@ -58,7 +58,7 @@ func NewDoguV3UseCases(
 	helmReleaseStatusStep := install.NewHelmReleaseStatusStep(k8sClient, chartService, assembler, operatorConfig, releaseReader, recorder)
 	exportModeStep := install.NewExportModeStep(k8sClient, recorder)
 	updatePendingStep := install.NewUpdatePendingStep(k8sClient)
-	volumeStatusStep := install.NewVolumeStatusStep(chartService, assembler, workloads.NewDiscovery(k8sClient), k8sClient, recorder)
+	volumeStatusStep := install.NewVolumeStatusStep(chartService, assembler, resizeChecker, workloads.NewDiscovery(k8sClient), k8sClient, recorder)
 
 	unsuspendStep := deletion.NewUnsuspendHelmReleaseStep(k8sClient, recorder)
 	deleteHelmReleaseStep := deletion.NewDeleteHelmReleaseStep(k8sClient, recorder)

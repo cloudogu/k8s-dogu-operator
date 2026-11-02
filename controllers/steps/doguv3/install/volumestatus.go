@@ -20,15 +20,17 @@ import (
 type VolumeStatusStep struct {
 	chartService  chartService
 	assembler     valueAssembler
+	resizeChecker ResizeChecker
 	discovery     VolumeDiscovery
 	k8sClient     K8sClient
 	eventRecorder EventRecorder
 }
 
-func NewVolumeStatusStep(chartService chartService, assembler valueAssembler, discovery VolumeDiscovery, k8sClient K8sClient, recorder EventRecorder) *VolumeStatusStep {
+func NewVolumeStatusStep(chartService chartService, assembler valueAssembler, resizeChecker ResizeChecker, discovery VolumeDiscovery, k8sClient K8sClient, recorder EventRecorder) *VolumeStatusStep {
 	return &VolumeStatusStep{
 		chartService:  chartService,
 		assembler:     assembler,
+		resizeChecker: resizeChecker,
 		discovery:     discovery,
 		k8sClient:     k8sClient,
 		eventRecorder: recorder,
@@ -51,15 +53,9 @@ func (vss *VolumeStatusStep) Run(ctx context.Context, doguResource *v3beta1.Dogu
 	if err != nil {
 		return stepsv3.RequeueWithError(fmt.Errorf("failed to discover volumes: %w", err), v3beta1.ReasonInstalling)
 	}
-	// add all claims of the currently deleted workloads, too
-	unmounted, err := vss.discovery.UnmountedVolumes(ctx, doguResource.Namespace, rendered, volumes)
-	if err != nil {
-		return stepsv3.RequeueWithError(fmt.Errorf("failed to discover unmounted volumes: %w", err), v3beta1.ReasonInstalling)
-	}
-	volumes = append(volumes, unmounted...)
 
 	previous := doguResource.Status.VolumeStatus
-	statuses, err := updateVolumeStatus(ctx, vss.k8sClient, doguResource, rendered, volumes, nil)
+	statuses, err := updateVolumeStatus(ctx, vss.k8sClient, doguResource, rendered, volumes)
 	if err != nil {
 		return stepsv3.RequeueWithError(err, v3beta1.ReasonInstalling)
 	}
@@ -69,7 +65,13 @@ func (vss *VolumeStatusStep) Run(ctx context.Context, doguResource *v3beta1.Dogu
 		return stepsv3.Continue()
 	}
 
-	return waitForResize(statuses)
+	// check the rendered claims instead of the status, as it omits claims whose workloads are gone
+	check, err := vss.resizeChecker.Check(ctx, doguResource.Namespace, rendered)
+	if err != nil {
+		return stepsv3.RequeueWithError(fmt.Errorf("failed to check volumes for resizing: %w", err), v3beta1.ReasonResizingPVC)
+	}
+
+	return waitForResize(check)
 }
 
 func (vss *VolumeStatusStep) reportResizedVolumes(ctx context.Context, doguResource *v3beta1.Dogu, previous, statuses []v3beta1.VolumeStatus) {
@@ -84,9 +86,9 @@ func (vss *VolumeStatusStep) reportResizedVolumes(ctx context.Context, doguResou
 	}
 }
 
-// updateVolumeStatus writes status.volumeStatus from the live volumes and reports failedClaims as ResizeFailed.
-func updateVolumeStatus(ctx context.Context, k8sClient K8sClient, doguResource *v3beta1.Dogu, rendered []*unstructured.Unstructured, volumes []pvc.Volume, failedClaims []string) ([]v3beta1.VolumeStatus, error) {
-	statuses, err := pvc.VolumeStatuses(rendered, doguResource.Namespace, volumes, failedClaims)
+// updateVolumeStatus writes status.volumeStatus from the live volumes.
+func updateVolumeStatus(ctx context.Context, k8sClient K8sClient, doguResource *v3beta1.Dogu, rendered []*unstructured.Unstructured, volumes []pvc.Volume) ([]v3beta1.VolumeStatus, error) {
+	statuses, err := pvc.VolumeStatuses(rendered, doguResource.Namespace, volumes)
 	if err != nil {
 		return nil, err
 	}
@@ -137,24 +139,15 @@ const volumeStatusFieldOwner = "k8s-dogu-operator-volume-status-step"
 const offlineExpansionHint = "if the storage only expands unmounted volumes, turn on offline volume expansion"
 
 // waitForResize keeps the dogu in ResizingPVC until every rendered volume has reached its desired capacity.
-func waitForResize(statuses []v3beta1.VolumeStatus) stepsv3.StepResult {
-	var resizing, failed []string
-	for _, status := range statuses {
-		if status.DesiredSize.IsZero() {
-			continue
-		}
-		switch status.State {
-		case v3beta1.VolumeStatusStateResizing:
-			resizing = append(resizing, status.ClaimName)
-		case v3beta1.VolumeStatusStateResizeFailed:
-			failed = append(failed, status.ClaimName)
-		case v3beta1.VolumeStatusStateReady:
-		}
+func waitForResize(check pvc.CheckResult) stepsv3.StepResult {
+	var resizing []string
+	for _, request := range check.ResizeRequests {
+		resizing = append(resizing, request.PVC.Name)
+	}
+	for _, key := range check.InProgress {
+		resizing = append(resizing, key.Name)
 	}
 
-	if len(failed) > 0 {
-		return stepsv3.RequeueWithError(fmt.Errorf("volumes failed to resize: %v; %s", failed, offlineExpansionHint), v3beta1.ReasonResizingPVC)
-	}
 	if len(resizing) > 0 {
 		return stepsv3.RequeueAfter(defaultRequeueAfter, v3beta1.ReasonResizingPVC, fmt.Sprintf("waiting for volumes to reach their desired capacity: %v; %s", resizing, offlineExpansionHint))
 	}

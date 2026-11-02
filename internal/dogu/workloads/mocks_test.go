@@ -9,7 +9,6 @@ import (
 
 	"github.com/cloudogu/k8s-dogu-operator/v3/internal/dogu/pvc"
 	mock "github.com/stretchr/testify/mock"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
 // NewMockDiscovery creates a new instance of MockDiscovery. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
@@ -46,86 +45,6 @@ type MockDiscovery_Expecter struct {
 
 func (_m *MockDiscovery) EXPECT() *MockDiscovery_Expecter {
 	return &MockDiscovery_Expecter{mock: &_m.Mock}
-}
-
-// UnmountedVolumes provides a mock function for the type MockDiscovery
-func (_mock *MockDiscovery) UnmountedVolumes(ctx context.Context, namespace string, rendered []*unstructured.Unstructured, mounted []pvc.Volume) ([]pvc.Volume, error) {
-	ret := _mock.Called(ctx, namespace, rendered, mounted)
-
-	if len(ret) == 0 {
-		panic("no return value specified for UnmountedVolumes")
-	}
-
-	var r0 []pvc.Volume
-	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, []*unstructured.Unstructured, []pvc.Volume) ([]pvc.Volume, error)); ok {
-		return returnFunc(ctx, namespace, rendered, mounted)
-	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, []*unstructured.Unstructured, []pvc.Volume) []pvc.Volume); ok {
-		r0 = returnFunc(ctx, namespace, rendered, mounted)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]pvc.Volume)
-		}
-	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, string, []*unstructured.Unstructured, []pvc.Volume) error); ok {
-		r1 = returnFunc(ctx, namespace, rendered, mounted)
-	} else {
-		r1 = ret.Error(1)
-	}
-	return r0, r1
-}
-
-// MockDiscovery_UnmountedVolumes_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UnmountedVolumes'
-type MockDiscovery_UnmountedVolumes_Call struct {
-	*mock.Call
-}
-
-// UnmountedVolumes is a helper method to define mock.On call
-//   - ctx context.Context
-//   - namespace string
-//   - rendered []*unstructured.Unstructured
-//   - mounted []pvc.Volume
-func (_e *MockDiscovery_Expecter) UnmountedVolumes(ctx any, namespace any, rendered any, mounted any) *MockDiscovery_UnmountedVolumes_Call {
-	return &MockDiscovery_UnmountedVolumes_Call{Call: _e.mock.On("UnmountedVolumes", ctx, namespace, rendered, mounted)}
-}
-
-func (_c *MockDiscovery_UnmountedVolumes_Call) Run(run func(ctx context.Context, namespace string, rendered []*unstructured.Unstructured, mounted []pvc.Volume)) *MockDiscovery_UnmountedVolumes_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		var arg0 context.Context
-		if args[0] != nil {
-			arg0 = args[0].(context.Context)
-		}
-		var arg1 string
-		if args[1] != nil {
-			arg1 = args[1].(string)
-		}
-		var arg2 []*unstructured.Unstructured
-		if args[2] != nil {
-			arg2 = args[2].([]*unstructured.Unstructured)
-		}
-		var arg3 []pvc.Volume
-		if args[3] != nil {
-			arg3 = args[3].([]pvc.Volume)
-		}
-		run(
-			arg0,
-			arg1,
-			arg2,
-			arg3,
-		)
-	})
-	return _c
-}
-
-func (_c *MockDiscovery_UnmountedVolumes_Call) Return(volumes []pvc.Volume, err error) *MockDiscovery_UnmountedVolumes_Call {
-	_c.Call.Return(volumes, err)
-	return _c
-}
-
-func (_c *MockDiscovery_UnmountedVolumes_Call) RunAndReturn(run func(ctx context.Context, namespace string, rendered []*unstructured.Unstructured, mounted []pvc.Volume) ([]pvc.Volume, error)) *MockDiscovery_UnmountedVolumes_Call {
-	_c.Call.Return(run)
-	return _c
 }
 
 // Volumes provides a mock function for the type MockDiscovery

@@ -10,9 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/utils/ptr"
@@ -235,88 +233,5 @@ func TestDiscovery_Volumes(t *testing.T) {
 
 		assert.ErrorIs(t, err, assert.AnError)
 		assert.ErrorContains(t, err, `failed to list PVCs in namespace "ecosystem"`)
-	})
-}
-
-func statusPVC(name, request, capacity string) corev1.PersistentVolumeClaim {
-	return corev1.PersistentVolumeClaim{
-		Name: name, Namespace: testNamespace,
-		Spec: corev1.PersistentVolumeClaimSpec{Resources: corev1.VolumeResourceRequirements{
-			Requests: corev1.ResourceList{corev1.ResourceStorage: resource.MustParse(request)},
-		}},
-		Status: corev1.PersistentVolumeClaimStatus{
-			Phase:    corev1.ClaimBound,
-			Capacity: corev1.ResourceList{corev1.ResourceStorage: resource.MustParse(capacity)},
-		},
-	}
-}
-
-func toUnstructured(t *testing.T, objects ...client.Object) []*unstructured.Unstructured {
-	t.Helper()
-	result := make([]*unstructured.Unstructured, 0, len(objects))
-	for _, object := range objects {
-		content, err := runtime.DefaultUnstructuredConverter.ToUnstructured(object)
-		require.NoError(t, err)
-		result = append(result, &unstructured.Unstructured{Object: content})
-	}
-	return result
-}
-
-// renderedChart renders the standalone claim "data" with 2Gi and the claim template "db" of StatefulSet "nexus" with 5Gi.
-func renderedChart(t *testing.T) []*unstructured.Unstructured {
-	t.Helper()
-	data := statusPVC("data", "2Gi", "2Gi")
-	data.TypeMeta = metav1.TypeMeta{APIVersion: "v1", Kind: "PersistentVolumeClaim"}
-	template := statusPVC("db", "5Gi", "5Gi")
-	template.Namespace = ""
-
-	return toUnstructured(t,
-		&data,
-		&appsv1.StatefulSet{
-			APIVersion: "apps/v1", Kind: "StatefulSet",
-			Name: "nexus", Namespace: testNamespace,
-			Spec: appsv1.StatefulSetSpec{VolumeClaimTemplates: []corev1.PersistentVolumeClaim{template}},
-		},
-	)
-}
-
-func TestDiscovery_UnmountedVolumes(t *testing.T) {
-	t.Run("returns the rendered claims no mounted volume contains", func(t *testing.T) {
-		growing := statusPVC("db-nexus-0", "5Gi", "3Gi")
-		mountedClaim := statusPVC("data", "2Gi", "2Gi")
-		foreign := statusPVC("other", "1Gi", "1Gi")
-		c := fake.NewClientBuilder().WithScheme(testScheme(t)).WithObjects(&growing, &mountedClaim, &foreign).Build()
-		mounted := []pvc.Volume{{PVC: mountedClaim, MountedBy: []corev1.TypedLocalObjectReference{workloadRef("Deployment", "nexus")}}}
-
-		got, err := NewDiscovery(c).UnmountedVolumes(context.Background(), testNamespace, renderedChart(t), mounted)
-
-		require.NoError(t, err)
-		require.Len(t, got, 1)
-		assert.Equal(t, "db-nexus-0", got[0].PVC.Name)
-		assert.Empty(t, got[0].MountedBy)
-	})
-
-	t.Run("should return error if listing PVCs fails", func(t *testing.T) {
-		c := fake.NewClientBuilder().WithScheme(testScheme(t)).WithInterceptorFuncs(interceptor.Funcs{
-			List: func(context.Context, client.WithWatch, client.ObjectList, ...client.ListOption) error {
-				return assert.AnError
-			},
-		}).Build()
-
-		_, err := NewDiscovery(c).UnmountedVolumes(context.Background(), testNamespace, renderedChart(t), nil)
-
-		assert.ErrorIs(t, err, assert.AnError)
-		assert.ErrorContains(t, err, `failed to list PVCs in namespace "ecosystem"`)
-	})
-
-	t.Run("should return error if the desired sizes cannot be read", func(t *testing.T) {
-		withoutRequest := statusPVC("data", "2Gi", "2Gi")
-		withoutRequest.TypeMeta = metav1.TypeMeta{APIVersion: "v1", Kind: "PersistentVolumeClaim"}
-		withoutRequest.Spec.Resources.Requests = nil
-		c := fake.NewClientBuilder().WithScheme(testScheme(t)).Build()
-
-		_, err := NewDiscovery(c).UnmountedVolumes(context.Background(), testNamespace, toUnstructured(t, &withoutRequest), nil)
-
-		assert.ErrorContains(t, err, "failed to read desired volume sizes")
 	})
 }

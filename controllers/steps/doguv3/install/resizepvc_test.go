@@ -177,7 +177,7 @@ func claimTemplateStatefulSet(name, size string) *appsv1.StatefulSet {
 }
 
 func TestResizePVCStep_Run(t *testing.T) {
-	t.Run("grows the PVC, reports it as resizing and deletes the workloads that mount it", func(t *testing.T) {
+	t.Run("grows the PVC and deletes the workloads that mount it without writing the volume status", func(t *testing.T) {
 		mounting := resizeDeployment("nexus", "data")
 		other := resizeDeployment("other", "other-data")
 		mountingClaim := volumePVC("data", "1Gi", "1Gi")
@@ -194,31 +194,11 @@ func TestResizePVCStep_Run(t *testing.T) {
 		assert.Equal(t, resource.MustParse("2Gi"), claim.Spec.Resources.Requests[corev1.ResourceStorage])
 		assert.False(t, delRecClient.exists(t, mounting))
 		assert.True(t, delRecClient.exists(t, other))
-		assert.Contains(t, delRecClient.dogu(t).Status.VolumeStatus, v3beta1.VolumeStatus{
-			ClaimName:   "data",
-			Size:        resource.MustParse("1Gi"),
-			DesiredSize: resource.MustParse("2Gi"),
-			State:       v3beta1.VolumeStatusStateResizing,
-			MountedBy:   mountedBy("Deployment", "nexus"),
-		})
+		assert.Empty(t, delRecClient.dogu(t).Status.VolumeStatus)
 		assert.Equal(t, []string{
 			"Normal ResizingPVC Growing volume data from 1Gi to 2Gi",
 			"Normal ResizingPVC Deleted [Deployment/nexus] to recreate them on the resized volumes",
 		}, recordedEvents(step))
-	})
-
-	t.Run("keeps the volume status while the workloads of a running resize are gone", func(t *testing.T) {
-		claim := volumePVC("data", "2Gi", "1Gi")
-		delRecClient := newDeletionRecClient(&claim, helmRelease(true))
-		doguResource := delRecClient.dogu(t)
-		resizing := []v3beta1.VolumeStatus{{ClaimName: "data", Size: resource.MustParse("1Gi"), DesiredSize: resource.MustParse("2Gi"), State: v3beta1.VolumeStatusStateResizing}}
-		doguResource.Status.VolumeStatus = resizing
-		require.NoError(t, delRecClient.client.Status().Update(testCtx, doguResource))
-
-		step := prepareResizeStep(delRecClient.client, t, doguResource, renderedPVC(t, "data", "2Gi"))
-		step.Run(testCtx, doguResource)
-
-		assert.Equal(t, resizing, delRecClient.dogu(t).Status.VolumeStatus)
 	})
 
 	t.Run("walks from the resize request to an unmounted PVC over consecutive reconciles", func(t *testing.T) {
@@ -307,9 +287,7 @@ func TestResizePVCStep_Run(t *testing.T) {
 		require.True(t, delRecClient.exists(t, &claim))
 		assert.Equal(t, resource.MustParse("1Gi"), claim.Spec.Resources.Requests[corev1.ResourceStorage])
 		assert.Empty(t, *delRecClient.deletions)
-		stored := delRecClient.dogu(t)
-		require.Len(t, stored.Status.VolumeStatus, 1)
-		assert.Equal(t, v3beta1.VolumeStatusStateResizeFailed, stored.Status.VolumeStatus[0].State)
+		assert.Empty(t, delRecClient.dogu(t).Status.VolumeStatus)
 	})
 
 	t.Run("aborts before deleting workloads when the cluster rejects growing the PVC", func(t *testing.T) {
@@ -324,13 +302,7 @@ func TestResizePVCStep_Run(t *testing.T) {
 
 		assert.Equal(t, doguv3.Abort(v3beta1.ReasonResizingPVC, rejectedPatchMessage("data")), result)
 		assert.Empty(t, *delRecClient.deletions)
-		assert.Equal(t, []v3beta1.VolumeStatus{{
-			ClaimName:   "data",
-			Size:        resource.MustParse("1Gi"),
-			DesiredSize: resource.MustParse("2Gi"),
-			State:       v3beta1.VolumeStatusStateResizeFailed,
-			MountedBy:   mountedBy("Deployment", "nexus"),
-		}}, delRecClient.dogu(t).Status.VolumeStatus)
+		assert.Empty(t, delRecClient.dogu(t).Status.VolumeStatus)
 	})
 
 	t.Run("requeues with error when growing the PVC fails for another reason", func(t *testing.T) {
@@ -446,9 +418,7 @@ func TestResizePVCStep_RunOnline(t *testing.T) {
 
 		assert.Equal(t, doguv3.Abort(v3beta1.ReasonResizingPVC, rejectedPatchMessage("data-postgres-0")), result)
 		assert.Empty(t, *delRecClient.deletions)
-		stored := delRecClient.dogu(t)
-		require.Len(t, stored.Status.VolumeStatus, 1)
-		assert.Equal(t, v3beta1.VolumeStatusStateResizeFailed, stored.Status.VolumeStatus[0].State)
+		assert.Empty(t, delRecClient.dogu(t).Status.VolumeStatus)
 	})
 
 	t.Run("grows a PVC owned by another object than its StatefulSet as no pod gets deleted", func(t *testing.T) {

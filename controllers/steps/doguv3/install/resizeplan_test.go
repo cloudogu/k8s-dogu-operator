@@ -15,7 +15,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 )
 
-func planFor(t *testing.T, checkResult pvc.CheckResult, apiReader client.Reader) (VolumeResizePlan, error) {
+func planFor(t *testing.T, checkResult pvc.CheckResult, apiReader client.Reader) (pvc.ResizePlan, error) {
 	t.Helper()
 	doguResource := testDoguResource.DeepCopy()
 	chartService, assembler := mockChartRendering(t, doguResource, nil, nil)

@@ -17,8 +17,8 @@ type Volume struct {
 	MountedBy []corev1.TypedLocalObjectReference
 }
 
-// VolumeStatuses reports the volumes sorted by claim name, with the rendered size as desired size and failedClaims as ResizeFailed.
-func VolumeStatuses(renderedChart []*unstructured.Unstructured, namespace string, volumes []Volume, failedClaims []string) ([]v3beta1.VolumeStatus, error) {
+// VolumeStatuses reports the volumes sorted by claim name, with the rendered size as desired size.
+func VolumeStatuses(renderedChart []*unstructured.Unstructured, namespace string, volumes []Volume) ([]v3beta1.VolumeStatus, error) {
 	livePVCs := make([]corev1.PersistentVolumeClaim, 0, len(volumes))
 	for _, volume := range volumes {
 		livePVCs = append(livePVCs, volume.PVC)
@@ -30,15 +30,11 @@ func VolumeStatuses(renderedChart []*unstructured.Unstructured, namespace string
 
 	statuses := make([]v3beta1.VolumeStatus, 0, len(volumes))
 	for _, volume := range volumes {
-		state := volumeState(&volume.PVC)
-		if slices.Contains(failedClaims, volume.PVC.Name) {
-			state = v3beta1.VolumeStatusStateResizeFailed
-		}
 		statuses = append(statuses, v3beta1.VolumeStatus{
 			ClaimName:   volume.PVC.Name,
 			Size:        volume.PVC.Status.Capacity.Storage().DeepCopy(),
 			DesiredSize: desiredSizes[client.ObjectKeyFromObject(&volume.PVC)],
-			State:       state,
+			State:       volumeState(&volume.PVC),
 			MountedBy:   volume.MountedBy,
 		})
 	}

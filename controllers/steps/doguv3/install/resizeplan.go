@@ -8,17 +8,10 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/v3/internal/dogu/pvc"
 	flux "github.com/fluxcd/helm-controller/api/v2"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-// VolumeResizePlan is the pvc.ResizePlan of a dogu together with the chart it was rendered from.
-type VolumeResizePlan struct {
-	pvc.ResizePlan
-	rendered []*unstructured.Unstructured
-}
-
-// VolumeResizePlanner derives the VolumeResizePlan, so that SuspendHelmReleaseStep and ResizePVCStep act on the same plan.
+// VolumeResizePlanner derives the pvc.ResizePlan of a dogu, so that SuspendHelmReleaseStep and ResizePVCStep act on the same plan.
 type VolumeResizePlanner struct {
 	chartService  chartService
 	assembler     valueAssembler
@@ -36,15 +29,15 @@ func NewVolumeResizePlanner(chartService chartService, assembler valueAssembler,
 	}
 }
 
-func (vrp *VolumeResizePlanner) Plan(ctx context.Context, doguResource *v3beta1.Dogu) (VolumeResizePlan, error) {
+func (vrp *VolumeResizePlanner) Plan(ctx context.Context, doguResource *v3beta1.Dogu) (pvc.ResizePlan, error) {
 	rendered, err := renderChart(ctx, vrp.chartService, vrp.assembler, doguResource)
 	if err != nil {
-		return VolumeResizePlan{}, fmt.Errorf("failed to render chart: %w", err)
+		return pvc.ResizePlan{}, fmt.Errorf("failed to render chart: %w", err)
 	}
 
 	checkResult, err := vrp.resizeChecker.Check(ctx, doguResource.Namespace, rendered)
 	if err != nil {
-		return VolumeResizePlan{}, fmt.Errorf("failed to check volumes for resizing: %w", err)
+		return pvc.ResizePlan{}, fmt.Errorf("failed to check volumes for resizing: %w", err)
 	}
 
 	// only the claims still growing depend on the suspend state
@@ -52,11 +45,11 @@ func (vrp *VolumeResizePlanner) Plan(ctx context.Context, doguResource *v3beta1.
 	if len(checkResult.InProgress) > 0 {
 		suspended, err = vrp.releaseSuspended(ctx, doguResource)
 		if err != nil {
-			return VolumeResizePlan{}, err
+			return pvc.ResizePlan{}, err
 		}
 	}
 
-	return VolumeResizePlan{ResizePlan: pvc.NewResizePlan(checkResult, suspended), rendered: rendered}, nil
+	return pvc.NewResizePlan(checkResult, suspended), nil
 }
 
 func (vrp *VolumeResizePlanner) releaseSuspended(ctx context.Context, doguResource *v3beta1.Dogu) (bool, error) {

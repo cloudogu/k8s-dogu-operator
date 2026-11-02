@@ -38,7 +38,7 @@ func TestVolumeStatuses(t *testing.T) {
 			{PVC: volumePVC("db-nexus-3", "5Gi", "3Gi", corev1.PersistentVolumeClaimNodeResizeError), MountedBy: statefulSet},
 		}
 
-		statuses, err := VolumeStatuses(rendered, testNamespace, volumes, nil)
+		statuses, err := VolumeStatuses(rendered, testNamespace, volumes)
 
 		require.NoError(t, err)
 		assert.Equal(t, []v3beta1.VolumeStatus{
@@ -51,22 +51,11 @@ func TestVolumeStatuses(t *testing.T) {
 		}, statuses)
 	})
 
-	t.Run("reports the failed claims as ResizeFailed", func(t *testing.T) {
-		volumes := []Volume{{PVC: volumePVC("data", "1Gi", "1Gi")}, {PVC: volumePVC("db-nexus-0", "5Gi", "5Gi")}}
-
-		statuses, err := VolumeStatuses(rendered, testNamespace, volumes, []string{"data"})
-
-		require.NoError(t, err)
-		require.Len(t, statuses, 2)
-		assert.Equal(t, v3beta1.VolumeStatusStateResizeFailed, statuses[0].State)
-		assert.Equal(t, v3beta1.VolumeStatusStateReady, statuses[1].State)
-	})
-
 	t.Run("fails when the desired sizes cannot be read from the rendered chart", func(t *testing.T) {
 		withoutRequest := newPVC("data", "2Gi", nil)
 		withoutRequest.Spec.Resources.Requests = nil
 
-		_, err := VolumeStatuses(renderedObjects(t, withoutRequest), testNamespace, []Volume{{PVC: volumePVC("data", "2Gi", "2Gi")}}, nil)
+		_, err := VolumeStatuses(renderedObjects(t, withoutRequest), testNamespace, []Volume{{PVC: volumePVC("data", "2Gi", "2Gi")}})
 
 		assert.ErrorContains(t, err, "failed to read desired volume sizes")
 	})
