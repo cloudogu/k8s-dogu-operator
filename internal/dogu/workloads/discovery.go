@@ -3,11 +3,13 @@ package workloads
 import (
 	"context"
 	"fmt"
+	"slices"
 
 	"github.com/cloudogu/k8s-dogu-lib/v3/api/v3beta1"
 	"github.com/cloudogu/k8s-dogu-operator/v3/internal/dogu/pvc"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -24,18 +26,14 @@ func (w Workloads) IsEmpty() bool {
 	return len(w.Deployments) == 0 && len(w.StatefulSets) == 0 && len(w.DaemonSets) == 0
 }
 
-// Volume is a live PVC together with the workloads whose pod templates mount it.
-type Volume struct {
-	PVC       corev1.PersistentVolumeClaim
-	MountedBy []corev1.TypedLocalObjectReference
-}
-
 // Discovery finds the live resources of a dogu.
 type Discovery interface {
 	// Workloads returns all Deployments, StatefulSets and DaemonSets of the dogu in the given namespace.
 	Workloads(ctx context.Context, namespace, doguName string) (Workloads, error)
 	// Volumes returns the live PVCs in the given namespace that the workloads mount.
-	Volumes(ctx context.Context, namespace string, workloads Workloads) ([]Volume, error)
+	Volumes(ctx context.Context, namespace string, workloads Workloads) ([]pvc.Volume, error)
+	// UnmountedVolumes returns the live PVCs in the given namespace that the chart renders but none of the mounted volumes is.
+	UnmountedVolumes(ctx context.Context, namespace string, rendered []*unstructured.Unstructured, mounted []pvc.Volume) ([]pvc.Volume, error)
 }
 
 type discovery struct {
@@ -77,13 +75,13 @@ func (d *discovery) Workloads(ctx context.Context, namespace, doguName string) (
 }
 
 // Volumes reads mounts from pod and claim templates, not from pods, so a stopped dogu's volumes are found too.
-func (d *discovery) Volumes(ctx context.Context, namespace string, workloads Workloads) ([]Volume, error) {
+func (d *discovery) Volumes(ctx context.Context, namespace string, workloads Workloads) ([]pvc.Volume, error) {
 	pvcs := &corev1.PersistentVolumeClaimList{}
 	if err := d.k8s.List(ctx, pvcs, client.InNamespace(namespace)); err != nil {
 		return nil, fmt.Errorf("failed to list PVCs in namespace %q: %w", namespace, err)
 	}
 
-	var volumes []Volume
+	var volumes []pvc.Volume
 	for _, livePVC := range pvcs.Items {
 		var mountedBy []corev1.TypedLocalObjectReference
 		for _, deployment := range workloads.Deployments {
@@ -103,11 +101,34 @@ func (d *discovery) Volumes(ctx context.Context, namespace string, workloads Wor
 		}
 
 		if len(mountedBy) > 0 {
-			volumes = append(volumes, Volume{PVC: livePVC, MountedBy: mountedBy})
+			volumes = append(volumes, pvc.Volume{PVC: livePVC, MountedBy: mountedBy})
 		}
 	}
 
 	return volumes, nil
+}
+
+// UnmountedVolumes finds rendered volumes whose workloads are gone, e.g. while a resize recreates their StatefulSet.
+func (d *discovery) UnmountedVolumes(ctx context.Context, namespace string, rendered []*unstructured.Unstructured, mounted []pvc.Volume) ([]pvc.Volume, error) {
+	claims := &corev1.PersistentVolumeClaimList{}
+	if err := d.k8s.List(ctx, claims, client.InNamespace(namespace)); err != nil {
+		return nil, fmt.Errorf("failed to list PVCs in namespace %q: %w", namespace, err)
+	}
+	desiredSizes, err := pvc.DesiredSizes(rendered, namespace, claims.Items)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read desired volume sizes: %w", err)
+	}
+
+	var unmounted []pvc.Volume
+	for _, claim := range claims.Items {
+		_, isRendered := desiredSizes[client.ObjectKeyFromObject(&claim)]
+		isMounted := slices.ContainsFunc(mounted, func(volume pvc.Volume) bool { return volume.PVC.Name == claim.Name })
+		if isRendered && !isMounted {
+			unmounted = append(unmounted, pvc.Volume{PVC: claim})
+		}
+	}
+
+	return unmounted, nil
 }
 
 func mountsClaim(template corev1.PodTemplateSpec, claimName string) bool {

@@ -35,7 +35,8 @@ type ResizeChecker interface {
 
 type VolumeDiscovery interface {
 	Workloads(ctx context.Context, namespace, doguName string) (workloads.Workloads, error)
-	Volumes(ctx context.Context, namespace string, workloads workloads.Workloads) ([]workloads.Volume, error)
+	Volumes(ctx context.Context, namespace string, workloads workloads.Workloads) ([]pvc.Volume, error)
+	UnmountedVolumes(ctx context.Context, namespace string, rendered []*unstructured.Unstructured, mounted []pvc.Volume) ([]pvc.Volume, error)
 }
 
 type K8sClient interface {

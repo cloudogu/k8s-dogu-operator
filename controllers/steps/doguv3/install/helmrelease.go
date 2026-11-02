@@ -19,6 +19,7 @@ import (
 	core "k8s.io/api/core/v1"
 	apiext "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
@@ -148,6 +149,20 @@ func combineValues(ctx context.Context, dogu *doguv3.Dogu, chartService chartSer
 	}
 
 	return &apiext.JSON{Raw: valueBytes}, nil
+}
+
+func renderChart(ctx context.Context, chartService chartService, assembler valueAssembler, doguResource *doguv3.Dogu) ([]*unstructured.Unstructured, error) {
+	values, err := assembleValues(ctx, doguResource, chartService, assembler)
+	if err != nil {
+		return nil, err
+	}
+
+	rendered, err := chartService.Render(ctx, doguResource, values)
+	if err != nil {
+		return nil, fmt.Errorf("failed to render chart: %w", err)
+	}
+
+	return rendered, nil
 }
 
 func assembleValues(ctx context.Context, dogu *doguv3.Dogu, chartService chartService, assembler valueAssembler) (values3.Values, error) {

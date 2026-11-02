@@ -9,24 +9,13 @@ import (
 	flux "github.com/fluxcd/helm-controller/api/v2"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-// VolumeResizePlan is what the volume resize of a dogu still has to do, as rendered by its chart.
+// VolumeResizePlan is the pvc.ResizePlan of a dogu together with the chart it was rendered from.
 type VolumeResizePlan struct {
-	// Grow are the claims whose storage request is below the rendered size.
-	Grow []pvc.ResizeRequest
-	// Detach are the claims to grow plus, while the release is suspended, those still growing, as many storage providers only expand unmounted volumes.
-	Detach []string
-	// OutdatedStatefulSets have immutable claim templates of another size than rendered, which Helm cannot upgrade.
-	OutdatedStatefulSets []types.UID
-	rendered             []*unstructured.Unstructured
-}
-
-// Active reports whether the release has to stay suspended until ResizePVCStep has carried out the plan.
-func (p VolumeResizePlan) Active() bool {
-	return len(p.Grow) > 0 || len(p.Detach) > 0 || len(p.OutdatedStatefulSets) > 0
+	pvc.ResizePlan
+	rendered []*unstructured.Unstructured
 }
 
 // VolumeResizePlanner derives the VolumeResizePlan, so that SuspendHelmReleaseStep and ResizePVCStep act on the same plan.
@@ -58,30 +47,16 @@ func (vrp *VolumeResizePlanner) Plan(ctx context.Context, doguResource *v3beta1.
 		return VolumeResizePlan{}, fmt.Errorf("failed to check volumes for resizing: %w", err)
 	}
 
-	plan := VolumeResizePlan{
-		Grow:                 checkResult.ResizeRequests,
-		OutdatedStatefulSets: checkResult.OutdatedStatefulSets,
-		rendered:             rendered,
-	}
-	for _, request := range checkResult.ResizeRequests {
-		plan.Detach = append(plan.Detach, request.PVC.Name)
-	}
-	if len(checkResult.InProgress) == 0 {
-		return plan, nil
-	}
-
-	// a claim grown in an earlier pass is no longer a resize request but stays detached until the release resumes with recreated workloads
-	suspended, err := vrp.releaseSuspended(ctx, doguResource)
-	if err != nil {
-		return VolumeResizePlan{}, err
-	}
-	if suspended {
-		for _, key := range checkResult.InProgress {
-			plan.Detach = append(plan.Detach, key.Name)
+	// only the claims still growing depend on the suspend state
+	suspended := false
+	if len(checkResult.InProgress) > 0 {
+		suspended, err = vrp.releaseSuspended(ctx, doguResource)
+		if err != nil {
+			return VolumeResizePlan{}, err
 		}
 	}
 
-	return plan, nil
+	return VolumeResizePlan{ResizePlan: pvc.NewResizePlan(checkResult, suspended), rendered: rendered}, nil
 }
 
 func (vrp *VolumeResizePlanner) releaseSuspended(ctx context.Context, doguResource *v3beta1.Dogu) (bool, error) {

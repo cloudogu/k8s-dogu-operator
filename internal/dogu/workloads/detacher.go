@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"slices"
 
+	"github.com/cloudogu/k8s-dogu-operator/v3/internal/dogu/pvc"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -27,7 +28,7 @@ func NewDetacher(reader client.Reader, writer client.Writer) *Detacher {
 // ForeignOwnedClaims finds claims that could be deleted during the resize process. Only StatefulSets are deleted with
 // OrphanPropagation, which keeps their owned claims safe. Other unexpectedly owned claims have to be protected and get
 // reported by this function.
-func ForeignOwnedClaims(workloads Workloads, volumes []Volume, claims []string) (failedClaims, foreignOwners []string) {
+func ForeignOwnedClaims(workloads Workloads, volumes []pvc.Volume, claims []string) (failedClaims, foreignOwners []string) {
 	for _, volume := range volumes {
 		if !slices.Contains(claims, volume.PVC.Name) {
 			continue
@@ -53,7 +54,7 @@ func ForeignOwnedClaims(workloads Workloads, volumes []Volume, claims []string) 
 }
 
 // DeleteWorkloads deletes the workloads mounting the claims plus the outdated StatefulSets, as Helm cannot upgrade their immutable claim templates.
-func (d *Detacher) DeleteWorkloads(ctx context.Context, workloads Workloads, volumes []Volume, claims []string, outdatedStatefulSets []types.UID) ([]string, error) {
+func (d *Detacher) DeleteWorkloads(ctx context.Context, workloads Workloads, volumes []pvc.Volume, claims []string, outdatedStatefulSets []types.UID) ([]string, error) {
 	var refs []corev1.TypedLocalObjectReference
 	for _, volume := range volumes {
 		if slices.Contains(claims, volume.PVC.Name) {

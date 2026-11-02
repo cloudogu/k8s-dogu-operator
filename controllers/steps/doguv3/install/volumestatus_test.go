@@ -8,6 +8,7 @@ import (
 	"github.com/cloudogu/k8s-dogu-lib/v3/api/v3beta1"
 	v3beta1ac "github.com/cloudogu/k8s-dogu-lib/v3/applyconfiguration/api/v3beta1"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv3"
+	"github.com/cloudogu/k8s-dogu-operator/v3/internal/dogu/pvc"
 	"github.com/cloudogu/k8s-dogu-operator/v3/internal/dogu/workloads"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -96,7 +97,7 @@ func mockChartRendering(t *testing.T, doguResource *v3beta1.Dogu, rendered []*un
 }
 
 func TestVolumeStatusStep_Run(t *testing.T) {
-	volumes := []workloads.Volume{
+	volumes := []pvc.Volume{
 		{PVC: volumePVC("existing", "1Gi", "1Gi"), MountedBy: mountedBy("Deployment", "nexus-proxy")},
 		{PVC: volumePVC("db-nexus-0", "5Gi", "3Gi"), MountedBy: mountedBy("StatefulSet", "nexus")},
 		{PVC: volumePVC("data", "2Gi", "2Gi"), MountedBy: mountedBy("StatefulSet", "nexus")},
@@ -127,6 +128,7 @@ func TestVolumeStatusStep_Run(t *testing.T) {
 				d := NewMockVolumeDiscovery(t)
 				d.EXPECT().Workloads(mock.Anything, testNamespace, testDoguName).Return(testWorkloads, nil)
 				d.EXPECT().Volumes(mock.Anything, testNamespace, testWorkloads).Return(volumes, nil)
+				d.EXPECT().UnmountedVolumes(mock.Anything, testNamespace, mock.Anything, volumes).Return(nil, nil)
 				return NewVolumeStatusStep(cs, as, d, newVolumeStatusFakeClient(doguResource, interceptor.Funcs{}), record.NewFakeRecorder(10)), doguResource
 			},
 			want:       doguv3.RequeueWithError(errors.New("volumes failed to resize: [db-nexus-2 db-nexus-3]; if the storage only expands unmounted volumes, turn on offline volume expansion"), v3beta1.ReasonResizingPVC),
@@ -143,6 +145,7 @@ func TestVolumeStatusStep_Run(t *testing.T) {
 				d := NewMockVolumeDiscovery(t)
 				d.EXPECT().Workloads(mock.Anything, testNamespace, testDoguName).Return(testWorkloads, nil)
 				d.EXPECT().Volumes(mock.Anything, testNamespace, testWorkloads).Return(nil, nil)
+				d.EXPECT().UnmountedVolumes(mock.Anything, testNamespace, mock.Anything, []pvc.Volume(nil)).Return(nil, nil)
 				return NewVolumeStatusStep(cs, as, d, k8sClient, record.NewFakeRecorder(10)), doguResource
 			},
 			want:       doguv3.Continue(),
@@ -157,11 +160,9 @@ func TestVolumeStatusStep_Run(t *testing.T) {
 				// returns no workloads
 				d.EXPECT().Workloads(mock.Anything, testNamespace, testDoguName).Return(workloads.Workloads{}, nil)
 				d.EXPECT().Volumes(mock.Anything, testNamespace, workloads.Workloads{}).Return(nil, nil)
-				growing := volumePVC("db-nexus-0", "5Gi", "3Gi")
-				foreign := volumePVC("other", "1Gi", "1Gi")
-				k8sClient := fake.NewClientBuilder().WithScheme(testScheme).WithObjects(doguResource, &growing, &foreign).
-					WithStatusSubresource(&v3beta1.Dogu{}).Build()
-				return NewVolumeStatusStep(cs, as, d, k8sClient, record.NewFakeRecorder(10)), doguResource
+				unmounted := []pvc.Volume{{PVC: volumePVC("db-nexus-0", "5Gi", "3Gi")}}
+				d.EXPECT().UnmountedVolumes(mock.Anything, testNamespace, mock.Anything, []pvc.Volume(nil)).Return(unmounted, nil)
+				return NewVolumeStatusStep(cs, as, d, newVolumeStatusFakeClient(doguResource, interceptor.Funcs{}), record.NewFakeRecorder(10)), doguResource
 			},
 			want: doguv3.RequeueAfter(defaultRequeueAfter, v3beta1.ReasonResizingPVC, "waiting for volumes to reach their desired capacity: [db-nexus-0]; if the storage only expands unmounted volumes, turn on offline volume expansion"),
 			wantStatus: []v3beta1.VolumeStatus{
@@ -177,6 +178,7 @@ func TestVolumeStatusStep_Run(t *testing.T) {
 				d := NewMockVolumeDiscovery(t)
 				d.EXPECT().Workloads(mock.Anything, testNamespace, testDoguName).Return(testWorkloads, nil)
 				d.EXPECT().Volumes(mock.Anything, testNamespace, testWorkloads).Return(volumes, nil)
+				d.EXPECT().UnmountedVolumes(mock.Anything, testNamespace, mock.Anything, volumes).Return(nil, nil)
 
 				// throw error on apply function, so that we notice if the apply is not skipped
 				k8sClient := newVolumeStatusFakeClient(doguResource, interceptor.Funcs{
@@ -222,6 +224,19 @@ func TestVolumeStatusStep_Run(t *testing.T) {
 			wantErr: "failed to discover volumes",
 		},
 		{
+			name: "requeue when the unmounted volumes cannot be discovered",
+			setup: func(t *testing.T) (*VolumeStatusStep, *v3beta1.Dogu) {
+				doguResource := testDoguResource.DeepCopy()
+				cs, as := mockChartRendering(t, doguResource, renderedChart(t), nil)
+				d := NewMockVolumeDiscovery(t)
+				d.EXPECT().Workloads(mock.Anything, testNamespace, testDoguName).Return(testWorkloads, nil)
+				d.EXPECT().Volumes(mock.Anything, testNamespace, testWorkloads).Return(volumes, nil)
+				d.EXPECT().UnmountedVolumes(mock.Anything, testNamespace, mock.Anything, volumes).Return(nil, assert.AnError)
+				return NewVolumeStatusStep(cs, as, d, newVolumeStatusFakeClient(doguResource, interceptor.Funcs{}), record.NewFakeRecorder(10)), doguResource
+			},
+			wantErr: "failed to discover unmounted volumes",
+		},
+		{
 			name: "requeue when the desired sizes cannot be read from the rendered chart",
 			setup: func(t *testing.T) (*VolumeStatusStep, *v3beta1.Dogu) {
 				doguResource := testDoguResource.DeepCopy()
@@ -232,6 +247,7 @@ func TestVolumeStatusStep_Run(t *testing.T) {
 				d := NewMockVolumeDiscovery(t)
 				d.EXPECT().Workloads(mock.Anything, testNamespace, testDoguName).Return(testWorkloads, nil)
 				d.EXPECT().Volumes(mock.Anything, testNamespace, testWorkloads).Return(volumes, nil)
+				d.EXPECT().UnmountedVolumes(mock.Anything, testNamespace, mock.Anything, volumes).Return(nil, nil)
 				return NewVolumeStatusStep(cs, as, d, newVolumeStatusFakeClient(doguResource, interceptor.Funcs{}), record.NewFakeRecorder(10)), doguResource
 			},
 			wantErr: "failed to read desired volume sizes",
@@ -244,6 +260,7 @@ func TestVolumeStatusStep_Run(t *testing.T) {
 				d := NewMockVolumeDiscovery(t)
 				d.EXPECT().Workloads(mock.Anything, testNamespace, testDoguName).Return(testWorkloads, nil)
 				d.EXPECT().Volumes(mock.Anything, testNamespace, testWorkloads).Return(volumes, nil)
+				d.EXPECT().UnmountedVolumes(mock.Anything, testNamespace, mock.Anything, volumes).Return(nil, nil)
 				k8sClient := newVolumeStatusFakeClient(doguResource, interceptor.Funcs{
 					SubResourceApply: func(context.Context, client.Client, string, runtime.ApplyConfiguration, ...client.SubResourceApplyOption) error {
 						return assert.AnError
@@ -307,7 +324,7 @@ func TestVolumeStatusStep_RunWaitsForResize(t *testing.T) {
 			{ClaimName: "data", Size: resource.MustParse("2Gi"), DesiredSize: resource.MustParse("2Gi"), State: v3beta1.VolumeStatusStateReady},
 			{ClaimName: "db-nexus-0", Size: resource.MustParse("3Gi"), DesiredSize: resource.MustParse("5Gi"), State: v3beta1.VolumeStatusStateResizing},
 		}
-		volumes := []workloads.Volume{{PVC: volumePVC("data", "2Gi", "2Gi"), MountedBy: statefulSet},
+		volumes := []pvc.Volume{{PVC: volumePVC("data", "2Gi", "2Gi"), MountedBy: statefulSet},
 			{PVC: volumePVC("db-nexus-0", "5Gi", "5Gi"), MountedBy: statefulSet}}
 		cs, as := mockChartRendering(t, doguResource, renderedChart(t), nil)
 		d := mockDiscovery(t, volumes)
@@ -322,7 +339,7 @@ func TestVolumeStatusStep_RunWaitsForResize(t *testing.T) {
 	t.Run("continue while a volume the chart does not render is resizing", func(t *testing.T) {
 		doguResource := testDoguResource.DeepCopy()
 		// nexus-proxy is not part of the rendered chart
-		volumes := []workloads.Volume{
+		volumes := []pvc.Volume{
 			{PVC: volumePVC("existing", "5Gi", "3Gi"), MountedBy: mountedBy("Deployment", "nexus-proxy")},
 		}
 
@@ -341,7 +358,7 @@ func TestVolumeStatusStep_RunWaitsForResize(t *testing.T) {
 		t.Run("continue without waiting for a "+name+" dogu", func(t *testing.T) {
 			doguResource := testDoguResource.DeepCopy()
 			modify(doguResource)
-			volumes := []workloads.Volume{
+			volumes := []pvc.Volume{
 				{PVC: volumePVC("db-nexus-0", "5Gi", "3Gi"), MountedBy: statefulSet},
 			}
 
@@ -355,9 +372,10 @@ func TestVolumeStatusStep_RunWaitsForResize(t *testing.T) {
 	}
 }
 
-func mockDiscovery(t *testing.T, volumes []workloads.Volume) *MockVolumeDiscovery {
+func mockDiscovery(t *testing.T, volumes []pvc.Volume) *MockVolumeDiscovery {
 	d := NewMockVolumeDiscovery(t)
 	d.EXPECT().Workloads(mock.Anything, testNamespace, testDoguName).Return(testWorkloads, nil)
 	d.EXPECT().Volumes(mock.Anything, testNamespace, testWorkloads).Return(volumes, nil)
+	d.EXPECT().UnmountedVolumes(mock.Anything, testNamespace, mock.Anything, volumes).Return(nil, nil)
 	return d
 }

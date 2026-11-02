@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/cloudogu/k8s-dogu-operator/v3/internal/dogu/pvc"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
@@ -23,10 +24,10 @@ func mountingPod(name, claimName string) *corev1.Pod {
 	}}}}
 }
 
-func dataVolume(owners ...metav1.OwnerReference) Volume {
-	pvc := corev1.PersistentVolumeClaim{ObjectMeta: objectMeta("data", testNamespace, "")}
-	pvc.OwnerReferences = owners
-	return Volume{PVC: pvc, MountedBy: []corev1.TypedLocalObjectReference{workloadReference("StatefulSet", "nexus")}}
+func dataVolume(owners ...metav1.OwnerReference) pvc.Volume {
+	claim := corev1.PersistentVolumeClaim{ObjectMeta: objectMeta("data", testNamespace, "")}
+	claim.OwnerReferences = owners
+	return pvc.Volume{PVC: claim, MountedBy: []corev1.TypedLocalObjectReference{workloadReference("StatefulSet", "nexus")}}
 }
 
 func TestForeignOwnedClaims(t *testing.T) {
@@ -37,7 +38,7 @@ func TestForeignOwnedClaims(t *testing.T) {
 	t.Run("allows a claim owned by its mounting StatefulSet", func(t *testing.T) {
 		failed, owners := ForeignOwnedClaims(
 			workloads,
-			[]Volume{dataVolume(metav1.OwnerReference{Kind: "StatefulSet", Name: "nexus", UID: "nexus-uid"})},
+			[]pvc.Volume{dataVolume(metav1.OwnerReference{Kind: "StatefulSet", Name: "nexus", UID: "nexus-uid"})},
 			[]string{"data"},
 		)
 
@@ -48,7 +49,7 @@ func TestForeignOwnedClaims(t *testing.T) {
 	t.Run("reports a claim owned by another object", func(t *testing.T) {
 		failed, owners := ForeignOwnedClaims(
 			workloads,
-			[]Volume{dataVolume(metav1.OwnerReference{Kind: "Job", Name: "backup", UID: "job-uid"})},
+			[]pvc.Volume{dataVolume(metav1.OwnerReference{Kind: "Job", Name: "backup", UID: "job-uid"})},
 			[]string{"data"},
 		)
 
@@ -60,7 +61,7 @@ func TestForeignOwnedClaims(t *testing.T) {
 func TestDetacher_DeleteWorkloads(t *testing.T) {
 	statefulSet := &appsv1.StatefulSet{ObjectMeta: objectMeta("nexus", testNamespace, testDoguName)}
 	statefulSet.UID = "nexus-uid"
-	volumes := []Volume{dataVolume()}
+	volumes := []pvc.Volume{dataVolume()}
 
 	t.Run("orphans the mounting StatefulSet and keeps its pods", func(t *testing.T) {
 		var propagation metav1.DeletionPropagation
@@ -113,7 +114,7 @@ func TestDetacher_DeleteWorkloads(t *testing.T) {
 		_, err := NewDetacher(c, c).DeleteWorkloads(
 			context.Background(),
 			Workloads{Deployments: []appsv1.Deployment{deployment}, DaemonSets: []appsv1.DaemonSet{daemonSet}, StatefulSets: []appsv1.StatefulSet{*statefulSet}},
-			[]Volume{volume},
+			[]pvc.Volume{volume},
 			[]string{"data"},
 			nil,
 		)

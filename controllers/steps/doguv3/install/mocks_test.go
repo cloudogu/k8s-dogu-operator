@@ -706,24 +706,104 @@ func (_m *MockVolumeDiscovery) EXPECT() *MockVolumeDiscovery_Expecter {
 	return &MockVolumeDiscovery_Expecter{mock: &_m.Mock}
 }
 
+// UnmountedVolumes provides a mock function for the type MockVolumeDiscovery
+func (_mock *MockVolumeDiscovery) UnmountedVolumes(ctx context.Context, namespace string, rendered []*unstructured.Unstructured, mounted []pvc.Volume) ([]pvc.Volume, error) {
+	ret := _mock.Called(ctx, namespace, rendered, mounted)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UnmountedVolumes")
+	}
+
+	var r0 []pvc.Volume
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, []*unstructured.Unstructured, []pvc.Volume) ([]pvc.Volume, error)); ok {
+		return returnFunc(ctx, namespace, rendered, mounted)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, []*unstructured.Unstructured, []pvc.Volume) []pvc.Volume); ok {
+		r0 = returnFunc(ctx, namespace, rendered, mounted)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]pvc.Volume)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string, []*unstructured.Unstructured, []pvc.Volume) error); ok {
+		r1 = returnFunc(ctx, namespace, rendered, mounted)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockVolumeDiscovery_UnmountedVolumes_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UnmountedVolumes'
+type MockVolumeDiscovery_UnmountedVolumes_Call struct {
+	*mock.Call
+}
+
+// UnmountedVolumes is a helper method to define mock.On call
+//   - ctx context.Context
+//   - namespace string
+//   - rendered []*unstructured.Unstructured
+//   - mounted []pvc.Volume
+func (_e *MockVolumeDiscovery_Expecter) UnmountedVolumes(ctx any, namespace any, rendered any, mounted any) *MockVolumeDiscovery_UnmountedVolumes_Call {
+	return &MockVolumeDiscovery_UnmountedVolumes_Call{Call: _e.mock.On("UnmountedVolumes", ctx, namespace, rendered, mounted)}
+}
+
+func (_c *MockVolumeDiscovery_UnmountedVolumes_Call) Run(run func(ctx context.Context, namespace string, rendered []*unstructured.Unstructured, mounted []pvc.Volume)) *MockVolumeDiscovery_UnmountedVolumes_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 string
+		if args[1] != nil {
+			arg1 = args[1].(string)
+		}
+		var arg2 []*unstructured.Unstructured
+		if args[2] != nil {
+			arg2 = args[2].([]*unstructured.Unstructured)
+		}
+		var arg3 []pvc.Volume
+		if args[3] != nil {
+			arg3 = args[3].([]pvc.Volume)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+			arg3,
+		)
+	})
+	return _c
+}
+
+func (_c *MockVolumeDiscovery_UnmountedVolumes_Call) Return(volumes []pvc.Volume, err error) *MockVolumeDiscovery_UnmountedVolumes_Call {
+	_c.Call.Return(volumes, err)
+	return _c
+}
+
+func (_c *MockVolumeDiscovery_UnmountedVolumes_Call) RunAndReturn(run func(ctx context.Context, namespace string, rendered []*unstructured.Unstructured, mounted []pvc.Volume) ([]pvc.Volume, error)) *MockVolumeDiscovery_UnmountedVolumes_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Volumes provides a mock function for the type MockVolumeDiscovery
-func (_mock *MockVolumeDiscovery) Volumes(ctx context.Context, namespace string, workloads1 workloads.Workloads) ([]workloads.Volume, error) {
+func (_mock *MockVolumeDiscovery) Volumes(ctx context.Context, namespace string, workloads1 workloads.Workloads) ([]pvc.Volume, error) {
 	ret := _mock.Called(ctx, namespace, workloads1)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Volumes")
 	}
 
-	var r0 []workloads.Volume
+	var r0 []pvc.Volume
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, workloads.Workloads) ([]workloads.Volume, error)); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, workloads.Workloads) ([]pvc.Volume, error)); ok {
 		return returnFunc(ctx, namespace, workloads1)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, workloads.Workloads) []workloads.Volume); ok {
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, workloads.Workloads) []pvc.Volume); ok {
 		r0 = returnFunc(ctx, namespace, workloads1)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]workloads.Volume)
+			r0 = ret.Get(0).([]pvc.Volume)
 		}
 	}
 	if returnFunc, ok := ret.Get(1).(func(context.Context, string, workloads.Workloads) error); ok {
@@ -770,12 +850,12 @@ func (_c *MockVolumeDiscovery_Volumes_Call) Run(run func(ctx context.Context, na
 	return _c
 }
 
-func (_c *MockVolumeDiscovery_Volumes_Call) Return(volumes []workloads.Volume, err error) *MockVolumeDiscovery_Volumes_Call {
+func (_c *MockVolumeDiscovery_Volumes_Call) Return(volumes []pvc.Volume, err error) *MockVolumeDiscovery_Volumes_Call {
 	_c.Call.Return(volumes, err)
 	return _c
 }
 
-func (_c *MockVolumeDiscovery_Volumes_Call) RunAndReturn(run func(ctx context.Context, namespace string, workloads1 workloads.Workloads) ([]workloads.Volume, error)) *MockVolumeDiscovery_Volumes_Call {
+func (_c *MockVolumeDiscovery_Volumes_Call) RunAndReturn(run func(ctx context.Context, namespace string, workloads1 workloads.Workloads) ([]pvc.Volume, error)) *MockVolumeDiscovery_Volumes_Call {
 	_c.Call.Return(run)
 	return _c
 }
