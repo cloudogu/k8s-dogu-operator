@@ -12,17 +12,10 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
-)
-
-var (
-	testScheme = runtime.NewScheme()
-	_          = v3beta1.AddToScheme(testScheme)
-	_          = coreV1.AddToScheme(testScheme)
 )
 
 func TestCleanupV2ResourcesStep_Run(t *testing.T) {
@@ -36,13 +29,14 @@ func TestCleanupV2ResourcesStep_Run(t *testing.T) {
 			name: "continue if no (more) resources found",
 			setupMocks: func(t *testing.T, dogu *v3beta1.Dogu) (client.Client, ResourceFinder, EventRecorder) {
 				k8sClient := fake.NewClientBuilder().
-					WithScheme(testScheme).
+					WithScheme(testScheme(t)).
 					WithObjects(dogu).
 					WithStatusSubresource(dogu).
 					Build()
 				finder := NewMockResourceFinder(t)
-				finder.EXPECT().FindV2Resources(mock.Anything, dogu.Name).Return([]client.Object{}, nil)
+				finder.EXPECT().FindV2Resources(mock.Anything, getReference(dogu)).Return([]client.Object{}, nil)
 				recorder := NewMockEventRecorder(t)
+				recorder.EXPECT().Event(dogu, coreV1.EventTypeNormal, v3beta1.ReasonMigrationPending, "All resources of the v2 dogu have been deleted")
 				return k8sClient, finder, recorder
 			},
 			want: stepsv3.Continue(),
@@ -57,45 +51,46 @@ func TestCleanupV2ResourcesStep_Run(t *testing.T) {
 			name: "requeue with error if finder returns an error",
 			setupMocks: func(t *testing.T, dogu *v3beta1.Dogu) (client.Client, ResourceFinder, EventRecorder) {
 				k8sClient := fake.NewClientBuilder().
-					WithScheme(testScheme).
+					WithScheme(testScheme(t)).
 					WithObjects(dogu).
 					WithStatusSubresource(dogu).
 					Build()
 				finder := NewMockResourceFinder(t)
-				finder.EXPECT().FindV2Resources(mock.Anything, dogu.Name).Return([]client.Object{}, fmt.Errorf("some error"))
+				finder.EXPECT().FindV2Resources(mock.Anything, getReference(dogu)).Return([]client.Object{}, fmt.Errorf("some error"))
 				recorder := NewMockEventRecorder(t)
 				return k8sClient, finder, recorder
 			},
-			want: stepsv3.RequeueWithError(fmt.Errorf("some error"), "failed to find v2 resources"),
+			want: stepsv3.RequeueWithError(fmt.Errorf("failed to find v2 resources: %w", fmt.Errorf("some error")), v3beta1.ReasonMigrationPending),
 		},
 		{
 			name: "requeue if deletion fails",
 			setupMocks: func(t *testing.T, dogu *v3beta1.Dogu) (client.Client, ResourceFinder, EventRecorder) {
 				k8sClient := fake.NewClientBuilder().
-					WithScheme(testScheme).
+					WithScheme(testScheme(t)).
 					WithObjects(dogu).
 					WithStatusSubresource(dogu).
 					Build()
 				finder := NewMockResourceFinder(t)
 				additionalObject := &coreV1.ConfigMap{Name: "test-cm", Namespace: "test"}
-				finder.EXPECT().FindV2Resources(mock.Anything, dogu.Name).Return([]client.Object{additionalObject}, nil)
+				finder.EXPECT().FindV2Resources(mock.Anything, getReference(dogu)).Return([]client.Object{additionalObject}, nil)
 				recorder := NewMockEventRecorder(t)
 				return k8sClient, finder, recorder
 			},
-			want: stepsv3.RequeueWithError(errors.NewNotFound(schema.GroupResource{Resource: "configmaps"}, "test-cm"), "failed to delete v2 resource"),
+			want: stepsv3.RequeueWithError(fmt.Errorf("failed to delete v2 resource: %w", errors.NewNotFound(schema.GroupResource{Resource: "configmaps"}, "test-cm")), v3beta1.ReasonMigrationPending),
 		},
 		{
 			name: "delete any found objects",
 			setupMocks: func(t *testing.T, dogu *v3beta1.Dogu) (client.Client, ResourceFinder, EventRecorder) {
 				additionalObject := &coreV1.ConfigMap{Name: "test-cm", Namespace: "test"}
 				k8sClient := fake.NewClientBuilder().
-					WithScheme(testScheme).
+					WithScheme(testScheme(t)).
 					WithObjects(dogu, additionalObject).
 					WithStatusSubresource(dogu).
 					Build()
 				finder := NewMockResourceFinder(t)
-				finder.EXPECT().FindV2Resources(mock.Anything, dogu.Name).Return([]client.Object{additionalObject}, nil)
+				finder.EXPECT().FindV2Resources(mock.Anything, getReference(dogu)).Return([]client.Object{additionalObject}, nil)
 				recorder := NewMockEventRecorder(t)
+				recorder.EXPECT().Event(dogu, coreV1.EventTypeNormal, v3beta1.ReasonMigrationPending, "Initiated deletion of 1 resources of the v2 installation")
 				return k8sClient, finder, recorder
 			},
 			want: stepsv3.RequeueAfter(defaultRequeueAfter, v3beta1.ReasonMigrationPending, "Resources of v2 dogu are being deleted"),
@@ -119,5 +114,15 @@ func TestCleanupV2ResourcesStep_Run(t *testing.T) {
 				test.assertFn(t, k8sClient, dogu)
 			}
 		})
+	}
+}
+
+func getReference(dogu *v3beta1.Dogu) coreV1.ObjectReference {
+	return coreV1.ObjectReference{
+		Kind:            "Dogu",
+		APIVersion:      "k8s.cloudogu.com/v3beta1",
+		Name:            dogu.Name,
+		Namespace:       dogu.Namespace,
+		ResourceVersion: dogu.ResourceVersion,
 	}
 }

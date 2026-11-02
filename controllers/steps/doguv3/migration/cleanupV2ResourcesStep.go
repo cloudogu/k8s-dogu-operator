@@ -2,11 +2,13 @@ package migration
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/cloudogu/k8s-dogu-lib/v3/api/v3beta1"
 	stepsv3 "github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv3"
 	"github.com/cloudogu/k8s-dogu-operator/v3/internal/logging"
+	coreV1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/reference"
@@ -42,21 +44,24 @@ func (s *CleanupV2ResourcesStep) Run(ctx context.Context, doguResource *v3beta1.
 
 	resources, err := s.resourceFinder.FindV2Resources(ctx, *doguRef)
 	if err != nil {
-		return stepsv3.RequeueWithError(err, v3beta1.ReasonMigrationPending)
+		return stepsv3.RequeueWithError(fmt.Errorf("failed to find v2 resources: %w", err), v3beta1.ReasonMigrationPending)
 	}
 
 	// if there are no more resources of the v2 dogu, we can continue with the upgrade
 	if len(resources) == 0 {
+		s.eventRecorder.Event(doguResource, coreV1.EventTypeNormal, v3beta1.ReasonMigrationPending, "All resources of the v2 dogu have been deleted")
 		return s.updateReadyCondition(ctx, doguResource)
 	}
 
 	for _, resource := range resources {
 		err = s.client.Delete(ctx, resource)
 		if err != nil {
-			return stepsv3.RequeueWithError(err, "failed to delete v2 resource")
+			return stepsv3.RequeueWithError(fmt.Errorf("failed to delete v2 resource: %w", err), v3beta1.ReasonMigrationPending)
 		}
 		logging.Info(ctx, "Deleting Dogu v2 resource", resource.GetObjectKind().GroupVersionKind().Kind, resource.GetName())
 	}
+	msg := fmt.Sprintf("Initiated deletion of %d resources of the v2 installation", len(resources))
+	s.eventRecorder.Event(doguResource, coreV1.EventTypeNormal, v3beta1.ReasonMigrationPending, msg)
 	// requeue after a short time to allow the deletion of the resources to be processed
 	// we only continue with the upgrade if there are no more resources found above
 	return stepsv3.RequeueAfter(defaultRequeueAfter, v3beta1.ReasonMigrationPending, "Resources of v2 dogu are being deleted")
