@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/cloudogu/k8s-dogu-lib/v3/api/v3beta1"
 	"github.com/stretchr/testify/assert"
@@ -28,8 +29,8 @@ func testScheme(t *testing.T) *runtime.Scheme {
 
 func v3Dogu(name string) *v3beta1.Dogu {
 	return &v3beta1.Dogu{
-		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: testNamespace},
-		Spec:       v3beta1.DoguSpec{Name: name, DoguNamespace: "official", DoguApiVersion: v3beta1.DoguApiVersionV3},
+		Name: name, Namespace: testNamespace,
+		Spec: v3beta1.DoguSpec{Name: name, DoguNamespace: "official", DoguApiVersion: v3beta1.DoguApiVersionV3},
 	}
 }
 
@@ -141,16 +142,29 @@ func TestDetector_Detect(t *testing.T) {
 		assert.ErrorContains(t, err, "ecosystem/nexus-config")
 		assert.ErrorContains(t, err, "api down")
 	})
+
+	t.Run("ignore migration pvcs in terminating state", func(t *testing.T) {
+		tPvc := &corev1.PersistentVolumeClaim{
+			Name:              "nexus-migration",
+			Namespace:         testNamespace,
+			DeletionTimestamp: &metav1.Time{Time: time.Now()},
+			Finalizers:        []string{"kubernetes.io/pvc-protection"},
+		}
+
+		state, err := detect(t, v3Dogu("nexus"), tPvc)
+
+		require.NoError(t, err)
+		assert.Equal(t, NotRequired, state)
+	})
 }
 
 func pvc(name string, labels map[string]string) *corev1.PersistentVolumeClaim {
-	return &corev1.PersistentVolumeClaim{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: testNamespace, Labels: labels}}
+	return &corev1.PersistentVolumeClaim{Name: name, Namespace: testNamespace, Labels: labels}
 }
 
 func sensitiveConfig(doguName string) *corev1.Secret {
-	return &corev1.Secret{ObjectMeta: metav1.ObjectMeta{
+	return &corev1.Secret{
 		Name:      doguName + "-config",
 		Namespace: testNamespace,
-		Labels:    map[string]string{"app": "ces", "dogu.name": doguName, "k8s.cloudogu.com/type": "sensitive-config"},
-	}}
+		Labels:    map[string]string{"app": "ces", "dogu.name": doguName, "k8s.cloudogu.com/type": "sensitive-config"}}
 }
