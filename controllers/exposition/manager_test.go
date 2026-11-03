@@ -2,6 +2,7 @@ package exposition
 
 import (
 	"context"
+	"maps"
 	"testing"
 
 	cesappcore "github.com/cloudogu/cesapp-lib/core"
@@ -169,6 +170,8 @@ func TestExpositionManager_EnsureExposition(t *testing.T) {
 		client.EXPECT().Create(ctx, mock.MatchedBy(func(exp *expv1.Exposition) bool {
 			return exp != nil &&
 				exp.Name == "redmine" &&
+				exp.Labels["app"] == "ces" &&
+				exp.Labels["dogu.name"] == "redmine" &&
 				len(exp.Spec.HTTP) == 2 &&
 				exp.Spec.HTTP[0].Service == "redmine"
 		}), metav1.CreateOptions{}).Return(&expv1.Exposition{}, nil)
@@ -222,7 +225,7 @@ func TestExpositionManager_EnsureExposition(t *testing.T) {
 		assert.ErrorContains(t, resultErr, "failed to create Exposition")
 	})
 
-	t.Run("should not update if spec already matches", func(t *testing.T) {
+	t.Run("should not update if spec & labels already match", func(t *testing.T) {
 		fetcher := newMockLocalDoguFetcher(t)
 		fetcher.EXPECT().FetchForResource(ctx, doguResource).Return(newDoguDescriptor(), nil)
 		imageRegistry := newMockImageRegistry(t)
@@ -230,10 +233,9 @@ func TestExpositionManager_EnsureExposition(t *testing.T) {
 		existingSpec, buildErr := buildSpec("redmine", newNormalizedRoutes(), nil)
 		require.NoError(t, buildErr)
 		existing := &expv1.Exposition{
-			ObjectMeta: metav1.ObjectMeta{
-				OwnerReferences: []metav1.OwnerReference{*metav1.NewControllerRef(doguResource, doguv2.GroupVersion.WithKind("Dogu"))},
-			},
-			Spec: existingSpec,
+			Labels:          map[string]string{"app": "ces", "dogu.name": "redmine", "other": "something"},
+			OwnerReferences: []metav1.OwnerReference{*metav1.NewControllerRef(doguResource, doguv2.GroupVersion.WithKind("Dogu"))},
+			Spec:            existingSpec,
 		}
 		client := newMockExpositionClient(t)
 		client.EXPECT().Get(ctx, "redmine", metav1.GetOptions{}).Return(existing, nil)
@@ -254,13 +256,40 @@ func TestExpositionManager_EnsureExposition(t *testing.T) {
 		imageRegistry := newMockImageRegistry(t)
 		imageRegistry.EXPECT().PullImageConfig(ctx, "cloudogu/redmine:1.0.0").Return(newImageConfigWithRoutes(), nil)
 		existing := &expv1.Exposition{
-			ObjectMeta: metav1.ObjectMeta{Name: "redmine"},
-			Spec:       expv1.ExpositionSpec{HTTP: []expv1.HTTPEntry{{Name: "old", Service: "redmine", Port: 80, Path: "/old"}}},
+			Labels: map[string]string{"app": "ces", "dogu.name": "redmine"},
+			Name:   "redmine",
+			Spec:   expv1.ExpositionSpec{HTTP: []expv1.HTTPEntry{{Name: "old", Service: "redmine", Port: 80, Path: "/old"}}},
 		}
 		client := newMockExpositionClient(t)
 		client.EXPECT().Get(ctx, "redmine", metav1.GetOptions{}).Return(existing, nil)
 		client.EXPECT().Update(ctx, mock.MatchedBy(func(exp *expv1.Exposition) bool {
 			return exp != nil && len(exp.Spec.HTTP) == 2
+		}), metav1.UpdateOptions{}).Return(existing, nil)
+		manager := &ExpositionManager{
+			client:        client,
+			doguFetcher:   fetcher,
+			imageRegistry: imageRegistry,
+		}
+
+		resultErr := manager.EnsureExposition(ctx, doguResource, doguService)
+
+		require.NoError(t, resultErr)
+	})
+
+	t.Run("should update exposition if label is missing", func(t *testing.T) {
+		fetcher := newMockLocalDoguFetcher(t)
+		fetcher.EXPECT().FetchForResource(ctx, doguResource).Return(newDoguDescriptor(), nil)
+		imageRegistry := newMockImageRegistry(t)
+		imageRegistry.EXPECT().PullImageConfig(ctx, "cloudogu/redmine:1.0.0").Return(newImageConfigWithRoutes(), nil)
+		existing := &expv1.Exposition{
+			Labels: map[string]string{"app": "ces", "other": "something"},
+			Name:   "redmine",
+			Spec:   expv1.ExpositionSpec{HTTP: []expv1.HTTPEntry{{Name: "old", Service: "redmine", Port: 80, Path: "/old"}}},
+		}
+		client := newMockExpositionClient(t)
+		client.EXPECT().Get(ctx, "redmine", metav1.GetOptions{}).Return(existing, nil)
+		client.EXPECT().Update(ctx, mock.MatchedBy(func(exp *expv1.Exposition) bool {
+			return exp != nil && len(exp.Spec.HTTP) == 2 && maps.Equal(exp.Labels, map[string]string{"app": "ces", "dogu.name": "redmine", "other": "something"})
 		}), metav1.UpdateOptions{}).Return(existing, nil)
 		manager := &ExpositionManager{
 			client:        client,
