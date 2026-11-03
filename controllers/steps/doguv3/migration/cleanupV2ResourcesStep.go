@@ -49,7 +49,6 @@ func (s *CleanupV2ResourcesStep) Run(ctx context.Context, doguResource *v3beta1.
 
 	// if there are no more resources of the v2 dogu, we can continue with the upgrade
 	if len(resources) == 0 {
-		s.eventRecorder.Event(doguResource, coreV1.EventTypeNormal, v3beta1.ReasonMigrationPending, "All resources of the v2 dogu have been deleted")
 		return s.updateReadyCondition(ctx, doguResource)
 	}
 
