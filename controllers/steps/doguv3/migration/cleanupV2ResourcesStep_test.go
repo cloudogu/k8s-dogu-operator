@@ -36,7 +36,6 @@ func TestCleanupV2ResourcesStep_Run(t *testing.T) {
 				finder := NewMockResourceFinder(t)
 				finder.EXPECT().FindV2Resources(mock.Anything, getReference(dogu)).Return([]client.Object{}, nil)
 				recorder := NewMockEventRecorder(t)
-				recorder.EXPECT().Event(dogu, coreV1.EventTypeNormal, v3beta1.ReasonMigrationPending, "All resources of the v2 dogu have been deleted")
 				return k8sClient, finder, recorder
 			},
 			want: stepsv3.Continue(),
