@@ -117,8 +117,8 @@ func NewDoguMigrationUseCase(
 			ociStep,
 			waitOCIStep,
 			validateChartStep,
-			migrateDoguPVCStep,
 			migrationSecretStep,
+			migrateDoguPVCStep,
 			cleanupV2ResourcesStep,
 			// MigrationPendingStep stands in for the actual migration steps and halts the use-case,
 			// so that no chart is installed next to the v2 resources.
