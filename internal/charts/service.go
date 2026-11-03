@@ -107,6 +107,19 @@ func (s *Service) DoguMetaValues(ctx context.Context, doguResource *v3beta1.Dogu
 	return valuesMeta, found, nil
 }
 
+// HasMigrationJob reports whether the chart's default values contain the migrationJob key,
+// i.e. whether the chart ships migration jobs for a v2 to v3 migration.
+func (s *Service) HasMigrationJob(ctx context.Context, doguResource *v3beta1.Dogu) (bool, error) {
+	chart, err := s.chartFor(ctx, doguResource)
+	if err != nil {
+		return false, fmt.Errorf("failed to get chart for dogu %s: %w", doguResource.Spec.Name, err)
+	}
+
+	_, found := chart.raw.Values[values.MigrationJobKey]
+
+	return found, nil
+}
+
 // Evict drops a dogu's cached chart. Call it when the delete-finalizer runs so the cache does not grow
 // unbounded across the operator's lifetime.
 func (s *Service) Evict(doguResource *v3beta1.Dogu) {
