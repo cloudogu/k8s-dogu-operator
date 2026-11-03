@@ -122,11 +122,12 @@ func newLifecycleFixture(t *testing.T) *lifecycleFixture {
 		install.NewWaitForOCIRepositoryReadyStep(f.k8s, recorder),
 		install.NewValidateChartStep(f.chart, assembler, resizeChecker, f.k8s),
 		install.NewSuspendHelmReleaseStep(f.k8s, resizePlanner, recorder),
-		install.NewResizePVCStep(resizePlanner, f.k8s, f.k8s, recorder, operatorConfig.OfflineVolumeExpansion),
+		install.NewRequestVolumeResizeStep(resizePlanner, f.k8s, f.k8s, recorder, operatorConfig.OfflineVolumeExpansion),
 		install.NewEnsureHelmReleaseStep(f.k8s, operatorConfig, f.chart, assembler, recorder),
 		install.NewHelmReleaseStatusStep(f.k8s, f.chart, assembler, operatorConfig, fluxstate.NewHelmReleaseReader(f.k8s, helmClient), recorder),
 		install.NewUpdatePendingStep(f.k8s), install.NewExportModeStep(f.k8s, recorder),
-		install.NewVolumeStatusStep(f.chart, assembler, resizeChecker, workloads.NewDiscovery(f.k8s), f.k8s, recorder),
+		install.NewVolumeStatusStep(f.chart, assembler, workloads.NewDiscovery(f.k8s), f.k8s, recorder),
+		install.NewWaitForVolumeResizeCompletionStep(f.chart, assembler, resizeChecker),
 		f.k8s, recorder,
 	)
 	return f

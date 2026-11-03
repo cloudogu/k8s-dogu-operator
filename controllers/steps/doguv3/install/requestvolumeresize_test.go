@@ -87,7 +87,7 @@ func (rc deletionRecClient) dogu(t *testing.T) *v3beta1.Dogu {
 	return doguResource
 }
 
-func prepareResizeStep(client client.Client, t *testing.T, doguResource *v3beta1.Dogu, rendered []*unstructured.Unstructured) *ResizePVCStep {
+func prepareResizeStep(client client.Client, t *testing.T, doguResource *v3beta1.Dogu, rendered []*unstructured.Unstructured) *RequestVolumeResizeStep {
 	t.Helper()
 	chartService := newMockChartService(t)
 	chartService.EXPECT().DoguMetaValues(mock.Anything, doguResource).Return([]byte("meta"), true, nil).Maybe()
@@ -97,10 +97,10 @@ func prepareResizeStep(client client.Client, t *testing.T, doguResource *v3beta1
 	assembler.EXPECT().Assemble(mock.Anything, doguResource, []byte("meta"), []byte(nil)).Return(assembledValues, nil).Maybe()
 
 	planner := NewVolumeResizePlanner(chartService, assembler, pvc.NewResizeChecker(client), client)
-	return NewResizePVCStep(planner, client, client, record.NewFakeRecorder(10), true)
+	return NewRequestVolumeResizeStep(planner, client, client, record.NewFakeRecorder(10), true)
 }
 
-func recordedEvents(step *ResizePVCStep) []string {
+func recordedEvents(step *RequestVolumeResizeStep) []string {
 	recorder := step.eventRecorder.(*record.FakeRecorder)
 	var events []string
 	for {
@@ -113,7 +113,7 @@ func recordedEvents(step *ResizePVCStep) []string {
 	}
 }
 
-func prepareOnlineResizeStep(client client.Client, t *testing.T, doguResource *v3beta1.Dogu, rendered []*unstructured.Unstructured) *ResizePVCStep {
+func prepareOnlineResizeStep(client client.Client, t *testing.T, doguResource *v3beta1.Dogu, rendered []*unstructured.Unstructured) *RequestVolumeResizeStep {
 	t.Helper()
 	step := prepareResizeStep(client, t, doguResource, rendered)
 	step.offlineExpansion = false
@@ -176,7 +176,7 @@ func claimTemplateStatefulSet(name, size string) *appsv1.StatefulSet {
 	}
 }
 
-func TestResizePVCStep_Run(t *testing.T) {
+func TestRequestVolumeResizeStep_Run(t *testing.T) {
 	t.Run("grows the PVC and deletes the workloads that mount it without writing the volume status", func(t *testing.T) {
 		mounting := resizeDeployment("nexus", "data")
 		other := resizeDeployment("other", "other-data")
@@ -372,7 +372,7 @@ func TestResizePVCStep_Run(t *testing.T) {
 	})
 }
 
-func TestResizePVCStep_RunOnline(t *testing.T) {
+func TestRequestVolumeResizeStep_RunOnline(t *testing.T) {
 	t.Run("grows the PVC while its workload and pods keep running", func(t *testing.T) {
 		mounting := resizeDeployment("nexus", "data")
 		pod := resizePod("nexus-abc", "data")

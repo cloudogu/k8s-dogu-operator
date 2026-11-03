@@ -59,12 +59,13 @@ func TestNewDoguInstallOrChangeUseCase(t *testing.T) {
 	waitOCIStep := &install.WaitForOCIRepositoryReadyStep{}
 	validateChartStep := &install.ValidateChartStep{}
 	suspendStep := &install.SuspendHelmReleaseStep{}
-	resizePVCStep := &install.ResizePVCStep{}
+	requestVolumeResizeStep := &install.RequestVolumeResizeStep{}
 	helmReleaseStep := &install.EnsureHelmReleaseStep{}
 	helmReleaseStatusStep := &install.HelmReleaseStatusStep{}
 	exportModeStep := &install.ExportModeStep{}
 	updatePendingStep := &install.UpdatePendingStep{}
 	volumeStatusStep := &install.VolumeStatusStep{}
+	waitForVolumeResizeCompletionStep := &install.WaitForVolumeResizeCompletionStep{}
 
 	got := NewDoguInstallOrChangeUseCase(
 		finalizerStep,
@@ -72,12 +73,13 @@ func TestNewDoguInstallOrChangeUseCase(t *testing.T) {
 		waitOCIStep,
 		validateChartStep,
 		suspendStep,
-		resizePVCStep,
+		requestVolumeResizeStep,
 		helmReleaseStep,
 		helmReleaseStatusStep,
 		updatePendingStep,
 		exportModeStep,
 		volumeStatusStep,
+		waitForVolumeResizeCompletionStep,
 		clientMock,
 		recorderMock,
 	)
@@ -90,11 +92,12 @@ func TestNewDoguInstallOrChangeUseCase(t *testing.T) {
 		"*install.ValidateChartStep",
 		"*install.SuspendHelmReleaseStep",
 		"*install.StopWorkloadsStep",
-		"*install.ResizePVCStep",
+		"*install.RequestVolumeResizeStep",
 		"*install.EnsureHelmReleaseStep",
 		"*install.HelmReleaseStatusStep",
 		"*install.UpdatePendingStep",
 		"*install.VolumeStatusStep",
+		"*install.WaitForVolumeResizeCompletionStep",
 	}
 
 	assert.NotNil(t, got)

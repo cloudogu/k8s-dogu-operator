@@ -20,17 +20,15 @@ import (
 type VolumeStatusStep struct {
 	chartService  chartService
 	assembler     valueAssembler
-	resizeChecker ResizeChecker
 	discovery     VolumeDiscovery
 	k8sClient     K8sClient
 	eventRecorder EventRecorder
 }
 
-func NewVolumeStatusStep(chartService chartService, assembler valueAssembler, resizeChecker ResizeChecker, discovery VolumeDiscovery, k8sClient K8sClient, recorder EventRecorder) *VolumeStatusStep {
+func NewVolumeStatusStep(chartService chartService, assembler valueAssembler, discovery VolumeDiscovery, k8sClient K8sClient, recorder EventRecorder) *VolumeStatusStep {
 	return &VolumeStatusStep{
 		chartService:  chartService,
 		assembler:     assembler,
-		resizeChecker: resizeChecker,
 		discovery:     discovery,
 		k8sClient:     k8sClient,
 		eventRecorder: recorder,
@@ -61,17 +59,7 @@ func (vss *VolumeStatusStep) Run(ctx context.Context, doguResource *v3beta1.Dogu
 	}
 	vss.reportResizedVolumes(ctx, doguResource, previous, statuses)
 
-	if doguResource.Spec.Stopped || doguResource.Spec.PauseReconciliation {
-		return stepsv3.Continue()
-	}
-
-	// check the rendered claims instead of the status, as it omits claims whose workloads are gone
-	check, err := vss.resizeChecker.Check(ctx, doguResource.Namespace, rendered)
-	if err != nil {
-		return stepsv3.RequeueWithError(fmt.Errorf("failed to check volumes for resizing: %w", err), v3beta1.ReasonResizingPVC)
-	}
-
-	return waitForResize(check)
+	return stepsv3.Continue()
 }
 
 func (vss *VolumeStatusStep) reportResizedVolumes(ctx context.Context, doguResource *v3beta1.Dogu, previous, statuses []v3beta1.VolumeStatus) {
@@ -135,22 +123,3 @@ func applyVolumeStatus(ctx context.Context, k8sClient K8sClient, doguResource *v
 }
 
 const volumeStatusFieldOwner = "k8s-dogu-operator-volume-status-step"
-
-const offlineExpansionHint = "if the storage only expands unmounted volumes, turn on offline volume expansion"
-
-// waitForResize keeps the dogu in ResizingPVC until every rendered volume has reached its desired capacity.
-func waitForResize(check pvc.CheckResult) stepsv3.StepResult {
-	var resizing []string
-	for _, request := range check.ResizeRequests {
-		resizing = append(resizing, request.PVC.Name)
-	}
-	for _, key := range check.InProgress {
-		resizing = append(resizing, key.Name)
-	}
-
-	if len(resizing) > 0 {
-		return stepsv3.RequeueAfter(defaultRequeueAfter, v3beta1.ReasonResizingPVC, fmt.Sprintf("waiting for volumes to reach their desired capacity: %v; %s", resizing, offlineExpansionHint))
-	}
-
-	return stepsv3.Continue()
-}

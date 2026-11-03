@@ -11,7 +11,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-// VolumeResizePlanner derives the pvc.ResizePlan of a dogu, so that SuspendHelmReleaseStep and ResizePVCStep act on the same plan.
+// VolumeResizePlanner derives the pvc.ResizePlan of a dogu, so that SuspendHelmReleaseStep and RequestVolumeResizeStep act on the same plan.
 type VolumeResizePlanner struct {
 	chartService  chartService
 	assembler     valueAssembler
