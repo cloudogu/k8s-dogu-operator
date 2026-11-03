@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/cloudogu/k8s-dogu-lib/v3/api/v3beta1"
-	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/resource"
 	"gopkg.in/yaml.v3"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -106,11 +105,7 @@ func ServiceAccountCredentials(sensitiveConfig *corev1.Secret) (map[string][]byt
 func NewMigrationSecret(dogu *v3beta1.Dogu, data map[string][]byte) *corev1ac.SecretApplyConfiguration {
 	key := migrationResourceKey(dogu)
 	return corev1ac.Secret(key.Name, key.Namespace).
-		WithLabels(map[string]string{
-			resource.CloudoguLabelKeyApp: resource.LabelValueCes,
-			v3beta1.DoguLabelName:        dogu.Spec.Name,
-			configTypeLabel:              migrationType,
-		}).
+		WithLabels(migrationLabels(dogu)).
 		WithType(corev1.SecretTypeOpaque).
 		WithData(data)
 }
