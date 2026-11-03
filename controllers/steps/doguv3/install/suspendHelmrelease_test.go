@@ -143,7 +143,7 @@ func runSuspendHelmReleaseCase(t *testing.T, test suspendHelmReleaseRunCase) {
 	chartService := newSuspendRunChartService(t, dogu, test)
 	assembler := values3.NewAssembler(k8sClient) // easier to use this here, that to mock the result
 	checker := newSuspendRunResizeChecker(t, test)
-	step := NewSuspendHelmReleaseStep(k8sClient, NewVolumeResizePlanner(chartService, assembler, checker, k8sClient), nil)
+	step := NewSuspendHelmReleaseStep(k8sClient, NewVolumeResizePlanner(chartService, assembler, checker, k8sClient, true), nil)
 
 	result := step.Run(t.Context(), dogu)
 
@@ -238,7 +238,7 @@ func TestSuspendHelmReleaseStep_RunErrors(t *testing.T) {
 		chartService := newMockChartService(t)
 		chartService.EXPECT().DoguMetaValues(mock.Anything, dogu).Return(nil, false, errors.New("metadata failed"))
 
-		result := NewSuspendHelmReleaseStep(k8sClient, NewVolumeResizePlanner(chartService, nil, NewMockResizeChecker(t), k8sClient), nil).Run(t.Context(), dogu)
+		result := NewSuspendHelmReleaseStep(k8sClient, NewVolumeResizePlanner(chartService, nil, NewMockResizeChecker(t), k8sClient, true), nil).Run(t.Context(), dogu)
 
 		require.Error(t, result.Err)
 		assert.Equal(t, doguv3.ReasonInstalling, result.ReadyReason)
@@ -258,7 +258,7 @@ func TestSuspendHelmReleaseStep_RunErrors(t *testing.T) {
 		checker := NewMockResizeChecker(t)
 		checker.EXPECT().Check(mock.Anything, mock.Anything, mock.Anything).Return(pvc.CheckResult{}, fmt.Errorf("resize check failed"))
 
-		result := NewSuspendHelmReleaseStep(k8sClient, NewVolumeResizePlanner(chartService, assembler, checker, k8sClient), nil).Run(t.Context(), dogu)
+		result := NewSuspendHelmReleaseStep(k8sClient, NewVolumeResizePlanner(chartService, assembler, checker, k8sClient, true), nil).Run(t.Context(), dogu)
 
 		require.Error(t, result.Err)
 		assert.Equal(t, doguv3.ReasonInstalling, result.ReadyReason)
@@ -410,7 +410,7 @@ func TestSuspendHelmReleaseStep_expectedState(t *testing.T) {
 			if !test.noCheckExpected {
 				checker.EXPECT().Check(mock.Anything, dogu.Namespace, mock.Anything).Return(test.checkResult, test.checkError)
 			}
-			step := NewSuspendHelmReleaseStep(nil, NewVolumeResizePlanner(chartService, assembler, checker, nil), nil)
+			step := NewSuspendHelmReleaseStep(nil, NewVolumeResizePlanner(chartService, assembler, checker, nil, true), nil)
 
 			targetState, err := step.expectedState(t.Context(), dogu)
 

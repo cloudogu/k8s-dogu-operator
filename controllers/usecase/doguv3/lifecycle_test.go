@@ -115,14 +115,14 @@ func newLifecycleFixture(t *testing.T) *lifecycleFixture {
 	assembler := values.NewAssembler(f.k8s)
 	operatorConfig := &config.OperatorConfig{}
 	resizeChecker := pvc.NewResizeChecker(f.k8s)
-	resizePlanner := install.NewVolumeResizePlanner(f.chart, assembler, resizeChecker, f.k8s)
+	resizePlanner := install.NewVolumeResizePlanner(f.chart, assembler, resizeChecker, f.k8s, operatorConfig.OfflineVolumeExpansion)
 	f.useCase = NewDoguInstallOrChangeUseCase(
 		install.NewCreateFinalizerStep(f.k8s),
 		install.NewEnsureOCIRepositoryStep(f.k8s, lifecycleRegistry{}, recorder),
 		install.NewWaitForOCIRepositoryReadyStep(f.k8s, recorder),
 		install.NewValidateChartStep(f.chart, assembler, resizeChecker, f.k8s),
 		install.NewSuspendHelmReleaseStep(f.k8s, resizePlanner, recorder),
-		install.NewRequestVolumeResizeStep(resizePlanner, f.k8s, f.k8s, recorder, operatorConfig.OfflineVolumeExpansion),
+		install.NewRequestVolumeResizeStep(resizePlanner, f.k8s, f.k8s, recorder),
 		install.NewEnsureHelmReleaseStep(f.k8s, operatorConfig, f.chart, assembler, recorder),
 		install.NewHelmReleaseStatusStep(f.k8s, f.chart, assembler, operatorConfig, fluxstate.NewHelmReleaseReader(f.k8s, helmClient), recorder),
 		install.NewUpdatePendingStep(f.k8s), install.NewExportModeStep(f.k8s, recorder),

@@ -15,27 +15,25 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-// RequestVolumeResizeStep requests the pvc.ResizePlan of a dogu: it raises the PVC requests and replaces StatefulSets with
-// outdated claim templates. With offline expansion it also detaches every growing PVC, so that the resumed release recreates
-// the workloads on them. Kubernetes grows the volumes afterwards; WaitForVolumeResizeCompletionStep waits for that.
+// RequestVolumeResizeStep carries out the pvc.ResizePlan of a dogu, one phase after another, each finished before the next starts:
+// it grows the claims, replaces StatefulSets with outdated claim templates and, with offline expansion, unmounts the growing claims.
+// Kubernetes grows the volumes afterwards; WaitForVolumeResizeCompletionStep waits for that.
 type RequestVolumeResizeStep struct {
-	resizePlanner    *VolumeResizePlanner
-	discovery        VolumeDiscovery
-	detacher         *workloads.Detacher
-	grower           *pvc.Grower
-	eventRecorder    EventRecorder
-	offlineExpansion bool
+	resizePlanner *VolumeResizePlanner
+	discovery     VolumeDiscovery
+	detacher      *workloads.Detacher
+	grower        *pvc.Grower
+	eventRecorder EventRecorder
 }
 
 // NewRequestVolumeResizeStep discovers and detaches through apiReader, so a lagging cache cannot hide a mounting workload or pod.
-func NewRequestVolumeResizeStep(resizePlanner *VolumeResizePlanner, apiReader client.Reader, k8sClient K8sClient, recorder EventRecorder, offlineExpansion bool) *RequestVolumeResizeStep {
+func NewRequestVolumeResizeStep(resizePlanner *VolumeResizePlanner, apiReader client.Reader, k8sClient K8sClient, recorder EventRecorder) *RequestVolumeResizeStep {
 	return &RequestVolumeResizeStep{
-		resizePlanner:    resizePlanner,
-		discovery:        workloads.NewDiscovery(apiReader),
-		detacher:         workloads.NewDetacher(apiReader, k8sClient),
-		grower:           pvc.NewGrower(k8sClient),
-		eventRecorder:    recorder,
-		offlineExpansion: offlineExpansion,
+		resizePlanner: resizePlanner,
+		discovery:     workloads.NewDiscovery(apiReader),
+		detacher:      workloads.NewDetacher(apiReader, k8sClient),
+		grower:        pvc.NewGrower(k8sClient),
+		eventRecorder: recorder,
 	}
 }
 
@@ -48,34 +46,6 @@ func (rvr *RequestVolumeResizeStep) Run(ctx context.Context, doguResource *v3bet
 	if err != nil {
 		return stepsv3.RequeueWithError(fmt.Errorf("failed to plan resizing of pvcs: %w", err), v3beta1.ReasonResizingPVC)
 	}
-
-	if rvr.offlineExpansion {
-		return rvr.resizeOffline(ctx, doguResource, plan)
-	}
-	return rvr.resizeOnline(ctx, doguResource, plan)
-}
-
-// resizeOnline grows the claims while their workloads and pods keep running.
-func (rvr *RequestVolumeResizeStep) resizeOnline(ctx context.Context, doguResource *v3beta1.Dogu, plan pvc.ResizePlan) stepsv3.StepResult {
-	if len(plan.Grow) == 0 && len(plan.OutdatedStatefulSets) == 0 {
-		return stepsv3.Continue()
-	}
-
-	doguWorkloads, volumes, err := rvr.discover(ctx, doguResource)
-	if err != nil {
-		return stepsv3.RequeueWithError(err, v3beta1.ReasonResizingPVC)
-	}
-
-	if result := rvr.growClaims(ctx, doguResource, plan); !result.Continue {
-		return result
-	}
-
-	// mounted volumes grow online, only StatefulSets with outdated claim templates are replaced
-	return rvr.deleteWorkloads(ctx, doguResource, doguWorkloads, volumes, nil, plan.OutdatedStatefulSets)
-}
-
-// resizeOffline detaches the claims from all workloads and pods, for storage that only expands unmounted volumes.
-func (rvr *RequestVolumeResizeStep) resizeOffline(ctx context.Context, doguResource *v3beta1.Dogu, plan pvc.ResizePlan) stepsv3.StepResult {
 	if !plan.Active() {
 		return stepsv3.Continue()
 	}
@@ -85,59 +55,26 @@ func (rvr *RequestVolumeResizeStep) resizeOffline(ctx context.Context, doguResou
 		return stepsv3.RequeueWithError(err, v3beta1.ReasonResizingPVC)
 	}
 
-	failedClaims, foreignOwners := workloads.ForeignOwnedClaims(doguWorkloads, volumes, plan.Detach)
-	if len(failedClaims) > 0 {
+	// abort before any change, as unmounting must not delete a claim
+	if foreignOwners := workloads.ForeignOwnedClaims(doguWorkloads, volumes, plan.Unmount); len(foreignOwners) > 0 {
 		return stepsv3.Abort(v3beta1.ReasonResizingPVC, fmt.Sprintf("cannot resize volumes owned by other objects than their StatefulSet, their deletion would lead to data loss: %v", foreignOwners))
 	}
-
-	if result := rvr.growClaims(ctx, doguResource, plan); !result.Continue {
+	if result := rvr.growClaims(ctx, doguResource, plan.Grow); !result.Continue {
 		return result
 	}
-	if result := rvr.deleteWorkloads(ctx, doguResource, doguWorkloads, volumes, plan.Detach, plan.OutdatedStatefulSets); !result.Continue {
+	if result := rvr.replaceStatefulSets(ctx, doguResource, doguWorkloads, plan.OutdatedStatefulSets); !result.Continue {
 		return result
 	}
-	return rvr.deleteMountingPods(ctx, doguResource, plan.Detach)
-}
-
-// deleteWorkloads deletes the workloads mounting the claims plus the outdated StatefulSets and waits for the release to recreate them.
-func (rvr *RequestVolumeResizeStep) deleteWorkloads(ctx context.Context, doguResource *v3beta1.Dogu, doguWorkloads workloads.Workloads, volumes []pvc.Volume, claims []string, outdatedStatefulSets []types.UID) stepsv3.StepResult {
-	deleted, err := rvr.detacher.DeleteWorkloads(ctx, doguWorkloads, volumes, claims, outdatedStatefulSets)
-	if err != nil {
-		return stepsv3.RequeueWithError(err, v3beta1.ReasonResizingPVC)
-	}
-	if len(deleted) == 0 {
-		return stepsv3.Continue()
-	}
-
-	logging.Info(ctx, "deleted workloads to recreate them on the resized volumes", "workloads", deleted)
-	rvr.eventRecorder.Event(doguResource, corev1.EventTypeNormal, v3beta1.ReasonResizingPVC, fmt.Sprintf("Deleted %v to recreate them on the resized volumes", deleted))
-	return stepsv3.RequeueAfter(defaultRequeueAfter, v3beta1.ReasonResizingPVC, fmt.Sprintf("waiting for workloads to be deleted and recreated by the release: %v", deleted))
-}
-
-// deleteMountingPods deletes the pods mounting the claims and waits until they are gone.
-func (rvr *RequestVolumeResizeStep) deleteMountingPods(ctx context.Context, doguResource *v3beta1.Dogu, claims []string) stepsv3.StepResult {
-	pods, newlyDeleted, err := rvr.detacher.DeleteMountingPods(ctx, doguResource.Namespace, claims)
-	if err != nil {
-		return stepsv3.RequeueWithError(err, v3beta1.ReasonResizingPVC)
-	}
-	if len(newlyDeleted) > 0 {
-		logging.Info(ctx, "deleted pods that mount resizing volumes", "pods", newlyDeleted)
-		rvr.eventRecorder.Event(doguResource, corev1.EventTypeNormal, v3beta1.ReasonResizingPVC, fmt.Sprintf("Deleted pods %v that mount resizing volumes", newlyDeleted))
-	}
-	if len(pods) > 0 {
-		return stepsv3.RequeueAfter(defaultRequeueAfter, v3beta1.ReasonResizingPVC, fmt.Sprintf("waiting for pods that mount resizing volumes to terminate: %v", pods))
-	}
-
-	return stepsv3.Continue()
+	return rvr.unmount(ctx, doguResource, doguWorkloads, volumes, plan.Unmount)
 }
 
 // growClaims grows the volume claims. It aborts if the cluster rejects a claim, before any workload is deleted.
-func (rvr *RequestVolumeResizeStep) growClaims(ctx context.Context, doguResource *v3beta1.Dogu, plan pvc.ResizePlan) stepsv3.StepResult {
-	if len(plan.Grow) == 0 {
+func (rvr *RequestVolumeResizeStep) growClaims(ctx context.Context, doguResource *v3beta1.Dogu, requests []pvc.ResizeRequest) stepsv3.StepResult {
+	if len(requests) == 0 {
 		return stepsv3.Continue()
 	}
 
-	grown, err := rvr.grower.Grow(ctx, plan.Grow)
+	grown, err := rvr.grower.Grow(ctx, requests)
 	for _, claim := range grown {
 		from, to := claim.Previous.String(), claim.PVC.Spec.Resources.Requests.Storage().String()
 		logging.Info(ctx, "growing volume", "pvc", claim.PVC.Name, "from", from, "to", to)
@@ -150,6 +87,44 @@ func (rvr *RequestVolumeResizeStep) growClaims(ctx context.Context, doguResource
 	}
 	if rejection != nil {
 		return stepsv3.Abort(v3beta1.ReasonResizingPVC, rejection.Error())
+	}
+
+	return stepsv3.Continue()
+}
+
+// replaceStatefulSets deletes the outdated StatefulSets and waits until they are gone.
+func (rvr *RequestVolumeResizeStep) replaceStatefulSets(ctx context.Context, doguResource *v3beta1.Dogu, doguWorkloads workloads.Workloads, outdated []types.UID) stepsv3.StepResult {
+	deleted, err := rvr.detacher.ReplaceStatefulSets(ctx, doguWorkloads, outdated)
+	if err != nil {
+		return stepsv3.RequeueWithError(err, v3beta1.ReasonResizingPVC)
+	}
+	if len(deleted) == 0 {
+		return stepsv3.Continue()
+	}
+
+	logging.Info(ctx, "deleted StatefulSets with outdated claim templates", "workloads", deleted)
+	rvr.eventRecorder.Event(doguResource, corev1.EventTypeNormal, v3beta1.ReasonResizingPVC, fmt.Sprintf("Deleted %v with outdated claim templates, the release recreates them", deleted))
+	return stepsv3.RequeueAfter(defaultRequeueAfter, v3beta1.ReasonResizingPVC, fmt.Sprintf("waiting for StatefulSets with outdated claim templates to be deleted: %v", deleted))
+}
+
+// unmount deletes the workloads and pods mounting the claims and waits until they are gone.
+func (rvr *RequestVolumeResizeStep) unmount(ctx context.Context, doguResource *v3beta1.Dogu, doguWorkloads workloads.Workloads, volumes []pvc.Volume, claims []string) stepsv3.StepResult {
+	unmounted, err := rvr.detacher.Unmount(ctx, doguResource.Namespace, doguWorkloads, volumes, claims)
+	if err != nil {
+		return stepsv3.RequeueWithError(err, v3beta1.ReasonResizingPVC)
+	}
+
+	if len(unmounted.Workloads) > 0 {
+		logging.Info(ctx, "deleted workloads that mount resizing volumes", "workloads", unmounted.Workloads)
+		rvr.eventRecorder.Event(doguResource, corev1.EventTypeNormal, v3beta1.ReasonResizingPVC, fmt.Sprintf("Deleted %v that mount resizing volumes", unmounted.Workloads))
+		return stepsv3.RequeueAfter(defaultRequeueAfter, v3beta1.ReasonResizingPVC, fmt.Sprintf("waiting for workloads that mount resizing volumes to be deleted: %v", unmounted.Workloads))
+	}
+	if len(unmounted.NewlyDeletedPods) > 0 {
+		logging.Info(ctx, "deleted pods that mount resizing volumes", "pods", unmounted.NewlyDeletedPods)
+		rvr.eventRecorder.Event(doguResource, corev1.EventTypeNormal, v3beta1.ReasonResizingPVC, fmt.Sprintf("Deleted pods %v that mount resizing volumes", unmounted.NewlyDeletedPods))
+	}
+	if len(unmounted.Pods) > 0 {
+		return stepsv3.RequeueAfter(defaultRequeueAfter, v3beta1.ReasonResizingPVC, fmt.Sprintf("waiting for pods that mount resizing volumes to terminate: %v", unmounted.Pods))
 	}
 
 	return stepsv3.Continue()

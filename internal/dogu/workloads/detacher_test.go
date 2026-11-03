@@ -36,34 +36,32 @@ func TestForeignOwnedClaims(t *testing.T) {
 	workloads := Workloads{StatefulSets: []appsv1.StatefulSet{statefulSet}}
 
 	t.Run("allows a claim owned by its mounting StatefulSet", func(t *testing.T) {
-		failed, owners := ForeignOwnedClaims(
+		owners := ForeignOwnedClaims(
 			workloads,
 			[]pvc.Volume{dataVolume(metav1.OwnerReference{Kind: "StatefulSet", Name: "nexus", UID: "nexus-uid"})},
 			[]string{"data"},
 		)
 
-		assert.Empty(t, failed)
 		assert.Empty(t, owners)
 	})
 
 	t.Run("reports a claim owned by another object", func(t *testing.T) {
-		failed, owners := ForeignOwnedClaims(
+		owners := ForeignOwnedClaims(
 			workloads,
 			[]pvc.Volume{dataVolume(metav1.OwnerReference{Kind: "Job", Name: "backup", UID: "job-uid"})},
 			[]string{"data"},
 		)
 
-		assert.Equal(t, []string{"data"}, failed)
 		assert.Equal(t, []string{"data (Job/backup)"}, owners)
 	})
 }
 
-func TestDetacher_DeleteWorkloads(t *testing.T) {
+func TestDetacher_Unmount(t *testing.T) {
 	statefulSet := &appsv1.StatefulSet{ObjectMeta: objectMeta("nexus", testNamespace, testDoguName)}
 	statefulSet.UID = "nexus-uid"
 	volumes := []pvc.Volume{dataVolume()}
 
-	t.Run("orphans the mounting StatefulSet and keeps its pods", func(t *testing.T) {
+	t.Run("orphans the mounting StatefulSet and keeps its pods until it is gone", func(t *testing.T) {
 		var propagation metav1.DeletionPropagation
 		c := fake.NewClientBuilder().WithScheme(testScheme(t)).WithObjects(statefulSet.DeepCopy(), mountingPod("nexus-0", "data")).
 			WithInterceptorFuncs(interceptor.Funcs{Delete: func(ctx context.Context, c client.WithWatch, obj client.Object, opts ...client.DeleteOption) error {
@@ -73,16 +71,16 @@ func TestDetacher_DeleteWorkloads(t *testing.T) {
 				return c.Delete(ctx, obj, opts...)
 			}}).Build()
 
-		deleted, err := NewDetacher(c, c).DeleteWorkloads(
+		unmounted, err := NewDetacher(c, c).Unmount(
 			context.Background(),
+			testNamespace,
 			Workloads{StatefulSets: []appsv1.StatefulSet{*statefulSet}},
 			volumes,
 			[]string{"data"},
-			nil,
 		)
 
 		require.NoError(t, err)
-		assert.Equal(t, []string{"StatefulSet/nexus"}, deleted)
+		assert.Equal(t, Unmounted{Workloads: []string{"StatefulSet/nexus"}}, unmounted)
 		assert.Equal(t, metav1.DeletePropagationOrphan, propagation)
 		require.NoError(t, c.Get(context.Background(), client.ObjectKey{Namespace: testNamespace, Name: "nexus-0"}, &corev1.Pod{}))
 	})
@@ -111,12 +109,12 @@ func TestDetacher_DeleteWorkloads(t *testing.T) {
 			workloadReference("StatefulSet", "nexus"),
 		}
 
-		_, err := NewDetacher(c, c).DeleteWorkloads(
+		_, err := NewDetacher(c, c).Unmount(
 			context.Background(),
+			testNamespace,
 			Workloads{Deployments: []appsv1.Deployment{deployment}, DaemonSets: []appsv1.DaemonSet{daemonSet}, StatefulSets: []appsv1.StatefulSet{*statefulSet}},
 			[]pvc.Volume{volume},
 			[]string{"data"},
-			nil,
 		)
 
 		require.NoError(t, err)
@@ -127,31 +125,14 @@ func TestDetacher_DeleteWorkloads(t *testing.T) {
 		}, deletions)
 	})
 
-	t.Run("replaces an outdated StatefulSet without claims", func(t *testing.T) {
-		c := fake.NewClientBuilder().WithScheme(testScheme(t)).WithObjects(statefulSet.DeepCopy()).Build()
-
-		deleted, err := NewDetacher(c, c).DeleteWorkloads(
-			context.Background(),
-			Workloads{StatefulSets: []appsv1.StatefulSet{*statefulSet}},
-			nil,
-			nil,
-			[]types.UID{"nexus-uid"},
-		)
-
-		require.NoError(t, err)
-		assert.Equal(t, []string{"StatefulSet/nexus"}, deleted)
-	})
-}
-
-func TestDetacher_DeleteMountingPods(t *testing.T) {
-	t.Run("deletes only the pods mounting the claims", func(t *testing.T) {
+	t.Run("deletes only the pods mounting the claims once their workloads are gone", func(t *testing.T) {
 		c := fake.NewClientBuilder().WithScheme(testScheme(t)).WithObjects(mountingPod("nexus-0", "data"), mountingPod("other-0", "other")).Build()
 
-		pods, newlyDeleted, err := NewDetacher(c, c).DeleteMountingPods(context.Background(), testNamespace, []string{"data"})
+		unmounted, err := NewDetacher(c, c).Unmount(context.Background(), testNamespace, Workloads{}, volumes, []string{"data"})
 
 		require.NoError(t, err)
-		assert.Equal(t, []string{"nexus-0"}, pods)
-		assert.Equal(t, []string{"nexus-0"}, newlyDeleted)
+		assert.Equal(t, []string{"nexus-0"}, unmounted.Pods)
+		assert.Equal(t, []string{"nexus-0"}, unmounted.NewlyDeletedPods)
 	})
 
 	t.Run("reports a terminating pod as remaining but not as newly deleted", func(t *testing.T) {
@@ -160,11 +141,11 @@ func TestDetacher_DeleteMountingPods(t *testing.T) {
 		terminating.Finalizers = []string{"test"}
 		c := fake.NewClientBuilder().WithScheme(testScheme(t)).WithObjects(terminating, mountingPod("nexus-0", "data")).Build()
 
-		pods, newlyDeleted, err := NewDetacher(c, c).DeleteMountingPods(context.Background(), testNamespace, []string{"data"})
+		unmounted, err := NewDetacher(c, c).Unmount(context.Background(), testNamespace, Workloads{}, volumes, []string{"data"})
 
 		require.NoError(t, err)
-		assert.ElementsMatch(t, []string{"nexus-0", "nexus-old"}, pods)
-		assert.Equal(t, []string{"nexus-0"}, newlyDeleted)
+		assert.ElementsMatch(t, []string{"nexus-0", "nexus-old"}, unmounted.Pods)
+		assert.Equal(t, []string{"nexus-0"}, unmounted.NewlyDeletedPods)
 	})
 
 	t.Run("leaves finished pods alone", func(t *testing.T) {
@@ -174,26 +155,56 @@ func TestDetacher_DeleteMountingPods(t *testing.T) {
 		failed.Status.Phase = corev1.PodFailed
 		c := fake.NewClientBuilder().WithScheme(testScheme(t)).WithObjects(succeeded, failed).Build()
 
-		pods, newlyDeleted, err := NewDetacher(c, c).DeleteMountingPods(context.Background(), testNamespace, []string{"data"})
+		unmounted, err := NewDetacher(c, c).Unmount(context.Background(), testNamespace, Workloads{}, volumes, []string{"data"})
 
 		require.NoError(t, err)
-		assert.Empty(t, pods)
-		assert.Empty(t, newlyDeleted)
+		assert.Equal(t, Unmounted{}, unmounted)
 		require.NoError(t, c.Get(context.Background(), client.ObjectKeyFromObject(succeeded), &corev1.Pod{}))
 		require.NoError(t, c.Get(context.Background(), client.ObjectKeyFromObject(failed), &corev1.Pod{}))
 	})
 
-	t.Run("lists no pods without claims", func(t *testing.T) {
+	t.Run("does nothing without claims", func(t *testing.T) {
 		c := fake.NewClientBuilder().WithScheme(testScheme(t)).
 			WithInterceptorFuncs(interceptor.Funcs{List: func(context.Context, client.WithWatch, client.ObjectList, ...client.ListOption) error {
-				t.Fatal("pods must not be listed without claims")
+				t.Fatal("nothing must be listed without claims")
 				return nil
 			}}).Build()
 
-		pods, newlyDeleted, err := NewDetacher(c, c).DeleteMountingPods(context.Background(), testNamespace, nil)
+		unmounted, err := NewDetacher(c, c).Unmount(context.Background(), testNamespace, Workloads{}, volumes, nil)
 
 		require.NoError(t, err)
-		assert.Empty(t, pods)
-		assert.Empty(t, newlyDeleted)
+		assert.Equal(t, Unmounted{}, unmounted)
+	})
+}
+
+func TestDetacher_ReplaceStatefulSets(t *testing.T) {
+	statefulSet := &appsv1.StatefulSet{ObjectMeta: objectMeta("nexus", testNamespace, testDoguName)}
+	statefulSet.UID = "nexus-uid"
+
+	t.Run("orphans the outdated StatefulSet", func(t *testing.T) {
+		var propagation metav1.DeletionPropagation
+		c := fake.NewClientBuilder().WithScheme(testScheme(t)).WithObjects(statefulSet.DeepCopy()).
+			WithInterceptorFuncs(interceptor.Funcs{Delete: func(ctx context.Context, c client.WithWatch, obj client.Object, opts ...client.DeleteOption) error {
+				options := &client.DeleteOptions{}
+				options.ApplyOptions(opts)
+				propagation = *options.PropagationPolicy
+				return c.Delete(ctx, obj, opts...)
+			}}).Build()
+
+		deleted, err := NewDetacher(c, c).ReplaceStatefulSets(context.Background(), Workloads{StatefulSets: []appsv1.StatefulSet{*statefulSet}}, []types.UID{"nexus-uid"})
+
+		require.NoError(t, err)
+		assert.Equal(t, []string{"StatefulSet/nexus"}, deleted)
+		assert.Equal(t, metav1.DeletePropagationOrphan, propagation)
+	})
+
+	t.Run("leaves a StatefulSet with another UID alone", func(t *testing.T) {
+		c := fake.NewClientBuilder().WithScheme(testScheme(t)).WithObjects(statefulSet.DeepCopy()).Build()
+
+		deleted, err := NewDetacher(c, c).ReplaceStatefulSets(context.Background(), Workloads{StatefulSets: []appsv1.StatefulSet{*statefulSet}}, []types.UID{"recreated-uid"})
+
+		require.NoError(t, err)
+		assert.Empty(t, deleted)
+		require.NoError(t, c.Get(context.Background(), client.ObjectKeyFromObject(statefulSet), &appsv1.StatefulSet{}))
 	})
 }

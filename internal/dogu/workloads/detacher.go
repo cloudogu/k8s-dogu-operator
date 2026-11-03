@@ -25,10 +25,10 @@ func NewDetacher(reader client.Reader, writer client.Writer) *Detacher {
 	return &Detacher{reader: reader, writer: writer}
 }
 
-// ForeignOwnedClaims finds claims that could be deleted during the resize process. Only StatefulSets are deleted with
-// OrphanPropagation, which keeps their owned claims safe. Other unexpectedly owned claims have to be protected and get
-// reported by this function.
-func ForeignOwnedClaims(workloads Workloads, volumes []pvc.Volume, claims []string) (failedClaims, foreignOwners []string) {
+// ForeignOwnedClaims reports the claims that unmounting would endanger, as "claim (Kind/name)" per foreign owner.
+// Only StatefulSets are deleted with OrphanPropagation, which keeps the claims they own safe; any other owner may delete its claim.
+func ForeignOwnedClaims(workloads Workloads, volumes []pvc.Volume, claims []string) []string {
+	var foreignOwners []string
 	for _, volume := range volumes {
 		if !slices.Contains(claims, volume.PVC.Name) {
 			continue
@@ -40,27 +40,18 @@ func ForeignOwnedClaims(workloads Workloads, volumes []pvc.Volume, claims []stri
 			}
 		}
 		for _, owner := range volume.PVC.OwnerReferences {
-			if slices.Contains(allowed, owner.UID) {
-				continue
+			if !slices.Contains(allowed, owner.UID) {
+				foreignOwners = append(foreignOwners, fmt.Sprintf("%s (%s/%s)", volume.PVC.Name, owner.Kind, owner.Name))
 			}
-			if !slices.Contains(failedClaims, volume.PVC.Name) {
-				failedClaims = append(failedClaims, volume.PVC.Name)
-			}
-			foreignOwners = append(foreignOwners, fmt.Sprintf("%s (%s/%s)", volume.PVC.Name, owner.Kind, owner.Name))
 		}
 	}
 
-	return failedClaims, foreignOwners
+	return foreignOwners
 }
 
-// DeleteWorkloads deletes the workloads mounting the claims plus the outdated StatefulSets, as Helm cannot upgrade their immutable claim templates.
-func (d *Detacher) DeleteWorkloads(ctx context.Context, workloads Workloads, volumes []pvc.Volume, claims []string, outdatedStatefulSets []types.UID) ([]string, error) {
+// ReplaceStatefulSets deletes the outdated StatefulSets, as Helm cannot upgrade their immutable claim templates; the release recreates them.
+func (d *Detacher) ReplaceStatefulSets(ctx context.Context, workloads Workloads, outdatedStatefulSets []types.UID) ([]string, error) {
 	var refs []corev1.TypedLocalObjectReference
-	for _, volume := range volumes {
-		if slices.Contains(claims, volume.PVC.Name) {
-			refs = append(refs, volume.MountedBy...)
-		}
-	}
 	// matched by UID, as the checker reads cached and may still see a StatefulSet that Helm has recreated meanwhile
 	for _, statefulSet := range workloads.StatefulSets {
 		if slices.Contains(outdatedStatefulSets, statefulSet.UID) {
@@ -68,6 +59,39 @@ func (d *Detacher) DeleteWorkloads(ctx context.Context, workloads Workloads, vol
 		}
 	}
 
+	return d.deleteWorkloads(ctx, workloads, refs)
+}
+
+// Unmounted is what Unmount deleted in one pass; it is done once all three are empty.
+type Unmounted struct {
+	Workloads []string
+	// Pods are the pods still mounting the claims, NewlyDeletedPods those of them deleted in this pass.
+	Pods             []string
+	NewlyDeletedPods []string
+}
+
+// Unmount deletes the workloads mounting the claims and, once these are gone, the pods still mounting the claims, as orphaned StatefulSets leave their pods running.
+func (d *Detacher) Unmount(ctx context.Context, namespace string, workloads Workloads, volumes []pvc.Volume, claims []string) (Unmounted, error) {
+	if len(claims) == 0 {
+		return Unmounted{}, nil
+	}
+
+	var refs []corev1.TypedLocalObjectReference
+	for _, volume := range volumes {
+		if slices.Contains(claims, volume.PVC.Name) {
+			refs = append(refs, volume.MountedBy...)
+		}
+	}
+	deleted, err := d.deleteWorkloads(ctx, workloads, refs)
+	if err != nil || len(deleted) > 0 {
+		return Unmounted{Workloads: deleted}, err
+	}
+
+	pods, newlyDeleted, err := d.deleteMountingPods(ctx, namespace, claims)
+	return Unmounted{Pods: pods, NewlyDeletedPods: newlyDeleted}, err
+}
+
+func (d *Detacher) deleteWorkloads(ctx context.Context, workloads Workloads, refs []corev1.TypedLocalObjectReference) ([]string, error) {
 	var deleted []string
 	for _, ref := range refs {
 		name := ref.Kind + "/" + ref.Name
@@ -89,12 +113,8 @@ func (d *Detacher) DeleteWorkloads(ctx context.Context, workloads Workloads, vol
 	return deleted, nil
 }
 
-// DeleteMountingPods deletes the running pods mounting the claims, found by claim name as they carry no dogu label and may have outlived their workload.
-func (d *Detacher) DeleteMountingPods(ctx context.Context, namespace string, claims []string) (pods, newlyDeleted []string, err error) {
-	if len(claims) == 0 {
-		return nil, nil, nil
-	}
-
+// deleteMountingPods deletes the running pods mounting the claims, found by claim name as they carry no dogu label and may have outlived their workload.
+func (d *Detacher) deleteMountingPods(ctx context.Context, namespace string, claims []string) (pods, newlyDeleted []string, err error) {
 	podList := &corev1.PodList{}
 	if err := d.reader.List(ctx, podList, client.InNamespace(namespace)); err != nil {
 		return nil, nil, fmt.Errorf("failed to list pods in namespace %q: %w", namespace, err)

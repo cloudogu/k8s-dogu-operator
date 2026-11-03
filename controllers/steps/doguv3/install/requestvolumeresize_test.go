@@ -89,6 +89,16 @@ func (rc deletionRecClient) dogu(t *testing.T) *v3beta1.Dogu {
 
 func prepareResizeStep(client client.Client, t *testing.T, doguResource *v3beta1.Dogu, rendered []*unstructured.Unstructured) *RequestVolumeResizeStep {
 	t.Helper()
+	return prepareResizeStepInMode(client, t, doguResource, rendered, true)
+}
+
+func prepareOnlineResizeStep(client client.Client, t *testing.T, doguResource *v3beta1.Dogu, rendered []*unstructured.Unstructured) *RequestVolumeResizeStep {
+	t.Helper()
+	return prepareResizeStepInMode(client, t, doguResource, rendered, false)
+}
+
+func prepareResizeStepInMode(client client.Client, t *testing.T, doguResource *v3beta1.Dogu, rendered []*unstructured.Unstructured, offlineExpansion bool) *RequestVolumeResizeStep {
+	t.Helper()
 	chartService := newMockChartService(t)
 	chartService.EXPECT().DoguMetaValues(mock.Anything, doguResource).Return([]byte("meta"), true, nil).Maybe()
 	chartService.EXPECT().RuntimePatchTemplate(mock.Anything, doguResource).Return(nil, false, nil).Maybe()
@@ -96,8 +106,8 @@ func prepareResizeStep(client client.Client, t *testing.T, doguResource *v3beta1
 	assembler := newMockValueAssembler(t)
 	assembler.EXPECT().Assemble(mock.Anything, doguResource, []byte("meta"), []byte(nil)).Return(assembledValues, nil).Maybe()
 
-	planner := NewVolumeResizePlanner(chartService, assembler, pvc.NewResizeChecker(client), client)
-	return NewRequestVolumeResizeStep(planner, client, client, record.NewFakeRecorder(10), true)
+	planner := NewVolumeResizePlanner(chartService, assembler, pvc.NewResizeChecker(client), client, offlineExpansion)
+	return NewRequestVolumeResizeStep(planner, client, client, record.NewFakeRecorder(10))
 }
 
 func recordedEvents(step *RequestVolumeResizeStep) []string {
@@ -111,13 +121,6 @@ func recordedEvents(step *RequestVolumeResizeStep) []string {
 			return events
 		}
 	}
-}
-
-func prepareOnlineResizeStep(client client.Client, t *testing.T, doguResource *v3beta1.Dogu, rendered []*unstructured.Unstructured) *RequestVolumeResizeStep {
-	t.Helper()
-	step := prepareResizeStep(client, t, doguResource, rendered)
-	step.offlineExpansion = false
-	return step
 }
 
 func renderedPVC(t *testing.T, name, request string) []*unstructured.Unstructured {
@@ -188,7 +191,7 @@ func TestRequestVolumeResizeStep_Run(t *testing.T) {
 		step := prepareResizeStep(delRecClient.client, t, doguResource, renderedPVC(t, "data", "2Gi"))
 		result := step.Run(testCtx, doguResource)
 
-		assert.Equal(t, doguv3.RequeueAfter(defaultRequeueAfter, v3beta1.ReasonResizingPVC, "waiting for workloads to be deleted and recreated by the release: [Deployment/nexus]"), result)
+		assert.Equal(t, doguv3.RequeueAfter(defaultRequeueAfter, v3beta1.ReasonResizingPVC, "waiting for workloads that mount resizing volumes to be deleted: [Deployment/nexus]"), result)
 		claim := &corev1.PersistentVolumeClaim{Name: "data", Namespace: testNamespace}
 		require.True(t, delRecClient.exists(t, claim))
 		assert.Equal(t, resource.MustParse("2Gi"), claim.Spec.Resources.Requests[corev1.ResourceStorage])
@@ -197,7 +200,7 @@ func TestRequestVolumeResizeStep_Run(t *testing.T) {
 		assert.Empty(t, delRecClient.dogu(t).Status.VolumeStatus)
 		assert.Equal(t, []string{
 			"Normal ResizingPVC Growing volume data from 1Gi to 2Gi",
-			"Normal ResizingPVC Deleted [Deployment/nexus] to recreate them on the resized volumes",
+			"Normal ResizingPVC Deleted [Deployment/nexus] that mount resizing volumes",
 		}, recordedEvents(step))
 	})
 
@@ -219,6 +222,26 @@ func TestRequestVolumeResizeStep_Run(t *testing.T) {
 		assert.Equal(t, doguv3.Continue(), step.Run(testCtx, doguResource))
 	})
 
+	t.Run("replaces an outdated StatefulSet before it unmounts its pods over consecutive reconciles", func(t *testing.T) {
+		claim := volumePVC("data-postgres-0", "1Gi", "1Gi")
+		pod := resizePod("postgres-0", "data-postgres-0")
+		delRecClient := newDeletionRecClient(&claim, claimTemplateStatefulSet("postgres", "1Gi"), pod, helmRelease(true))
+		doguResource := delRecClient.dogu(t)
+
+		step := prepareResizeStep(delRecClient.client, t, doguResource, toUnstructured(t, claimTemplateStatefulSet("postgres", "2Gi")))
+
+		assert.Equal(t, doguv3.RequeueAfter(defaultRequeueAfter, v3beta1.ReasonResizingPVC, "waiting for StatefulSets with outdated claim templates to be deleted: [StatefulSet/postgres]"), step.Run(testCtx, doguResource))
+		assert.True(t, delRecClient.exists(t, pod))
+		assert.Equal(t, doguv3.RequeueAfter(defaultRequeueAfter, v3beta1.ReasonResizingPVC, "waiting for pods that mount resizing volumes to terminate: [postgres-0]"), step.Run(testCtx, doguResource))
+		assert.Equal(t, doguv3.Continue(), step.Run(testCtx, doguResource))
+		assert.False(t, delRecClient.exists(t, pod))
+		assert.Equal(t, []string{
+			"Normal ResizingPVC Growing volume data-postgres-0 from 1Gi to 2Gi",
+			"Normal ResizingPVC Deleted [StatefulSet/postgres] with outdated claim templates, the release recreates them",
+			"Normal ResizingPVC Deleted pods [postgres-0] that mount resizing volumes",
+		}, recordedEvents(step))
+	})
+
 	t.Run("orphans a StatefulSet with an outdated claim template although its volume already grew", func(t *testing.T) {
 		live := claimTemplateStatefulSet("postgres", "1Gi")
 		claim := volumePVC("data-postgres-0", "2Gi", "2Gi")
@@ -229,7 +252,7 @@ func TestRequestVolumeResizeStep_Run(t *testing.T) {
 		step := prepareResizeStep(delRecClient.client, t, doguResource, toUnstructured(t, claimTemplateStatefulSet("postgres", "2Gi")))
 		result := step.Run(testCtx, doguResource)
 
-		assert.Equal(t, doguv3.RequeueAfter(defaultRequeueAfter, v3beta1.ReasonResizingPVC, "waiting for workloads to be deleted and recreated by the release: [StatefulSet/postgres]"), result)
+		assert.Equal(t, doguv3.RequeueAfter(defaultRequeueAfter, v3beta1.ReasonResizingPVC, "waiting for StatefulSets with outdated claim templates to be deleted: [StatefulSet/postgres]"), result)
 		assert.Equal(t, []deletion{
 			{key: client.ObjectKey{Namespace: testNamespace, Name: "postgres"}, uid: "postgres-uid", propagation: metav1.DeletePropagationOrphan},
 		}, *delRecClient.deletions)
@@ -267,7 +290,7 @@ func TestRequestVolumeResizeStep_Run(t *testing.T) {
 		step := prepareResizeStep(delRecClient.client, t, doguResource, toUnstructured(t, claimTemplateStatefulSet("postgres", "2Gi")))
 		result := step.Run(testCtx, doguResource)
 
-		assert.Equal(t, doguv3.RequeueAfter(defaultRequeueAfter, v3beta1.ReasonResizingPVC, "waiting for workloads to be deleted and recreated by the release: [StatefulSet/postgres]"), result)
+		assert.Equal(t, doguv3.RequeueAfter(defaultRequeueAfter, v3beta1.ReasonResizingPVC, "waiting for StatefulSets with outdated claim templates to be deleted: [StatefulSet/postgres]"), result)
 		assert.True(t, delRecClient.exists(t, pod))
 	})
 
@@ -398,7 +421,7 @@ func TestRequestVolumeResizeStep_RunOnline(t *testing.T) {
 
 		step := prepareOnlineResizeStep(delRecClient.client, t, doguResource, toUnstructured(t, claimTemplateStatefulSet("postgres", "2Gi")))
 
-		assert.Equal(t, doguv3.RequeueAfter(defaultRequeueAfter, v3beta1.ReasonResizingPVC, "waiting for workloads to be deleted and recreated by the release: [StatefulSet/postgres]"), step.Run(testCtx, doguResource))
+		assert.Equal(t, doguv3.RequeueAfter(defaultRequeueAfter, v3beta1.ReasonResizingPVC, "waiting for StatefulSets with outdated claim templates to be deleted: [StatefulSet/postgres]"), step.Run(testCtx, doguResource))
 		assert.Equal(t, doguv3.Continue(), step.Run(testCtx, doguResource))
 		assert.Equal(t, []deletion{
 			{key: client.ObjectKey{Namespace: testNamespace, Name: "postgres"}, uid: "postgres-uid", propagation: metav1.DeletePropagationOrphan},

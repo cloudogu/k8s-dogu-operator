@@ -15,14 +15,14 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 )
 
-func planFor(t *testing.T, checkResult pvc.CheckResult, apiReader client.Reader) (pvc.ResizePlan, error) {
+func planFor(t *testing.T, checkResult pvc.CheckResult, apiReader client.Reader, offlineExpansion bool) (pvc.ResizePlan, error) {
 	t.Helper()
 	doguResource := testDoguResource.DeepCopy()
 	chartService, assembler := mockChartRendering(t, doguResource, nil, nil)
 	checker := NewMockResizeChecker(t)
 	checker.EXPECT().Check(mock.Anything, testNamespace, mock.Anything).Return(checkResult, nil)
 
-	return NewVolumeResizePlanner(chartService, assembler, checker, apiReader).Plan(testCtx, doguResource)
+	return NewVolumeResizePlanner(chartService, assembler, checker, apiReader, offlineExpansion).Plan(testCtx, doguResource)
 }
 
 func TestVolumeResizePlanner_Plan(t *testing.T) {
@@ -31,35 +31,43 @@ func TestVolumeResizePlanner_Plan(t *testing.T) {
 		InProgress:     []client.ObjectKey{{Namespace: testNamespace, Name: "logs"}},
 	}
 
-	t.Run("detaches the growing claims too while the release is suspended", func(t *testing.T) {
-		plan, err := planFor(t, growing, fake.NewClientBuilder().WithScheme(resizeScheme).WithObjects(helmRelease(true)).Build())
+	t.Run("unmounts the growing claims too while the release is suspended", func(t *testing.T) {
+		plan, err := planFor(t, growing, fake.NewClientBuilder().WithScheme(resizeScheme).WithObjects(helmRelease(true)).Build(), true)
 
 		require.NoError(t, err)
 		assert.Equal(t, growing.ResizeRequests, plan.Grow)
-		assert.Equal(t, []string{"data", "logs"}, plan.Detach)
+		assert.Equal(t, []string{"data", "logs"}, plan.Unmount)
 		assert.True(t, plan.Active())
 	})
 
-	t.Run("leaves the growing claims attached once the release is resumed", func(t *testing.T) {
-		plan, err := planFor(t, growing, fake.NewClientBuilder().WithScheme(resizeScheme).WithObjects(helmRelease(false)).Build())
+	t.Run("leaves the growing claims mounted once the release is resumed", func(t *testing.T) {
+		plan, err := planFor(t, growing, fake.NewClientBuilder().WithScheme(resizeScheme).WithObjects(helmRelease(false)).Build(), true)
 
 		require.NoError(t, err)
-		assert.Equal(t, []string{"data"}, plan.Detach)
+		assert.Equal(t, []string{"data"}, plan.Unmount)
 	})
 
-	t.Run("leaves the growing claims attached without a release", func(t *testing.T) {
-		plan, err := planFor(t, pvc.CheckResult{InProgress: growing.InProgress}, fake.NewClientBuilder().WithScheme(resizeScheme).Build())
+	t.Run("leaves the growing claims mounted without a release", func(t *testing.T) {
+		plan, err := planFor(t, pvc.CheckResult{InProgress: growing.InProgress}, fake.NewClientBuilder().WithScheme(resizeScheme).Build(), true)
 
 		require.NoError(t, err)
-		assert.Empty(t, plan.Detach)
+		assert.Empty(t, plan.Unmount)
 		assert.False(t, plan.Active())
 	})
 
 	t.Run("is active for an outdated StatefulSet alone", func(t *testing.T) {
-		plan, err := planFor(t, pvc.CheckResult{OutdatedStatefulSets: []types.UID{"sts-uid"}}, nil)
+		plan, err := planFor(t, pvc.CheckResult{OutdatedStatefulSets: []types.UID{"sts-uid"}}, nil, true)
 
 		require.NoError(t, err)
 		assert.True(t, plan.Active())
+	})
+
+	t.Run("unmounts nothing and ignores the release with online expansion", func(t *testing.T) {
+		plan, err := planFor(t, growing, nil, false)
+
+		require.NoError(t, err)
+		assert.Equal(t, growing.ResizeRequests, plan.Grow)
+		assert.Empty(t, plan.Unmount)
 	})
 
 	t.Run("fails when the release cannot be read", func(t *testing.T) {
@@ -69,7 +77,7 @@ func TestVolumeResizePlanner_Plan(t *testing.T) {
 			},
 		}).Build()
 
-		_, err := planFor(t, growing, failing)
+		_, err := planFor(t, growing, failing, true)
 
 		require.ErrorContains(t, err, "failed to get HelmRelease")
 	})

@@ -17,15 +17,17 @@ type VolumeResizePlanner struct {
 	assembler     valueAssembler
 	resizeChecker ResizeChecker
 	// apiReader reads the release uncached, so that both steps see the same suspend state.
-	apiReader client.Reader
+	apiReader        client.Reader
+	offlineExpansion bool
 }
 
-func NewVolumeResizePlanner(chartService chartService, assembler valueAssembler, resizeChecker ResizeChecker, apiReader client.Reader) *VolumeResizePlanner {
+func NewVolumeResizePlanner(chartService chartService, assembler valueAssembler, resizeChecker ResizeChecker, apiReader client.Reader, offlineExpansion bool) *VolumeResizePlanner {
 	return &VolumeResizePlanner{
-		chartService:  chartService,
-		assembler:     assembler,
-		resizeChecker: resizeChecker,
-		apiReader:     apiReader,
+		chartService:     chartService,
+		assembler:        assembler,
+		resizeChecker:    resizeChecker,
+		apiReader:        apiReader,
+		offlineExpansion: offlineExpansion,
 	}
 }
 
@@ -40,16 +42,16 @@ func (vrp *VolumeResizePlanner) Plan(ctx context.Context, doguResource *v3beta1.
 		return pvc.ResizePlan{}, fmt.Errorf("failed to check volumes for resizing: %w", err)
 	}
 
-	// only the claims still growing depend on the suspend state
+	// the suspend state only matters for claims still growing offline, so skip reading the release otherwise
 	suspended := false
-	if len(checkResult.InProgress) > 0 {
+	if vrp.offlineExpansion && len(checkResult.InProgress) > 0 {
 		suspended, err = vrp.releaseSuspended(ctx, doguResource)
 		if err != nil {
 			return pvc.ResizePlan{}, err
 		}
 	}
 
-	return pvc.NewResizePlan(checkResult, suspended), nil
+	return pvc.NewResizePlan(checkResult, suspended, vrp.offlineExpansion), nil
 }
 
 func (vrp *VolumeResizePlanner) releaseSuspended(ctx context.Context, doguResource *v3beta1.Dogu) (bool, error) {
