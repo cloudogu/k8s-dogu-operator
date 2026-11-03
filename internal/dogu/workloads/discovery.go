@@ -24,6 +24,32 @@ func (w Workloads) IsEmpty() bool {
 	return len(w.Deployments) == 0 && len(w.StatefulSets) == 0 && len(w.DaemonSets) == 0
 }
 
+// find returns the workload a volume reference points to, or nil.
+func (w Workloads) find(ref corev1.TypedLocalObjectReference) client.Object {
+	switch ref.Kind {
+	case "Deployment":
+		for i := range w.Deployments {
+			if w.Deployments[i].Name == ref.Name {
+				return &w.Deployments[i]
+			}
+		}
+	case "DaemonSet":
+		for i := range w.DaemonSets {
+			if w.DaemonSets[i].Name == ref.Name {
+				return &w.DaemonSets[i]
+			}
+		}
+	case "StatefulSet":
+		for i := range w.StatefulSets {
+			if w.StatefulSets[i].Name == ref.Name {
+				return &w.StatefulSets[i]
+			}
+		}
+	}
+
+	return nil
+}
+
 // Discovery finds the live resources of a dogu.
 type Discovery interface {
 	// Workloads returns all Deployments, StatefulSets and DaemonSets of the dogu in the given namespace.

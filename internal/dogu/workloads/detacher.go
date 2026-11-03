@@ -26,7 +26,7 @@ func NewDetacher(reader client.Reader, writer client.Writer) *Detacher {
 }
 
 // ForeignOwnedClaims reports the claims that unmounting would endanger, as "claim (Kind/name)" per foreign owner.
-// Only StatefulSets are deleted with OrphanPropagation, which keeps the claims they own safe; any other owner may delete its claim.
+// Only mounting workloads deleted with OrphanPropagation keep the claims they own safe; any other owner may delete its claim.
 func ForeignOwnedClaims(workloads Workloads, volumes []pvc.Volume, claims []string) []string {
 	var foreignOwners []string
 	for _, volume := range volumes {
@@ -35,7 +35,7 @@ func ForeignOwnedClaims(workloads Workloads, volumes []pvc.Volume, claims []stri
 		}
 		var allowed []types.UID
 		for _, ref := range volume.MountedBy {
-			if workload, _ := workloads.find(ref); ref.Kind == "StatefulSet" && workload != nil {
+			if workload := workloads.find(ref); workload != nil && propagation(ref.Kind) == metav1.DeletePropagationOrphan {
 				allowed = append(allowed, workload.GetUID())
 			}
 		}
@@ -98,12 +98,12 @@ func (d *Detacher) deleteWorkloads(ctx context.Context, workloads Workloads, ref
 		if slices.Contains(deleted, name) {
 			continue
 		}
-		workload, propagation := workloads.find(ref)
+		workload := workloads.find(ref)
 		if workload == nil {
 			continue
 		}
 		uid := workload.GetUID()
-		err := d.writer.Delete(ctx, workload, client.Preconditions{UID: &uid}, client.PropagationPolicy(propagation))
+		err := d.writer.Delete(ctx, workload, client.Preconditions{UID: &uid}, client.PropagationPolicy(propagation(ref.Kind)))
 		if err != nil && !apierrors.IsNotFound(err) {
 			return nil, fmt.Errorf("failed to delete %s: %w", name, err)
 		}
@@ -138,31 +138,12 @@ func (d *Detacher) deleteMountingPods(ctx context.Context, namespace string, cla
 	return pods, newlyDeleted, nil
 }
 
-// find returns the workload a volume reference points to, along with the DeletionPropagation;
-// StatefulSets are orphaned so their PVCs survive.
-func (w Workloads) find(ref corev1.TypedLocalObjectReference) (client.Object, metav1.DeletionPropagation) {
-	switch ref.Kind {
-	case "Deployment":
-		for i := range w.Deployments {
-			if w.Deployments[i].Name == ref.Name {
-				return &w.Deployments[i], metav1.DeletePropagationBackground
-			}
-		}
-	case "DaemonSet":
-		for i := range w.DaemonSets {
-			if w.DaemonSets[i].Name == ref.Name {
-				return &w.DaemonSets[i], metav1.DeletePropagationBackground
-			}
-		}
-	case "StatefulSet":
-		for i := range w.StatefulSets {
-			if w.StatefulSets[i].Name == ref.Name {
-				return &w.StatefulSets[i], metav1.DeletePropagationOrphan
-			}
-		}
+// propagation orphans StatefulSets so their claims survive; other workloads take their pods along.
+func propagation(kind string) metav1.DeletionPropagation {
+	if kind == "StatefulSet" {
+		return metav1.DeletePropagationOrphan
 	}
-
-	return nil, ""
+	return metav1.DeletePropagationBackground
 }
 
 func podMountsAny(pod *corev1.Pod, claims []string) bool {
