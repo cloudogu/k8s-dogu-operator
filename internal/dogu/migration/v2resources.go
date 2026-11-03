@@ -31,8 +31,8 @@ type V2ResourceFinder struct {
 }
 
 // NewV2ResourceFinder creates a V2ResourceFinder.
-func NewV2ResourceFinder(client client.Reader) V2ResourceFinder {
-	return V2ResourceFinder{
+func NewV2ResourceFinder(client client.Reader) *V2ResourceFinder {
+	return &V2ResourceFinder{
 		client: client,
 	}
 }
