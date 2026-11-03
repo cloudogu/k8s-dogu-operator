@@ -72,6 +72,9 @@ func (vrf V2ResourceFinder) findOwnedByKind(ctx context.Context, gvk schema.Grou
 		if !hasOwnerReference(item, ref) {
 			continue
 		}
+		// depending on the client used to fetch the items, the GVK may or may not be set,
+		// so we ensure it is set correctly
+		item.SetGroupVersionKind(gvk)
 		owned = append(owned, item)
 	}
 
