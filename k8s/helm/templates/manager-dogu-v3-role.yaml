@@ -75,6 +75,13 @@ rules:
       - get
       - list
       - watch
+  # dogu v3: set the dogu labels on the volumes of dogus
+  - apiGroups:
+      - ""
+    resources:
+      - persistentvolumeclaims
+    verbs:
+      - patch
   # dogu v3: read the v2 sensitive config and manage the migration secret
   # patch is needed to apply the migration secret via server-side apply
   - apiGroups:
