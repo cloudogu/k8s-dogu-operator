@@ -523,6 +523,17 @@ func GetAppLabel() k8sv2.CesMatchingLabels {
 	return map[string]string{LegacyLabelKeyApp: LabelValueCes}
 }
 
+// CheckLabels checks whether all desiredLabels are set on the given object. It does not matter, whether the object
+// also has any other labels set, as long as the desired labels are present.
+func CheckLabels(object metav1.Object, desiredLabels k8sv2.CesMatchingLabels) bool {
+	for key, value := range desiredLabels {
+		if object.GetLabels()[key] != value {
+			return false
+		}
+	}
+	return true
+}
+
 // CreateDoguService creates a new instance of a service with the given dogu custom resource and container image.
 // The container image is used to extract the exposed ports. The created service is rather meant for cluster-internal
 // apps and dogus (f. e. postgresql) which do not need external access. The given container image config provides

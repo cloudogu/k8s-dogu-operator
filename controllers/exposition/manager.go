@@ -3,12 +3,14 @@ package exposition
 import (
 	"context"
 	"fmt"
+	"maps"
 	"reflect"
 
 	cescommons "github.com/cloudogu/ces-commons-lib/dogu"
 	doguv2 "github.com/cloudogu/k8s-dogu-lib/v3/api/v2"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/cesregistry"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/imageregistry"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/resource"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/serviceaccess"
 	expv1 "github.com/cloudogu/k8s-exposition-lib/api/v1"
 	expClientV1 "github.com/cloudogu/k8s-exposition-lib/client/typed/api/v1"
@@ -63,11 +65,10 @@ func (em *ExpositionManager) EnsureExposition(ctx context.Context, doguResource 
 	}
 
 	desired := &expv1.Exposition{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: doguResource.Name,
-			OwnerReferences: []metav1.OwnerReference{
-				*metav1.NewControllerRef(doguResource, doguv2.GroupVersion.WithKind("Dogu")),
-			},
+		Name:   doguResource.Name,
+		Labels: resource.GetAppLabel().Add(doguResource.GetDoguNameLabel()),
+		OwnerReferences: []metav1.OwnerReference{
+			*metav1.NewControllerRef(doguResource, doguv2.GroupVersion.WithKind("Dogu")),
 		},
 		Spec: spec,
 	}
@@ -102,11 +103,18 @@ func (em *ExpositionManager) ensureExposition(ctx context.Context, desired *expv
 		return nil, fmt.Errorf("failed to get Exposition: %w", err)
 	}
 
-	if reflect.DeepEqual(current.Spec, desired.Spec) && reflect.DeepEqual(current.OwnerReferences, desired.OwnerReferences) {
+	if reflect.DeepEqual(current.Spec, desired.Spec) &&
+		reflect.DeepEqual(current.OwnerReferences, desired.OwnerReferences) &&
+		resource.CheckLabels(current, desired.Labels) {
 		return current, nil
 	}
 
 	current.Spec = desired.Spec
+	if current.Labels == nil {
+		current.Labels = desired.Labels
+	} else {
+		maps.Copy(current.Labels, desired.Labels)
+	}
 	current.OwnerReferences = desired.OwnerReferences
 
 	updated, err := em.client.Update(ctx, current, metav1.UpdateOptions{})
