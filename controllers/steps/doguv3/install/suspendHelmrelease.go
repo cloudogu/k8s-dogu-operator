@@ -106,7 +106,7 @@ func (shr *SuspendHelmReleaseStep) expectedState(ctx context.Context, doguResour
 	if err != nil {
 		return desiredState{}, fmt.Errorf("failed to check PVC resize requirements: %w", err)
 	}
-	if plan.Active() {
+	if plan.HasWork() {
 		return desiredState{
 			suspendHelmRelease: true,
 			reason:             doguv3.ReasonPVCResizeInProgress,

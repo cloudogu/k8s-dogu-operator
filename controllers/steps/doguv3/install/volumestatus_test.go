@@ -294,6 +294,82 @@ func TestVolumeStatusStep_RunReportsResizedVolumes(t *testing.T) {
 		require.Len(t, recorder.Events, 1)
 		assert.Equal(t, "Normal ResizingPVC Volume db-nexus-0 resized to 5Gi", <-recorder.Events)
 	})
+
+	t.Run("reports capacity growth without an intermediate resizing status only once", func(t *testing.T) {
+		doguResource := testDoguResource.DeepCopy()
+		doguResource.Status.VolumeStatus = []v3beta1.VolumeStatus{
+			{ClaimName: "db-nexus-0", Size: resource.MustParse("3Gi"), DesiredSize: resource.MustParse("3Gi"), State: v3beta1.VolumeStatusStateReady},
+		}
+		volumes := []pvc.Volume{{PVC: volumePVC("db-nexus-0", "5Gi", "5Gi"), MountedBy: statefulSet}}
+		cs, as := mockChartRendering(t, doguResource, renderedChart(t), nil)
+		d := mockDiscovery(t, volumes)
+		recorder := record.NewFakeRecorder(10)
+		step := NewVolumeStatusStep(cs, as, d, newVolumeStatusFakeClient(doguResource, interceptor.Funcs{}), recorder)
+
+		require.Equal(t, doguv3.Continue(), step.Run(testCtx, doguResource))
+
+		require.Len(t, recorder.Events, 1)
+		assert.Equal(t, "Normal ResizingPVC Volume db-nexus-0 resized to 5Gi", <-recorder.Events)
+
+		require.Equal(t, doguv3.Continue(), step.Run(testCtx, doguResource))
+		assert.Empty(t, recorder.Events)
+	})
+}
+
+func TestVolumeStatusStep_ReportResizedVolumes(t *testing.T) {
+	for _, tt := range []struct {
+		name      string
+		previous  []v3beta1.VolumeStatus
+		claim     corev1.PersistentVolumeClaim
+		wantEvent bool
+	}{
+		{
+			name:      "reports completion when capacity was already reached but resizing was pending",
+			previous:  []v3beta1.VolumeStatus{{ClaimName: "data", Size: resource.MustParse("2Gi"), State: v3beta1.VolumeStatusStateResizing}},
+			claim:     volumePVC("data", "2Gi", "2Gi"),
+			wantEvent: true,
+		},
+		{
+			name:  "does not report a volume without a previous observation",
+			claim: volumePVC("data", "2Gi", "2Gi"),
+		},
+		{
+			name:     "does not compare capacity with another claim",
+			previous: []v3beta1.VolumeStatus{{ClaimName: "other", Size: resource.MustParse("1Gi"), State: v3beta1.VolumeStatusStateReady}},
+			claim:    volumePVC("data", "2Gi", "2Gi"),
+		},
+		{
+			name:     "does not report completion while capacity is still growing",
+			previous: []v3beta1.VolumeStatus{{ClaimName: "data", Size: resource.MustParse("1Gi"), State: v3beta1.VolumeStatusStateReady}},
+			claim:    volumePVC("data", "3Gi", "2Gi"),
+		},
+		{
+			name:     "does not report completion while filesystem resizing is pending",
+			previous: []v3beta1.VolumeStatus{{ClaimName: "data", Size: resource.MustParse("1Gi"), State: v3beta1.VolumeStatusStateReady}},
+			claim:    volumePVC("data", "2Gi", "2Gi", corev1.PersistentVolumeClaimFileSystemResizePending),
+		},
+		{
+			name:     "does not report completion when resizing failed",
+			previous: []v3beta1.VolumeStatus{{ClaimName: "data", Size: resource.MustParse("1Gi"), State: v3beta1.VolumeStatusStateReady}},
+			claim:    volumePVC("data", "2Gi", "2Gi", corev1.PersistentVolumeClaimNodeResizeError),
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			recorder := record.NewFakeRecorder(10)
+			step := &VolumeStatusStep{eventRecorder: recorder}
+			statuses, err := pvc.VolumeStatuses(renderedChart(t), testNamespace, []pvc.Volume{{PVC: tt.claim}})
+			require.NoError(t, err)
+
+			step.reportResizedVolumes(testCtx, testDoguResource.DeepCopy(), tt.previous, statuses)
+
+			if tt.wantEvent {
+				require.Len(t, recorder.Events, 1)
+				assert.Equal(t, "Normal ResizingPVC Volume data resized to 2Gi", <-recorder.Events)
+			} else {
+				assert.Empty(t, recorder.Events)
+			}
+		})
+	}
 }
 
 func mockDiscovery(t *testing.T, volumes []pvc.Volume) *MockVolumeDiscovery {

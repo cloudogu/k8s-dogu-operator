@@ -31,13 +31,13 @@ func TestVolumeResizePlanner_Plan(t *testing.T) {
 		InProgress:     []client.ObjectKey{{Namespace: testNamespace, Name: "logs"}},
 	}
 
-	t.Run("unmounts the growing claims too while the release is suspended", func(t *testing.T) {
+	t.Run("unmounts the growing claims too while the release is suspended for the unmounting phase", func(t *testing.T) {
 		plan, err := planFor(t, growing, fake.NewClientBuilder().WithScheme(resizeScheme).WithObjects(helmRelease(true)).Build(), true)
 
 		require.NoError(t, err)
 		assert.Equal(t, growing.ResizeRequests, plan.Grow)
 		assert.Equal(t, []string{"data", "logs"}, plan.Unmount)
-		assert.True(t, plan.Active())
+		assert.True(t, plan.HasWork())
 	})
 
 	t.Run("leaves the growing claims mounted once the release is resumed", func(t *testing.T) {
@@ -52,14 +52,14 @@ func TestVolumeResizePlanner_Plan(t *testing.T) {
 
 		require.NoError(t, err)
 		assert.Empty(t, plan.Unmount)
-		assert.False(t, plan.Active())
+		assert.False(t, plan.HasWork())
 	})
 
-	t.Run("is active for an outdated StatefulSet alone", func(t *testing.T) {
+	t.Run("requires suspension for an outdated StatefulSet alone", func(t *testing.T) {
 		plan, err := planFor(t, pvc.CheckResult{OutdatedStatefulSets: []types.UID{"sts-uid"}}, nil, true)
 
 		require.NoError(t, err)
-		assert.True(t, plan.Active())
+		assert.True(t, plan.HasWork())
 	})
 
 	t.Run("unmounts nothing and ignores the release with online expansion", func(t *testing.T) {

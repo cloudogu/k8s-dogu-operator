@@ -21,17 +21,17 @@ import (
 type RequestVolumeResizeStep struct {
 	resizePlanner *VolumeResizePlanner
 	discovery     VolumeDiscovery
-	detacher      *workloads.Detacher
+	remover       *workloads.Remover
 	grower        *pvc.Grower
 	eventRecorder EventRecorder
 }
 
-// NewRequestVolumeResizeStep discovers and detaches through apiReader, so a lagging cache cannot hide a mounting workload or pod.
+// NewRequestVolumeResizeStep discovers workloads and pods through apiReader, so a lagging cache cannot hide a mounting workload or pod.
 func NewRequestVolumeResizeStep(resizePlanner *VolumeResizePlanner, apiReader client.Reader, k8sClient K8sClient, recorder EventRecorder) *RequestVolumeResizeStep {
 	return &RequestVolumeResizeStep{
 		resizePlanner: resizePlanner,
 		discovery:     workloads.NewDiscovery(apiReader),
-		detacher:      workloads.NewDetacher(apiReader, k8sClient),
+		remover:       workloads.NewRemover(apiReader, k8sClient),
 		grower:        pvc.NewGrower(k8sClient),
 		eventRecorder: recorder,
 	}
@@ -46,7 +46,7 @@ func (rvr *RequestVolumeResizeStep) Run(ctx context.Context, doguResource *v3bet
 	if err != nil {
 		return stepsv3.RequeueWithError(fmt.Errorf("failed to plan resizing of pvcs: %w", err), v3beta1.ReasonResizingPVC)
 	}
-	if !plan.Active() {
+	if !plan.HasWork() {
 		return stepsv3.Continue()
 	}
 
@@ -94,7 +94,7 @@ func (rvr *RequestVolumeResizeStep) growClaims(ctx context.Context, doguResource
 
 // replaceStatefulSets deletes the outdated StatefulSets and waits until they are gone.
 func (rvr *RequestVolumeResizeStep) replaceStatefulSets(ctx context.Context, doguResource *v3beta1.Dogu, doguWorkloads workloads.Workloads, outdated []types.UID) stepsv3.StepResult {
-	deleted, err := rvr.detacher.ReplaceStatefulSets(ctx, doguWorkloads, outdated)
+	deleted, err := rvr.remover.ReplaceStatefulSets(ctx, doguWorkloads, outdated)
 	if err != nil {
 		return stepsv3.RequeueWithError(err, v3beta1.ReasonResizingPVC)
 	}
@@ -109,7 +109,7 @@ func (rvr *RequestVolumeResizeStep) replaceStatefulSets(ctx context.Context, dog
 
 // unmount deletes the workloads and pods mounting the claims and waits until they are gone.
 func (rvr *RequestVolumeResizeStep) unmount(ctx context.Context, doguResource *v3beta1.Dogu, doguWorkloads workloads.Workloads, volumes []pvc.Volume, claims []string) stepsv3.StepResult {
-	unmounted, err := rvr.detacher.Unmount(ctx, doguResource.Namespace, doguWorkloads, volumes, claims)
+	unmounted, err := rvr.remover.Unmount(ctx, doguResource.Namespace, doguWorkloads, volumes, claims)
 	if err != nil {
 		return stepsv3.RequeueWithError(err, v3beta1.ReasonResizingPVC)
 	}

@@ -56,7 +56,7 @@ func TestForeignOwnedClaims(t *testing.T) {
 	})
 }
 
-func TestDetacher_Unmount(t *testing.T) {
+func TestRemover_Unmount(t *testing.T) {
 	statefulSet := &appsv1.StatefulSet{ObjectMeta: objectMeta("nexus", testNamespace, testDoguName)}
 	statefulSet.UID = "nexus-uid"
 	volumes := []pvc.Volume{dataVolume()}
@@ -71,7 +71,7 @@ func TestDetacher_Unmount(t *testing.T) {
 				return c.Delete(ctx, obj, opts...)
 			}}).Build()
 
-		unmounted, err := NewDetacher(c, c).Unmount(
+		unmounted, err := NewRemover(c, c).Unmount(
 			context.Background(),
 			testNamespace,
 			Workloads{StatefulSets: []appsv1.StatefulSet{*statefulSet}},
@@ -80,7 +80,7 @@ func TestDetacher_Unmount(t *testing.T) {
 		)
 
 		require.NoError(t, err)
-		assert.Equal(t, Unmounted{Workloads: []string{"StatefulSet/nexus"}}, unmounted)
+		assert.Equal(t, UnmountResult{Workloads: []string{"StatefulSet/nexus"}}, unmounted)
 		assert.Equal(t, metav1.DeletePropagationOrphan, propagation)
 		require.NoError(t, c.Get(context.Background(), client.ObjectKey{Namespace: testNamespace, Name: "nexus-0"}, &corev1.Pod{}))
 	})
@@ -109,7 +109,7 @@ func TestDetacher_Unmount(t *testing.T) {
 			workloadReference("StatefulSet", "nexus"),
 		}
 
-		_, err := NewDetacher(c, c).Unmount(
+		_, err := NewRemover(c, c).Unmount(
 			context.Background(),
 			testNamespace,
 			Workloads{Deployments: []appsv1.Deployment{deployment}, DaemonSets: []appsv1.DaemonSet{daemonSet}, StatefulSets: []appsv1.StatefulSet{*statefulSet}},
@@ -128,7 +128,7 @@ func TestDetacher_Unmount(t *testing.T) {
 	t.Run("deletes only the pods mounting the claims once their workloads are gone", func(t *testing.T) {
 		c := fake.NewClientBuilder().WithScheme(testScheme(t)).WithObjects(mountingPod("nexus-0", "data"), mountingPod("other-0", "other")).Build()
 
-		unmounted, err := NewDetacher(c, c).Unmount(context.Background(), testNamespace, Workloads{}, volumes, []string{"data"})
+		unmounted, err := NewRemover(c, c).Unmount(context.Background(), testNamespace, Workloads{}, volumes, []string{"data"})
 
 		require.NoError(t, err)
 		assert.Equal(t, []string{"nexus-0"}, unmounted.Pods)
@@ -141,7 +141,7 @@ func TestDetacher_Unmount(t *testing.T) {
 		terminating.Finalizers = []string{"test"}
 		c := fake.NewClientBuilder().WithScheme(testScheme(t)).WithObjects(terminating, mountingPod("nexus-0", "data")).Build()
 
-		unmounted, err := NewDetacher(c, c).Unmount(context.Background(), testNamespace, Workloads{}, volumes, []string{"data"})
+		unmounted, err := NewRemover(c, c).Unmount(context.Background(), testNamespace, Workloads{}, volumes, []string{"data"})
 
 		require.NoError(t, err)
 		assert.ElementsMatch(t, []string{"nexus-0", "nexus-old"}, unmounted.Pods)
@@ -155,10 +155,10 @@ func TestDetacher_Unmount(t *testing.T) {
 		failed.Status.Phase = corev1.PodFailed
 		c := fake.NewClientBuilder().WithScheme(testScheme(t)).WithObjects(succeeded, failed).Build()
 
-		unmounted, err := NewDetacher(c, c).Unmount(context.Background(), testNamespace, Workloads{}, volumes, []string{"data"})
+		unmounted, err := NewRemover(c, c).Unmount(context.Background(), testNamespace, Workloads{}, volumes, []string{"data"})
 
 		require.NoError(t, err)
-		assert.Equal(t, Unmounted{}, unmounted)
+		assert.Equal(t, UnmountResult{}, unmounted)
 		require.NoError(t, c.Get(context.Background(), client.ObjectKeyFromObject(succeeded), &corev1.Pod{}))
 		require.NoError(t, c.Get(context.Background(), client.ObjectKeyFromObject(failed), &corev1.Pod{}))
 	})
@@ -170,14 +170,14 @@ func TestDetacher_Unmount(t *testing.T) {
 				return nil
 			}}).Build()
 
-		unmounted, err := NewDetacher(c, c).Unmount(context.Background(), testNamespace, Workloads{}, volumes, nil)
+		unmounted, err := NewRemover(c, c).Unmount(context.Background(), testNamespace, Workloads{}, volumes, nil)
 
 		require.NoError(t, err)
-		assert.Equal(t, Unmounted{}, unmounted)
+		assert.Equal(t, UnmountResult{}, unmounted)
 	})
 }
 
-func TestDetacher_ReplaceStatefulSets(t *testing.T) {
+func TestRemover_ReplaceStatefulSets(t *testing.T) {
 	statefulSet := &appsv1.StatefulSet{ObjectMeta: objectMeta("nexus", testNamespace, testDoguName)}
 	statefulSet.UID = "nexus-uid"
 
@@ -191,7 +191,7 @@ func TestDetacher_ReplaceStatefulSets(t *testing.T) {
 				return c.Delete(ctx, obj, opts...)
 			}}).Build()
 
-		deleted, err := NewDetacher(c, c).ReplaceStatefulSets(context.Background(), Workloads{StatefulSets: []appsv1.StatefulSet{*statefulSet}}, []types.UID{"nexus-uid"})
+		deleted, err := NewRemover(c, c).ReplaceStatefulSets(context.Background(), Workloads{StatefulSets: []appsv1.StatefulSet{*statefulSet}}, []types.UID{"nexus-uid"})
 
 		require.NoError(t, err)
 		assert.Equal(t, []string{"StatefulSet/nexus"}, deleted)
@@ -201,7 +201,7 @@ func TestDetacher_ReplaceStatefulSets(t *testing.T) {
 	t.Run("leaves a StatefulSet with another UID alone", func(t *testing.T) {
 		c := fake.NewClientBuilder().WithScheme(testScheme(t)).WithObjects(statefulSet.DeepCopy()).Build()
 
-		deleted, err := NewDetacher(c, c).ReplaceStatefulSets(context.Background(), Workloads{StatefulSets: []appsv1.StatefulSet{*statefulSet}}, []types.UID{"recreated-uid"})
+		deleted, err := NewRemover(c, c).ReplaceStatefulSets(context.Background(), Workloads{StatefulSets: []appsv1.StatefulSet{*statefulSet}}, []types.UID{"recreated-uid"})
 
 		require.NoError(t, err)
 		assert.Empty(t, deleted)

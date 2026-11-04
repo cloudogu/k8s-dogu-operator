@@ -11,7 +11,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-// VolumeResizePlanner derives the pvc.ResizePlan of a dogu, so that SuspendHelmReleaseStep and RequestVolumeResizeStep act on the same plan.
+// VolumeResizePlanner derives the pvc.ResizePlan of a dogu, so that SuspendHelmReleaseStep and RequestVolumeResizeStep act on the same rules.
 type VolumeResizePlanner struct {
 	chartService  chartService
 	assembler     valueAssembler
@@ -43,17 +43,19 @@ func (vrp *VolumeResizePlanner) Plan(ctx context.Context, doguResource *v3beta1.
 	}
 
 	// the suspend state only matters for claims still growing offline, so skip reading the release otherwise
-	suspended := false
+	inUnmountingPhase := false
 	if vrp.offlineExpansion && len(checkResult.InProgress) > 0 {
-		suspended, err = vrp.releaseSuspended(ctx, doguResource)
+		inUnmountingPhase, err = vrp.releaseSuspended(ctx, doguResource)
 		if err != nil {
 			return pvc.ResizePlan{}, err
 		}
 	}
 
-	return pvc.NewResizePlan(checkResult, suspended, vrp.offlineExpansion), nil
+	return pvc.NewResizePlan(checkResult, inUnmountingPhase, vrp.offlineExpansion), nil
 }
 
+// releaseSuspended A suspended release means an earlier pass of an offline resize stopped before EnsureHelmReleaseStep,
+// which resumes it; the claims grown in that pass must stay unmounted until then.
 func (vrp *VolumeResizePlanner) releaseSuspended(ctx context.Context, doguResource *v3beta1.Dogu) (bool, error) {
 	release := &flux.HelmRelease{}
 	err := vrp.apiReader.Get(ctx, client.ObjectKey{Namespace: doguResource.Namespace, Name: doguResource.Spec.Name}, release)

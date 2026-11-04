@@ -6,14 +6,14 @@ import "k8s.io/apimachinery/pkg/types"
 type ResizePlan struct {
 	// Grow are the claims whose storage request is below the rendered size.
 	Grow []ResizeRequest
-	// Unmount are, with offline expansion only, the claims to grow plus, while the release is suspended, those still growing.
+	// Unmount are, with offline expansion only, the claims to grow plus, during the unmounting phase, those still growing.
 	Unmount []string
 	// OutdatedStatefulSets have immutable claim templates of another size than rendered, which Helm cannot upgrade.
 	OutdatedStatefulSets []types.UID
 }
 
-// NewResizePlan derives the plan from the check of the rendered chart, the suspend state of the release and the expansion mode.
-func NewResizePlan(check CheckResult, releaseSuspended, offlineExpansion bool) ResizePlan {
+// NewResizePlan derives the plan from the check of the rendered chart, whether an offline resize is in its unmounting phase, and the expansion mode.
+func NewResizePlan(check CheckResult, inUnmountingPhase, offlineExpansion bool) ResizePlan {
 	plan := ResizePlan{
 		Grow:                 check.ResizeRequests,
 		OutdatedStatefulSets: check.OutdatedStatefulSets,
@@ -25,8 +25,8 @@ func NewResizePlan(check CheckResult, releaseSuspended, offlineExpansion bool) R
 	for _, request := range check.ResizeRequests {
 		plan.Unmount = append(plan.Unmount, request.PVC.Name)
 	}
-	// a claim grown in an earlier pass is no longer a resize request but stays unmounted until the release resumes with recreated workloads
-	if releaseSuspended {
+	// a claim grown in an earlier pass is no longer a resize request but stays unmounted until the unmounting phase ends
+	if inUnmountingPhase {
 		for _, key := range check.InProgress {
 			plan.Unmount = append(plan.Unmount, key.Name)
 		}
@@ -35,7 +35,7 @@ func NewResizePlan(check CheckResult, releaseSuspended, offlineExpansion bool) R
 	return plan
 }
 
-// Active reports whether the release has to stay suspended until the plan is carried out.
-func (p ResizePlan) Active() bool {
+// HasWork reports whether the release has to stay suspended until the plan is carried out.
+func (p ResizePlan) HasWork() bool {
 	return len(p.Grow) > 0 || len(p.Unmount) > 0 || len(p.OutdatedStatefulSets) > 0
 }

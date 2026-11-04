@@ -64,10 +64,12 @@ func (vss *VolumeStatusStep) Run(ctx context.Context, doguResource *v3beta1.Dogu
 
 func (vss *VolumeStatusStep) reportResizedVolumes(ctx context.Context, doguResource *v3beta1.Dogu, previous, statuses []v3beta1.VolumeStatus) {
 	for _, status := range statuses {
-		wasResizing := slices.ContainsFunc(previous, func(old v3beta1.VolumeStatus) bool {
-			return old.ClaimName == status.ClaimName && old.State == v3beta1.VolumeStatusStateResizing
+		// a resize also counts when capacity grew between observations without a Resizing status
+		resized := slices.ContainsFunc(previous, func(old v3beta1.VolumeStatus) bool {
+			return old.ClaimName == status.ClaimName &&
+				(old.State == v3beta1.VolumeStatusStateResizing || old.Size.Cmp(status.Size) < 0)
 		})
-		if wasResizing && status.State == v3beta1.VolumeStatusStateReady {
+		if resized && status.State == v3beta1.VolumeStatusStateReady {
 			logging.Info(ctx, "volume resized", "pvc", status.ClaimName, "size", status.Size.String())
 			vss.eventRecorder.Event(doguResource, corev1.EventTypeNormal, v3beta1.ReasonResizingPVC, fmt.Sprintf("Volume %s resized to %s", status.ClaimName, status.Size.String()))
 		}
