@@ -158,6 +158,40 @@ func TestDetector_Detect(t *testing.T) {
 	})
 }
 
+func TestHasMigrationVolumeClaim(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("finds an existing migration volume claim", func(t *testing.T) {
+		cl := fake.NewClientBuilder().WithScheme(testScheme(t)).WithObjects(pvc("nexus-migration", nil)).Build()
+
+		found, err := HasMigrationVolumeClaim(ctx, cl, v3Dogu("nexus"))
+
+		require.NoError(t, err)
+		assert.True(t, found)
+	})
+
+	t.Run("ignores a terminating migration volume claim", func(t *testing.T) {
+		terminating := pvc("nexus-migration", nil)
+		terminating.DeletionTimestamp = new(metav1.Now())
+		terminating.Finalizers = []string{"kubernetes.io/pvc-protection"}
+		cl := fake.NewClientBuilder().WithScheme(testScheme(t)).WithObjects(terminating).Build()
+
+		found, err := HasMigrationVolumeClaim(ctx, cl, v3Dogu("nexus"))
+
+		require.NoError(t, err)
+		assert.False(t, found)
+	})
+
+	t.Run("ignores the data volume claim of the v2 dogu", func(t *testing.T) {
+		cl := fake.NewClientBuilder().WithScheme(testScheme(t)).WithObjects(pvc("nexus", nil)).Build()
+
+		found, err := HasMigrationVolumeClaim(ctx, cl, v3Dogu("nexus"))
+
+		require.NoError(t, err)
+		assert.False(t, found)
+	})
+}
+
 func pvc(name string, labels map[string]string) *corev1.PersistentVolumeClaim {
 	return &corev1.PersistentVolumeClaim{Name: name, Namespace: testNamespace, Labels: labels}
 }
