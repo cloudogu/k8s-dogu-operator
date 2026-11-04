@@ -63,11 +63,15 @@ func NewDoguV3UseCases(
 	detector := dogumigration.NewDetector(k8sClient)
 	migrationPreconditionsStep := migration.NewMigrationPreconditionsStep(detector, recorder)
 	migrationSecretStep := migration.NewMigrationSecretStep(k8sClient, recorder)
-	migrationPendingStep := migration.NewMigrationPendingStep(detector, recorder)
 	migrateDoguPVCStep := migration.NewMigrateDoguPVCStep(k8sClient, recorder)
+	prepareMigrationJobsStep := migration.NewPrepareMigrationJobsStep(k8sClient, chartService, recorder, operatorConfig.NetworkPoliciesEnabled)
+	migrationHelmReleaseStep := install.NewEnsureHelmReleaseStep(k8sClient, operatorConfig, chartService, dogumigration.NewJobValuesAssembler(assembler, chartService), recorder)
+	jobMonitor := dogumigration.NewJobMonitor(k8sClient, operatorConfig.MigrationJobStartTimeout, operatorConfig.MigrationJobCompletionTimeout)
+	migrationJobStep := migration.NewMigrationJobStep(chartService, jobMonitor, recorder)
+	migrationCleanupStep := migration.NewMigrationCleanupStep(k8sClient, recorder)
 
 	installUseCase := NewDoguInstallOrChangeUseCase(finalizerStep, ociStep, waitStep, validateStep, suspendStep, helmReleaseStep, helmReleaseStatusStep, updatePendingStep, exportModeStep, k8sClient, recorder)
-	migrationUseCase := NewDoguMigrationUseCase(finalizerStep, migrationPreconditionsStep, ociStep, waitStep, validateStep, migrationSecretStep, migrateDoguPVCStep, migrationPendingStep, k8sClient, recorder)
+	migrationUseCase := NewDoguMigrationUseCase(finalizerStep, migrationPreconditionsStep, ociStep, waitStep, validateStep, migrationSecretStep, migrateDoguPVCStep, prepareMigrationJobsStep, migrationHelmReleaseStep, migrationJobStep, migrationCleanupStep, k8sClient, recorder)
 	deleteUseCase := NewDoguDeleteUseCase(unsuspendStep, deleteHelmReleaseStep, deleteOCIRepositoryStep, removeFinalizerStep, k8sClient, recorder)
 
 	changeHandler := NewDoguChangeHandler(detector, installUseCase, migrationUseCase)
