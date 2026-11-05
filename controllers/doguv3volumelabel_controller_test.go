@@ -75,30 +75,11 @@ func volumeLabelTestDaemonSet(name string, labels map[string]string, claimNames 
 	return daemonSet
 }
 
-func volumeLabelTestPVC(name string, labels map[string]string) *corev1.PersistentVolumeClaim {
-	return &corev1.PersistentVolumeClaim{Name: name, Namespace: testNamespace, Labels: labels}
-}
-
-func deleting(volume *corev1.PersistentVolumeClaim) *corev1.PersistentVolumeClaim {
-	volume.DeletionTimestamp = &metav1.Time{Time: time.Now()}
-	volume.Finalizers = []string{"kubernetes.io/pvc-protection"}
-	return volume
-}
-
 func persistedVolumeLabels(t *testing.T, c client.Client, name string) map[string]string {
 	t.Helper()
 	persisted := &corev1.PersistentVolumeClaim{}
 	require.NoError(t, c.Get(context.Background(), client.ObjectKey{Namespace: testNamespace, Name: name}, persisted))
 	return persisted.Labels
-}
-
-func failOnPatch(t *testing.T) interceptor.Funcs {
-	return interceptor.Funcs{
-		Patch: func(ctx context.Context, _ client.WithWatch, obj client.Object, patch client.Patch, opts ...client.PatchOption) error {
-			t.Errorf("unexpected patch of %q", obj.GetName())
-			return nil
-		},
-	}
 }
 
 func TestNewDoguVolumeLabelReconciler(t *testing.T) {
@@ -161,25 +142,25 @@ func TestDoguVolumeLabelReconciler_Reconcile(t *testing.T) {
 		{
 			name:      "should add both dogu labels to a claim template volume",
 			workloads: []client.Object{volumeLabelTestStatefulSet("ldap", doguLabels, "data")},
-			volume:    volumeLabelTestPVC("data-ldap-0", nil),
+			volume:    &corev1.PersistentVolumeClaim{Name: "data-ldap-0", Namespace: testNamespace},
 			want:      ldapVolumeLabels,
 		},
 		{
 			name:      "should add both dogu labels to a volume mounted by a deployment",
 			workloads: []client.Object{volumeLabelTestDeployment("ldap", doguLabels, "existing")},
-			volume:    volumeLabelTestPVC("existing", nil),
+			volume:    &corev1.PersistentVolumeClaim{Name: "existing", Namespace: testNamespace},
 			want:      ldapVolumeLabels,
 		},
 		{
 			name:      "should add both dogu labels to a volume mounted by a daemonset",
 			workloads: []client.Object{volumeLabelTestDaemonSet("ldap", doguLabels, "existing")},
-			volume:    volumeLabelTestPVC("existing", nil),
+			volume:    &corev1.PersistentVolumeClaim{Name: "existing", Namespace: testNamespace},
 			want:      ldapVolumeLabels,
 		},
 		{
 			name:      "should add both dogu labels to a volume mounted by a statefulset pod template",
 			workloads: []client.Object{withClaimMounts(volumeLabelTestStatefulSet("ldap", doguLabels), "existing")},
-			volume:    volumeLabelTestPVC("existing", nil),
+			volume:    &corev1.PersistentVolumeClaim{Name: "existing", Namespace: testNamespace},
 			want:      ldapVolumeLabels,
 		},
 		{
@@ -188,19 +169,19 @@ func TestDoguVolumeLabelReconciler_Reconcile(t *testing.T) {
 				volumeLabelTestStatefulSet("ldap", doguLabels, "data"),
 				volumeLabelTestDeployment("ldap-backup", doguLabels, "data-ldap-0"),
 			},
-			volume: volumeLabelTestPVC("data-ldap-0", nil),
+			volume: &corev1.PersistentVolumeClaim{Name: "data-ldap-0", Namespace: testNamespace},
 			want:   ldapVolumeLabels,
 		},
 		{
 			name:      "should overwrite a wrong dogu label value and keep other labels",
 			workloads: []client.Object{volumeLabelTestStatefulSet("ldap", doguLabels, "data")},
-			volume:    volumeLabelTestPVC("data-ldap-0", map[string]string{v3beta1.DoguLabelName: "cas", "app": "ces"}),
+			volume:    &corev1.PersistentVolumeClaim{Name: "data-ldap-0", Namespace: testNamespace, Labels: map[string]string{v3beta1.DoguLabelName: "cas", "app": "ces"}},
 			want:      map[string]string{v3beta1.DoguLabelName: "ldap", doguv2.DoguLabelName: "ldap", "app": "ces"},
 		},
 		{
 			name:      "should label a volume carrying the backup scope",
 			workloads: []client.Object{volumeLabelTestStatefulSet("ldap", doguLabels, "data")},
-			volume:    volumeLabelTestPVC("data-ldap-0", map[string]string{"k8s.cloudogu.com/backup-scope": "misc"}),
+			volume:    &corev1.PersistentVolumeClaim{Name: "data-ldap-0", Namespace: testNamespace, Labels: map[string]string{"k8s.cloudogu.com/backup-scope": "misc"}},
 			want:      map[string]string{v3beta1.DoguLabelName: "ldap", doguv2.DoguLabelName: "ldap", "k8s.cloudogu.com/backup-scope": "misc"},
 		},
 		{
@@ -210,7 +191,7 @@ func TestDoguVolumeLabelReconciler_Reconcile(t *testing.T) {
 				volumeLabelTestStatefulSet("b-c", map[string]string{"app": "ces"}, "a"),
 				volumeLabelTestStatefulSet("c", doguLabels, "a-b"),
 			},
-			volume: volumeLabelTestPVC("a-b-c-0", nil),
+			volume: &corev1.PersistentVolumeClaim{Name: "a-b-c-0", Namespace: testNamespace},
 			// does not include `app: ces`-label
 			want: ldapVolumeLabels,
 		},
@@ -221,7 +202,7 @@ func TestDoguVolumeLabelReconciler_Reconcile(t *testing.T) {
 				volumeLabelTestStatefulSet("b-c", doguLabels, "a"),
 				volumeLabelTestStatefulSet("c", casLabels, "a-b"),
 			},
-			volume: volumeLabelTestPVC("a-b-c-0", nil),
+			volume: &corev1.PersistentVolumeClaim{Name: "a-b-c-0", Namespace: testNamespace},
 			want:   nil,
 		},
 		{
@@ -230,31 +211,36 @@ func TestDoguVolumeLabelReconciler_Reconcile(t *testing.T) {
 				volumeLabelTestDeployment("ldap", doguLabels, "shared"),
 				volumeLabelTestDaemonSet("cas", casLabels, "shared"),
 			},
-			volume: volumeLabelTestPVC("shared", nil),
+			volume: &corev1.PersistentVolumeClaim{Name: "shared", Namespace: testNamespace},
 			want:   nil,
 		},
 		{
 			name:      "should leave a volume unchanged that is mounted by a deployment without dogu label",
 			workloads: []client.Object{volumeLabelTestDeployment("ldap", map[string]string{"app": "ces"}, "existing")},
-			volume:    volumeLabelTestPVC("existing", nil),
+			volume:    &corev1.PersistentVolumeClaim{Name: "existing", Namespace: testNamespace},
 			want:      nil,
 		},
 		{
 			name:      "should leave a volume unchanged that is being deleted",
 			workloads: []client.Object{volumeLabelTestStatefulSet("ldap", doguLabels, "data")},
-			volume:    deleting(volumeLabelTestPVC("data-ldap-0", nil)),
-			want:      nil,
+			volume: &corev1.PersistentVolumeClaim{
+				Name:              "data-ldap-0",
+				Namespace:         testNamespace,
+				DeletionTimestamp: &metav1.Time{Time: time.Now()},
+				Finalizers:        []string{"kubernetes.io/pvc-protection"},
+			},
+			want: nil,
 		},
 		{
 			name:      "should not write a volume whose dogu labels are already correct",
 			workloads: []client.Object{volumeLabelTestStatefulSet("ldap", doguLabels, "data")},
-			volume:    volumeLabelTestPVC("data-ldap-0", ldapVolumeLabels),
+			volume:    &corev1.PersistentVolumeClaim{Name: "data-ldap-0", Namespace: testNamespace, Labels: ldapVolumeLabels},
 			want:      nil,
 		},
 		{
 			name:      "should leave a volume unchanged that matches no claim template",
 			workloads: []client.Object{volumeLabelTestStatefulSet("ldap", doguLabels, "data")},
-			volume:    volumeLabelTestPVC("foreign", map[string]string{"app": "foreign"}),
+			volume:    &corev1.PersistentVolumeClaim{Name: "foreign", Namespace: testNamespace, Labels: map[string]string{"app": "foreign"}},
 			want:      nil,
 		},
 	}
@@ -262,7 +248,7 @@ func TestDoguVolumeLabelReconciler_Reconcile(t *testing.T) {
 		tests = append(tests, reconcileCase{
 			name:      "should not match volume " + name,
 			workloads: []client.Object{volumeLabelTestStatefulSet("ldap", doguLabels, "data")},
-			volume:    volumeLabelTestPVC(name, nil),
+			volume:    &corev1.PersistentVolumeClaim{Name: name, Namespace: testNamespace},
 			want:      nil,
 		})
 	}
@@ -273,7 +259,12 @@ func TestDoguVolumeLabelReconciler_Reconcile(t *testing.T) {
 			want := tt.want
 			if want == nil {
 				// expect no patch
-				funcs = failOnPatch(t)
+				funcs = interceptor.Funcs{
+					Patch: func(ctx context.Context, _ client.WithWatch, obj client.Object, patch client.Patch, opts ...client.PatchOption) error {
+						t.Errorf("unexpected patch of %q", obj.GetName())
+						return nil
+					},
+				}
 				want = tt.volume.Labels
 			}
 			c := newVolumeLabelFakeClient(funcs, append(tt.workloads, tt.volume)...)
@@ -317,7 +308,7 @@ func TestDoguVolumeLabelReconciler_Reconcile(t *testing.T) {
 			List: func(ctx context.Context, _ client.WithWatch, list client.ObjectList, opts ...client.ListOption) error {
 				return assert.AnError
 			},
-		}, volumeLabelTestPVC("data-ldap-0", nil))
+		}, &corev1.PersistentVolumeClaim{Name: "data-ldap-0", Namespace: testNamespace})
 		sut := newDoguVolumeLabelReconciler(c)
 
 		_, err := sut.Reconcile(context.Background(), reconcile.Request{Namespace: testNamespace, Name: "data-ldap-0"})
@@ -334,7 +325,7 @@ func TestDoguVolumeLabelReconciler_Reconcile(t *testing.T) {
 				}
 				return wc.List(ctx, list, opts...)
 			},
-		}, volumeLabelTestPVC("existing", nil))
+		}, &corev1.PersistentVolumeClaim{Name: "existing", Namespace: testNamespace})
 		sut := newDoguVolumeLabelReconciler(c)
 
 		_, err := sut.Reconcile(context.Background(), reconcile.Request{Namespace: testNamespace, Name: "existing"})
@@ -351,7 +342,7 @@ func TestDoguVolumeLabelReconciler_Reconcile(t *testing.T) {
 				}
 				return wc.List(ctx, list, opts...)
 			},
-		}, volumeLabelTestPVC("existing", nil))
+		}, &corev1.PersistentVolumeClaim{Name: "existing", Namespace: testNamespace})
 		sut := newDoguVolumeLabelReconciler(c)
 
 		_, err := sut.Reconcile(context.Background(), reconcile.Request{Namespace: testNamespace, Name: "existing"})
@@ -365,7 +356,7 @@ func TestDoguVolumeLabelReconciler_Reconcile(t *testing.T) {
 			Patch: func(ctx context.Context, _ client.WithWatch, obj client.Object, patch client.Patch, opts ...client.PatchOption) error {
 				return assert.AnError
 			},
-		}, volumeLabelTestStatefulSet("ldap", doguLabels, "data"), volumeLabelTestPVC("data-ldap-0", nil))
+		}, volumeLabelTestStatefulSet("ldap", doguLabels, "data"), &corev1.PersistentVolumeClaim{Name: "data-ldap-0", Namespace: testNamespace})
 		sut := newDoguVolumeLabelReconciler(c)
 
 		_, err := sut.Reconcile(context.Background(), reconcile.Request{Namespace: testNamespace, Name: "data-ldap-0"})
@@ -394,18 +385,18 @@ func TestNewDoguVolumeRequestMapper(t *testing.T) {
 			name:     "should map a statefulset to the existing volumes of its claim templates",
 			workload: volumeLabelTestStatefulSet("ldap", doguLabels, "data", "logs"),
 			volumes: []client.Object{
-				volumeLabelTestPVC("data-ldap-0", nil),
-				volumeLabelTestPVC("data-ldap-1", nil),
-				volumeLabelTestPVC("logs-ldap-0", nil),
-				volumeLabelTestPVC("data-cas-0", nil),
-				volumeLabelTestPVC("data-ldap-01", nil),
+				&corev1.PersistentVolumeClaim{Name: "data-ldap-0", Namespace: testNamespace},
+				&corev1.PersistentVolumeClaim{Name: "data-ldap-1", Namespace: testNamespace},
+				&corev1.PersistentVolumeClaim{Name: "logs-ldap-0", Namespace: testNamespace},
+				&corev1.PersistentVolumeClaim{Name: "data-cas-0", Namespace: testNamespace},
+				&corev1.PersistentVolumeClaim{Name: "data-ldap-01", Namespace: testNamespace},
 			},
 			want: []string{"data-ldap-0", "data-ldap-1", "logs-ldap-0"},
 		},
 		{
 			name:     "should map a statefulset to its mounted volumes and the existing volumes of its claim templates",
 			workload: withClaimMounts(volumeLabelTestStatefulSet("ldap", doguLabels, "data"), "existing"),
-			volumes:  []client.Object{volumeLabelTestPVC("data-ldap-0", nil)},
+			volumes:  []client.Object{&corev1.PersistentVolumeClaim{Name: "data-ldap-0", Namespace: testNamespace}},
 			want:     []string{"existing", "data-ldap-0"},
 		},
 		{
@@ -422,19 +413,19 @@ func TestNewDoguVolumeRequestMapper(t *testing.T) {
 		{
 			name:     "should map a deployment without volumes to nothing",
 			workload: volumeLabelTestDeployment("ldap", doguLabels),
-			volumes:  []client.Object{volumeLabelTestPVC("existing", nil)},
+			volumes:  []client.Object{&corev1.PersistentVolumeClaim{Name: "existing", Namespace: testNamespace}},
 			want:     nil,
 		},
 		{
 			name:     "should map a daemonset without volumes to nothing",
 			workload: volumeLabelTestDaemonSet("ldap", doguLabels),
-			volumes:  []client.Object{volumeLabelTestPVC("existing", nil)},
+			volumes:  []client.Object{&corev1.PersistentVolumeClaim{Name: "existing", Namespace: testNamespace}},
 			want:     nil,
 		},
 		{
 			name:     "should map a statefulset without claim templates to nothing",
 			workload: volumeLabelTestStatefulSet("ldap", doguLabels),
-			volumes:  []client.Object{volumeLabelTestPVC("data-ldap-0", nil)},
+			volumes:  []client.Object{&corev1.PersistentVolumeClaim{Name: "data-ldap-0", Namespace: testNamespace}},
 			want:     nil,
 		},
 	}

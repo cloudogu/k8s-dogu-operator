@@ -101,7 +101,7 @@ func (r *DoguVolumeLabelReconciler) Reconcile(ctx context.Context, req reconcile
 	}
 }
 
-// matchDogus returns the sorted, distinct names of the dogus whose workloads mount the volume or generate it from a StatefulSet claim template.
+// matchDogus returns the names of the dogus whose workloads mount the volume or generate it from a StatefulSet claim template.
 func (r *DoguVolumeLabelReconciler) matchDogus(ctx context.Context, volume *corev1.PersistentVolumeClaim) ([]string, error) {
 	doguWorkloadOpts := []client.ListOption{client.InNamespace(volume.Namespace), client.HasLabels{v3beta1.DoguLabelName}}
 	doguNames := map[string]struct{}{}
