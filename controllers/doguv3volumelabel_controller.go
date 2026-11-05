@@ -52,21 +52,24 @@ func newDoguVolumeLabelReconciler(k8sClient client.Client) *DoguVolumeLabelRecon
 }
 
 // setupWithManager registers the controller with the manager.
-// It reconciles a volume when the volume changes and when a dogu StatefulSet changes whose claim templates generate it.
+// It reconciles a volume when the volume changes and when a dogu workload changes that mounts or generates it.
 func (r *DoguVolumeLabelReconciler) setupWithManager(mgr ctrlManager) error {
 	hasDoguLabel := builder.WithPredicates(predicate.NewPredicateFuncs(func(object client.Object) bool {
 		_, ok := object.GetLabels()[v3beta1.DoguLabelName]
 		return ok
 	}))
+	toVolumes := handler.EnqueueRequestsFromMapFunc(newDoguVolumeRequestMapper(mgr.GetClient()))
 
 	return ctrl.NewControllerManagedBy(mgr).
 		Named(doguVolumeLabelControllerName).
 		For(&corev1.PersistentVolumeClaim{}).
-		Watches(&appsv1.StatefulSet{}, handler.EnqueueRequestsFromMapFunc(newDoguVolumeRequestMapper(mgr.GetClient())), hasDoguLabel).
+		Watches(&appsv1.Deployment{}, toVolumes, hasDoguLabel).
+		Watches(&appsv1.StatefulSet{}, toVolumes, hasDoguLabel).
+		Watches(&appsv1.DaemonSet{}, toVolumes, hasDoguLabel).
 		Complete(r)
 }
 
-// Reconcile sets the dogu labels on a volume generated from the claim template of a v3 dogu StatefulSet.
+// Reconcile sets the dogu labels on a volume that a v3 dogu workload mounts or generates from a StatefulSet claim template.
 func (r *DoguVolumeLabelReconciler) Reconcile(ctx context.Context, req reconcile.Request) (reconcile.Result, error) {
 	volume := &corev1.PersistentVolumeClaim{}
 	if err := r.client.Get(ctx, req.NamespacedName, volume); err != nil {
@@ -95,23 +98,59 @@ func (r *DoguVolumeLabelReconciler) Reconcile(ctx context.Context, req reconcile
 	}
 }
 
-// matchDogus returns the sorted, distinct names of the dogus whose StatefulSet claim templates generate the volume.
+// matchDogus returns the sorted, distinct names of the dogus whose workloads mount the volume or generate it from a StatefulSet claim template.
 func (r *DoguVolumeLabelReconciler) matchDogus(ctx context.Context, volume *corev1.PersistentVolumeClaim) ([]string, error) {
+	doguWorkloadOpts := []client.ListOption{client.InNamespace(volume.Namespace), client.HasLabels{v3beta1.DoguLabelName}}
+	doguNames := map[string]struct{}{}
+
 	statefulSets := &appsv1.StatefulSetList{}
-	if err := r.client.List(ctx, statefulSets, client.InNamespace(volume.Namespace), client.HasLabels{v3beta1.DoguLabelName}); err != nil {
+	if err := r.client.List(ctx, statefulSets, doguWorkloadOpts...); err != nil {
 		return nil, fmt.Errorf("failed to list dogu statefulsets in namespace %q: %w", volume.Namespace, err)
 	}
-
-	doguNames := map[string]struct{}{}
 	for _, statefulSet := range statefulSets.Items {
+		if slices.Contains(claimNames(statefulSet.Spec.Template.Spec), volume.Name) {
+			doguNames[statefulSet.Labels[v3beta1.DoguLabelName]] = struct{}{}
+		}
 		for _, template := range statefulSet.Spec.VolumeClaimTemplates {
 			if pvc.MatchesStatefulSetClaim(volume.Name, template.Name, statefulSet.Name) {
 				doguNames[statefulSet.Labels[v3beta1.DoguLabelName]] = struct{}{}
 			}
 		}
 	}
+
+	deployments := &appsv1.DeploymentList{}
+	if err := r.client.List(ctx, deployments, doguWorkloadOpts...); err != nil {
+		return nil, fmt.Errorf("failed to list dogu deployments in namespace %q: %w", volume.Namespace, err)
+	}
+	for _, deployment := range deployments.Items {
+		if slices.Contains(claimNames(deployment.Spec.Template.Spec), volume.Name) {
+			doguNames[deployment.Labels[v3beta1.DoguLabelName]] = struct{}{}
+		}
+	}
+
+	daemonSets := &appsv1.DaemonSetList{}
+	if err := r.client.List(ctx, daemonSets, doguWorkloadOpts...); err != nil {
+		return nil, fmt.Errorf("failed to list dogu daemonsets in namespace %q: %w", volume.Namespace, err)
+	}
+	for _, daemonSet := range daemonSets.Items {
+		if slices.Contains(claimNames(daemonSet.Spec.Template.Spec), volume.Name) {
+			doguNames[daemonSet.Labels[v3beta1.DoguLabelName]] = struct{}{}
+		}
+	}
+
 	// Sorted is helpful to not introduce log/status/event flicker
 	return slices.Sorted(maps.Keys(doguNames)), nil
+}
+
+// claimNames returns the names of the volumes the pod spec mounts by claimName.
+func claimNames(podSpec corev1.PodSpec) []string {
+	var names []string
+	for _, volume := range podSpec.Volumes {
+		if volume.PersistentVolumeClaim != nil {
+			names = append(names, volume.PersistentVolumeClaim.ClaimName)
+		}
+	}
+	return names
 }
 
 // ensureDoguLabels patches only the dogu labels of the volume, and only if one of them is missing or wrong.
@@ -132,30 +171,51 @@ func (r *DoguVolumeLabelReconciler) ensureDoguLabels(ctx context.Context, volume
 	return nil
 }
 
-// newDoguVolumeRequestMapper creates a mapping from a StatefulSet to the existing volumes generated from its claim templates.
+// newDoguVolumeRequestMapper creates a mapping from a workload to the volumes it mounts and, for a StatefulSet, the existing volumes generated from its claim templates.
 func newDoguVolumeRequestMapper(k8s client.Reader) handler.MapFunc {
 	return func(ctx context.Context, object client.Object) []reconcile.Request {
-		statefulSet, ok := object.(*appsv1.StatefulSet)
-		if !ok || len(statefulSet.Spec.VolumeClaimTemplates) == 0 {
-			return nil
-		}
-
-		volumes := &corev1.PersistentVolumeClaimList{}
-		if err := k8s.List(ctx, volumes, client.InNamespace(statefulSet.Namespace)); err != nil {
-			// a map function cannot return an error; the event for this statefulset is lost
-			logging.Error(ctx, err, "failed to list volumes to map statefulset", "statefulset", statefulSet.Name)
-			return nil
-		}
-
+		var podSpec corev1.PodSpec
 		var requests []reconcile.Request
-		for _, volume := range volumes.Items {
-			for _, template := range statefulSet.Spec.VolumeClaimTemplates {
-				if pvc.MatchesStatefulSetClaim(volume.Name, template.Name, statefulSet.Name) {
-					requests = append(requests, reconcile.Request{NamespacedName: client.ObjectKeyFromObject(&volume)})
-					break
-				}
-			}
+		switch workload := object.(type) {
+		case *appsv1.Deployment:
+			podSpec = workload.Spec.Template.Spec
+		case *appsv1.StatefulSet:
+			podSpec = workload.Spec.Template.Spec
+			requests = claimTemplateVolumeRequests(ctx, k8s, workload)
+		case *appsv1.DaemonSet:
+			podSpec = workload.Spec.Template.Spec
+		default:
+			return nil
+		}
+
+		for _, claimName := range claimNames(podSpec) {
+			requests = append(requests, reconcile.Request{NamespacedName: client.ObjectKey{Namespace: object.GetNamespace(), Name: claimName}})
 		}
 		return requests
 	}
+}
+
+// claimTemplateVolumeRequests returns requests for the existing volumes generated from the claim templates of the StatefulSet.
+func claimTemplateVolumeRequests(ctx context.Context, k8s client.Reader, statefulSet *appsv1.StatefulSet) []reconcile.Request {
+	if len(statefulSet.Spec.VolumeClaimTemplates) == 0 {
+		return nil
+	}
+
+	volumes := &corev1.PersistentVolumeClaimList{}
+	if err := k8s.List(ctx, volumes, client.InNamespace(statefulSet.Namespace)); err != nil {
+		// a map function cannot return an error; the event for this statefulset is lost
+		logging.Error(ctx, err, "failed to list volumes to map statefulset", "statefulset", statefulSet.Name)
+		return nil
+	}
+
+	var requests []reconcile.Request
+	for _, volume := range volumes.Items {
+		for _, template := range statefulSet.Spec.VolumeClaimTemplates {
+			if pvc.MatchesStatefulSetClaim(volume.Name, template.Name, statefulSet.Name) {
+				requests = append(requests, reconcile.Request{NamespacedName: client.ObjectKeyFromObject(&volume)})
+				break
+			}
+		}
+	}
+	return requests
 }
