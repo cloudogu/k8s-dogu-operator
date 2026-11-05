@@ -6,6 +6,13 @@ metadata:
   labels:
     {{- include "k8s-dogu-operator.labels" . | nindent 4 }}
 rules:
+  # dogu v3: persist the migration source PV annotation via server-side apply.
+  - apiGroups:
+      - k8s.cloudogu.com
+    resources:
+      - dogus
+    verbs:
+      - patch
   # dogu v3: manage the OCIRepository (source-controller) that mirrors a dogu's chart artifact
   - apiGroups:
       - "source.toolkit.fluxcd.io"
@@ -57,6 +64,13 @@ rules:
       - list
       - watch
       - patch
+  # dogu v3: scale down the v2 Deployment before migrating its volume.
+  - apiGroups:
+      - apps
+    resources:
+      - deployments
+    verbs:
+      - update
   # dogu v3: follow Deployment Pod ownership and wait for stopped Pods to disappear.
   - apiGroups:
       - apps
@@ -70,11 +84,21 @@ rules:
       - ""
     resources:
       - pods
+    verbs:
+      - get
+      - list
+      - watch
+  # dogu v3: recreate PVCs when migrating existing volumes from v2.
+  - apiGroups:
+      - ""
+    resources:
       - persistentvolumeclaims
     verbs:
       - get
       - list
       - watch
+      - create
+      - delete
   # dogu v3: read the v2 sensitive config and manage the migration secret
   # patch is needed to apply the migration secret via server-side apply
   - apiGroups:

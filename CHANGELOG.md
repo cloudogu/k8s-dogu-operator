@@ -19,6 +19,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - The Condition UpdatePending is set to True, if any updates to OCI repositories are pending and reset, if there are no pending updates detected.
     - Most steps of the dogu reconciliation are skipped, if PauseReconciliation is set (except to set the Condition UpdatePending).
 - [#377] Move the service account credentials of a v2 dogu into the migration secret `<dogu>-migration`
+- [#381] create a migration pvc for dogu v2 to dogu v3 migration
+- [#379] Cleanup Dogu v2 resources during migration to Dogu v3
 
 ### Changed
 - [#383] Reduce logger noise on every reconcile
