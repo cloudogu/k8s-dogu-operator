@@ -242,6 +242,31 @@ func TestEnsureWarpMenuEntry(t *testing.T) {
 		require.NoError(t, err)
 	})
 
+	t.Run("Should update existing warp menu entry preserving its resourceVersion if any labels differ", func(t *testing.T) {
+		//given
+		doguFetcher := newMockLocalDoguFetcher(t)
+		client := newMockWarpmenuentryClient(t)
+
+		existingEntry := newWarpMenuEntry(doguResource)
+		existingEntry.ResourceVersion = "57900"
+		existingEntry.Labels = map[string]string{"foo": "bar"}
+
+		expectedUpdate := newWarpMenuEntry(doguResource)
+		expectedUpdate.ResourceVersion = "57900"
+		expectedUpdate.Labels["foo"] = "bar"
+
+		doguFetcher.EXPECT().FetchForResource(ctx, doguResource).Return(doguDescriptorWithWarp, nil)
+		client.EXPECT().Get(ctx, doguName, v1.GetOptions{}).Return(existingEntry, nil)
+		client.EXPECT().Update(ctx, expectedUpdate, v1.UpdateOptions{}).Return(expectedUpdate, nil)
+		manager := &WarpMenuEntryManager{doguFetcher: doguFetcher, client: client}
+
+		//when
+		err := manager.EnsureWarpMenuEntry(ctx, doguResource)
+
+		//then
+		require.NoError(t, err)
+	})
+
 	t.Run("Should return error when updating an existing warp menu entry returns an error", func(t *testing.T) {
 		//given
 		doguFetcher := newMockLocalDoguFetcher(t)
