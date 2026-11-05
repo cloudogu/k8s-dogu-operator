@@ -115,7 +115,7 @@ func newLifecycleFixture(t *testing.T) *lifecycleFixture {
 	operatorConfig := &config.OperatorConfig{}
 	f.useCase = NewDoguInstallOrChangeUseCase(
 		install.NewCreateFinalizerStep(f.k8s),
-		install.NewEnsureOCIRepositoryStep(f.k8s, lifecycleRegistry{}, recorder),
+		install.NewEnsureOCIRepositoryStep(f.k8s, lifecycleRegistry{}, recorder, operatorConfig.DoguV3DevChartsEnabled),
 		install.NewWaitForOCIRepositoryReadyStep(f.k8s, recorder),
 		install.NewValidateChartStep(f.chart, assembler, f.k8s),
 		install.NewSuspendHelmReleaseStep(f.k8s, f.chart, assembler, pvc.NewResizeChecker(f.k8s), recorder),
