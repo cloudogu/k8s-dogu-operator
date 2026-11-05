@@ -26,6 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [#383] Reduce logger noise on every reconcile
 - Update go to 1.27.3
 - [#387] Update the helmfile image's Go builder to 1.27.3.
+- [#387] update to image cloudogu/dogu-additional-mounts-init:0.1.4
 
 ### Fixed
 - [#372] Ignore updates of HelmReleases that only toggle the `Reconciling` condition, to avoid unnecessary reconciliations
