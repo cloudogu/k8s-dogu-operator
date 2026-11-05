@@ -74,11 +74,13 @@ func (r *DoguVolumeLabelReconciler) Reconcile(ctx context.Context, req reconcile
 	volume := &corev1.PersistentVolumeClaim{}
 	if err := r.client.Get(ctx, req.NamespacedName, volume); err != nil {
 		if apierrors.IsNotFound(err) {
+			logging.Debug(ctx, "Volume not found; skipping dogu labels", "volume", req.NamespacedName)
 			return reconcile.Result{}, nil
 		}
 		return reconcile.Result{}, fmt.Errorf("failed to get volume %q: %w", req.NamespacedName, err)
 	}
 	if !volume.DeletionTimestamp.IsZero() {
+		logging.Debug(ctx, "Volume is being deleted; skipping dogu labels", "volume", req.NamespacedName)
 		return reconcile.Result{}, nil
 	}
 
@@ -89,6 +91,7 @@ func (r *DoguVolumeLabelReconciler) Reconcile(ctx context.Context, req reconcile
 
 	switch len(doguNames) {
 	case 0:
+		logging.Debug(ctx, "Volume belongs to no dogu; skipping dogu labels", "volume", req.NamespacedName)
 		return reconcile.Result{}, nil
 	case 1:
 		return reconcile.Result{}, r.ensureDoguLabels(ctx, volume, doguNames[0])
@@ -156,6 +159,7 @@ func claimNames(podSpec corev1.PodSpec) []string {
 // ensureDoguLabels patches only the dogu labels of the volume, and only if one of them is missing or wrong.
 func (r *DoguVolumeLabelReconciler) ensureDoguLabels(ctx context.Context, volume *corev1.PersistentVolumeClaim, doguName string) error {
 	if volume.Labels[v3beta1.DoguLabelName] == doguName && volume.Labels[doguv2.DoguLabelName] == doguName {
+		logging.Debug(ctx, "Volume dogu labels already correct", "volume", client.ObjectKeyFromObject(volume), "dogu", doguName)
 		return nil
 	}
 
@@ -168,6 +172,11 @@ func (r *DoguVolumeLabelReconciler) ensureDoguLabels(ctx context.Context, volume
 	if err := r.client.Patch(ctx, volume, client.MergeFrom(original)); err != nil {
 		return fmt.Errorf("failed to patch dogu labels of volume %q: %w", client.ObjectKeyFromObject(volume), err)
 	}
+	previous := map[string]string{
+		v3beta1.DoguLabelName: original.Labels[v3beta1.DoguLabelName],
+		doguv2.DoguLabelName:  original.Labels[doguv2.DoguLabelName],
+	}
+	logging.Info(ctx, "Volume dogu labels set", "volume", client.ObjectKeyFromObject(volume), "dogu", doguName, "previousLabels", previous)
 	return nil
 }
 
@@ -189,7 +198,7 @@ func newDoguVolumeRequestMapper(k8s client.Reader) handler.MapFunc {
 		}
 
 		for _, claimName := range claimNames(podSpec) {
-			requests = append(requests, reconcile.Request{NamespacedName: client.ObjectKey{Namespace: object.GetNamespace(), Name: claimName}})
+			requests = append(requests, reconcile.Request{Namespace: object.GetNamespace(), Name: claimName})
 		}
 		return requests
 	}
