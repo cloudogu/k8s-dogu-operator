@@ -107,6 +107,16 @@ func (s *Service) DoguMetaValues(ctx context.Context, doguResource *v3beta1.Dogu
 	return valuesMeta, found, nil
 }
 
+// AppVersion returns the appVersion from the Chart.yaml of the dogu's chart, empty if the chart does not set one.
+func (s *Service) AppVersion(ctx context.Context, doguResource *v3beta1.Dogu) (string, error) {
+	chart, err := s.chartFor(ctx, doguResource)
+	if err != nil {
+		return "", err
+	}
+
+	return chart.raw.Metadata.AppVersion, nil
+}
+
 // Evict drops a dogu's cached chart. Call it when the delete-finalizer runs so the cache does not grow
 // unbounded across the operator's lifetime.
 func (s *Service) Evict(doguResource *v3beta1.Dogu) {
