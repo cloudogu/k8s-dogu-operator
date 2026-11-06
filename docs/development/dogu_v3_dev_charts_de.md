@@ -6,6 +6,20 @@ So lässt sich ein lokal gebautes Chart im Cluster testen, ohne es vorher zu rel
 > **Achtung:** Der Dev-Modus ist nur für Entwicklungscluster gedacht und muss in Produktivclustern ausgeschaltet bleiben.
 > Mit eingeschaltetem Dev-Modus kann jeder, der Dogu-CRs ändern darf, beliebige Charts in den Cluster bringen.
 
+## `cldk dogu dev-push`
+
+Die Annotations müssen in der Regel nicht von Hand gesetzt werden. 
+Der empfohlene Weg ist [`cldk dogu dev-push`](https://github.com/cloudogu/cldk) aus dem Dogu-Repository heraus:
+
+```shell
+cldk dogu dev-push
+```
+
+Der Befehl baut die Images, pusht sie und das Chart unter einer neuen Dev-Version (`<version>-dev.<Zeitstempel>`) in eine Dev-Registry und legt die Dogu-CR an bzw. aktualisiert sie.
+Dabei setzt er `spec.version`, `spec.doguApiVersion: v3` und die unten beschriebenen Annotations.
+Andere Felder wie `values` oder `mappedValues` bleiben erhalten.
+Da jeder Push eine neue Version erzeugt, übernimmt der Operator den neuen Stand sofort.
+
 ## Dev-Modus einschalten
 
 Der Dev-Modus wird über die Umgebungsvariable `DOGU_V3_DEV_CHARTS_ENABLED` des Operators geschaltet, Default ist `false`.

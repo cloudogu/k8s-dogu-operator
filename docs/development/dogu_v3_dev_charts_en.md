@@ -6,6 +6,20 @@ This allows testing a locally built chart in the cluster without releasing it fi
 > **Attention:** The dev mode is meant for development clusters only and must stay disabled in production clusters.
 > With dev mode enabled, everyone who may change dogu CRs can bring arbitrary charts into the cluster.
 
+## `cldk dogu dev-push`
+
+Usually, the annotations do not have to be set by hand.
+The recommended way is [`cldk dogu dev-push`](https://github.com/cloudogu/cldk), run from the dogu repository:
+
+```shell
+cldk dogu dev-push
+```
+
+The command builds the images, pushes them and the chart under a new dev version (`<version>-dev.<timestamp>`) to a dev registry and creates or updates the dogu CR.
+It sets `spec.version`, `spec.doguApiVersion: v3` and the annotations described below.
+Other fields such as `values` or `mappedValues` are kept.
+As every push creates a new version, the operator picks up the new state right away.
+
 ## Enabling the dev mode
 
 The dev mode is controlled by the environment variable `DOGU_V3_DEV_CHARTS_ENABLED` of the operator, default is `false`.
