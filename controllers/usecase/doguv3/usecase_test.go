@@ -114,7 +114,10 @@ func TestNewDoguMigrationUseCase(t *testing.T) {
 		&migration.MigrationSecretStep{},
 		&migration.MigrateDoguPVCStep{},
 		&migration.CleanupV2ResourcesStep{},
-		&migration.MigrationPendingStep{},
+		&migration.PrepareMigrationJobsStep{},
+		&install.EnsureHelmReleaseStep{},
+		&migration.MigrationJobStep{},
+		&migration.MigrationCleanupStep{},
 		clientMock,
 		recorderMock,
 	)
@@ -128,7 +131,10 @@ func TestNewDoguMigrationUseCase(t *testing.T) {
 		"*migration.MigrationSecretStep",
 		"*migration.MigrateDoguPVCStep",
 		"*migration.CleanupV2ResourcesStep",
-		"*migration.MigrationPendingStep",
+		"*migration.PrepareMigrationJobsStep",
+		"*install.EnsureHelmReleaseStep",
+		"*migration.MigrationJobStep",
+		"*migration.MigrationCleanupStep",
 	}
 
 	assert.NotNil(t, got)

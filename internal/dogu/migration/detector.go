@@ -81,7 +81,7 @@ func (d *Detector) hasMigrationResources(ctx context.Context, dogu *v3beta1.Dogu
 		return secret != nil, err
 	}
 
-	return d.get(ctx, migrationResourceKey(dogu), &corev1.PersistentVolumeClaim{})
+	return HasMigrationVolumeClaim(ctx, d.client, dogu)
 }
 
 // migrationResourceKey names the temporary resources that hold the V2 resources' content during a migration.
@@ -122,4 +122,21 @@ func (d *Detector) get(ctx context.Context, key client.ObjectKey, obj client.Obj
 	}
 
 	return true, nil
+}
+
+// HasMigrationVolumeClaim reports whether the migration volume claim of the dogu exists.
+// A terminating claim counts as removed, because the cleanup deleted it.
+func HasMigrationVolumeClaim(ctx context.Context, reader client.Reader, dogu *v3beta1.Dogu) (bool, error) {
+	key := migrationResourceKey(dogu)
+	claim := &corev1.PersistentVolumeClaim{}
+	err := reader.Get(ctx, key, claim)
+	if apierrors.IsNotFound(err) {
+		return false, nil
+	}
+
+	if err != nil {
+		return false, fmt.Errorf("failed to get migration volume claim %s: %w", key, err)
+	}
+
+	return claim.DeletionTimestamp.IsZero(), nil
 }

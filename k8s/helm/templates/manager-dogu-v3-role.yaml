@@ -113,6 +113,28 @@ rules:
       - update
       - patch
       - delete
+  # dogu v3: wait for the migration jobs of a dogu chart.
+  # watch is needed for the caching k8s-client
+  - apiGroups:
+      - batch
+    resources:
+      - jobs
+    verbs:
+      - get
+      - list
+      - watch
+  # dogu v3: manage the network policies that let the migration jobs reach shared v2 dogus
+  # patch is needed to apply the network policies via server-side apply
+  - apiGroups:
+      - networking.k8s.io
+    resources:
+      - networkpolicies
+    verbs:
+      - get
+      - list
+      - watch
+      - patch
+      - deletecollection
   # dogu v3: read-only access so Helm `lookup` resolves during the chart validation render.
   # Namespaced on purpose: dogu charts may only `lookup` resources in their own (release)
   # namespace; cluster-scoped or cross-namespace lookups are unsupported and will fail validation.

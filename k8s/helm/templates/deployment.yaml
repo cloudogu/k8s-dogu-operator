@@ -136,6 +136,10 @@ spec:
               value: {{ quote .Values.controllerManager.env.doguHelmReconciliationInterval | default "30s" }}
             - name: DOGU_HELM_RETRY_INTERVAL
               value: {{ quote .Values.controllerManager.env.doguHelmRetryInterval | default "5m" }}
+            - name: MIGRATION_JOB_START_TIMEOUT
+              value: {{ quote .Values.controllerManager.env.migrationJobStartTimeout | default "5m" }}
+            - name: MIGRATION_JOB_COMPLETION_TIMEOUT
+              value: {{ quote .Values.controllerManager.env.migrationJobCompletionTimeout | default "1h" }}
             - name: EXPERIMENTAL_HELMFILE_SUPPORT
               value: {{ quote .Values.controllerManager.experimental.helmfileSupport.enabled | default false }}
             {{- if .Values.controllerManager.experimental.helmfileSupport.enabled }}
