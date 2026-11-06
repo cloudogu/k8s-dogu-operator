@@ -2,6 +2,7 @@ package install
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/cloudogu/k8s-dogu-lib/v3/api/v3beta1"
@@ -95,12 +96,6 @@ func mockChartRendering(t *testing.T, doguResource *v3beta1.Dogu, rendered []*un
 	return cs, as
 }
 
-func mockResizeCheck(t *testing.T, result pvc.CheckResult, err error) *MockResizeChecker {
-	checker := NewMockResizeChecker(t)
-	checker.EXPECT().Check(mock.Anything, testNamespace, mock.Anything).Return(result, err)
-	return checker
-}
-
 func TestVolumeStatusStep_Run(t *testing.T) {
 	volumes := []pvc.Volume{
 		{PVC: volumePVC("existing", "1Gi", "1Gi"), MountedBy: mountedBy("Deployment", "nexus-proxy")},
@@ -133,7 +128,7 @@ func TestVolumeStatusStep_Run(t *testing.T) {
 				d := mockDiscovery(t, volumes)
 				return NewVolumeStatusStep(cs, as, d, newVolumeStatusFakeClient(doguResource, interceptor.Funcs{}), record.NewFakeRecorder(10)), doguResource
 			},
-			want:       doguv3.Continue(),
+			want:       doguv3.RequeueWithError(errors.New("failed to resize volumes: [db-nexus-2 db-nexus-3]"), v3beta1.ReasonResizingPVC),
 			wantStatus: expectedStatus,
 		},
 		{
@@ -166,7 +161,7 @@ func TestVolumeStatusStep_Run(t *testing.T) {
 				})
 				return NewVolumeStatusStep(cs, as, d, k8sClient, record.NewFakeRecorder(10)), doguResource
 			},
-			want:       doguv3.Continue(),
+			want:       doguv3.RequeueWithError(errors.New("failed to resize volumes: [db-nexus-2 db-nexus-3]"), v3beta1.ReasonResizingPVC),
 			wantStatus: expectedStatus,
 		},
 		{
@@ -314,6 +309,53 @@ func TestVolumeStatusStep_RunReportsResizedVolumes(t *testing.T) {
 		require.Equal(t, doguv3.Continue(), step.Run(testCtx, doguResource))
 		assert.Empty(t, recorder.Events)
 	})
+}
+
+func TestVolumeStatusStep_RunWaitsForResize(t *testing.T) {
+	statefulSet := mountedBy("StatefulSet", "nexus")
+
+	t.Run("wait for volumes below their desired capacity and volumes resizing", func(t *testing.T) {
+		doguResource := testDoguResource.DeepCopy()
+		volumes := []pvc.Volume{
+			{PVC: volumePVC("data", "1Gi", "1Gi"), MountedBy: statefulSet},
+			{PVC: volumePVC("db-nexus-0", "5Gi", "5Gi", corev1.PersistentVolumeClaimFileSystemResizePending), MountedBy: statefulSet},
+		}
+		cs, as := mockChartRendering(t, doguResource, renderedChart(t), nil)
+
+		result := NewVolumeStatusStep(cs, as, mockDiscovery(t, volumes), newVolumeStatusFakeClient(doguResource, interceptor.Funcs{}), record.NewFakeRecorder(10)).Run(testCtx, doguResource)
+
+		assert.Equal(t, doguv3.RequeueAfter(defaultRequeueAfter, v3beta1.ReasonResizingPVC, "waiting for volumes to reach their desired capacity: [data db-nexus-0]; if the storage only expands unmounted volumes, turn on offline volume expansion"), result)
+	})
+
+	t.Run("requeue with error when a volume failed to resize", func(t *testing.T) {
+		doguResource := testDoguResource.DeepCopy()
+		volumes := []pvc.Volume{
+			{PVC: volumePVC("data", "1Gi", "1Gi"), MountedBy: statefulSet},
+			{PVC: volumePVC("db-nexus-0", "5Gi", "3Gi", corev1.PersistentVolumeClaimNodeResizeError), MountedBy: statefulSet},
+		}
+		cs, as := mockChartRendering(t, doguResource, renderedChart(t), nil)
+
+		result := NewVolumeStatusStep(cs, as, mockDiscovery(t, volumes), newVolumeStatusFakeClient(doguResource, interceptor.Funcs{}), record.NewFakeRecorder(10)).Run(testCtx, doguResource)
+
+		assert.ErrorContains(t, result.Err, "failed to resize volumes: [db-nexus-0]")
+		assert.Equal(t, v3beta1.ReasonResizingPVC, result.ReadyReason)
+	})
+
+	for name, modify := range map[string]func(*v3beta1.Dogu){
+		"stopped": func(d *v3beta1.Dogu) { d.Spec.Stopped = true },
+		"paused":  func(d *v3beta1.Dogu) { d.Spec.PauseReconciliation = true },
+	} {
+		t.Run("continue without waiting for a "+name+" dogu", func(t *testing.T) {
+			doguResource := testDoguResource.DeepCopy()
+			modify(doguResource)
+			volumes := []pvc.Volume{{PVC: volumePVC("db-nexus-0", "5Gi", "3Gi"), MountedBy: statefulSet}}
+			cs, as := mockChartRendering(t, doguResource, renderedChart(t), nil)
+
+			result := NewVolumeStatusStep(cs, as, mockDiscovery(t, volumes), newVolumeStatusFakeClient(doguResource, interceptor.Funcs{}), record.NewFakeRecorder(10)).Run(testCtx, doguResource)
+
+			assert.Equal(t, doguv3.Continue(), result)
+		})
+	}
 }
 
 func TestVolumeStatusStep_ReportResizedVolumes(t *testing.T) {

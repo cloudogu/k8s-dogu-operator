@@ -71,7 +71,6 @@ func NewDoguInstallOrChangeUseCase(
 	updatePendingStep *install.UpdatePendingStep,
 	exportModeStep *install.ExportModeStep,
 	volumeStatusStep *install.VolumeStatusStep,
-	waitForVolumeResizeCompletionStep *install.WaitForVolumeResizeCompletionStep,
 	client K8sClient, recorder EventRecorder) *DoguUseCase {
 	return &DoguUseCase{
 		steps: []Step{
@@ -93,7 +92,6 @@ func NewDoguInstallOrChangeUseCase(
 			helmReleaseStatusStep,
 			updatePendingStep,
 			volumeStatusStep,
-			waitForVolumeResizeCompletionStep,
 		},
 		k8sClient:     client,
 		eventRecorder: recorder,

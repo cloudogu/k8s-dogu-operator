@@ -91,6 +91,7 @@ func TestResizeChecker_CheckStandalonePVCs(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, result.ResizeRequests, 1)
 		assert.Equal(t, client.ObjectKey{Namespace: testNamespace, Name: "data-a"}, result.ResizeRequests[0].PVC)
+		assert.Equal(t, "1Gi", result.ResizeRequests[0].Current.String())
 		assert.Equal(t, "2Gi", result.ResizeRequests[0].Desired.String())
 	})
 
@@ -543,6 +544,25 @@ func TestResizeChecker_CheckInProgress(t *testing.T) {
 		require.ErrorContains(t, err, "live PVC \"ecosystem/data\" has active resize condition \"ControllerResizeError\"")
 		assert.Empty(t, result.InProgress)
 	})
+
+	for _, status := range []corev1.ClaimResourceStatus{
+		corev1.PersistentVolumeClaimControllerResizeInfeasible,
+		corev1.PersistentVolumeClaimNodeResizeInfeasible,
+	} {
+		t.Run("rejects a resize with infeasible allocated resource status and capacity below the request: "+string(status), func(t *testing.T) {
+			live := newPVC("data", "2Gi", nil)
+			live.Status.Capacity[corev1.ResourceStorage] = resource.MustParse("1Gi")
+			live.Status.AllocatedResourceStatuses = map[corev1.ResourceName]corev1.ClaimResourceStatus{
+				corev1.ResourceStorage: status,
+			}
+			checker := NewResizeChecker(fake.NewClientBuilder().WithObjects(live).Build())
+
+			result, err := checker.Check(ctx, testNamespace, renderedObjects(t, newPVC("data", "2Gi", nil)))
+
+			require.ErrorContains(t, err, "live PVC \"ecosystem/data\" has storage resize status \""+string(status)+"\"")
+			assert.Empty(t, result.InProgress)
+		})
+	}
 }
 
 func TestExtractDesiredClaims(t *testing.T) {

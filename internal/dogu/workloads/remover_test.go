@@ -135,6 +135,21 @@ func TestRemover_Unmount(t *testing.T) {
 		assert.Equal(t, []string{"nexus-0"}, unmounted.NewlyDeletedPods)
 	})
 
+	t.Run("skips a workload that is already gone and deletes the pods mounting the claims", func(t *testing.T) {
+		c := fake.NewClientBuilder().WithScheme(testScheme(t)).WithObjects(mountingPod("nexus-0", "data")).Build()
+
+		unmounted, err := NewRemover(c, c).Unmount(
+			context.Background(),
+			testNamespace,
+			Workloads{StatefulSets: []appsv1.StatefulSet{*statefulSet}},
+			volumes,
+			[]string{"data"},
+		)
+
+		require.NoError(t, err)
+		assert.Equal(t, UnmountResult{Pods: []string{"nexus-0"}, NewlyDeletedPods: []string{"nexus-0"}}, unmounted)
+	})
+
 	t.Run("reports a terminating pod as remaining but not as newly deleted", func(t *testing.T) {
 		terminating := mountingPod("nexus-old", "data")
 		terminating.DeletionTimestamp = &metav1.Time{Time: time.Now()}
@@ -196,6 +211,15 @@ func TestRemover_ReplaceStatefulSets(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, []string{"StatefulSet/nexus"}, deleted)
 		assert.Equal(t, metav1.DeletePropagationOrphan, propagation)
+	})
+
+	t.Run("reports nothing for an outdated StatefulSet that is already gone", func(t *testing.T) {
+		c := fake.NewClientBuilder().WithScheme(testScheme(t)).Build()
+
+		deleted, err := NewRemover(c, c).ReplaceStatefulSets(context.Background(), Workloads{StatefulSets: []appsv1.StatefulSet{*statefulSet}}, []types.UID{"nexus-uid"})
+
+		require.NoError(t, err)
+		assert.Empty(t, deleted)
 	})
 
 	t.Run("leaves a StatefulSet with another UID alone", func(t *testing.T) {

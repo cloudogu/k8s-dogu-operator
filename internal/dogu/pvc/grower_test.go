@@ -16,7 +16,7 @@ import (
 )
 
 func growRequest(name, desired string) ResizeRequest {
-	return ResizeRequest{PVC: client.ObjectKey{Namespace: testNamespace, Name: name}, Desired: resource.MustParse(desired)}
+	return ResizeRequest{PVC: client.ObjectKey{Namespace: testNamespace, Name: name}, Current: resource.MustParse("1Gi"), Desired: resource.MustParse(desired)}
 }
 
 func failingPatchFor(claimName string, err error) interceptor.Funcs {
@@ -76,10 +76,11 @@ func TestGrower_Grow(t *testing.T) {
 		assert.Empty(t, grown)
 	})
 
-	t.Run("fails when the claim cannot be read", func(t *testing.T) {
+	t.Run("fails when the claim is missing", func(t *testing.T) {
 		grown, err := NewGrower(fake.NewClientBuilder().Build()).Grow(context.Background(), []ResizeRequest{growRequest("data", "2Gi")})
 
-		assert.ErrorContains(t, err, `failed to get PVC "ecosystem/data"`)
+		assert.True(t, apierrors.IsNotFound(err))
+		assert.ErrorContains(t, err, `failed to grow PVC "ecosystem/data"`)
 		assert.Empty(t, grown)
 	})
 }

@@ -35,7 +35,7 @@ func ForeignOwnedClaims(workloads Workloads, volumes []pvc.Volume, claims []stri
 		}
 		var allowed []types.UID
 		for _, ref := range volume.MountedBy {
-			if workload := workloads.find(ref); workload != nil && propagation(ref.Kind) == metav1.DeletePropagationOrphan {
+			if workload := workloads.findByRef(ref); workload != nil && propagation(ref.Kind) == metav1.DeletePropagationOrphan {
 				allowed = append(allowed, workload.GetUID())
 			}
 		}
@@ -98,13 +98,16 @@ func (r *Remover) deleteWorkloads(ctx context.Context, workloads Workloads, refs
 		if slices.Contains(deleted, name) {
 			continue
 		}
-		workload := workloads.find(ref)
+		workload := workloads.findByRef(ref)
 		if workload == nil {
 			continue
 		}
 		uid := workload.GetUID()
 		err := r.writer.Delete(ctx, workload, client.Preconditions{UID: &uid}, client.PropagationPolicy(propagation(ref.Kind)))
-		if err != nil && !apierrors.IsNotFound(err) {
+		if apierrors.IsNotFound(err) {
+			continue
+		}
+		if err != nil {
 			return nil, fmt.Errorf("failed to delete %s: %w", name, err)
 		}
 		deleted = append(deleted, name)
@@ -116,7 +119,7 @@ func (r *Remover) deleteWorkloads(ctx context.Context, workloads Workloads, refs
 // deleteMountingPods deletes the running pods mounting the claims, found by claim name as they carry no dogu label and may have outlived their workload.
 func (r *Remover) deleteMountingPods(ctx context.Context, namespace string, claims []string) (pods, newlyDeleted []string, err error) {
 	podList := &corev1.PodList{}
-	if err := r.reader.List(ctx, podList, client.InNamespace(namespace)); err != nil {
+	if err = r.reader.List(ctx, podList, client.InNamespace(namespace)); err != nil {
 		return nil, nil, fmt.Errorf("failed to list pods in namespace %q: %w", namespace, err)
 	}
 
@@ -126,7 +129,7 @@ func (r *Remover) deleteMountingPods(ctx context.Context, namespace string, clai
 		if pod.Status.Phase == corev1.PodSucceeded || pod.Status.Phase == corev1.PodFailed || !podMountsAny(pod, claims) {
 			continue
 		}
-		if err := r.writer.Delete(ctx, pod); err != nil && !apierrors.IsNotFound(err) {
+		if err = r.writer.Delete(ctx, pod); err != nil && !apierrors.IsNotFound(err) {
 			return nil, nil, fmt.Errorf("failed to delete pod %q: %w", pod.Name, err)
 		}
 		pods = append(pods, pod.Name)

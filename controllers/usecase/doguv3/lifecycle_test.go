@@ -127,7 +127,6 @@ func newLifecycleFixture(t *testing.T) *lifecycleFixture {
 		install.NewHelmReleaseStatusStep(f.k8s, f.chart, assembler, operatorConfig, fluxstate.NewHelmReleaseReader(f.k8s, helmClient), recorder),
 		install.NewUpdatePendingStep(f.k8s), install.NewExportModeStep(f.k8s, recorder),
 		install.NewVolumeStatusStep(f.chart, assembler, workloads.NewDiscovery(f.k8s), f.k8s, recorder),
-		install.NewWaitForVolumeResizeCompletionStep(f.chart, assembler, resizeChecker),
 		f.k8s, recorder,
 	)
 	return f

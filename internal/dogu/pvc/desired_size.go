@@ -1,6 +1,8 @@
 package pvc
 
 import (
+	"fmt"
+
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -11,7 +13,7 @@ import (
 func DesiredSizes(renderedObjects []*unstructured.Unstructured, targetNamespace string, livePVCs []corev1.PersistentVolumeClaim) (map[client.ObjectKey]resource.Quantity, error) {
 	desiredClaims, desiredTemplates, err := extractDesiredClaims(renderedObjects, targetNamespace)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to extract desired claims and templates: %w", err)
 	}
 
 	sizes := map[client.ObjectKey]resource.Quantity{}

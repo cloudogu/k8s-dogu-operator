@@ -16,7 +16,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-// VolumeStatusStep reports every volume of a dogu, also of a stopped one, in status.volumeStatus.
+// VolumeStatusStep reports every volume of a dogu, also of a stopped one, in status.volumeStatus and waits until every volume has its desired capacity.
 type VolumeStatusStep struct {
 	chartService  chartService
 	assembler     valueAssembler
@@ -59,7 +59,11 @@ func (vss *VolumeStatusStep) Run(ctx context.Context, doguResource *v3beta1.Dogu
 	}
 	vss.reportResizedVolumes(ctx, doguResource, previous, statuses)
 
-	return stepsv3.Continue()
+	if doguResource.Spec.Stopped || doguResource.Spec.PauseReconciliation {
+		return stepsv3.Continue()
+	}
+
+	return waitForResizeCompletion(statuses)
 }
 
 func (vss *VolumeStatusStep) reportResizedVolumes(ctx context.Context, doguResource *v3beta1.Dogu, previous, statuses []v3beta1.VolumeStatus) {
@@ -80,7 +84,7 @@ func (vss *VolumeStatusStep) reportResizedVolumes(ctx context.Context, doguResou
 func updateVolumeStatus(ctx context.Context, k8sClient K8sClient, doguResource *v3beta1.Dogu, rendered []*unstructured.Unstructured, volumes []pvc.Volume) ([]v3beta1.VolumeStatus, error) {
 	statuses, err := pvc.VolumeStatuses(rendered, doguResource.Namespace, volumes)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get volume statuses: %w", err)
 	}
 
 	if !equality.Semantic.DeepEqual(doguResource.Status.VolumeStatus, statuses) {
@@ -125,3 +129,27 @@ func applyVolumeStatus(ctx context.Context, k8sClient K8sClient, doguResource *v
 }
 
 const volumeStatusFieldOwner = "k8s-dogu-operator-volume-status-step"
+
+const offlineExpansionHint = "if the storage only expands unmounted volumes, turn on offline volume expansion"
+
+// waitForResizeCompletion requeues until no volume is below its desired capacity.
+func waitForResizeCompletion(statuses []v3beta1.VolumeStatus) stepsv3.StepResult {
+	var failed, resizing []string
+	for _, status := range statuses {
+		switch {
+		case status.State == v3beta1.VolumeStatusStateResizeFailed:
+			failed = append(failed, status.ClaimName)
+		case status.State == v3beta1.VolumeStatusStateResizing || status.Size.Cmp(status.DesiredSize) < 0:
+			resizing = append(resizing, status.ClaimName)
+		}
+	}
+
+	if len(failed) > 0 {
+		return stepsv3.RequeueWithError(fmt.Errorf("failed to resize volumes: %v", failed), v3beta1.ReasonResizingPVC)
+	}
+	if len(resizing) > 0 {
+		return stepsv3.RequeueAfter(defaultRequeueAfter, v3beta1.ReasonResizingPVC, fmt.Sprintf("waiting for volumes to reach their desired capacity: %v; %s", resizing, offlineExpansionHint))
+	}
+
+	return stepsv3.Continue()
+}

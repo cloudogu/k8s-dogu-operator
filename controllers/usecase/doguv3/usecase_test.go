@@ -65,7 +65,6 @@ func TestNewDoguInstallOrChangeUseCase(t *testing.T) {
 	exportModeStep := &install.ExportModeStep{}
 	updatePendingStep := &install.UpdatePendingStep{}
 	volumeStatusStep := &install.VolumeStatusStep{}
-	waitForVolumeResizeCompletionStep := &install.WaitForVolumeResizeCompletionStep{}
 
 	got := NewDoguInstallOrChangeUseCase(
 		finalizerStep,
@@ -79,7 +78,6 @@ func TestNewDoguInstallOrChangeUseCase(t *testing.T) {
 		updatePendingStep,
 		exportModeStep,
 		volumeStatusStep,
-		waitForVolumeResizeCompletionStep,
 		clientMock,
 		recorderMock,
 	)
@@ -97,7 +95,6 @@ func TestNewDoguInstallOrChangeUseCase(t *testing.T) {
 		"*install.HelmReleaseStatusStep",
 		"*install.UpdatePendingStep",
 		"*install.VolumeStatusStep",
-		"*install.WaitForVolumeResizeCompletionStep",
 	}
 
 	assert.NotNil(t, got)

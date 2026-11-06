@@ -22,6 +22,7 @@ import (
 // ResizeRequest describes a required PVC expansion.
 type ResizeRequest struct {
 	PVC     client.ObjectKey
+	Current resource.Quantity
 	Desired resource.Quantity
 }
 
@@ -168,7 +169,11 @@ func (c *resizeChecker) outdatedStatefulSets(ctx context.Context, desiredTemplat
 
 		for _, liveTemplate := range live.Spec.VolumeClaimTemplates {
 			liveStorage, found := liveTemplate.Spec.Resources.Requests[corev1.ResourceStorage]
-			if liveTemplate.Name == template.name && found && liveStorage.Cmp(template.storage) != 0 {
+			if !found {
+				continue
+			}
+
+			if liveTemplate.Name == template.name && liveStorage.Cmp(template.storage) != 0 {
 				outdated = append(outdated, live.UID)
 				break
 			}
@@ -226,6 +231,7 @@ func checkLivePVC(desired desiredClaim, livePVC *corev1.PersistentVolumeClaim) (
 		return ResizeRequest{}, pvcUnchanged, validationErr
 	}
 	if desired.storage.Cmp(currentRequest) > 0 {
+		request.Current = currentRequest.DeepCopy()
 		return request, pvcNeedsResize, nil
 	}
 
@@ -234,16 +240,41 @@ func checkLivePVC(desired desiredClaim, livePVC *corev1.PersistentVolumeClaim) (
 
 // resizeInProgress reports whether the bound PVC requests at most the desired size and its expansion has not finished without error; a larger size is requested afterwards.
 func resizeInProgress(desired resource.Quantity, pvc *corev1.PersistentVolumeClaim) bool {
-	requested, found := pvc.Spec.Resources.Requests[corev1.ResourceStorage]
-	if !found || requested.Cmp(desired) > 0 || pvc.Status.Phase != corev1.ClaimBound ||
-		HasTrueCondition(pvc, corev1.PersistentVolumeClaimControllerResizeError, corev1.PersistentVolumeClaimNodeResizeError) {
+	if pvc.Status.Phase != corev1.ClaimBound {
 		return false
 	}
-
-	capacity, found := pvc.Status.Capacity[corev1.ResourceStorage]
-	return found && capacity.Cmp(requested) < 0 ||
-		pvc.Status.AllocatedResourceStatuses[corev1.ResourceStorage] != "" ||
-		HasTrueCondition(pvc, corev1.PersistentVolumeClaimResizing, corev1.PersistentVolumeClaimFileSystemResizePending)
+	requested, found := pvc.Spec.Resources.Requests[corev1.ResourceStorage]
+	if !found || requested.Cmp(desired) > 0 {
+		return false
+	}
+	if HasTrueCondition(pvc,
+		corev1.PersistentVolumeClaimControllerResizeError,
+		corev1.PersistentVolumeClaimNodeResizeError,
+	) {
+		return false
+	}
+	if HasTrueCondition(pvc,
+		corev1.PersistentVolumeClaimResizing,
+		corev1.PersistentVolumeClaimFileSystemResizePending,
+	) {
+		return true
+	}
+	if status, ok := pvc.Status.AllocatedResourceStatuses[corev1.ResourceStorage]; ok {
+		switch status {
+		case corev1.PersistentVolumeClaimControllerResizeInProgress,
+			corev1.PersistentVolumeClaimNodeResizePending,
+			corev1.PersistentVolumeClaimNodeResizeInProgress:
+			return true
+		case corev1.PersistentVolumeClaimControllerResizeInfeasible,
+			corev1.PersistentVolumeClaimNodeResizeInfeasible:
+			return false
+		}
+	}
+	// Fallback: capacity has not yet reached the requested size.
+	if capacity, ok := pvc.Status.Capacity[corev1.ResourceStorage]; ok {
+		return capacity.Cmp(requested) < 0
+	}
+	return false
 }
 
 // HasTrueCondition reports whether any of the given conditions is true on the PVC.
@@ -405,5 +436,5 @@ func copyStringPointer(value *string) *string {
 		return nil
 	}
 
-	return ptr.To(*value)
+	return new(*value)
 }

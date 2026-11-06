@@ -158,7 +158,7 @@ func rejectingPatches(c client.Client) client.Client {
 }
 
 func rejectedPatchMessage(claimName string) string {
-	return `failed to grow PVC "ecosystem/` + claimName + `" to 2Gi: persistentvolumeclaims "` + claimName + `" is forbidden: only dynamically provisioned pvc can be resized and the storageclass that provisions the pvc must support resize`
+	return `growing PVC has been rejected: failed to grow PVC "ecosystem/` + claimName + `" to 2Gi: persistentvolumeclaims "` + claimName + `" is forbidden: only dynamically provisioned pvc can be resized and the storageclass that provisions the pvc must support resize`
 }
 
 func helmRelease(suspended bool) *flux.HelmRelease {

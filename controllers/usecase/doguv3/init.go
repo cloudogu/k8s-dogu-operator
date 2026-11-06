@@ -59,7 +59,6 @@ func NewDoguV3UseCases(
 	exportModeStep := install.NewExportModeStep(k8sClient, recorder)
 	updatePendingStep := install.NewUpdatePendingStep(k8sClient)
 	volumeStatusStep := install.NewVolumeStatusStep(chartService, assembler, workloads.NewDiscovery(k8sClient), k8sClient, recorder)
-	waitForVolumeResizeCompletionStep := install.NewWaitForVolumeResizeCompletionStep(chartService, assembler, resizeChecker)
 
 	unsuspendStep := deletion.NewUnsuspendHelmReleaseStep(k8sClient, recorder)
 	deleteHelmReleaseStep := deletion.NewDeleteHelmReleaseStep(k8sClient, recorder)
@@ -74,7 +73,7 @@ func NewDoguV3UseCases(
 	migrationPendingStep := migration.NewMigrationPendingStep(detector, recorder)
 	migrateDoguPVCStep := migration.NewMigrateDoguPVCStep(k8sClient, recorder)
 
-	installUseCase := NewDoguInstallOrChangeUseCase(finalizerStep, ociStep, waitStep, validateStep, suspendStep, requestVolumeResizeStep, helmReleaseStep, helmReleaseStatusStep, updatePendingStep, exportModeStep, volumeStatusStep, waitForVolumeResizeCompletionStep, k8sClient, recorder)
+	installUseCase := NewDoguInstallOrChangeUseCase(finalizerStep, ociStep, waitStep, validateStep, suspendStep, requestVolumeResizeStep, helmReleaseStep, helmReleaseStatusStep, updatePendingStep, exportModeStep, volumeStatusStep, k8sClient, recorder)
 	migrationUseCase := NewDoguMigrationUseCase(finalizerStep, migrationPreconditionsStep, ociStep, waitStep, validateStep, migrationSecretStep, migrateDoguPVCStep, cleanupV2ResourcesStep, migrationPendingStep, k8sClient, recorder)
 	deleteUseCase := NewDoguDeleteUseCase(unsuspendStep, deleteHelmReleaseStep, deleteOCIRepositoryStep, removeFinalizerStep, k8sClient, recorder)
 

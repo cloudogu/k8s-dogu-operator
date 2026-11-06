@@ -24,8 +24,8 @@ func (w Workloads) IsEmpty() bool {
 	return len(w.Deployments) == 0 && len(w.StatefulSets) == 0 && len(w.DaemonSets) == 0
 }
 
-// find returns the workload a volume reference points to, or nil.
-func (w Workloads) find(ref corev1.TypedLocalObjectReference) client.Object {
+// findByRef returns the workload object matching the given reference, or nil if not found.
+func (w Workloads) findByRef(ref corev1.TypedLocalObjectReference) client.Object {
 	switch ref.Kind {
 	case "Deployment":
 		for i := range w.Deployments {

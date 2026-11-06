@@ -44,17 +44,12 @@ func (g *Grower) Grow(ctx context.Context, requests []ResizeRequest) ([]GrownCla
 }
 
 func (g *Grower) grow(ctx context.Context, request ResizeRequest) (GrownClaim, error) {
-	claim := &corev1.PersistentVolumeClaim{}
-	if err := g.k8s.Get(ctx, request.PVC, claim); err != nil {
-		return GrownClaim{}, fmt.Errorf("failed to get PVC %q: %w", request.PVC, err)
-	}
-
-	previous := claim.Spec.Resources.Requests.Storage().DeepCopy()
-	patch := client.MergeFrom(claim.DeepCopy())
-	claim.Spec.Resources.Requests[corev1.ResourceStorage] = request.Desired.DeepCopy()
-	if err := g.k8s.Patch(ctx, claim, patch); err != nil {
+	base := &corev1.PersistentVolumeClaim{Namespace: request.PVC.Namespace, Name: request.PVC.Name}
+	claim := base.DeepCopy()
+	claim.Spec.Resources.Requests = corev1.ResourceList{corev1.ResourceStorage: request.Desired.DeepCopy()}
+	if err := g.k8s.Patch(ctx, claim, client.MergeFrom(base)); err != nil {
 		return GrownClaim{}, fmt.Errorf("failed to grow PVC %q to %s: %w", request.PVC, request.Desired.String(), err)
 	}
 
-	return GrownClaim{PVC: *claim, Previous: previous}, nil
+	return GrownClaim{PVC: *claim, Previous: request.Current.DeepCopy()}, nil
 }

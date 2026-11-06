@@ -17,7 +17,7 @@ import (
 
 // RequestVolumeResizeStep carries out the pvc.ResizePlan of a dogu, one phase after another, each finished before the next starts:
 // it grows the claims, replaces StatefulSets with outdated claim templates and, with offline expansion, unmounts the growing claims.
-// Kubernetes grows the volumes afterwards; WaitForVolumeResizeCompletionStep waits for that.
+// Kubernetes grows the volumes afterwards; VolumeStatusStep waits for that.
 type RequestVolumeResizeStep struct {
 	resizePlanner *VolumeResizePlanner
 	discovery     VolumeDiscovery
@@ -83,10 +83,10 @@ func (rvr *RequestVolumeResizeStep) growClaims(ctx context.Context, doguResource
 
 	var rejection *pvc.GrowRejectedError
 	if err != nil && !errors.As(err, &rejection) {
-		return stepsv3.RequeueWithError(err, v3beta1.ReasonResizingPVC)
+		return stepsv3.RequeueWithError(fmt.Errorf("failed to grow volume claims: %w", err), v3beta1.ReasonResizingPVC)
 	}
 	if rejection != nil {
-		return stepsv3.Abort(v3beta1.ReasonResizingPVC, rejection.Error())
+		return stepsv3.Abort(v3beta1.ReasonResizingPVC, fmt.Sprintf("growing PVC has been rejected: %s", rejection.Error()))
 	}
 
 	return stepsv3.Continue()
@@ -96,13 +96,13 @@ func (rvr *RequestVolumeResizeStep) growClaims(ctx context.Context, doguResource
 func (rvr *RequestVolumeResizeStep) replaceStatefulSets(ctx context.Context, doguResource *v3beta1.Dogu, doguWorkloads workloads.Workloads, outdated []types.UID) stepsv3.StepResult {
 	deleted, err := rvr.remover.ReplaceStatefulSets(ctx, doguWorkloads, outdated)
 	if err != nil {
-		return stepsv3.RequeueWithError(err, v3beta1.ReasonResizingPVC)
+		return stepsv3.RequeueWithError(fmt.Errorf("failed to replace StatefulSets with outdated claim templates: %w", err), v3beta1.ReasonResizingPVC)
 	}
 	if len(deleted) == 0 {
 		return stepsv3.Continue()
 	}
 
-	logging.Info(ctx, "deleted StatefulSets with outdated claim templates", "workloads", deleted)
+	logging.Info(ctx, "deletion StatefulSets with outdated claim templates requested", "workloads", deleted)
 	rvr.eventRecorder.Event(doguResource, corev1.EventTypeNormal, v3beta1.ReasonResizingPVC, fmt.Sprintf("Deleted %v with outdated claim templates, the release recreates them", deleted))
 	return stepsv3.RequeueAfter(defaultRequeueAfter, v3beta1.ReasonResizingPVC, fmt.Sprintf("waiting for StatefulSets with outdated claim templates to be deleted: %v", deleted))
 }
@@ -111,7 +111,7 @@ func (rvr *RequestVolumeResizeStep) replaceStatefulSets(ctx context.Context, dog
 func (rvr *RequestVolumeResizeStep) unmount(ctx context.Context, doguResource *v3beta1.Dogu, doguWorkloads workloads.Workloads, volumes []pvc.Volume, claims []string) stepsv3.StepResult {
 	unmounted, err := rvr.remover.Unmount(ctx, doguResource.Namespace, doguWorkloads, volumes, claims)
 	if err != nil {
-		return stepsv3.RequeueWithError(err, v3beta1.ReasonResizingPVC)
+		return stepsv3.RequeueWithError(fmt.Errorf("failed to unmount volumes: %w", err), v3beta1.ReasonResizingPVC)
 	}
 
 	if len(unmounted.Workloads) > 0 {
