@@ -102,6 +102,7 @@ func NewDoguMigrationUseCase(
 	ociStep *install.EnsureOCIRepositoryStep,
 	waitOCIStep *install.WaitForOCIRepositoryReadyStep,
 	validateChartStep *install.ValidateChartStep,
+	migrationVersionStep *migration.MigrationVersionStep,
 	migrationSecretStep *migration.MigrationSecretStep,
 	migrateDoguPVCStep *migration.MigrateDoguPVCStep,
 	cleanupV2ResourcesStep *migration.CleanupV2ResourcesStep,
@@ -117,6 +118,8 @@ func NewDoguMigrationUseCase(
 			ociStep,
 			waitOCIStep,
 			validateChartStep,
+			// The version is checked against the chart, so it needs the chart that the steps above provide.
+			migrationVersionStep,
 			migrationSecretStep,
 			migrateDoguPVCStep,
 			cleanupV2ResourcesStep,

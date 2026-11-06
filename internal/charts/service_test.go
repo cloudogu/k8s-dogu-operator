@@ -291,6 +291,45 @@ func Test_Service_DoguMetaValues(t *testing.T) {
 	})
 }
 
+func Test_Service_AppVersion(t *testing.T) {
+	ctx := context.Background()
+	dogu := testDogu("ecosystem", "cas")
+
+	t.Run("returns the appVersion of the chart", func(t *testing.T) {
+		archive := saveChartArchive(t, &helmChart.Chart{
+			Metadata: &helmChart.Metadata{APIVersion: helmChart.APIVersionV2, Name: "cas", Version: "0.1.0", AppVersion: "7.0.10"},
+		})
+		s := NewService(staticLoader("d", archive), nil, chartutil.DefaultCapabilities, installResolver())
+
+		appVersion, err := s.AppVersion(ctx, dogu)
+
+		require.NoError(t, err)
+		assert.Equal(t, "7.0.10", appVersion)
+	})
+
+	t.Run("returns empty appVersion if the chart sets none", func(t *testing.T) {
+		s := NewService(staticLoader("d", testChartArchive(t, "cas")), nil, chartutil.DefaultCapabilities, installResolver())
+
+		appVersion, err := s.AppVersion(ctx, dogu)
+
+		require.NoError(t, err)
+		assert.Empty(t, appVersion)
+	})
+
+	t.Run("propagates loader error", func(t *testing.T) {
+		loader := &MockChartProvider{
+			ArtifactDigestFunc: func(context.Context, *v3beta1.Dogu) (string, error) {
+				return "", errors.New("boom")
+			},
+		}
+		s := NewService(loader, nil, chartutil.DefaultCapabilities, installResolver())
+
+		_, err := s.AppVersion(ctx, dogu)
+
+		require.ErrorContains(t, err, "boom")
+	})
+}
+
 func Test_Service_Render(t *testing.T) {
 	ctx := context.Background()
 	dogu := testDogu("ecosystem", "cas")

@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [#358] Support `DoguRestart` for dogu v3.
 - [#367] Warning condition and event when activating the export mode for V3 Dogus because is not implemented
 - [#368] Detect whether a v3 dogu has to be migrated from v2 or installed
+- [#397] Block the migration of a v2 dogu if the `appVersion` of the v3 chart does not match the installed v2 dogu version (without the dogu revision `-N`)
 - [#354] The `HelmRelease` for a dogu is now suspended, if either Stop or PauseReconciliation is set for it, or a PVC resize has to be done.
     - The Condition UpdatePending is set to True, if any updates to OCI repositories are pending and reset, if there are no pending updates detected.
     - Most steps of the dogu reconciliation are skipped, if PauseReconciliation is set (except to set the Condition UpdatePending).
@@ -32,6 +33,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - [#372] Ignore updates of HelmReleases that only toggle the `Reconciling` condition, to avoid unnecessary reconciliations
+
+### Security
+- [#397] Fix GO-CVEs: GO-2026-6865, GO-2026-6860, GO-2026-6866
 
 ## [v3.35.0] - 2026-10-20
 ### Added
