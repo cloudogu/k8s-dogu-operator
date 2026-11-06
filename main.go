@@ -338,6 +338,7 @@ func generalOptions() fx.Option {
 			controllers.NewDoguRestartReconciler,
 			controllers.NewDoguRestartV3Reconciler,
 			controllers.NewDoguHealthReconciler,
+			controllers.NewDoguVolumeLabelReconciler,
 
 			// runners
 			health.NewStartupHandler,
@@ -360,6 +361,9 @@ func generalOptions() fx.Option {
 			},
 			func(*controllers.DoguHealthReconciler) {
 				// creates a fx dependency on the DoguHealthReconciler
+			},
+			func(*controllers.DoguVolumeLabelReconciler) {
+				// creates a fx dependency on the DoguVolumeLabelReconciler
 			},
 
 			func(*health.StartupHandler) {
