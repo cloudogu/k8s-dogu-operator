@@ -5,7 +5,7 @@ FROM ghcr.io/helmfile/helmfile:${HELMFILE_VERSION} AS helmfile
 FROM busybox:${BUSYBOX_VERSION} AS shell
 FROM mikefarah/yq:${YQ_VERSION} AS yq
 
-FROM golang:1.27.1 AS builder
+FROM golang:1.27.3 AS builder
 
 WORKDIR /workspace
 

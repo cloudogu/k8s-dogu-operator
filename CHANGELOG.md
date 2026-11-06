@@ -20,11 +20,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - Most steps of the dogu reconciliation are skipped, if PauseReconciliation is set (except to set the Condition UpdatePending).
 - [#377] Move the service account credentials of a v2 dogu into the migration secret `<dogu>-migration`
 - [#381] create a migration pvc for dogu v2 to dogu v3 migration
+- [#379] Cleanup Dogu v2 resources during migration to Dogu v3
 - [#391] Run the migration jobs of a v3 dogu chart during the migration from v2 and delete the v2 volume afterward
 
 ### Changed
 - [#383] Reduce logger noise on every reconcile
 - Update go to 1.27.3
+- [#387] Update the helmfile image's Go builder to 1.27.3.
+- [#387] update to image cloudogu/dogu-additional-mounts-init:0.1.4
 
 ### Fixed
 - [#372] Ignore updates of HelmReleases that only toggle the `Reconciling` condition, to avoid unnecessary reconciliations
