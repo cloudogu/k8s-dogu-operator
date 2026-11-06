@@ -34,6 +34,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - [#372] Ignore updates of HelmReleases that only toggle the `Reconciling` condition, to avoid unnecessary reconciliations
 
+### Security
+- [#397] Fix GO-CVEs: GO-2026-6865, GO-2026-6860, GO-2026-6866
+
 ## [v3.35.0] - 2026-10-20
 ### Added
 - [#341] Experimental helmfile support
