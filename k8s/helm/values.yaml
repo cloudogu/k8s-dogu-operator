@@ -28,6 +28,8 @@ controllerManager:
     # List of simple dogu names without dogu namespaces e.g. ["grafana", "..."]
     warpMenuDisabledV2Dogus: []
     doguV3Enabled: false
+    # Install v3 dogus from the dev chart in the annotation k8s.cloudogu.com/dev-chart-url instead of the dogu registry.
+    doguV3DevChartsEnabled: false
     disablePostfixDependencyCheck: false
     doguStartupProbeTimeout: 1
     doguRestartSuccessfulHistoryLimit: 3

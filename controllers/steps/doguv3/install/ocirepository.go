@@ -30,34 +30,53 @@ const (
 	containerRegistrySecret = "ces-container-registries"
 )
 
-// EnsureOCIRepositoryStep ensures the OCIRepository resource.
-type EnsureOCIRepositoryStep struct {
-	k8sClient     K8sClient
-	doguRegistry  DoguRegistryReader
-	eventRecorder EventRecorder
+const (
+	// AnnotationDevChartURL contains the OCI URL (without tag) of a dev chart that replaces the chart from the dogu registry.
+	AnnotationDevChartURL = "k8s.cloudogu.com/dev-chart-url"
+	// AnnotationDevChartInsecure marks the registry of the dev chart as insecure (plain HTTP or no certificate verification), if set to "true".
+	AnnotationDevChartInsecure = "k8s.cloudogu.com/dev-chart-insecure"
+)
+
+const (
+	// ReasonDevChart is the event reason if the OCIRepository of a dogu uses a dev chart.
+	ReasonDevChart = "DevChart"
+	// ReasonDevChartsDisabled is the event reason if a dogu has a dev chart annotation, but dev charts are disabled.
+	ReasonDevChartsDisabled = "DevChartsDisabled"
+)
+
+// chartSource describes where the OCIRepository of a dogu pulls the chart from.
+type chartSource struct {
+	url      string
+	tag      string
+	insecure bool
+	devChart bool
 }
 
-func NewEnsureOCIRepositoryStep(k8sClient K8sClient, doguRegistry DoguRegistryReader, recorder EventRecorder) *EnsureOCIRepositoryStep {
+// EnsureOCIRepositoryStep ensures the OCIRepository resource.
+type EnsureOCIRepositoryStep struct {
+	k8sClient        K8sClient
+	doguRegistry     DoguRegistryReader
+	eventRecorder    EventRecorder
+	devChartsEnabled bool
+}
+
+// NewEnsureOCIRepositoryStep creates the step. If devChartsEnabled is set, the dev chart annotations of a dogu replace the chart from the dogu registry.
+func NewEnsureOCIRepositoryStep(k8sClient K8sClient, doguRegistry DoguRegistryReader, recorder EventRecorder, devChartsEnabled bool) *EnsureOCIRepositoryStep {
 	return &EnsureOCIRepositoryStep{
-		k8sClient:     k8sClient,
-		doguRegistry:  doguRegistry,
-		eventRecorder: recorder,
+		k8sClient:        k8sClient,
+		doguRegistry:     doguRegistry,
+		eventRecorder:    recorder,
+		devChartsEnabled: devChartsEnabled,
 	}
 }
 
 func (eor *EnsureOCIRepositoryStep) Run(ctx context.Context, doguResource *v3beta1.Dogu) stepsv3.StepResult {
-	// Query Dogu-Registry for the dogu descriptor
-	identifier := doguv3.Identifier{
-		DoguNamespace: doguResource.Spec.DoguNamespace,
-		Name:          doguResource.Spec.Name,
-		Version:       doguResource.Spec.Version,
-	}
-	dogu, err := eor.doguRegistry.Get(ctx, identifier)
+	source, err := eor.resolveChartSource(ctx, doguResource)
 	if err != nil {
-		err = fmt.Errorf("failed to get dogu descriptor for identifier %s: %w", identifier, err)
 		if doguv3reg.IsGenericError(err) || doguv3reg.IsUnauthorizedError(err) || doguv3reg.IsForbiddenError(err) || doguv3reg.IsNotFoundError(err) {
 			return stepsv3.Abort(v3beta1.ReasonDownloadFailed, err.Error())
 		}
+
 		return stepsv3.RequeueWithError(err, v3beta1.ReasonInstalling)
 	}
 
@@ -69,13 +88,13 @@ func (eor *EnsureOCIRepositoryStep) Run(ctx context.Context, doguResource *v3bet
 
 	if doguResource.Spec.PauseReconciliation {
 		// if PauseReconciliation is set, we don't want to create/update the repository resource, but exit here
-		return eor.checkForPendingChanges(ctx, dogu, repository, doguResource)
+		return eor.checkForPendingChanges(ctx, source, repository, doguResource)
 	}
 
 	// Use patch because the repository resource will be updated from the source-controller.
 	// CreateOrUpdate would produce conflict errors and increase the number of reconciles.
 	result, err := controllerutil.CreateOrPatch(ctx, eor.k8sClient, repository, func() error {
-		configureRepository(repository, doguResource, dogu)
+		configureRepository(repository, doguResource, source)
 		return controllerutil.SetControllerReference(doguResource, repository, eor.k8sClient.Scheme())
 	})
 
@@ -85,18 +104,60 @@ func (eor *EnsureOCIRepositoryStep) Run(ctx context.Context, doguResource *v3bet
 
 	switch result {
 	case controllerutil.OperationResultCreated:
-		eor.eventRecorder.Event(doguResource, v1.EventTypeNormal, v3beta1.ConditionChartAvailable, "OCIRepository created")
-		logging.Info(ctx, "created OCIRepository", "name", repository.Name)
+		eor.recordRepositoryChange(ctx, doguResource, repository, source, "created")
 	case controllerutil.OperationResultUpdated:
-		eor.eventRecorder.Event(doguResource, v1.EventTypeNormal, v3beta1.ConditionChartAvailable, "OCIRepository updated")
-		logging.Info(ctx, "updated OCIRepository", "name", repository.Name)
-
+		eor.recordRepositoryChange(ctx, doguResource, repository, source, "updated")
 	}
 
 	return stepsv3.Continue()
 }
 
-func configureRepository(repository *flux.OCIRepository, doguResource *v3beta1.Dogu, dogu *doguv3.Dogu) {
+// resolveChartSource determines the chart of the dogu, either from the dev chart annotations or from the dogu registry.
+func (eor *EnsureOCIRepositoryStep) resolveChartSource(ctx context.Context, doguResource *v3beta1.Dogu) (chartSource, error) {
+	devChartURL := doguResource.Annotations[AnnotationDevChartURL]
+	if devChartURL != "" {
+		if eor.devChartsEnabled {
+			return chartSource{
+				url:      devChartURL,
+				tag:      doguResource.Spec.Version,
+				insecure: doguResource.Annotations[AnnotationDevChartInsecure] == "true",
+				devChart: true,
+			}, nil
+		}
+
+		message := fmt.Sprintf("Ignoring annotation %s because dev charts are disabled in the dogu operator; using the dogu registry", AnnotationDevChartURL)
+		eor.eventRecorder.Event(doguResource, v1.EventTypeWarning, ReasonDevChartsDisabled, message)
+		logging.Info(ctx, message, "dogu", doguResource.Name)
+	}
+
+	identifier := doguv3.Identifier{
+		DoguNamespace: doguResource.Spec.DoguNamespace,
+		Name:          doguResource.Spec.Name,
+		Version:       doguResource.Spec.Version,
+	}
+
+	dogu, err := eor.doguRegistry.Get(ctx, identifier)
+	if err != nil {
+		return chartSource{}, fmt.Errorf("failed to get dogu descriptor for identifier %s: %w", identifier, err)
+	}
+
+	return chartSource{url: dogu.Chart, tag: dogu.Version}, nil
+}
+
+func (eor *EnsureOCIRepositoryStep) recordRepositoryChange(ctx context.Context, doguResource *v3beta1.Dogu, repository *flux.OCIRepository, source chartSource, operation string) {
+	if source.devChart {
+		message := fmt.Sprintf("OCIRepository %s from dev chart %s:%s", operation, source.url, source.tag)
+		eor.eventRecorder.Event(doguResource, v1.EventTypeNormal, ReasonDevChart, message)
+		logging.Info(ctx, message, "name", repository.Name)
+
+		return
+	}
+
+	eor.eventRecorder.Event(doguResource, v1.EventTypeNormal, v3beta1.ConditionChartAvailable, "OCIRepository "+operation)
+	logging.Info(ctx, operation+" OCIRepository", "name", repository.Name)
+}
+
+func configureRepository(repository *flux.OCIRepository, doguResource *v3beta1.Dogu, source chartSource) {
 	if repository.Labels == nil {
 		repository.Labels = make(map[string]string)
 	}
@@ -104,10 +165,11 @@ func configureRepository(repository *flux.OCIRepository, doguResource *v3beta1.D
 	repository.Labels[v3beta1.DoguLabelName] = doguResource.Spec.Name
 	repository.Labels[v3beta1.DoguLabelVersion] = doguResource.Spec.Version
 	repository.Spec = flux.OCIRepositorySpec{
-		URL: dogu.Chart,
+		URL: source.url,
 		Reference: &flux.OCIRepositoryRef{
-			Tag: dogu.Version,
+			Tag: source.tag,
 		},
+		Insecure:  source.insecure,
 		Interval:  metav1.Duration{Duration: time.Hour * 6},
 		SecretRef: &meta.LocalObjectReference{Name: containerRegistrySecret},
 		Provider:  flux.GenericOCIProvider,
@@ -115,7 +177,7 @@ func configureRepository(repository *flux.OCIRepository, doguResource *v3beta1.D
 	}
 }
 
-func (eor *EnsureOCIRepositoryStep) checkForPendingChanges(ctx context.Context, dogu *doguv3.Dogu, repository *flux.OCIRepository, doguResource *v3beta1.Dogu) stepsv3.StepResult {
+func (eor *EnsureOCIRepositoryStep) checkForPendingChanges(ctx context.Context, source chartSource, repository *flux.OCIRepository, doguResource *v3beta1.Dogu) stepsv3.StepResult {
 	err := eor.k8sClient.Get(ctx, client.ObjectKey{Namespace: repository.Namespace, Name: repository.Name}, repository)
 	if err != nil {
 		if !errors.IsNotFound(err) {
@@ -124,7 +186,7 @@ func (eor *EnsureOCIRepositoryStep) checkForPendingChanges(ctx context.Context, 
 	}
 
 	desiredRepo := repository.DeepCopy()
-	configureRepository(desiredRepo, doguResource, dogu)
+	configureRepository(desiredRepo, doguResource, source)
 	if !checkForChanges(repository, desiredRepo) {
 		return stepsv3.Continue()
 	}

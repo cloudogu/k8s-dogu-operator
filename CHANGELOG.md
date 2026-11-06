@@ -23,6 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [#377] Move the service account credentials of a v2 dogu into the migration secret `<dogu>-migration`
 - [#381] create a migration pvc for dogu v2 to dogu v3 migration
 - [#379] Cleanup Dogu v2 resources during migration to Dogu v3
+- [#393] Dev mode for v3 dogus: install a dogu from the dev chart in the annotation `k8s.cloudogu.com/dev-chart-url` instead of the dogu registry.
 
 ### Changed
 - [#383] Reduce logger noise on every reconcile
@@ -32,6 +33,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - [#372] Ignore updates of HelmReleases that only toggle the `Reconciling` condition, to avoid unnecessary reconciliations
+
+### Security
+- [#397] Fix GO-CVEs: GO-2026-6865, GO-2026-6860, GO-2026-6866
 
 ## [v3.35.0] - 2026-10-20
 ### Added
