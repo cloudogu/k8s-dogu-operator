@@ -10,7 +10,9 @@ import (
 
 	k8sv2 "github.com/cloudogu/k8s-dogu-lib/v3/api/v2"
 	doguv2 "github.com/cloudogu/k8s-dogu-lib/v3/client/typed/api/v2"
+	"github.com/cloudogu/k8s-dogu-operator/v3/internal/dogu/restart"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 type DoguRestartGarbageCollector struct {
@@ -44,12 +46,13 @@ func (r *DoguRestartGarbageCollector) DoGarbageCollection(ctx context.Context, d
 		return err
 	}
 
-	successfulRestarts := filterDoguRestarts(restarts, func(phase k8sv2.RestartStatusPhase) bool {
-		return phase == k8sv2.RestartStatusPhaseCompleted
+	// restarts of v2 dogus are tracked by their phase and restarts of v3 dogus by their conditions
+	successfulRestarts := filterDoguRestarts(restarts, func(item *k8sv2.DoguRestart) bool {
+		return item.Status.Phase == k8sv2.RestartStatusPhaseCompleted || restart.IsSucceeded(item)
 	})
 
-	failedRestarts := filterDoguRestarts(restarts, func(phase k8sv2.RestartStatusPhase) bool {
-		return phase.IsFailed()
+	failedRestarts := filterDoguRestarts(restarts, func(item *k8sv2.DoguRestart) bool {
+		return item.Status.Phase.IsFailed() || restart.IsFailed(item)
 	})
 
 	var errs []error
@@ -59,10 +62,10 @@ func (r *DoguRestartGarbageCollector) DoGarbageCollection(ctx context.Context, d
 	return errors.Join(errs...)
 }
 
-func filterDoguRestarts(items []k8sv2.DoguRestart, fn func(phase k8sv2.RestartStatusPhase) bool) []k8sv2.DoguRestart {
+func filterDoguRestarts(items []k8sv2.DoguRestart, fn func(item *k8sv2.DoguRestart) bool) []k8sv2.DoguRestart {
 	var result []k8sv2.DoguRestart
 	for _, item := range items {
-		if fn(item.Status.Phase) {
+		if fn(&item) {
 			result = append(result, item)
 		}
 	}
@@ -101,7 +104,8 @@ func (r *DoguRestartGarbageCollector) truncateDoguRestartHistory(ctx context.Con
 	var errs []error
 	// We can not delete as collection by .name because the field selector does not support the || operator.
 	for i := range amountOfItemsToDelete {
-		errs = append(errs, r.doguRestartInterface.Delete(ctx, items[i].Name, metav1.DeleteOptions{}))
+		// the restart may already be deleted by the garbage collection of another reconciliation
+		errs = append(errs, client.IgnoreNotFound(r.doguRestartInterface.Delete(ctx, items[i].Name, metav1.DeleteOptions{})))
 	}
 
 	return errors.Join(errs...)

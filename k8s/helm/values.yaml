@@ -4,18 +4,20 @@ global:
   networkPolicies:
     enabled: true
   timezone: "Europe/Berlin"
+admissionPolicy:
+  validateDoguLabels: false
 additionalImages:
   # chownInitImage will be used to change file permissions on writeable dogu volumes
   chownInitImage: busybox:1.36
   # exporterImage will be used as sidecar container if the export-mode of a dogu is active
   exporterImage: registry.cloudogu.com/k8s/rsync-sidecar:1.1.0
   # additionalMountsInitContainerImage will be used as init container if the dogu mounts additional data
-  additionalMountsInitContainerImage: cloudogu/dogu-additional-mounts-init:0.1.3
+  additionalMountsInitContainerImage: cloudogu/dogu-additional-mounts-init:0.1.4
 controllerManager:
   image:
     registry: docker.io
     repository: cloudogu/k8s-dogu-operator
-    tag: 3.35.0
+    tag: 3.36.0
   imagePullPolicy: IfNotPresent
   env:
     logLevel: debug

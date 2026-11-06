@@ -1,9 +1,0 @@
-apiVersion: k8s.cloudogu.com/v2
-kind: Dogu
-metadata:
-  name: usermgt
-  labels:
-    app: ces
-spec:
-  name: official/usermgt
-  version: 1.16.3-1

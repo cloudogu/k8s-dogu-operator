@@ -21,3 +21,17 @@ In addition there are some configuration options to configure how the Helm insta
 
 Both intervals are given as a number with a time unit, e.g. "20s" (for 20 seconds), "2m" (for 2 minutes), 
 or "1h" (for 1 hour). Combinations like "1h20m" (for 1 hour and 20 minutes) are also possible.
+
+## Stopping and Starting
+
+Set `spec.stopped: true` on the Dogu resource to stop its workloads. The operator waits for HelmRelease suspension,
+scales Deployments and StatefulSets to zero and waits for their pods to disappear. StatefulSet PVCs are retained.
+`status.stopped: true` confirms that the workloads have stopped.
+
+While stopped, the operator still updates chart sources and HelmRelease inputs; Flux does not apply them while suspended.
+Set `spec.stopped: false` to start the dogu again. The stopped status is cleared after deployment and health checks succeed.
+
+`spec.pauseReconciliation: true` takes precedence over starting or stopping: regular resource changes are skipped,
+but source and release checks can still set `UpdatePending=True`. A current-generation True is retained while paused
+or stopped. An older condition is cleared only after all relevant checks complete without detecting pending changes.
+An incomplete check leaves the condition unchanged and retries.

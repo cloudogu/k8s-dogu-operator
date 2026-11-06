@@ -8,7 +8,6 @@ import (
 
 	"github.com/cloudogu/k8s-dogu-lib/v3/api/v3beta1"
 	"github.com/cloudogu/k8s-dogu-operator/v3/internal/dogu/workloads"
-	appsv1 "k8s.io/api/apps/v1"
 )
 
 // State is the health of a dogu in terms of the Healthy condition of the dogu resource.
@@ -50,17 +49,17 @@ func (c *Checker) Check(ctx context.Context, dogu *v3beta1.Dogu) (State, error) 
 	var notReady []string
 
 	for _, deployment := range found.Deployments {
-		desired := replicasOrDefault(deployment.Spec.Replicas)
+		desired := workloads.ReplicasOrDefault(deployment.Spec.Replicas)
 		desiredReplicas += desired
-		if !isDeploymentReady(deployment, desired) {
+		if !workloads.IsDeploymentReady(deployment) {
 			notReady = append(notReady, describe("Deployment", deployment.Name, "available", deployment.Status.AvailableReplicas, deployment.Status.UpdatedReplicas, desired))
 		}
 	}
 
 	for _, statefulSet := range found.StatefulSets {
-		desired := replicasOrDefault(statefulSet.Spec.Replicas)
+		desired := workloads.ReplicasOrDefault(statefulSet.Spec.Replicas)
 		desiredReplicas += desired
-		if !isStatefulSetReady(statefulSet, desired) {
+		if !workloads.IsStatefulSetReady(statefulSet) {
 			notReady = append(notReady, describe("StatefulSet", statefulSet.Name, "ready", statefulSet.Status.ReadyReplicas, statefulSet.Status.UpdatedReplicas, desired))
 		}
 	}
@@ -68,7 +67,7 @@ func (c *Checker) Check(ctx context.Context, dogu *v3beta1.Dogu) (State, error) 
 	for _, daemonSet := range found.DaemonSets {
 		desired := daemonSet.Status.DesiredNumberScheduled
 		desiredReplicas += desired
-		if !isDaemonSetReady(daemonSet) {
+		if !workloads.IsDaemonSetReady(daemonSet) {
 			notReady = append(notReady, describe("DaemonSet", daemonSet.Name, "ready", daemonSet.Status.NumberReady, daemonSet.Status.UpdatedNumberScheduled, desired))
 		}
 	}
@@ -88,31 +87,4 @@ func (c *Checker) Check(ctx context.Context, dogu *v3beta1.Dogu) (State, error) 
 // describe returns a short description of a workload that is not ready, e.g. "StatefulSet/nexus (0/1 ready, 1/1 updated)".
 func describe(kind, name, readyLabel string, ready, updated, desired int32) string {
 	return fmt.Sprintf("%s/%s (%d/%d %s, %d/%d updated)", kind, name, ready, desired, readyLabel, updated, desired)
-}
-
-// replicasOrDefault returns the desired replicas of a Deployment or StatefulSet; Kubernetes defaults them to 1.
-func replicasOrDefault(replicas *int32) int32 {
-	if replicas == nil {
-		return 1
-	}
-	return *replicas
-}
-
-func isDeploymentReady(deployment appsv1.Deployment, desired int32) bool {
-	return deployment.Status.ObservedGeneration >= deployment.Generation &&
-		deployment.Status.UpdatedReplicas == desired &&
-		deployment.Status.AvailableReplicas == desired
-}
-
-func isStatefulSetReady(statefulSet appsv1.StatefulSet, desired int32) bool {
-	return statefulSet.Status.ObservedGeneration >= statefulSet.Generation &&
-		statefulSet.Status.UpdatedReplicas == desired &&
-		statefulSet.Status.ReadyReplicas == desired
-}
-
-func isDaemonSetReady(daemonSet appsv1.DaemonSet) bool {
-	desired := daemonSet.Status.DesiredNumberScheduled
-	return daemonSet.Status.ObservedGeneration >= daemonSet.Generation &&
-		daemonSet.Status.UpdatedNumberScheduled == desired &&
-		daemonSet.Status.NumberReady == desired
 }

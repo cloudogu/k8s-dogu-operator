@@ -11,6 +11,7 @@ import (
 	v3 "github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv3"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv3/deletion"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv3/install"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv3/migration"
 	"github.com/cloudogu/k8s-dogu-operator/v3/internal/logging"
 	coreV1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -63,11 +64,17 @@ func NewDoguInstallOrChangeUseCase(
 	ociStep *install.EnsureOCIRepositoryStep,
 	waitOCIStep *install.WaitForOCIRepositoryReadyStep,
 	validateChartStep *install.ValidateChartStep,
+	suspendHelmReleaseStep *install.SuspendHelmReleaseStep,
 	helmReleaseStep *install.EnsureHelmReleaseStep,
 	helmReleaseStatusStep *install.HelmReleaseStatusStep,
+	updatePendingStep *install.UpdatePendingStep,
+	exportModeStep *install.ExportModeStep,
 	client K8sClient, recorder EventRecorder) *DoguUseCase {
 	return &DoguUseCase{
 		steps: []Step{
+			// Execute the current export mode step first because it only creates a condition with "not implemented" reason.
+			// If the functionality of the export mode for dogu v3 will be developed the position may change in the execution order.
+			exportModeStep,
 			// CreateFinalizerStep MUST run before any owned resource (OCIRepository, HelmRelease) is
 			// created, so a delete racing an install can never orphan those resources. (In v2 the
 			// finalizer is added after its read-only gate steps, but likewise before resource creation;
@@ -76,8 +83,46 @@ func NewDoguInstallOrChangeUseCase(
 			ociStep,
 			waitOCIStep,
 			validateChartStep,
+			suspendHelmReleaseStep,
+			install.NewStopWorkloadsStep(client),
 			helmReleaseStep,
 			helmReleaseStatusStep,
+			updatePendingStep,
+		},
+		k8sClient:     client,
+		eventRecorder: recorder,
+	}
+}
+
+// NewDoguMigrationUseCase creates a new DoguUseCase instance that migrates a v2 dogu to v3.
+// The steps are executed in the order they are provided.
+func NewDoguMigrationUseCase(
+	finalizerStep *install.CreateFinalizerStep,
+	migrationPreconditionsStep *migration.MigrationPreconditionsStep,
+	ociStep *install.EnsureOCIRepositoryStep,
+	waitOCIStep *install.WaitForOCIRepositoryReadyStep,
+	validateChartStep *install.ValidateChartStep,
+	migrationSecretStep *migration.MigrationSecretStep,
+	migrateDoguPVCStep *migration.MigrateDoguPVCStep,
+	cleanupV2ResourcesStep *migration.CleanupV2ResourcesStep,
+	migrationPendingStep *migration.MigrationPendingStep,
+	client K8sClient,
+	recorder EventRecorder,
+) *DoguUseCase {
+	return &DoguUseCase{
+		steps: []Step{
+			finalizerStep,
+			migrationPreconditionsStep,
+			// The chart is validated before the migration, so that a v2 dogu is never removed for a chart that cannot be installed.
+			ociStep,
+			waitOCIStep,
+			validateChartStep,
+			migrationSecretStep,
+			migrateDoguPVCStep,
+			cleanupV2ResourcesStep,
+			// MigrationPendingStep stands in for the actual migration steps and halts the use-case,
+			// so that no chart is installed next to the v2 resources.
+			migrationPendingStep,
 		},
 		k8sClient:     client,
 		eventRecorder: recorder,
@@ -99,6 +144,7 @@ func (duc *DoguUseCase) HandleUntilApplied(ctx context.Context, doguResource *v3
 
 		// Abort, requeue or error
 		if !result.Continue {
+			logging.Debug(stepCtx, "Stopping step execution and requeue", "dogu", doguResource.Name)
 			return duc.stopStepExecution(ctx, doguResource, result)
 		}
 	}
@@ -110,8 +156,34 @@ func (duc *DoguUseCase) HandleUntilApplied(ctx context.Context, doguResource *v3
 		return 0, nil
 	}
 
+	// Paused steps may continue after read-only checks; that does not confirm a start.
+	if doguResource.Spec.PauseReconciliation {
+		return duc.stopStepExecution(ctx, doguResource, v3.Abort(v3beta1.ReasonReconciliationPaused, "Dogu reconciliation is paused"))
+	}
+	// A completed start also clears progress from a cancelled stop.
+	stoppedCondition := meta.FindStatusCondition(doguResource.Status.Conditions, v3beta1.ConditionStopped)
+	if !doguResource.Spec.Stopped && (doguResource.Status.Stopped || stoppedCondition != nil) {
+		stoppedChanged := doguResource.Status.Stopped
+		doguResource.Status.Stopped = false
+		conditionChanged := meta.SetStatusCondition(&doguResource.Status.Conditions, metav1.Condition{
+			Type: v3beta1.ConditionStopped, Status: metav1.ConditionFalse,
+			Reason: v3beta1.ReasonNotStopped, Message: "Dogu workloads are running", ObservedGeneration: doguResource.Generation,
+		})
+		if stoppedChanged || conditionChanged {
+			if err := duc.k8sClient.Status().Update(ctx, doguResource); err != nil {
+				if apierrors.IsConflict(err) {
+					return 5 * time.Second, nil
+				}
+				return 0, fmt.Errorf("failed to clear dogu stop status: %w", err)
+			}
+		}
+	}
+
 	// success
 	successMessage := "Dogu reconciliation completed successfully"
+	if doguResource.Spec.Stopped {
+		successMessage = "Dogu workloads are stopped; the desired HelmRelease is prepared"
+	}
 	err := duc.updateReadyCondition(ctx, doguResource, metav1.ConditionTrue, v3beta1.ReasonSucceeded, successMessage)
 	if err != nil {
 		if apierrors.IsConflict(err) {
@@ -146,7 +218,7 @@ func (duc *DoguUseCase) stopStepExecution(ctx context.Context, doguResource *v3b
 		return result.RequeueAfter, errors.Join(result.Err, err)
 	}
 	// Only send events on abort and do not send events on requeues because this would flood the apiserver.
-	if result.Err == nil && result.RequeueAfter == 0 {
+	if result.Err == nil && result.RequeueAfter == 0 && reason != v3beta1.ReasonReconciliationPaused {
 		logging.Error(ctx, errors.New(result.ReadyMessage), "dogu reconciliation aborted")
 		duc.eventRecorder.Event(doguResource, coreV1.EventTypeWarning, result.ReadyReason, result.ReadyMessage)
 	}

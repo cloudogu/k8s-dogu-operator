@@ -6,6 +6,13 @@ metadata:
   labels:
     {{- include "k8s-dogu-operator.labels" . | nindent 4 }}
 rules:
+  # dogu v3: persist the migration source PV annotation via server-side apply.
+  - apiGroups:
+      - k8s.cloudogu.com
+    resources:
+      - dogus
+    verbs:
+      - patch
   # dogu v3: manage the OCIRepository (source-controller) that mirrors a dogu's chart artifact
   - apiGroups:
       - "source.toolkit.fluxcd.io"
@@ -35,6 +42,7 @@ rules:
       - get
       - watch
       - patch
+      - update
       - delete
   - apiGroups:
       - "helm.toolkit.fluxcd.io"
@@ -42,8 +50,9 @@ rules:
       - helmreleases/status
     verbs:
       - get
-  # dogu v3: discover a dogu's workloads to derive its health.
+  # dogu v3: discover a dogu's workloads to derive its health and restart them.
   # watch is needed for the caching kes-client
+  # patch is needed to set the restart annotation via server-side apply
   - apiGroups:
       - apps
     resources:
@@ -54,6 +63,56 @@ rules:
       - get
       - list
       - watch
+      - patch
+  # dogu v3: scale down the v2 Deployment before migrating its volume.
+  - apiGroups:
+      - apps
+    resources:
+      - deployments
+    verbs:
+      - update
+  # dogu v3: follow Deployment Pod ownership and wait for stopped Pods to disappear.
+  - apiGroups:
+      - apps
+    resources:
+      - replicasets
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - ""
+    resources:
+      - pods
+    verbs:
+      - get
+      - list
+      - watch
+  # dogu v3: recreate PVCs when migrating existing volumes from v2.
+  - apiGroups:
+      - ""
+    resources:
+      - persistentvolumeclaims
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - delete
+  # dogu v3: read the v2 sensitive config and manage the migration secret
+  # patch is needed to apply the migration secret via server-side apply
+  - apiGroups:
+      - ""
+    resources:
+      - secrets
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - patch
+      - delete
   # dogu v3: read-only access so Helm `lookup` resolves during the chart validation render.
   # Namespaced on purpose: dogu charts may only `lookup` resources in their own (release)
   # namespace; cluster-scoped or cross-namespace lookups are unsupported and will fail validation.

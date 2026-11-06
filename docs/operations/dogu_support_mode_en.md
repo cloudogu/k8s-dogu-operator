@@ -19,7 +19,7 @@ metadata:
   annotations:
     test: dev
   labels:
-    dogu.name: postfix
+    k8s.cloudogu.com/dogu.name: postfix
     app: ces
 spec:
   name: official/postfix
@@ -54,7 +54,7 @@ metadata:
   annotations:
     test: dev
   labels:
-    dogu.name: postfix
+    k8s.cloudogu.com/dogu.name: postfix
     app: ces
 spec:
   name: official/postfix

@@ -21,6 +21,7 @@ rules:
       - dogus/status
     verbs:
       - update
+      - patch
   # for dogu restart reconciliation and updating with infos about the current state of processing the resource
   - apiGroups:
       - k8s.cloudogu.com

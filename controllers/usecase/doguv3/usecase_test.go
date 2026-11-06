@@ -12,6 +12,7 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv3"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv3/deletion"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv3/install"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv3/migration"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -57,27 +58,77 @@ func TestNewDoguInstallOrChangeUseCase(t *testing.T) {
 	ensureOCIStep := &install.EnsureOCIRepositoryStep{}
 	waitOCIStep := &install.WaitForOCIRepositoryReadyStep{}
 	validateChartStep := &install.ValidateChartStep{}
+	suspendStep := &install.SuspendHelmReleaseStep{}
 	helmReleaseStep := &install.EnsureHelmReleaseStep{}
 	helmReleaseStatusStep := &install.HelmReleaseStatusStep{}
+	exportModeStep := &install.ExportModeStep{}
+	updatePendingStep := &install.UpdatePendingStep{}
 
 	got := NewDoguInstallOrChangeUseCase(
 		finalizerStep,
 		ensureOCIStep,
 		waitOCIStep,
 		validateChartStep,
+		suspendStep,
 		helmReleaseStep,
 		helmReleaseStatusStep,
+		updatePendingStep,
+		exportModeStep,
+		clientMock,
+		recorderMock,
+	)
+
+	wantTypes := []string{
+		"*install.ExportModeStep",
+		"*install.CreateFinalizerStep",
+		"*install.EnsureOCIRepositoryStep",
+		"*install.WaitForOCIRepositoryReadyStep",
+		"*install.ValidateChartStep",
+		"*install.SuspendHelmReleaseStep",
+		"*install.StopWorkloadsStep",
+		"*install.EnsureHelmReleaseStep",
+		"*install.HelmReleaseStatusStep",
+		"*install.UpdatePendingStep",
+	}
+
+	assert.NotNil(t, got)
+	assert.Equal(t, clientMock, got.k8sClient)
+	assert.Equal(t, recorderMock, got.eventRecorder)
+	require.True(t,
+		slices.Equal(typesOf(got.steps), wantTypes),
+		"order mismatch: got=%v want=%v",
+		typesOf(got.steps), wantTypes,
+	)
+}
+
+func TestNewDoguMigrationUseCase(t *testing.T) {
+	clientMock := NewMockK8sClient(t)
+	recorderMock := NewMockEventRecorder(t)
+
+	got := NewDoguMigrationUseCase(
+		&install.CreateFinalizerStep{},
+		&migration.MigrationPreconditionsStep{},
+		&install.EnsureOCIRepositoryStep{},
+		&install.WaitForOCIRepositoryReadyStep{},
+		&install.ValidateChartStep{},
+		&migration.MigrationSecretStep{},
+		&migration.MigrateDoguPVCStep{},
+		&migration.CleanupV2ResourcesStep{},
+		&migration.MigrationPendingStep{},
 		clientMock,
 		recorderMock,
 	)
 
 	wantTypes := []string{
 		"*install.CreateFinalizerStep",
+		"*migration.MigrationPreconditionsStep",
 		"*install.EnsureOCIRepositoryStep",
 		"*install.WaitForOCIRepositoryReadyStep",
 		"*install.ValidateChartStep",
-		"*install.EnsureHelmReleaseStep",
-		"*install.HelmReleaseStatusStep",
+		"*migration.MigrationSecretStep",
+		"*migration.MigrateDoguPVCStep",
+		"*migration.CleanupV2ResourcesStep",
+		"*migration.MigrationPendingStep",
 	}
 
 	assert.NotNil(t, got)
@@ -169,10 +220,12 @@ func TestDoguUseCase_HandleUntilApplied(t *testing.T) {
 			},
 		},
 		{
-			name: "should finish without success condition or event when the dogu is being deleted",
+			name: "should finish deletion even when the dogu is paused and stopped",
 			setup: func(t *testing.T) (K8sClient, EventRecorder, *v3beta1.Dogu, []Step) {
 				successStepResult := doguv3.StepResult{Continue: true}
 				doguResource := testDoguResource.DeepCopy()
+				doguResource.Spec.PauseReconciliation = true
+				doguResource.Spec.Stopped = true
 				now := metav1.Now()
 				doguResource.DeletionTimestamp = &now
 				// The fake client only accepts an object carrying a deletion timestamp if it has a finalizer.

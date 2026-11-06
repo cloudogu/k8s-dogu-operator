@@ -31,7 +31,7 @@ kind: Dogu
 metadata:
   labels:
     app: ces
-    dogu.name: jenkins
+    k8s.cloudogu.com/dogu.name: jenkins
   name: jenkins
   namespace: ecosystem
 spec:
@@ -51,7 +51,7 @@ kind: Dogu
 metadata:
   labels:
     app: ces
-    dogu.name: jenkins
+    k8s.cloudogu.com/dogu.name: jenkins
   name: jenkins
   namespace: ecosystem
 spec:

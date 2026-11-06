@@ -12,7 +12,7 @@ github = new GitHub(this, git)
 changelog = new Changelog(this)
 Docker docker = new Docker(this)
 gpg = new Gpg(this, docker)
-goVersion = "1.27.2"
+goVersion = "1.27.3"
 makefile = new Makefile(this)
 doguOperatorCrdVersion="3.0.0"
 certManagerVersion="1.21.1-1"
@@ -95,6 +95,7 @@ node('docker') {
             String controllerVersion = makefile.getVersion()
 
             stage('Set up k3d cluster') {
+                k3d.installHelmManually()
                 k3d.startK3d()
             }
 

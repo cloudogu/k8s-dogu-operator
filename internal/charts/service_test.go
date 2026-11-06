@@ -216,18 +216,18 @@ func Test_Service_Evict(t *testing.T) {
 	assert.Equal(t, 2, len(loader.GetChartArchiveCalls()), "eviction must force a re-download on the next access")
 }
 
-func Test_Service_ChartPatchTemplate(t *testing.T) {
+func Test_Service_RuntimePatchTemplate(t *testing.T) {
 	ctx := context.Background()
 	dogu := testDogu("ecosystem", "cas")
 
 	t.Run("returns patch template file when present", func(t *testing.T) {
 		archive := testChartArchive(t, "cas",
 			&helmChart.File{Name: "extra.yaml", Data: []byte("nope")},
-			&helmChart.File{Name: patchTemplateFileName, Data: []byte("patch: data")},
+			&helmChart.File{Name: "runtime-patch-tpl.yaml", Data: []byte("patch: data")},
 		)
 		s := NewService(staticLoader("d", archive), nil, chartutil.DefaultCapabilities, installResolver())
 
-		data, ok, err := s.ChartPatchTemplate(ctx, dogu)
+		data, ok, err := s.RuntimePatchTemplate(ctx, dogu)
 
 		require.NoError(t, err)
 		assert.True(t, ok)
@@ -235,10 +235,13 @@ func Test_Service_ChartPatchTemplate(t *testing.T) {
 	})
 
 	t.Run("reports absent when no patch template file", func(t *testing.T) {
-		archive := testChartArchive(t, "cas", &helmChart.File{Name: "extra.yaml", Data: []byte("x: 1")})
+		archive := testChartArchive(t, "cas",
+			&helmChart.File{Name: "docs/runtime-patch-tpl.yaml", Data: []byte("not a root-level runtime file")},
+			&helmChart.File{Name: "mirror-patch-tpl.yaml", Data: []byte("patches: {values.yaml: {image: '{{ registryFrom .images.app }}'}}")},
+		)
 		s := NewService(staticLoader("d", archive), nil, chartutil.DefaultCapabilities, installResolver())
 
-		data, ok, err := s.ChartPatchTemplate(ctx, dogu)
+		data, ok, err := s.RuntimePatchTemplate(ctx, dogu)
 
 		require.NoError(t, err)
 		assert.False(t, ok)
@@ -253,7 +256,7 @@ func Test_Service_ChartPatchTemplate(t *testing.T) {
 		}
 		s := NewService(loader, nil, chartutil.DefaultCapabilities, installResolver())
 
-		_, _, err := s.ChartPatchTemplate(ctx, dogu)
+		_, _, err := s.RuntimePatchTemplate(ctx, dogu)
 
 		require.Error(t, err)
 	})

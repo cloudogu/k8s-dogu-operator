@@ -11,6 +11,7 @@ import (
 	"github.com/cloudogu/ces-commons-lib/dogu"
 	"github.com/cloudogu/cesapp-lib/core"
 	"github.com/cloudogu/k8s-dogu-lib/v3/api/v2"
+	v21 "github.com/cloudogu/k8s-dogu-lib/v3/applyconfiguration/api/v2"
 	v20 "github.com/cloudogu/k8s-dogu-lib/v3/client/typed/api/v2"
 	"github.com/cloudogu/k8s-dogu-lib/v3/client/typed/api/v3beta1"
 	"github.com/go-logr/logr"
@@ -2086,6 +2087,154 @@ func (_m *mockDoguInterface) EXPECT() *mockDoguInterface_Expecter {
 	return &mockDoguInterface_Expecter{mock: &_m.Mock}
 }
 
+// Apply provides a mock function for the type mockDoguInterface
+func (_mock *mockDoguInterface) Apply(ctx context.Context, dogu1 *v21.DoguApplyConfiguration, opts v10.ApplyOptions) (*v2.Dogu, error) {
+	ret := _mock.Called(ctx, dogu1, opts)
+
+	if len(ret) == 0 {
+		panic("no return value specified for Apply")
+	}
+
+	var r0 *v2.Dogu
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *v21.DoguApplyConfiguration, v10.ApplyOptions) (*v2.Dogu, error)); ok {
+		return returnFunc(ctx, dogu1, opts)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *v21.DoguApplyConfiguration, v10.ApplyOptions) *v2.Dogu); ok {
+		r0 = returnFunc(ctx, dogu1, opts)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*v2.Dogu)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, *v21.DoguApplyConfiguration, v10.ApplyOptions) error); ok {
+		r1 = returnFunc(ctx, dogu1, opts)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// mockDoguInterface_Apply_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Apply'
+type mockDoguInterface_Apply_Call struct {
+	*mock.Call
+}
+
+// Apply is a helper method to define mock.On call
+//   - ctx context.Context
+//   - dogu1 *v21.DoguApplyConfiguration
+//   - opts v10.ApplyOptions
+func (_e *mockDoguInterface_Expecter) Apply(ctx any, dogu1 any, opts any) *mockDoguInterface_Apply_Call {
+	return &mockDoguInterface_Apply_Call{Call: _e.mock.On("Apply", ctx, dogu1, opts)}
+}
+
+func (_c *mockDoguInterface_Apply_Call) Run(run func(ctx context.Context, dogu1 *v21.DoguApplyConfiguration, opts v10.ApplyOptions)) *mockDoguInterface_Apply_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 *v21.DoguApplyConfiguration
+		if args[1] != nil {
+			arg1 = args[1].(*v21.DoguApplyConfiguration)
+		}
+		var arg2 v10.ApplyOptions
+		if args[2] != nil {
+			arg2 = args[2].(v10.ApplyOptions)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *mockDoguInterface_Apply_Call) Return(result *v2.Dogu, err error) *mockDoguInterface_Apply_Call {
+	_c.Call.Return(result, err)
+	return _c
+}
+
+func (_c *mockDoguInterface_Apply_Call) RunAndReturn(run func(ctx context.Context, dogu1 *v21.DoguApplyConfiguration, opts v10.ApplyOptions) (*v2.Dogu, error)) *mockDoguInterface_Apply_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// ApplyStatus provides a mock function for the type mockDoguInterface
+func (_mock *mockDoguInterface) ApplyStatus(ctx context.Context, dogu1 *v21.DoguApplyConfiguration, opts v10.ApplyOptions) (*v2.Dogu, error) {
+	ret := _mock.Called(ctx, dogu1, opts)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ApplyStatus")
+	}
+
+	var r0 *v2.Dogu
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *v21.DoguApplyConfiguration, v10.ApplyOptions) (*v2.Dogu, error)); ok {
+		return returnFunc(ctx, dogu1, opts)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *v21.DoguApplyConfiguration, v10.ApplyOptions) *v2.Dogu); ok {
+		r0 = returnFunc(ctx, dogu1, opts)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*v2.Dogu)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, *v21.DoguApplyConfiguration, v10.ApplyOptions) error); ok {
+		r1 = returnFunc(ctx, dogu1, opts)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// mockDoguInterface_ApplyStatus_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ApplyStatus'
+type mockDoguInterface_ApplyStatus_Call struct {
+	*mock.Call
+}
+
+// ApplyStatus is a helper method to define mock.On call
+//   - ctx context.Context
+//   - dogu1 *v21.DoguApplyConfiguration
+//   - opts v10.ApplyOptions
+func (_e *mockDoguInterface_Expecter) ApplyStatus(ctx any, dogu1 any, opts any) *mockDoguInterface_ApplyStatus_Call {
+	return &mockDoguInterface_ApplyStatus_Call{Call: _e.mock.On("ApplyStatus", ctx, dogu1, opts)}
+}
+
+func (_c *mockDoguInterface_ApplyStatus_Call) Run(run func(ctx context.Context, dogu1 *v21.DoguApplyConfiguration, opts v10.ApplyOptions)) *mockDoguInterface_ApplyStatus_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 *v21.DoguApplyConfiguration
+		if args[1] != nil {
+			arg1 = args[1].(*v21.DoguApplyConfiguration)
+		}
+		var arg2 v10.ApplyOptions
+		if args[2] != nil {
+			arg2 = args[2].(v10.ApplyOptions)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *mockDoguInterface_ApplyStatus_Call) Return(result *v2.Dogu, err error) *mockDoguInterface_ApplyStatus_Call {
+	_c.Call.Return(result, err)
+	return _c
+}
+
+func (_c *mockDoguInterface_ApplyStatus_Call) RunAndReturn(run func(ctx context.Context, dogu1 *v21.DoguApplyConfiguration, opts v10.ApplyOptions) (*v2.Dogu, error)) *mockDoguInterface_ApplyStatus_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Create provides a mock function for the type mockDoguInterface
 func (_mock *mockDoguInterface) Create(ctx context.Context, dogu1 *v2.Dogu, opts v10.CreateOptions) (*v2.Dogu, error) {
 	ret := _mock.Called(ctx, dogu1, opts)
@@ -2943,6 +3092,154 @@ type mockDoguRestartInterface_Expecter struct {
 
 func (_m *mockDoguRestartInterface) EXPECT() *mockDoguRestartInterface_Expecter {
 	return &mockDoguRestartInterface_Expecter{mock: &_m.Mock}
+}
+
+// Apply provides a mock function for the type mockDoguRestartInterface
+func (_mock *mockDoguRestartInterface) Apply(ctx context.Context, doguRestart *v21.DoguRestartApplyConfiguration, opts v10.ApplyOptions) (*v2.DoguRestart, error) {
+	ret := _mock.Called(ctx, doguRestart, opts)
+
+	if len(ret) == 0 {
+		panic("no return value specified for Apply")
+	}
+
+	var r0 *v2.DoguRestart
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *v21.DoguRestartApplyConfiguration, v10.ApplyOptions) (*v2.DoguRestart, error)); ok {
+		return returnFunc(ctx, doguRestart, opts)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *v21.DoguRestartApplyConfiguration, v10.ApplyOptions) *v2.DoguRestart); ok {
+		r0 = returnFunc(ctx, doguRestart, opts)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*v2.DoguRestart)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, *v21.DoguRestartApplyConfiguration, v10.ApplyOptions) error); ok {
+		r1 = returnFunc(ctx, doguRestart, opts)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// mockDoguRestartInterface_Apply_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Apply'
+type mockDoguRestartInterface_Apply_Call struct {
+	*mock.Call
+}
+
+// Apply is a helper method to define mock.On call
+//   - ctx context.Context
+//   - doguRestart *v21.DoguRestartApplyConfiguration
+//   - opts v10.ApplyOptions
+func (_e *mockDoguRestartInterface_Expecter) Apply(ctx any, doguRestart any, opts any) *mockDoguRestartInterface_Apply_Call {
+	return &mockDoguRestartInterface_Apply_Call{Call: _e.mock.On("Apply", ctx, doguRestart, opts)}
+}
+
+func (_c *mockDoguRestartInterface_Apply_Call) Run(run func(ctx context.Context, doguRestart *v21.DoguRestartApplyConfiguration, opts v10.ApplyOptions)) *mockDoguRestartInterface_Apply_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 *v21.DoguRestartApplyConfiguration
+		if args[1] != nil {
+			arg1 = args[1].(*v21.DoguRestartApplyConfiguration)
+		}
+		var arg2 v10.ApplyOptions
+		if args[2] != nil {
+			arg2 = args[2].(v10.ApplyOptions)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *mockDoguRestartInterface_Apply_Call) Return(result *v2.DoguRestart, err error) *mockDoguRestartInterface_Apply_Call {
+	_c.Call.Return(result, err)
+	return _c
+}
+
+func (_c *mockDoguRestartInterface_Apply_Call) RunAndReturn(run func(ctx context.Context, doguRestart *v21.DoguRestartApplyConfiguration, opts v10.ApplyOptions) (*v2.DoguRestart, error)) *mockDoguRestartInterface_Apply_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// ApplyStatus provides a mock function for the type mockDoguRestartInterface
+func (_mock *mockDoguRestartInterface) ApplyStatus(ctx context.Context, doguRestart *v21.DoguRestartApplyConfiguration, opts v10.ApplyOptions) (*v2.DoguRestart, error) {
+	ret := _mock.Called(ctx, doguRestart, opts)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ApplyStatus")
+	}
+
+	var r0 *v2.DoguRestart
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *v21.DoguRestartApplyConfiguration, v10.ApplyOptions) (*v2.DoguRestart, error)); ok {
+		return returnFunc(ctx, doguRestart, opts)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *v21.DoguRestartApplyConfiguration, v10.ApplyOptions) *v2.DoguRestart); ok {
+		r0 = returnFunc(ctx, doguRestart, opts)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*v2.DoguRestart)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, *v21.DoguRestartApplyConfiguration, v10.ApplyOptions) error); ok {
+		r1 = returnFunc(ctx, doguRestart, opts)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// mockDoguRestartInterface_ApplyStatus_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ApplyStatus'
+type mockDoguRestartInterface_ApplyStatus_Call struct {
+	*mock.Call
+}
+
+// ApplyStatus is a helper method to define mock.On call
+//   - ctx context.Context
+//   - doguRestart *v21.DoguRestartApplyConfiguration
+//   - opts v10.ApplyOptions
+func (_e *mockDoguRestartInterface_Expecter) ApplyStatus(ctx any, doguRestart any, opts any) *mockDoguRestartInterface_ApplyStatus_Call {
+	return &mockDoguRestartInterface_ApplyStatus_Call{Call: _e.mock.On("ApplyStatus", ctx, doguRestart, opts)}
+}
+
+func (_c *mockDoguRestartInterface_ApplyStatus_Call) Run(run func(ctx context.Context, doguRestart *v21.DoguRestartApplyConfiguration, opts v10.ApplyOptions)) *mockDoguRestartInterface_ApplyStatus_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 *v21.DoguRestartApplyConfiguration
+		if args[1] != nil {
+			arg1 = args[1].(*v21.DoguRestartApplyConfiguration)
+		}
+		var arg2 v10.ApplyOptions
+		if args[2] != nil {
+			arg2 = args[2].(v10.ApplyOptions)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *mockDoguRestartInterface_ApplyStatus_Call) Return(result *v2.DoguRestart, err error) *mockDoguRestartInterface_ApplyStatus_Call {
+	_c.Call.Return(result, err)
+	return _c
+}
+
+func (_c *mockDoguRestartInterface_ApplyStatus_Call) RunAndReturn(run func(ctx context.Context, doguRestart *v21.DoguRestartApplyConfiguration, opts v10.ApplyOptions) (*v2.DoguRestart, error)) *mockDoguRestartInterface_ApplyStatus_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // Create provides a mock function for the type mockDoguRestartInterface

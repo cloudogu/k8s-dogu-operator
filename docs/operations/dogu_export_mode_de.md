@@ -18,7 +18,7 @@ metadata:
   annotations:
     test: dev
   labels:
-    dogu.name: ldap
+    k8s.cloudogu.com/dogu.name: ldap
     app: ces
 spec:
   name: official/ldap
@@ -49,7 +49,7 @@ metadata:
   annotations:
     test: dev
   labels:
-    dogu.name: ldap
+    k8s.cloudogu.com/dogu.name: ldap
     app: ces
 spec:
   name: official/ldap

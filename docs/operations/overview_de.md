@@ -36,7 +36,7 @@ kind: Dogu
 metadata:
   name: ldap
   labels:
-    dogu.name: ldap
+    k8s.cloudogu.com/dogu.name: ldap
     app: ces
 spec:
   name: official/ldap

@@ -1,6 +1,6 @@
 ##@ Mocking
 
-MOCKERY_VERSION?=v3.8.0
+MOCKERY_VERSION?=v3.8.1
 MOCKERY_BIN=${UTILITY_BIN_PATH}/mockery
 MOCKERY_YAML=${WORKDIR}/.mockery.yaml
 MOCKERY_YAML_TEMPLATE=${BUILD_DIR}/make/mockery.yaml.tpl
@@ -8,7 +8,7 @@ MOCKERY_YAML_TEMPLATE=${BUILD_DIR}/make/mockery.yaml.tpl
 # The file name contains the version without the leading 'v', the URL path contains it with.
 MOCKERY_VERSION_NUM=$(patsubst v%,%,${MOCKERY_VERSION})
 MOCKERY_URL?=https://github.com/vektra/mockery/releases/download/${MOCKERY_VERSION}/mockery_${MOCKERY_VERSION_NUM}_Linux_x86_64.tar.gz
-MOCKERY_SUM?=ba8697cf5cf7164756afca371c247088980e4be7ded133e50536d8ae5c893a9a
+MOCKERY_SUM?=953c7d38b58dd6398b1c595f27caf8bbf27e9b733b49c404d2e124e86d2ae72a
 MOCKERY_ARCHIVE_PATH?=mockery
 MOCKERY_ARCHIVE_STRIP?=0
 
