@@ -3,7 +3,8 @@
 Im Dev-Modus installiert der Operator ein v3-Dogu aus einem beliebigen OCI-Chart statt aus der Dogu-Registry (DCC).
 So lässt sich ein lokal gebautes Chart im Cluster testen, ohne es vorher zu releasen.
 
-> **Achtung:** Der Dev-Modus ist nur für Entwicklungscluster gedacht und muss in Produktivclustern ausgeschaltet bleiben.
+> [!Warning]
+> Der Dev-Modus ist nur für Entwicklungscluster gedacht und muss in Produktivclustern ausgeschaltet bleiben.
 > Mit eingeschaltetem Dev-Modus kann jeder, der Dogu-CRs ändern darf, beliebige Charts in den Cluster bringen.
 
 ## `cldk dogu dev-push`
