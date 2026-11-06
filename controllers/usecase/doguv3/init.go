@@ -67,7 +67,7 @@ func NewDoguV3UseCases(
 	cleanupV2ResourcesStep := migration.NewCleanupV2ResourcesStep(k8sClient, resourceFinder, recorder)
 	migrateDoguPVCStep := migration.NewMigrateDoguPVCStep(k8sClient, recorder)
 	prepareMigrationJobsStep := migration.NewPrepareMigrationJobsStep(k8sClient, chartService, recorder, operatorConfig.NetworkPoliciesEnabled)
-	migrationHelmReleaseStep := install.NewEnsureHelmReleaseStep(k8sClient, operatorConfig, chartService, dogumigration.NewJobValuesAssembler(assembler, chartService), recorder)
+	migrationHelmReleaseStep := install.NewEnsureHelmReleaseStep(k8sClient, operatorConfig, chartService, dogumigration.NewJobValuesAssembler(assembler, chartService), recorder, install.WithoutWait())
 	jobMonitor := dogumigration.NewJobMonitor(k8sClient, operatorConfig.MigrationJobStartTimeout, operatorConfig.MigrationJobCompletionTimeout)
 	migrationJobStep := migration.NewMigrationJobStep(chartService, jobMonitor, recorder)
 	migrationCleanupStep := migration.NewMigrationCleanupStep(k8sClient, recorder)
