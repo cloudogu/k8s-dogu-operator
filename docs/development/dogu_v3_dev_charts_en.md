@@ -37,4 +37,4 @@ Remove the annotation `k8s.cloudogu.com/dev-chart-url` and set `spec.version` to
 On the next reconcile, the operator uses the dogu registry again.
 
 The operator only reacts to changes of the spec of the dogu CR.
-Changing only the annotations therefore takes effect once `spec.version` changes as well.
+Changing just the annotations therefore only takes effect once `spec.version` changes as well.
