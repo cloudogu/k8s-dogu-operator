@@ -11,9 +11,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-// ReasonMigrationVersionMismatch is the reason if the v3 chart does not contain the version of the installed v2 dogu.
-const ReasonMigrationVersionMismatch = "MigrationVersionMismatch"
-
 // MigrationVersionStep checks that the v3 chart contains the same application version as the installed v2 dogu.
 type MigrationVersionStep struct {
 	detector      MigrationDetector
@@ -45,13 +42,14 @@ func (s *MigrationVersionStep) Run(ctx context.Context, doguResource *v3beta1.Do
 		return stepsv3.RequeueWithError(fmt.Errorf("failed to read app version of the chart of dogu %q: %w", doguResource.Name, err), v3beta1.ReasonMigrationPending)
 	}
 	if appVersion == "" {
-		return s.abort(doguResource, fmt.Sprintf("The migration to v3 is blocked: the chart version %q does not set an appVersion", doguResource.Spec.Version))
+		return s.abort(doguResource, fmt.Sprintf("The migration to v3 is blocked: the chart version %q does not have an appVersion set", doguResource.Spec.Version))
 	}
 
-	if withoutDoguRevision(v2Version) != appVersion {
+	installedAppVersion := withoutDoguRevision(v2Version)
+	if installedAppVersion != appVersion {
 		return s.abort(doguResource, fmt.Sprintf(
-			"The migration to v3 is blocked: the appVersion %q of chart version %q does not match the version %q of the installed v2 dogu",
-			appVersion, doguResource.Spec.Version, v2Version))
+			"The migration to v3 is blocked: the appVersion %q does not match the version %q of the installed v2 dogu",
+			appVersion, installedAppVersion))
 	}
 
 	return stepsv3.Continue()
@@ -59,8 +57,8 @@ func (s *MigrationVersionStep) Run(ctx context.Context, doguResource *v3beta1.Do
 
 // abort stops the reconciliation, because only a change of the dogu spec can resolve the mismatch.
 func (s *MigrationVersionStep) abort(doguResource *v3beta1.Dogu, msg string) stepsv3.StepResult {
-	s.eventRecorder.Event(doguResource, corev1.EventTypeWarning, ReasonMigrationVersionMismatch, msg)
-	return stepsv3.Abort(ReasonMigrationVersionMismatch, msg)
+	s.eventRecorder.Event(doguResource, corev1.EventTypeWarning, v3beta1.ReasonMigrationFailed, msg)
+	return stepsv3.Abort(v3beta1.ReasonMigrationFailed, msg)
 }
 
 // withoutDoguRevision removes the dogu revision ("-N") from a v2 dogu version, e.g. 2.4.48-3 becomes 2.4.48.

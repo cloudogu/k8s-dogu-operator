@@ -91,19 +91,19 @@ func TestMigrationVersionStep_Run(t *testing.T) {
 			name:       "different appVersion",
 			v2Version:  "2.4.48-3",
 			appVersion: "2.4.49",
-			wantMsg:    `The migration to v3 is blocked: the appVersion "2.4.49" of chart version "1.0.0" does not match the version "2.4.48-3" of the installed v2 dogu`,
+			wantMsg:    `The migration to v3 is blocked: the appVersion "2.4.49" does not match the version "2.4.48" of the installed v2 dogu`,
 		},
 		{
 			name:       "appVersion containing the dogu revision",
 			v2Version:  "2.4.48-3",
 			appVersion: "2.4.48-3",
-			wantMsg:    `The migration to v3 is blocked: the appVersion "2.4.48-3" of chart version "1.0.0" does not match the version "2.4.48-3" of the installed v2 dogu`,
+			wantMsg:    `The migration to v3 is blocked: the appVersion "2.4.48-3" does not match the version "2.4.48" of the installed v2 dogu`,
 		},
 		{
 			name:       "missing appVersion",
 			v2Version:  "2.4.48-3",
 			appVersion: "",
-			wantMsg:    `The migration to v3 is blocked: the chart version "1.0.0" does not set an appVersion`,
+			wantMsg:    `The migration to v3 is blocked: the chart version "1.0.0" does not have an appVersion set`,
 		},
 	}
 	for _, tt := range abortTests {
@@ -115,11 +115,11 @@ func TestMigrationVersionStep_Run(t *testing.T) {
 			chartReader := NewMockChartAppVersionReader(t)
 			chartReader.EXPECT().AppVersion(testCtx, dogu).Return(tt.appVersion, nil)
 			recorder := NewMockEventRecorder(t)
-			recorder.EXPECT().Event(dogu, corev1.EventTypeWarning, ReasonMigrationVersionMismatch, tt.wantMsg)
+			recorder.EXPECT().Event(dogu, corev1.EventTypeWarning, v3beta1.ReasonMigrationFailed, tt.wantMsg)
 
 			result := NewMigrationVersionStep(detector, chartReader, recorder).Run(testCtx, dogu)
 
-			assert.Equal(t, stepsv3.Abort(ReasonMigrationVersionMismatch, tt.wantMsg), result)
+			assert.Equal(t, stepsv3.Abort(v3beta1.ReasonMigrationFailed, tt.wantMsg), result)
 		})
 	}
 
@@ -130,10 +130,10 @@ func TestMigrationVersionStep_Run(t *testing.T) {
 		detector.EXPECT().Detect(testCtx, dogu).Return(dogumigration.Required, nil)
 		wantMsg := "The migration to v3 is blocked: the installed version of the v2 dogu is unknown"
 		recorder := NewMockEventRecorder(t)
-		recorder.EXPECT().Event(dogu, corev1.EventTypeWarning, ReasonMigrationVersionMismatch, wantMsg)
+		recorder.EXPECT().Event(dogu, corev1.EventTypeWarning, v3beta1.ReasonMigrationFailed, wantMsg)
 
 		result := NewMigrationVersionStep(detector, NewMockChartAppVersionReader(t), recorder).Run(testCtx, dogu)
 
-		assert.Equal(t, stepsv3.Abort(ReasonMigrationVersionMismatch, wantMsg), result)
+		assert.Equal(t, stepsv3.Abort(v3beta1.ReasonMigrationFailed, wantMsg), result)
 	})
 }
