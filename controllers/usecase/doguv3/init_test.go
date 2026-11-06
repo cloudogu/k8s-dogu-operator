@@ -28,6 +28,7 @@ func TestWireDoguV3(t *testing.T) {
 
 	changeHandler, deleteUseCase, err := NewDoguV3UseCases(
 		fake.NewClientBuilder().Build(),
+		fake.NewClientBuilder().Build(), // 2nd client for uncached reading
 		record.NewFakeRecorder(10),
 		&rest.Config{},
 		k8sfake.NewSimpleClientset(),
