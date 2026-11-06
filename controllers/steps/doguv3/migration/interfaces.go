@@ -25,3 +25,7 @@ type EventRecorder interface {
 type K8sClient interface {
 	client.Client
 }
+
+type ChartAppVersionReader interface {
+	AppVersion(ctx context.Context, dogu *v3beta1.Dogu) (string, error)
+}
