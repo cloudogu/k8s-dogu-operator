@@ -3,7 +3,8 @@
 In dev mode, the operator installs a v3 dogu from an arbitrary OCI chart instead of the dogu registry (DCC).
 This allows testing a locally built chart in the cluster without releasing it first.
 
-> **Attention:** The dev mode is meant for development clusters only and must stay disabled in production clusters.
+> [!Warning]
+> The dev mode is meant for development clusters only and must stay disabled in production clusters.
 > With dev mode enabled, everyone who may change dogu CRs can bring arbitrary charts into the cluster.
 
 ## `cldk dogu dev-push`
