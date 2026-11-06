@@ -21,6 +21,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	corev1ac "k8s.io/client-go/applyconfigurations/core/v1"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -150,10 +151,10 @@ func resizePod(name, claimName string) *corev1.Pod {
 	}}}}.Spec}
 }
 
-// rejectingPatches answers patches like the API server for a StorageClass without allowVolumeExpansion.
-func rejectingPatches(c client.Client) client.Client {
-	return interceptor.NewClient(c.(client.WithWatch), interceptor.Funcs{Patch: func(_ context.Context, _ client.WithWatch, obj client.Object, _ client.Patch, _ ...client.PatchOption) error {
-		return apierrors.NewForbidden(corev1.Resource("persistentvolumeclaims"), obj.GetName(), errors.New("only dynamically provisioned pvc can be resized and the storageclass that provisions the pvc must support resize"))
+// rejectingApplies answers applies like the API server for a StorageClass without allowVolumeExpansion.
+func rejectingApplies(c client.Client) client.Client {
+	return interceptor.NewClient(c.(client.WithWatch), interceptor.Funcs{Apply: func(_ context.Context, _ client.WithWatch, obj runtime.ApplyConfiguration, _ ...client.ApplyOption) error {
+		return apierrors.NewForbidden(corev1.Resource("persistentvolumeclaims"), *obj.(*corev1ac.PersistentVolumeClaimApplyConfiguration).GetName(), errors.New("only dynamically provisioned pvc can be resized and the storageclass that provisions the pvc must support resize"))
 	}})
 }
 
@@ -320,7 +321,7 @@ func TestRequestVolumeResizeStep_Run(t *testing.T) {
 		doguResource := delRecClient.dogu(t)
 
 		// reject the patches
-		step := prepareResizeStep(rejectingPatches(delRecClient.client), t, doguResource, renderedPVC(t, "data", "2Gi"))
+		step := prepareResizeStep(rejectingApplies(delRecClient.client), t, doguResource, renderedPVC(t, "data", "2Gi"))
 		result := step.Run(testCtx, doguResource)
 
 		assert.Equal(t, doguv3.Abort(v3beta1.ReasonResizingPVC, rejectedPatchMessage("data")), result)
@@ -332,15 +333,15 @@ func TestRequestVolumeResizeStep_Run(t *testing.T) {
 		mounting := resizeDeployment("nexus", "data")
 		claim := volumePVC("data", "1Gi", "1Gi")
 		delRecClient := newDeletionRecClient(&claim, mounting, helmRelease(true))
-		failing := interceptor.NewClient(delRecClient.client.(client.WithWatch), interceptor.Funcs{Patch: func(_ context.Context, _ client.WithWatch, _ client.Object, _ client.Patch, _ ...client.PatchOption) error {
-			return apierrors.NewTimeoutError("patch timed out", 1)
+		failing := interceptor.NewClient(delRecClient.client.(client.WithWatch), interceptor.Funcs{Apply: func(_ context.Context, _ client.WithWatch, _ runtime.ApplyConfiguration, _ ...client.ApplyOption) error {
+			return apierrors.NewTimeoutError("apply timed out", 1)
 		}})
 		doguResource := delRecClient.dogu(t)
 
 		step := prepareResizeStep(failing, t, doguResource, renderedPVC(t, "data", "2Gi"))
 		result := step.Run(testCtx, doguResource)
 
-		require.ErrorContains(t, result.Err, "patch timed out")
+		require.ErrorContains(t, result.Err, "apply timed out")
 		assert.Equal(t, v3beta1.ReasonResizingPVC, result.ReadyReason)
 		assert.Empty(t, *delRecClient.deletions)
 	})
@@ -436,7 +437,7 @@ func TestRequestVolumeResizeStep_RunOnline(t *testing.T) {
 		doguResource := delRecClient.dogu(t)
 
 		// reject the patch
-		step := prepareOnlineResizeStep(rejectingPatches(delRecClient.client), t, doguResource, toUnstructured(t, claimTemplateStatefulSet("postgres", "2Gi")))
+		step := prepareOnlineResizeStep(rejectingApplies(delRecClient.client), t, doguResource, toUnstructured(t, claimTemplateStatefulSet("postgres", "2Gi")))
 		result := step.Run(testCtx, doguResource)
 
 		assert.Equal(t, doguv3.Abort(v3beta1.ReasonResizingPVC, rejectedPatchMessage("data-postgres-0")), result)

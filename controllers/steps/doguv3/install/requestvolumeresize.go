@@ -76,7 +76,7 @@ func (rvr *RequestVolumeResizeStep) growClaims(ctx context.Context, doguResource
 
 	grown, err := rvr.grower.Grow(ctx, requests)
 	for _, claim := range grown {
-		from, to := claim.Previous.String(), claim.PVC.Spec.Resources.Requests.Storage().String()
+		from, to := claim.Previous.String(), claim.Desired.String()
 		logging.Info(ctx, "growing volume", "pvc", claim.PVC.Name, "from", from, "to", to)
 		rvr.eventRecorder.Event(doguResource, corev1.EventTypeNormal, v3beta1.ReasonResizingPVC, fmt.Sprintf("Growing volume %s from %s to %s", claim.PVC.Name, from, to))
 	}

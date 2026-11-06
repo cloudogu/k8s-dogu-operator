@@ -7,13 +7,17 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
+	corev1ac "k8s.io/client-go/applyconfigurations/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-// GrownClaim is a claim whose storage request was raised from Previous.
+const growerFieldOwner = "k8s-dogu-operator-pvc-grower"
+
+// GrownClaim is a claim whose storage request was raised from Previous to Desired.
 type GrownClaim struct {
-	PVC      corev1.PersistentVolumeClaim
+	PVC      client.ObjectKey
 	Previous resource.Quantity
+	Desired  resource.Quantity
 }
 
 // Grower raises the storage request of claims to their desired size.
@@ -35,7 +39,7 @@ func (g *Grower) Grow(ctx context.Context, requests []ResizeRequest) ([]GrownCla
 			return grown, &GrowRejectedError{PVC: request.PVC, Err: err}
 		}
 		if err != nil {
-			return grown, err
+			return grown, fmt.Errorf("failed to grow PVC %q to %s: %w", request.PVC, request.Desired.String(), err)
 		}
 		grown = append(grown, claim)
 	}
@@ -44,12 +48,13 @@ func (g *Grower) Grow(ctx context.Context, requests []ResizeRequest) ([]GrownCla
 }
 
 func (g *Grower) grow(ctx context.Context, request ResizeRequest) (GrownClaim, error) {
-	base := &corev1.PersistentVolumeClaim{Namespace: request.PVC.Namespace, Name: request.PVC.Name}
-	claim := base.DeepCopy()
-	claim.Spec.Resources.Requests = corev1.ResourceList{corev1.ResourceStorage: request.Desired.DeepCopy()}
-	if err := g.k8s.Patch(ctx, claim, client.MergeFrom(base)); err != nil {
-		return GrownClaim{}, fmt.Errorf("failed to grow PVC %q to %s: %w", request.PVC, request.Desired.String(), err)
+	claim := corev1ac.PersistentVolumeClaim(request.PVC.Name, request.PVC.Namespace).
+		WithSpec(corev1ac.PersistentVolumeClaimSpec().
+			WithResources(corev1ac.VolumeResourceRequirements().
+				WithRequests(corev1.ResourceList{corev1.ResourceStorage: request.Desired.DeepCopy()})))
+	if err := g.k8s.Apply(ctx, claim, client.FieldOwner(growerFieldOwner), client.ForceOwnership); err != nil {
+		return GrownClaim{}, fmt.Errorf("failed to apply PVC: %w", err)
 	}
 
-	return GrownClaim{PVC: *claim, Previous: request.Current.DeepCopy()}, nil
+	return GrownClaim{PVC: request.PVC, Previous: request.Current.DeepCopy(), Desired: request.Desired.DeepCopy()}, nil
 }
