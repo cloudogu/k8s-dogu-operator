@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [v3.36.0] - 2026-11-06
 ### Removed
 - [#374] Remove Dogu samples. Instead, use https://github.com/cloudogu/k8s-ecosystem-samples
 - Remove the mock DCC for v3 dogus (`make mock-dcc-v3`). Use `make registry-staging` instead.
@@ -24,13 +26,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [#377] Move the service account credentials of a v2 dogu into the migration secret `<dogu>-migration`
 - [#381] create a migration pvc for dogu v2 to dogu v3 migration
 - [#379] Cleanup Dogu v2 resources during migration to Dogu v3
+- [#393] Dev mode for v3 dogus: install a dogu from the dev chart in the annotation `k8s.cloudogu.com/dev-chart-url` instead of the dogu registry.
 
 ### Changed
 - [#383] Reduce logger noise on every reconcile
 - Update go to 1.27.3
+- [#387] Update the helmfile image's Go builder to 1.27.3.
+- [#387] update to image cloudogu/dogu-additional-mounts-init:0.1.4
 
 ### Fixed
 - [#372] Ignore updates of HelmReleases that only toggle the `Reconciling` condition, to avoid unnecessary reconciliations
+
+### Security
+- [#397] Fix GO-CVEs: GO-2026-6865, GO-2026-6860, GO-2026-6866
 
 ## [v3.35.0] - 2026-10-20
 ### Added

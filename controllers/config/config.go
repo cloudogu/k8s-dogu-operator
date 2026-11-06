@@ -62,6 +62,7 @@ const (
 	envVarWarpMenuEntryEnabled                    = "WARP_MENU_ENTRY_ENABLED"
 	envVarWarpMenuDisabledV2Dogus                 = "WARP_MENU_DISBALED_V2_DOGUS"
 	envVarDoguV3Enabled                           = "DOGU_V3_ENABLED"
+	envVarDoguV3DevChartsEnabled                  = "DOGU_V3_DEV_CHARTS_ENABLED"
 	envVarDisablePostfixDependencyCheck           = "DISABLE_POSTFIX_DEPENDENCY_CHECK"
 	envVarRequeueTimeForDoguResourceInNanoseconds = "REQUEUE_TIME_FOR_DOGU_RESOURCE_IN_NANOSECONDS"
 	envVarImageConfigCacheSize                    = "IMAGE_CONFIG_CACHE_SIZE"
@@ -106,6 +107,8 @@ type OperatorConfig struct {
 	ExpositionEnabled bool `json:"exposition_enabled"`
 	// DoguV3Enabled defines whether the operator should allow v3 dogus.
 	DoguV3Enabled bool `json:"dogu_v3_enabled"`
+	// DoguV3DevChartsEnabled defines whether the operator installs v3 dogus from the dev chart if the annotations are set.
+	DoguV3DevChartsEnabled bool `json:"dogu_v3_dev_charts_enabled"`
 	// WarpMenuEntryEnabled defines whether the operator should manage WarpMenuEntry CRs for v2 dogus.
 	WarpMenuEntryEnabled bool `json:"warpmenuentry_enabled"`
 	// WarpMenuDisabledV2Dogus defines dogu names (without the dogu namespace) to hide in the warp menu.
@@ -193,6 +196,7 @@ func NewOperatorConfig(version Version) (*OperatorConfig, error) {
 		WarpMenuEntryEnabled:           getWarpMenuEntryEnabled(),
 		WarpMenuDisabledV2Dogus:        getWarpMenuDisabledV2Dogus(),
 		DoguV3Enabled:                  getDoguV3Enabled(),
+		DoguV3DevChartsEnabled:         getDoguV3DevChartsEnabled(),
 		DisablePostfixDependencyCheck:  getDisablePostfixDependencyCheck(),
 		RequeueTimeForDoguReconciler:   doguReconcilerRequeueTime,
 		ImageConfigCacheSize:           getImageConfigCacheSize(),
@@ -442,6 +446,26 @@ func getDoguV3Enabled() bool {
 	}
 
 	return doguV3Enabled
+}
+
+func getDoguV3DevChartsEnabled() bool {
+	devChartsEnabledStr, found := os.LookupEnv(envVarDoguV3DevChartsEnabled)
+	if !found {
+		log.Info(fmt.Sprintf("Environment variable %s not set. Disable dev charts for dogu v3 by default", envVarDoguV3DevChartsEnabled))
+		return false
+	}
+
+	devChartsEnabled, err := strconv.ParseBool(devChartsEnabledStr)
+	if err != nil {
+		log.Error(fmt.Errorf(errMsgFailedToParseEnvVarValue, envVarDoguV3DevChartsEnabled, err), "Disable dev charts for dogu v3 by default")
+		return false
+	}
+
+	if devChartsEnabled {
+		log.Info("Dev charts for dogu v3 are enabled! This is not recommended for production!")
+	}
+
+	return devChartsEnabled
 }
 
 func getExperimentalHelmfileSupport() bool {

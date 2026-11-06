@@ -48,7 +48,7 @@ func NewDoguV3UseCases(
 	resizeChecker := pvc.NewResizeChecker(k8sClient)
 
 	finalizerStep := install.NewCreateFinalizerStep(k8sClient)
-	ociStep := install.NewEnsureOCIRepositoryStep(k8sClient, registryReader, recorder)
+	ociStep := install.NewEnsureOCIRepositoryStep(k8sClient, registryReader, recorder, operatorConfig.DoguV3DevChartsEnabled)
 	waitStep := install.NewWaitForOCIRepositoryReadyStep(k8sClient, recorder)
 	validateStep := install.NewValidateChartStep(chartService, assembler, resizeChecker, k8sClient)
 	resizePlanner := install.NewVolumeResizePlanner(chartService, assembler, resizeChecker, apiReader, operatorConfig.OfflineVolumeExpansion)
