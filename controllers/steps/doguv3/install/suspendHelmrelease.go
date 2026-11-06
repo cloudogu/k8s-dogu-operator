@@ -25,7 +25,7 @@ const (
 type SuspendHelmReleaseStep struct {
 	k8sClient     K8sClient
 	eventRecorder EventRecorder
-	resizePlanner *VolumeResizePlanner
+	resizePlanner ResizePlanner
 }
 
 func NewSuspendHelmReleaseStep(k8sClient K8sClient, resizePlanner *VolumeResizePlanner, recorder EventRecorder) *SuspendHelmReleaseStep {

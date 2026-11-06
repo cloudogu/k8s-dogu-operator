@@ -11,6 +11,7 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/v3/internal/dogu/workloads"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -36,6 +37,19 @@ type ResizeChecker interface {
 type VolumeDiscovery interface {
 	Workloads(ctx context.Context, namespace, doguName string) (workloads.Workloads, error)
 	Volumes(ctx context.Context, namespace string, workloads workloads.Workloads) ([]pvc.Volume, error)
+}
+
+type ResizePlanner interface {
+	Plan(ctx context.Context, doguResource *v3beta1.Dogu) (pvc.ResizePlan, error)
+}
+
+type VolumeGrower interface {
+	Grow(ctx context.Context, requests []pvc.ResizeRequest) ([]pvc.GrownClaim, error)
+}
+
+type WorkloadRemover interface {
+	ReplaceStatefulSets(ctx context.Context, workloads workloads.Workloads, outdatedStatefulSets []types.UID) ([]string, error)
+	Unmount(ctx context.Context, namespace string, workloads workloads.Workloads, volumes []pvc.Volume, claims []string) (workloads.UnmountResult, error)
 }
 
 type K8sClient interface {

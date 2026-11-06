@@ -19,10 +19,10 @@ import (
 // it grows the claims, replaces StatefulSets with outdated claim templates and, with offline expansion, unmounts the growing claims.
 // Kubernetes grows the volumes afterwards; VolumeStatusStep waits for that.
 type RequestVolumeResizeStep struct {
-	resizePlanner *VolumeResizePlanner
+	resizePlanner ResizePlanner
 	discovery     VolumeDiscovery
-	remover       *workloads.Remover
-	grower        *pvc.Grower
+	remover       WorkloadRemover
+	grower        VolumeGrower
 	eventRecorder EventRecorder
 }
 

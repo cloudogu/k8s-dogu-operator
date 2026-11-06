@@ -35,11 +35,12 @@ func (g *Grower) Grow(ctx context.Context, requests []ResizeRequest) ([]GrownCla
 	var grown []GrownClaim
 	for _, request := range requests {
 		claim, err := g.grow(ctx, request)
-		if apierrors.IsForbidden(err) || apierrors.IsInvalid(err) {
-			return grown, &GrowRejectedError{PVC: request.PVC, Err: err}
-		}
 		if err != nil {
-			return grown, fmt.Errorf("failed to grow PVC %q to %s: %w", request.PVC, request.Desired.String(), err)
+			err = fmt.Errorf("failed to grow PVC %q to %s: %w", request.PVC, request.Desired.String(), err)
+			if apierrors.IsForbidden(err) || apierrors.IsInvalid(err) {
+				return grown, &GrowRejectedError{PVC: request.PVC, Err: err}
+			}
+			return grown, err
 		}
 		grown = append(grown, claim)
 	}
