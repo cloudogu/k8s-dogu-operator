@@ -21,6 +21,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 	"sigs.k8s.io/controller-runtime/pkg/config"
+	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
@@ -453,5 +454,39 @@ func TestNewDoguVolumeRequestMapper(t *testing.T) {
 		requests := newDoguVolumeRequestMapper(c)(context.Background(), volumeLabelTestStatefulSet("ldap", doguLabels, "data"))
 
 		assert.Empty(t, requests)
+	})
+}
+
+func TestDoguWorkloadChangedPredicate(t *testing.T) {
+	doguLabels := map[string]string{v3beta1.DoguLabelName: "ldap"}
+	statefulSet := func(generation int64, labels map[string]string, readyReplicas int32) *appsv1.StatefulSet {
+		sts := volumeLabelTestStatefulSet("ldap", labels, "data")
+		sts.Generation = generation
+		sts.Status.ReadyReplicas = readyReplicas
+		return sts
+	}
+
+	updates := []struct {
+		name   string
+		old    *appsv1.StatefulSet
+		new    *appsv1.StatefulSet
+		passes bool
+	}{
+		{name: "should pass a spec change", old: statefulSet(1, doguLabels, 1), new: statefulSet(2, doguLabels, 1), passes: true},
+		{name: "should pass a label change", old: statefulSet(1, doguLabels, 1), new: statefulSet(1, map[string]string{v3beta1.DoguLabelName: "cas"}, 1), passes: true},
+		{name: "should drop a status-only change", old: statefulSet(1, doguLabels, 0), new: statefulSet(1, doguLabels, 1), passes: false},
+		{name: "should drop a spec change of a workload without dogu label", old: statefulSet(1, nil, 1), new: statefulSet(2, nil, 1), passes: false},
+	}
+	for _, tt := range updates {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.passes, doguWorkloadChangedPredicate().Update(event.UpdateEvent{ObjectOld: tt.old, ObjectNew: tt.new}))
+		})
+	}
+
+	t.Run("should pass create and delete of a dogu workload", func(t *testing.T) {
+		sut := doguWorkloadChangedPredicate()
+
+		assert.True(t, sut.Create(event.CreateEvent{Object: statefulSet(1, doguLabels, 0)}))
+		assert.True(t, sut.Delete(event.DeleteEvent{Object: statefulSet(1, doguLabels, 0)}))
 	})
 }

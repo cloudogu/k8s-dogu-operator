@@ -54,19 +54,26 @@ func newDoguVolumeLabelReconciler(k8sClient client.Client) *DoguVolumeLabelRecon
 // setupWithManager registers the controller with the manager.
 // It reconciles a volume when the volume changes and when a dogu workload changes that mounts or generates it.
 func (r *DoguVolumeLabelReconciler) setupWithManager(mgr ctrlManager) error {
-	hasDoguLabel := builder.WithPredicates(predicate.NewPredicateFuncs(func(object client.Object) bool {
-		_, ok := object.GetLabels()[v3beta1.DoguLabelName]
-		return ok
-	}))
+	doguWorkloadChanges := builder.WithPredicates(doguWorkloadChangedPredicate())
 	toVolumes := handler.EnqueueRequestsFromMapFunc(newDoguVolumeRequestMapper(mgr.GetClient()))
 
 	return ctrl.NewControllerManagedBy(mgr).
 		Named(doguVolumeLabelControllerName).
 		For(&corev1.PersistentVolumeClaim{}).
-		Watches(&appsv1.Deployment{}, toVolumes, hasDoguLabel).
-		Watches(&appsv1.StatefulSet{}, toVolumes, hasDoguLabel).
-		Watches(&appsv1.DaemonSet{}, toVolumes, hasDoguLabel).
+		Watches(&appsv1.Deployment{}, toVolumes, doguWorkloadChanges).
+		Watches(&appsv1.StatefulSet{}, toVolumes, doguWorkloadChanges).
+		Watches(&appsv1.DaemonSet{}, toVolumes, doguWorkloadChanges).
 		Complete(r)
+}
+
+// doguWorkloadChangedPredicate passes dogu workload events that can change volume ownership, dropping status-only updates.
+func doguWorkloadChangedPredicate() predicate.Predicate {
+	hasDoguLabel := predicate.NewPredicateFuncs(func(object client.Object) bool {
+		_, ok := object.GetLabels()[v3beta1.DoguLabelName]
+		return ok
+	})
+	// include LabelChangedPredicate as a safety-net if dogu-label is changed on a workload
+	return predicate.And(hasDoguLabel, predicate.Or[client.Object](predicate.GenerationChangedPredicate{}, predicate.LabelChangedPredicate{}))
 }
 
 // Reconcile sets the dogu labels on a volume that a v3 dogu workload mounts or generates from a StatefulSet claim template.
@@ -141,7 +148,6 @@ func (r *DoguVolumeLabelReconciler) matchDogus(ctx context.Context, volume *core
 		}
 	}
 
-	// Sorted is helpful to not introduce log/status/event flicker
 	return slices.Sorted(maps.Keys(doguNames)), nil
 }
 

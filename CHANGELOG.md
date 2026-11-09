@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - [#393] Dev mode for v3 dogus: install a dogu from the dev chart in the annotation `k8s.cloudogu.com/dev-chart-url` instead of the dogu registry.
-- [#388] Ensure dogu labels on all associated volumes
+- [#388] Ensure dogu labels on all associated volumes of V3-Dogus
 
 ### Security
 - [#397] Fix GO-CVEs: GO-2026-6865, GO-2026-6860, GO-2026-6866
