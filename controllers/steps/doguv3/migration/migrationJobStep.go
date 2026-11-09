@@ -46,7 +46,7 @@ func (s *MigrationJobStep) Run(ctx context.Context, doguResource *v3beta1.Dogu) 
 		return stepsv3.Continue()
 	case dogumigration.JobsFailed:
 		return stepsv3.Abort(v3beta1.ReasonMigrationFailed, status.Message)
-	default:
+	case dogumigration.JobsPending:
 		// The step polls the jobs, so only progress changes are recorded to avoid flooding the events.
 		if readyMessage(doguResource) != status.Message {
 			s.eventRecorder.Event(doguResource, corev1.EventTypeNormal, v3beta1.ReasonMigrationPending, status.Message)
