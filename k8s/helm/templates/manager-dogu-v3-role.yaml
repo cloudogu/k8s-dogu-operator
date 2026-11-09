@@ -53,6 +53,7 @@ rules:
   # dogu v3: discover a dogu's workloads to derive its health and restart them.
   # watch is needed for the caching kes-client
   # patch is needed to set the restart annotation via server-side apply
+  # delete is needed for the pvc resize procedure
   - apiGroups:
       - apps
     resources:
@@ -64,6 +65,7 @@ rules:
       - list
       - watch
       - patch
+      - delete
   # dogu v3: scale down the v2 Deployment before migrating its volume.
   - apiGroups:
       - apps
@@ -80,6 +82,7 @@ rules:
       - get
       - list
       - watch
+  # delete the pods that still mount a volume being resized; listed uncached, so no watch.
   - apiGroups:
       - ""
     resources:
@@ -87,8 +90,11 @@ rules:
     verbs:
       - get
       - list
+      - delete
       - watch
   # dogu v3: recreate PVCs when migrating existing volumes from v2.
+  # read and grow a dogu's volumes.
+  # watch is needed for the caching k8s-client
   - apiGroups:
       - ""
     resources:
@@ -98,6 +104,7 @@ rules:
       - list
       - watch
       - create
+      - patch
       - delete
   # dogu v3: read the v2 sensitive config and manage the migration secret
   # patch is needed to apply the migration secret via server-side apply

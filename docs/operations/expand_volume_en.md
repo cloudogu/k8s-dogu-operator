@@ -51,3 +51,45 @@ After the restart, the status is updated again. The system waits until the actua
 
 This updates both the condition `meetsMinVolumeSize` to `True` and the value of the status field `dogu.Status.DataVolumeSize`
 to the new actual size.
+
+## Increasing the size of volumes of v3 dogus
+
+v3 dogus configure their volume sizes in the `values` of the Dogu CR. If a rendered size is larger than the size of the
+existing PVC, the `k8s-dogu-operator` grows the PVC. Volumes can neither be shrunk nor moved to another StorageClass.
+While a volume grows, the dogu reports `Ready=False` with the reason `ResizingPVC`. `status.volumeStatus[].size` only
+shows the new size once the volume has reached it.
+
+The operator grows volumes in one of two modes, which the Helm value `controllerManager.env.offlineVolumeExpansion`
+(env var `OFFLINE_VOLUME_EXPANSION`) selects for all v3 dogus.
+
+### Online (default, `offlineVolumeExpansion: false`)
+
+The operator patches the PVCs and the dogu keeps running. The CSI driver and the kubelet grow the volume and the
+file system of the running pods. StatefulSets whose `volumeClaimTemplates` are outdated are deleted with orphan
+propagation and recreated by the Helm release; their pods keep running and are adopted by the new StatefulSet.
+
+### Offline (`offlineVolumeExpansion: true`)
+
+For storage that can only grow unmounted volumes. The operator suspends the Helm release, patches the PVCs, deletes
+every workload and pod that mounts a growing PVC and resumes the release afterwards. The dogu is unavailable until its
+workloads are recreated.
+
+Known cases that need offline expansion:
+- vSphere CSI < 2.2
+- OpenStack Cinder without online extend
+- Azure Disk Standard/Premium larger than 4 TiB
+- Longhorn V2 data engine with UBLK
+
+Kubernetes cannot detect these cases itself. In online mode the volume stays in state `Resizing` or `ResizeFailed` and 
+the dogu keeps running with the old size; no data is lost.
+
+### Repairing a resize that got stuck in online mode
+
+Switching to offline mode afterwards does not repair a resize that was started online, because the release is already
+resumed. Repair it once by hand:
+
+1. Set `controllerManager.env.offlineVolumeExpansion: true` and upgrade the operator.
+2. Set `spec.stopped: true` on the Dogu CR.
+3. Wait until the PVC shows the condition `FileSystemResizePending` or `status.allocatedResourceStatuses[storage]=NodeResizePending`
+   (`kubectl get pvc <name> -o yaml`).
+4. Set `spec.stopped: false`. The Helm release recreates the workloads, and the file system grows when the new pods mount the volume.

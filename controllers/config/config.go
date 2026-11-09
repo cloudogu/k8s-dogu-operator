@@ -62,14 +62,19 @@ const (
 	envVarWarpMenuEntryEnabled                    = "WARP_MENU_ENTRY_ENABLED"
 	envVarWarpMenuDisabledV2Dogus                 = "WARP_MENU_DISBALED_V2_DOGUS"
 	envVarDoguV3Enabled                           = "DOGU_V3_ENABLED"
+	envVarDoguV3DevChartsEnabled                  = "DOGU_V3_DEV_CHARTS_ENABLED"
 	envVarDisablePostfixDependencyCheck           = "DISABLE_POSTFIX_DEPENDENCY_CHECK"
 	envVarRequeueTimeForDoguResourceInNanoseconds = "REQUEUE_TIME_FOR_DOGU_RESOURCE_IN_NANOSECONDS"
 	envVarImageConfigCacheSize                    = "IMAGE_CONFIG_CACHE_SIZE"
 	envVarDoguHelmReconciliationInterval          = "DOGU_HELM_RECONCILIATION_INTERVAL"
 	envVarDoguHelmRetryInterval                   = "DOGU_HELM_RETRY_INTERVAL"
+	envVarOfflineVolumeExpansion                  = "OFFLINE_VOLUME_EXPANSION"
 	envVarMigrationJobStartTimeout                = "MIGRATION_JOB_START_TIMEOUT"
 	envVarMigrationJobCompletionTimeout           = "MIGRATION_JOB_COMPLETION_TIMEOUT"
-	errMsgFailedToParseEnvVarValue                = "failed to parse value of environment variable %s: %w"
+)
+
+const (
+	errMsgFailedToParseEnvVarValue = "failed to parse value of environment variable %s: %w"
 )
 
 // defaultImageConfigCacheSize is the number of image configs kept in the in-memory cache when
@@ -104,6 +109,8 @@ type OperatorConfig struct {
 	ExpositionEnabled bool `json:"exposition_enabled"`
 	// DoguV3Enabled defines whether the operator should allow v3 dogus.
 	DoguV3Enabled bool `json:"dogu_v3_enabled"`
+	// DoguV3DevChartsEnabled defines whether the operator installs v3 dogus from the dev chart if the annotations are set.
+	DoguV3DevChartsEnabled bool `json:"dogu_v3_dev_charts_enabled"`
 	// WarpMenuEntryEnabled defines whether the operator should manage WarpMenuEntry CRs for v2 dogus.
 	WarpMenuEntryEnabled bool `json:"warpmenuentry_enabled"`
 	// WarpMenuDisabledV2Dogus defines dogu names (without the dogu namespace) to hide in the warp menu.
@@ -126,6 +133,8 @@ type OperatorConfig struct {
 	DoguHelmReconciliationInterval time.Duration `json:"dogu_helm_reconciliation_interval"`
 	// DoguHelmRetryInterval defines the interval in which Helm installs or upgrade for a dogu should be retried on error
 	DoguHelmRetryInterval time.Duration `json:"dogu_helm_retry_interval"`
+	// OfflineVolumeExpansion defines whether v3 dogus detach their volumes before growing them, for storage providers that cannot expand mounted volumes.
+	OfflineVolumeExpansion bool `json:"offline_volume_expansion"`
 	// MigrationJobStartTimeout defines how long to wait for the migration jobs of a dogu to appear during a v2 to v3 migration
 	MigrationJobStartTimeout time.Duration `json:"migration_job_start_timeout"`
 	// MigrationJobCompletionTimeout defines how long a single migration job may run during a v2 to v3 migration
@@ -177,6 +186,12 @@ func NewOperatorConfig(version Version) (*OperatorConfig, error) {
 	}
 	log.Info(fmt.Sprintf("Found stored helm retry interval! Using interval %s", doguHelmRetryInterval))
 
+	offlineVolumeExpansion, err := readOfflineVolumeExpansion()
+	if err != nil {
+		return nil, fmt.Errorf("failed to read offline volume expansion: %w", err)
+	}
+	log.Info(fmt.Sprintf("Using offline volume expansion for v3 dogus: %t", offlineVolumeExpansion))
+
 	migrationJobStartTimeout, err := readDuration(envVarMigrationJobStartTimeout)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read migration job start timeout: %w", err)
@@ -199,6 +214,7 @@ func NewOperatorConfig(version Version) (*OperatorConfig, error) {
 		WarpMenuEntryEnabled:           getWarpMenuEntryEnabled(),
 		WarpMenuDisabledV2Dogus:        getWarpMenuDisabledV2Dogus(),
 		DoguV3Enabled:                  getDoguV3Enabled(),
+		DoguV3DevChartsEnabled:         getDoguV3DevChartsEnabled(),
 		DisablePostfixDependencyCheck:  getDisablePostfixDependencyCheck(),
 		RequeueTimeForDoguReconciler:   doguReconcilerRequeueTime,
 		ImageConfigCacheSize:           getImageConfigCacheSize(),
@@ -210,6 +226,7 @@ func NewOperatorConfig(version Version) (*OperatorConfig, error) {
 		ExperimentalHelmfileSupport:    getExperimentalHelmfileSupport(),
 		HelmfileGlobalConfig:           getHelmfileGlobalConfig(),
 		HelmfileOpenDeskConfig:         getHelmfileOpenDeskConfig(),
+		OfflineVolumeExpansion:         offlineVolumeExpansion,
 	}, nil
 }
 
@@ -451,6 +468,26 @@ func getDoguV3Enabled() bool {
 	return doguV3Enabled
 }
 
+func getDoguV3DevChartsEnabled() bool {
+	devChartsEnabledStr, found := os.LookupEnv(envVarDoguV3DevChartsEnabled)
+	if !found {
+		log.Info(fmt.Sprintf("Environment variable %s not set. Disable dev charts for dogu v3 by default", envVarDoguV3DevChartsEnabled))
+		return false
+	}
+
+	devChartsEnabled, err := strconv.ParseBool(devChartsEnabledStr)
+	if err != nil {
+		log.Error(fmt.Errorf(errMsgFailedToParseEnvVarValue, envVarDoguV3DevChartsEnabled, err), "Disable dev charts for dogu v3 by default")
+		return false
+	}
+
+	if devChartsEnabled {
+		log.Info("Dev charts for dogu v3 are enabled! This is not recommended for production!")
+	}
+
+	return devChartsEnabled
+}
+
 func getExperimentalHelmfileSupport() bool {
 	helmfileSupportStr, found := os.LookupEnv(envVarExperimentalHelmfileSupport)
 	if !found {
@@ -653,6 +690,21 @@ func readDuration(envVar string) (time.Duration, error) {
 		return 0, fmt.Errorf("value of env var [%s] is no valid duration: %w", envVar, err)
 	}
 	return duration, nil
+}
+
+// readOfflineVolumeExpansion fails on an invalid value, as falling back to online expansion leaves resizes on offline-only storage stuck.
+func readOfflineVolumeExpansion() (bool, error) {
+	value, found := os.LookupEnv(envVarOfflineVolumeExpansion)
+	if !found {
+		return false, nil
+	}
+
+	offline, err := strconv.ParseBool(value)
+	if err != nil {
+		return false, fmt.Errorf(errMsgFailedToParseEnvVarValue, envVarOfflineVolumeExpansion, err)
+	}
+
+	return offline, nil
 }
 
 func GetStage() (string, error) {

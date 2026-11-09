@@ -12,6 +12,7 @@ import (
 	"github.com/cloudogu/k8s-dogu-lib/v3/api/v3beta1"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/config"
 	"github.com/cloudogu/k8s-dogu-operator/v3/internal/charts"
+	"github.com/cloudogu/k8s-dogu-operator/v3/internal/dogu/pvc"
 	"github.com/cloudogu/k8s-dogu-operator/v3/internal/dogu/values"
 	"github.com/cloudogu/k8s-dogu-operator/v3/internal/flux"
 	helmflux "github.com/fluxcd/helm-controller/api/v2"
@@ -129,7 +130,7 @@ data:
 	step := NewEnsureHelmReleaseStep(cl, &config.OperatorConfig{
 		DoguHelmRetryInterval: time.Minute, DoguHelmReconciliationInterval: time.Minute,
 	}, service, values.NewAssembler(cl), record.NewFakeRecorder(10))
-	validateStep := NewValidateChartStep(service, values.NewAssembler(cl), cl)
+	validateStep := NewValidateChartStep(service, values.NewAssembler(cl), pvc.NewResizeChecker(cl), cl)
 
 	// The fixture checks string preservation, not hostname validity. The schema rejects only empty strings.
 	for _, host := range []string{"first.example", "O'Reilly: #quoted\n", "changed.example", ""} {
@@ -192,7 +193,7 @@ func TestRuntimePatchesValidationFailures(t *testing.T) {
 			service := newMockChartService(t)
 			service.EXPECT().DoguMetaValues(mock.Anything, dogu).Return(nil, false, nil).Once()
 			service.EXPECT().RuntimePatchTemplate(mock.Anything, dogu).Return([]byte(patch), true, nil).Once()
-			step := NewValidateChartStep(service, values.NewAssembler(cl), cl)
+			step := NewValidateChartStep(service, values.NewAssembler(cl), NewMockResizeChecker(t), cl)
 
 			result := step.Run(t.Context(), dogu)
 
@@ -306,10 +307,10 @@ data:
 
 	// Validate and render exact JSON numbers beyond float64's integer precision, including uint64's limit.
 	for _, integer := range []string{"9007199254740993", "-9223372036854775808", "18446744073709551615"} {
-		values := map[string]any{"integer": json.Number(integer)}
-		require.NoError(t, service.ValidateValues(ctx, dogu, values))
+		testValues := map[string]any{"integer": json.Number(integer)}
+		require.NoError(t, service.ValidateValues(ctx, dogu, testValues))
 
-		objects, renderErr := service.Render(ctx, dogu, values)
+		objects, renderErr := service.Render(ctx, dogu, testValues)
 
 		require.NoError(t, renderErr)
 		require.Len(t, objects, 1)
