@@ -7,6 +7,7 @@ import (
 	"github.com/cloudogu/k8s-dogu-lib/v3/api/v3beta1"
 	stepsv3 "github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv3"
 	dogumigration "github.com/cloudogu/k8s-dogu-operator/v3/internal/dogu/migration"
+	"github.com/cloudogu/k8s-dogu-operator/v3/internal/logging"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -30,6 +31,8 @@ func (s *PrepareMigrationJobsStep) Run(ctx context.Context, doguResource *v3beta
 	}
 
 	if !hasMigrationJob {
+		logging.Debug(ctx, "Chart has no migration job.", "chart", doguResource.Spec.Name)
+
 		found, lErr := dogumigration.HasMigrationVolumeClaim(ctx, s.k8sClient, doguResource)
 		if lErr != nil {
 			return s.fail(doguResource, fmt.Errorf("failed to check if migration volume claim exists for chart %q: %w", doguResource.Spec.Name, lErr))
@@ -60,6 +63,7 @@ func (s *PrepareMigrationJobsStep) Run(ctx context.Context, doguResource *v3beta
 	created, err := dogumigration.ApplyNetworkPolicies(ctx, s.k8sClient, doguResource, secret)
 	for _, name := range created {
 		s.eventRecorder.Event(doguResource, corev1.EventTypeNormal, v3beta1.ReasonMigrationPending, fmt.Sprintf("Migration network policy %q created", name))
+		logging.Debug(ctx, "Migration network policy created.", "policy", name)
 	}
 
 	if err != nil {

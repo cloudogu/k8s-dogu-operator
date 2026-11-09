@@ -8,6 +8,7 @@ import (
 	"github.com/cloudogu/k8s-dogu-lib/v3/api/v3beta1"
 	stepsv3 "github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv3"
 	dogumigration "github.com/cloudogu/k8s-dogu-operator/v3/internal/dogu/migration"
+	"github.com/cloudogu/k8s-dogu-operator/v3/internal/logging"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 )
@@ -43,6 +44,8 @@ func (s *MigrationJobStep) Run(ctx context.Context, doguResource *v3beta1.Dogu) 
 	switch status.Phase {
 	case dogumigration.JobsSucceeded:
 		s.eventRecorder.Event(doguResource, corev1.EventTypeNormal, v3beta1.ReasonMigrationPending, status.Message)
+		logging.Info(ctx, "Migration job succeeded.", "chart", doguResource.Spec.Name)
+
 		return stepsv3.Continue()
 	case dogumigration.JobsFailed:
 		return stepsv3.Abort(v3beta1.ReasonMigrationFailed, status.Message)

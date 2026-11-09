@@ -7,6 +7,7 @@ import (
 	"github.com/cloudogu/k8s-dogu-lib/v3/api/v3beta1"
 	stepsv3 "github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv3"
 	dogumigration "github.com/cloudogu/k8s-dogu-operator/v3/internal/dogu/migration"
+	"github.com/cloudogu/k8s-dogu-operator/v3/internal/logging"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -30,6 +31,8 @@ func (s *MigrationCleanupStep) Run(ctx context.Context, doguResource *v3beta1.Do
 	}
 
 	s.eventRecorder.Event(doguResource, corev1.EventTypeNormal, v3beta1.ReasonMigrationPending, "Migration resources removed")
+
+	logging.Info(ctx, "Migration resources removed, completed migration.")
 
 	// The regular installation resets the migration job flag and sets the dogu ready.
 	return stepsv3.RequeueAfter(requeueTime, v3beta1.ReasonMigrationPending, "Migration completed")
