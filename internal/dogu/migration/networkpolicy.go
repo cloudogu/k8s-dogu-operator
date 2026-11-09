@@ -75,18 +75,27 @@ func newNetworkPolicy(dogu *v3beta1.Dogu, producer string) *networkingv1ac.Netwo
 		v3beta1.DoguLabelName:                   dogu.Spec.Name,
 	})
 
-	return networkingv1ac.NetworkPolicy(dogu.Spec.Name+"-migration-"+producer, dogu.Namespace).
-		WithLabels(migrationLabels(dogu)).
-		WithOwnerReferences(metav1ac.OwnerReference().
-			WithAPIVersion(v3beta1.GroupVersion.String()).
-			WithKind(doguKind).
-			WithName(dogu.Name).
-			WithUID(dogu.UID).
-			WithController(true).
-			WithBlockOwnerDeletion(true)).
-		WithSpec(networkingv1ac.NetworkPolicySpec().
-			WithPodSelector(metav1ac.LabelSelector().WithMatchLabels(map[string]string{doguv2.DoguLabelName: producer})).
-			WithPolicyTypes(networkingv1.PolicyTypeIngress).
-			WithIngress(networkingv1ac.NetworkPolicyIngressRule().
-				WithFrom(networkingv1ac.NetworkPolicyPeer().WithPodSelector(jobPods))))
+       owner := metav1ac.OwnerReference().
+           WithAPIVersion(v3beta1.GroupVersion.String()).
+           WithKind(doguKind).
+           WithName(dogu.Name).
+           WithUID(dogu.UID).
+           WithController(true).
+           WithBlockOwnerDeletion(true)
+
+       producerPods := metav1ac.LabelSelector().WithMatchLabels(
+           map[string]string{doguv2.DoguLabelName: producer},
+       )
+       ingress := networkingv1ac.NetworkPolicyIngressRule().
+           WithFrom(networkingv1ac.NetworkPolicyPeer().WithPodSelector(jobPods))
+       spec := networkingv1ac.NetworkPolicySpec().
+           WithPodSelector(producerPods).
+           WithPolicyTypes(networkingv1.PolicyTypeIngress).
+           WithIngress(ingress)
+
+       return networkingv1ac.NetworkPolicy(
+           dogu.Spec.Name+"-migration-"+producer, dogu.Namespace,
+       ).WithLabels(migrationLabels(dogu)).
+           WithOwnerReferences(owner).
+           WithSpec(spec)
 }
