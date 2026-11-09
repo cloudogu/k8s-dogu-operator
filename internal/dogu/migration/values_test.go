@@ -56,7 +56,7 @@ func TestJobValuesAssembler_Assemble(t *testing.T) {
 
 		_, err := assembler.Assemble(ctx, v3Dogu("nexus"), nil, nil)
 
-		errors.Is(err, assert.AnError)
+		assert.ErrorIs(t, err, assert.AnError)
 	})
 
 	t.Run("propagates chart error", func(t *testing.T) {
