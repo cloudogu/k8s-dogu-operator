@@ -12,6 +12,7 @@ import (
 	dogumigration "github.com/cloudogu/k8s-dogu-operator/v3/internal/dogu/migration"
 	"github.com/cloudogu/k8s-dogu-operator/v3/internal/dogu/pvc"
 	"github.com/cloudogu/k8s-dogu-operator/v3/internal/dogu/values"
+	"github.com/cloudogu/k8s-dogu-operator/v3/internal/dogu/workloads"
 	"github.com/cloudogu/k8s-dogu-operator/v3/internal/flux"
 	"github.com/cloudogu/k8s-dogu-operator/v3/internal/registry"
 	"k8s.io/client-go/kubernetes"
@@ -25,6 +26,7 @@ import (
 // client construction eagerly, so a failure here aborts operator startup (fail-fast).
 func NewDoguV3UseCases(
 	k8sClient client.Client,
+	apiReader client.Reader, // for uncached reading
 	recorder record.EventRecorder,
 	restConfig *rest.Config,
 	clientSet kubernetes.Interface,
@@ -48,12 +50,15 @@ func NewDoguV3UseCases(
 	finalizerStep := install.NewCreateFinalizerStep(k8sClient)
 	ociStep := install.NewEnsureOCIRepositoryStep(k8sClient, registryReader, recorder, operatorConfig.DoguV3DevChartsEnabled)
 	waitStep := install.NewWaitForOCIRepositoryReadyStep(k8sClient, recorder)
-	validateStep := install.NewValidateChartStep(chartService, assembler, k8sClient)
-	suspendStep := install.NewSuspendHelmReleaseStep(k8sClient, chartService, assembler, resizeChecker, recorder)
+	validateStep := install.NewValidateChartStep(chartService, assembler, resizeChecker, k8sClient)
+	resizePlanner := install.NewVolumeResizePlanner(chartService, assembler, resizeChecker, apiReader, operatorConfig.OfflineVolumeExpansion)
+	requestVolumeResizeStep := install.NewRequestVolumeResizeStep(resizePlanner, apiReader, k8sClient, recorder)
+	suspendStep := install.NewSuspendHelmReleaseStep(k8sClient, resizePlanner, recorder)
 	helmReleaseStep := install.NewEnsureHelmReleaseStep(k8sClient, operatorConfig, chartService, assembler, recorder)
 	helmReleaseStatusStep := install.NewHelmReleaseStatusStep(k8sClient, chartService, assembler, operatorConfig, releaseReader, recorder)
 	exportModeStep := install.NewExportModeStep(k8sClient, recorder)
 	updatePendingStep := install.NewUpdatePendingStep(k8sClient)
+	volumeStatusStep := install.NewVolumeStatusStep(chartService, assembler, workloads.NewDiscovery(k8sClient), k8sClient, recorder)
 
 	unsuspendStep := deletion.NewUnsuspendHelmReleaseStep(k8sClient, recorder)
 	deleteHelmReleaseStep := deletion.NewDeleteHelmReleaseStep(k8sClient, recorder)
@@ -68,7 +73,7 @@ func NewDoguV3UseCases(
 	migrationPendingStep := migration.NewMigrationPendingStep(detector, recorder)
 	migrateDoguPVCStep := migration.NewMigrateDoguPVCStep(k8sClient, recorder)
 
-	installUseCase := NewDoguInstallOrChangeUseCase(finalizerStep, ociStep, waitStep, validateStep, suspendStep, helmReleaseStep, helmReleaseStatusStep, updatePendingStep, exportModeStep, k8sClient, recorder)
+	installUseCase := NewDoguInstallOrChangeUseCase(finalizerStep, ociStep, waitStep, validateStep, suspendStep, requestVolumeResizeStep, helmReleaseStep, helmReleaseStatusStep, updatePendingStep, exportModeStep, volumeStatusStep, k8sClient, recorder)
 	migrationUseCase := NewDoguMigrationUseCase(finalizerStep, migrationPreconditionsStep, ociStep, waitStep, validateStep, migrationSecretStep, migrateDoguPVCStep, cleanupV2ResourcesStep, migrationPendingStep, k8sClient, recorder)
 	deleteUseCase := NewDoguDeleteUseCase(unsuspendStep, deleteHelmReleaseStep, deleteOCIRepositoryStep, removeFinalizerStep, k8sClient, recorder)
 

@@ -30,6 +30,8 @@ controllerManager:
     doguV3Enabled: false
     # Install v3 dogus from the dev chart in the annotation k8s.cloudogu.com/dev-chart-url instead of the dogu registry.
     doguV3DevChartsEnabled: false
+    # offlineVolumeExpansion detaches volumes of v3 dogus before growing them. Enable it for storage that cannot expand mounted volumes.
+    offlineVolumeExpansion: false
     disablePostfixDependencyCheck: false
     doguStartupProbeTimeout: 1
     doguRestartSuccessfulHistoryLimit: 3

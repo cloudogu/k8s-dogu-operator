@@ -3,10 +3,12 @@ package install
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/cloudogu/k8s-dogu-lib/v3/api/v3beta1"
 	stepsv3 "github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv3"
+	"github.com/cloudogu/k8s-dogu-operator/v3/internal/dogu/pvc"
 	"github.com/cloudogu/k8s-dogu-operator/v3/internal/dogu/values"
 	"github.com/cloudogu/k8s-dogu-operator/v3/internal/logging"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -24,19 +26,22 @@ const (
 // ValidateChartStep validates a dogu's chart before any HelmRelease is written. It assembles the
 // merged values, optionally validates them against the chart's values.schema.json (honoring
 // Spec.SkipSchemaValidation) and renders the chart server-side without creating or modifying any
-// cluster resource. A chart whose values violate the schema or that fails to render aborts the
-// reconciliation via ConditionValid so no HelmRelease is produced.
+// cluster resource. A chart whose values violate the schema, that fails to render or that would
+// make a forbidden pvc change (shrink or storage class change) aborts the reconciliation via
+// ConditionValid so no HelmRelease is produced.
 type ValidateChartStep struct {
-	chartService chartService
-	assembler    valueAssembler
-	k8sClient    K8sClient
+	chartService  chartService
+	assembler     valueAssembler
+	resizeChecker ResizeChecker
+	k8sClient     K8sClient
 }
 
-func NewValidateChartStep(chartService chartService, assembler valueAssembler, k8sClient K8sClient) *ValidateChartStep {
+func NewValidateChartStep(chartService chartService, assembler valueAssembler, resizeChecker ResizeChecker, k8sClient K8sClient) *ValidateChartStep {
 	return &ValidateChartStep{
-		chartService: chartService,
-		assembler:    assembler,
-		k8sClient:    k8sClient,
+		chartService:  chartService,
+		assembler:     assembler,
+		resizeChecker: resizeChecker,
+		k8sClient:     k8sClient,
 	}
 }
 
@@ -63,7 +68,7 @@ func (vcs *ValidateChartStep) Run(ctx context.Context, doguResource *v3beta1.Dog
 		return stepsv3.RequeueWithError(err, v3beta1.ReasonInstalling)
 	}
 
-	values, err := vcs.assembler.Assemble(ctx, doguResource, valuesMeta, runtimePatchTemplate)
+	assembledValues, err := vcs.assembler.Assemble(ctx, doguResource, valuesMeta, runtimePatchTemplate)
 	if err != nil {
 		return stepsv3.RequeueWithError(fmt.Errorf("failed to assemble values for dogu %s/%s: %w", doguResource.Namespace, doguResource.Name, err), v3beta1.ReasonInstalling)
 	}
@@ -71,7 +76,7 @@ func (vcs *ValidateChartStep) Run(ctx context.Context, doguResource *v3beta1.Dog
 	// Record whether schema validation is skipped and, unless skipped, validate the values.
 	schemaSkippedChanged := vcs.setSchemaValidationSkippedCondition(doguResource)
 	if !doguResource.Spec.SkipSchemaValidation {
-		if vErr := vcs.chartService.ValidateValues(ctx, doguResource, values); vErr != nil {
+		if vErr := vcs.chartService.ValidateValues(ctx, doguResource, assembledValues); vErr != nil {
 			msg := fmt.Sprintf("values do not satisfy the chart schema: %v", vErr)
 
 			return vcs.abort(ctx, doguResource, schemaSkippedChanged, v3beta1.ReasonSchemaInvalid, msg)
@@ -80,14 +85,37 @@ func (vcs *ValidateChartStep) Run(ctx context.Context, doguResource *v3beta1.Dog
 		logging.Debug(ctx, "Successfully validated values against schema for dogu", "dogu", doguResource.Spec.Name)
 	}
 
-	if _, rErr := vcs.chartService.Render(ctx, doguResource, values); rErr != nil {
+	rendered, rErr := vcs.chartService.Render(ctx, doguResource, assembledValues)
+	if rErr != nil {
 		msg := fmt.Sprintf("chart could not be rendered: %v", rErr)
 		return vcs.abort(ctx, doguResource, schemaSkippedChanged, ReasonRenderFailed, msg)
 	}
 
 	logging.Debug(ctx, "Successfully rendered dogu helm chart", "dogu", doguResource.Spec.Name)
 
+	if _, cErr := vcs.resizeChecker.Check(ctx, doguResource.Namespace, rendered); cErr != nil {
+		if reason, rejected := volumeRejectionReason(cErr); rejected {
+			return vcs.abort(ctx, doguResource, schemaSkippedChanged, reason, fmt.Sprintf("volumes cannot be changed as requested: %v", cErr))
+		}
+
+		return stepsv3.RequeueWithError(fmt.Errorf("failed to check volumes: %w", cErr), v3beta1.ReasonInstalling)
+	}
+
 	return vcs.succeed(ctx, doguResource, schemaSkippedChanged)
+}
+
+func volumeRejectionReason(err error) (string, bool) {
+	var shrinkErr *pvc.VolumeShrinkError
+	if errors.As(err, &shrinkErr) {
+		return v3beta1.ReasonVolumeShrink, true
+	}
+
+	var storageClassErr *pvc.StorageClassImmutableError
+	if errors.As(err, &storageClassErr) {
+		return v3beta1.ReasonStorageClassImmutable, true
+	}
+
+	return "", false
 }
 
 // setSchemaValidationSkippedCondition mirrors the Spec.SkipSchemaValidation flag onto the
@@ -127,7 +155,7 @@ func (vcs *ValidateChartStep) abort(ctx context.Context, doguResource *v3beta1.D
 
 // succeed sets ConditionValid to true, persists changed conditions and continues the reconciliation.
 func (vcs *ValidateChartStep) succeed(ctx context.Context, doguResource *v3beta1.Dogu, skippedChanged bool) stepsv3.StepResult {
-	const message = "chart values satisfy the schema and the chart renders successfully"
+	const message = "chart values satisfy the schema, the chart renders successfully and no volume shrinks or changes its storage class"
 	validChanged := vcs.setValidCondition(doguResource, metav1.ConditionTrue, ReasonValid, message)
 	if skippedChanged || validChanged {
 		if err := vcs.persistConditions(ctx, doguResource); err != nil {
