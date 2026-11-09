@@ -2,7 +2,6 @@ package migration
 
 import (
 	"context"
-	"errors"
 	"testing"
 
 	"github.com/cloudogu/k8s-dogu-operator/v3/internal/dogu/values"
@@ -56,7 +55,7 @@ func TestJobValuesAssembler_Assemble(t *testing.T) {
 
 		_, err := assembler.Assemble(ctx, v3Dogu("nexus"), nil, nil)
 
-		errors.Is(err, assert.AnError)
+		assert.ErrorIs(t, err, assert.AnError)
 	})
 
 	t.Run("propagates chart error", func(t *testing.T) {
