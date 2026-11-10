@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v3.38.0] - 2026-11-10
+
+### Changed
+- [#387] updated exporter-sidecar to registry.cloudogu.com/k8s/rsync-sidecar:1.1.2
+
 ## [v3.37.0] - 2026-11-10
 ### Added
 - [#391] Run the migration jobs of a v3 dogu chart during the migration from v2 and delete the v2 volume afterward
