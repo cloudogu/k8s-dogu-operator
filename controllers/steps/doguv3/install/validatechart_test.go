@@ -2,18 +2,23 @@ package install
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"testing"
 
 	"github.com/cloudogu/k8s-dogu-lib/v3/api/v3beta1"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv3"
 	"github.com/cloudogu/k8s-dogu-operator/v3/internal/charts"
+	"github.com/cloudogu/k8s-dogu-operator/v3/internal/dogu/pvc"
 	"github.com/cloudogu/k8s-dogu-operator/v3/internal/dogu/values"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	apimeta "k8s.io/apimachinery/pkg/api/meta"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
@@ -28,6 +33,7 @@ const (
 var (
 	_ chartService   = (*charts.Service)(nil)
 	_ valueAssembler = values.Assembler{}
+	_ ResizeChecker  = pvc.NewResizeChecker(nil)
 )
 
 var assembledValues = values.Values{"replicaCount": 1}
@@ -42,14 +48,16 @@ func newValidationFakeClient(doguResource *v3beta1.Dogu) K8sClient {
 
 func TestValidateChartStep_Run(t *testing.T) {
 	tests := []struct {
-		name     string
-		skip     bool
-		setup    func(t *testing.T) (*mockChartService, *mockValueAssembler, K8sClient, *v3beta1.Dogu)
-		want     doguv3.StepResult
-		assertFn func(t *testing.T, doguResource *v3beta1.Dogu)
+		name      string
+		skip      bool
+		wantCheck bool
+		setup     func(t *testing.T) (*mockChartService, *mockValueAssembler, K8sClient, *v3beta1.Dogu)
+		want      doguv3.StepResult
+		assertFn  func(t *testing.T, doguResource *v3beta1.Dogu)
 	}{
 		{
-			name: "continue when schema is valid and the chart renders",
+			name:      "continue when schema is valid and the chart renders",
+			wantCheck: true,
 			setup: func(t *testing.T) (*mockChartService, *mockValueAssembler, K8sClient, *v3beta1.Dogu) {
 				doguResource := testDoguResource.DeepCopy()
 				cs := newMockChartService(t)
@@ -87,8 +95,9 @@ func TestValidateChartStep_Run(t *testing.T) {
 			},
 		},
 		{
-			name: "skip schema validation and continue when the chart renders",
-			skip: true,
+			name:      "skip schema validation and continue when the chart renders",
+			skip:      true,
+			wantCheck: true,
 			setup: func(t *testing.T) (*mockChartService, *mockValueAssembler, K8sClient, *v3beta1.Dogu) {
 				doguResource := testDoguResource.DeepCopy()
 				doguResource.Spec.SkipSchemaValidation = true
@@ -193,7 +202,11 @@ func TestValidateChartStep_Run(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cs, as, k8sClient, doguResource := tt.setup(t)
-			step := NewValidateChartStep(cs, as, k8sClient)
+			rc := NewMockResizeChecker(t)
+			if tt.wantCheck {
+				rc.EXPECT().Check(mock.Anything, testNamespace, []*unstructured.Unstructured(nil)).Return(pvc.CheckResult{}, nil)
+			}
+			step := NewValidateChartStep(cs, as, rc, k8sClient)
 
 			got := step.Run(testCtx, doguResource)
 
@@ -218,7 +231,7 @@ func TestValidateChartStep_Run_rejectsEmptyRuntimePatch(t *testing.T) {
 			service.EXPECT().DoguMetaValues(mock.Anything, dogu).Return(nil, false, nil)
 			service.EXPECT().RuntimePatchTemplate(mock.Anything, dogu).Return(tt.source, true, nil)
 			assembler := newMockValueAssembler(t)
-			step := NewValidateChartStep(service, assembler, newValidationFakeClient(dogu))
+			step := NewValidateChartStep(service, assembler, NewMockResizeChecker(t), newValidationFakeClient(dogu))
 
 			result := step.Run(t.Context(), dogu)
 
@@ -250,8 +263,10 @@ func TestValidateChartStep_Run_requeuesWhenStatusUpdateFails(t *testing.T) {
 			},
 		}).
 		Build()
+	rc := NewMockResizeChecker(t)
+	rc.EXPECT().Check(mock.Anything, testNamespace, []*unstructured.Unstructured(nil)).Return(pvc.CheckResult{}, nil)
 
-	step := NewValidateChartStep(cs, as, k8sClient)
+	step := NewValidateChartStep(cs, as, rc, k8sClient)
 
 	got := step.Run(testCtx, doguResource)
 
@@ -259,6 +274,88 @@ func TestValidateChartStep_Run_requeuesWhenStatusUpdateFails(t *testing.T) {
 	assert.ErrorContains(t, got.Err, "failed to update dogu validation conditions")
 	assert.Equal(t, v3beta1.ReasonInstalling, got.ReadyReason)
 	assert.False(t, got.Continue)
+}
+
+func TestValidateChartStep_Run_volumeCheck(t *testing.T) {
+	shrinkErr := &pvc.VolumeShrinkError{PVC: client.ObjectKey{Namespace: testNamespace, Name: "data"}, Current: resource.MustParse("2Gi"), Desired: resource.MustParse("1Gi")}
+	storageClassErr := &pvc.StorageClassImmutableError{PVC: client.ObjectKey{Namespace: testNamespace, Name: "data"}, Current: ptr.To("standard"), Desired: ptr.To("fast")}
+
+	tests := []struct {
+		name      string
+		checkErr  error
+		want      doguv3.StepResult
+		wantValid metav1.ConditionStatus
+		reason    string
+	}{
+		{
+			name:      "continue when no volume is shrunk or changes its storage class",
+			want:      doguv3.Continue(),
+			wantValid: metav1.ConditionTrue,
+			reason:    ReasonValid,
+		},
+		{
+			name:      "abort when a volume would shrink",
+			checkErr:  shrinkErr,
+			want:      doguv3.Abort(v3beta1.ReasonVolumeShrink, `volumes cannot be changed as requested: cannot shrink PVC "ecosystem/data" from 2Gi to 1Gi`),
+			wantValid: metav1.ConditionFalse,
+			reason:    v3beta1.ReasonVolumeShrink,
+		},
+		{
+			name:      "abort when a volume would change its storage class",
+			checkErr:  storageClassErr,
+			want:      doguv3.Abort(v3beta1.ReasonStorageClassImmutable, `volumes cannot be changed as requested: cannot change storage class of PVC "ecosystem/data" from "standard" to "fast"`),
+			wantValid: metav1.ConditionFalse,
+			reason:    v3beta1.ReasonStorageClassImmutable,
+		},
+		{
+			name:      "abort with shrink when additionally another volume is not ready",
+			checkErr:  errors.Join(assert.AnError, shrinkErr),
+			want:      doguv3.Abort(v3beta1.ReasonVolumeShrink, "volumes cannot be changed as requested: "+errors.Join(assert.AnError, shrinkErr).Error()),
+			wantValid: metav1.ConditionFalse,
+			reason:    v3beta1.ReasonVolumeShrink,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			doguResource := testDoguResource.DeepCopy()
+			rendered := renderedChart(t)
+			cs := newMockChartService(t)
+			cs.EXPECT().DoguMetaValues(mock.Anything, doguResource).Return([]byte("meta"), true, nil)
+			cs.EXPECT().RuntimePatchTemplate(mock.Anything, doguResource).Return(nil, false, nil)
+			cs.EXPECT().ValidateValues(mock.Anything, doguResource, map[string]any(assembledValues)).Return(nil)
+			cs.EXPECT().Render(mock.Anything, doguResource, map[string]any(assembledValues)).Return(rendered, nil)
+			as := newMockValueAssembler(t)
+			as.EXPECT().Assemble(mock.Anything, doguResource, []byte("meta"), []byte(nil)).Return(assembledValues, nil)
+			rc := NewMockResizeChecker(t)
+			rc.EXPECT().Check(mock.Anything, testNamespace, rendered).Return(pvc.CheckResult{}, tt.checkErr)
+			step := NewValidateChartStep(cs, as, rc, newValidationFakeClient(doguResource))
+
+			got := step.Run(testCtx, doguResource)
+
+			assert.Equal(t, tt.want, got)
+			assertCondition(t, doguResource, v3beta1.ConditionValid, tt.wantValid, tt.reason)
+		})
+	}
+}
+
+func TestValidateChartStep_Run_requeuesWhenVolumeCheckFails(t *testing.T) {
+	doguResource := testDoguResource.DeepCopy()
+	cs := newMockChartService(t)
+	cs.EXPECT().DoguMetaValues(mock.Anything, doguResource).Return([]byte("meta"), true, nil)
+	cs.EXPECT().RuntimePatchTemplate(mock.Anything, doguResource).Return(nil, false, nil)
+	cs.EXPECT().ValidateValues(mock.Anything, doguResource, map[string]any(assembledValues)).Return(nil)
+	cs.EXPECT().Render(mock.Anything, doguResource, map[string]any(assembledValues)).Return(nil, nil)
+	as := newMockValueAssembler(t)
+	as.EXPECT().Assemble(mock.Anything, doguResource, []byte("meta"), []byte(nil)).Return(assembledValues, nil)
+	rc := NewMockResizeChecker(t)
+	rc.EXPECT().Check(mock.Anything, testNamespace, []*unstructured.Unstructured(nil)).Return(pvc.CheckResult{}, assert.AnError)
+	step := NewValidateChartStep(cs, as, rc, newValidationFakeClient(doguResource))
+
+	got := step.Run(testCtx, doguResource)
+
+	assert.Equal(t, doguv3.RequeueWithError(fmt.Errorf("failed to check volumes: %w", assert.AnError), v3beta1.ReasonInstalling), got)
+	assert.Nil(t, apimeta.FindStatusCondition(doguResource.Status.Conditions, v3beta1.ConditionValid))
 }
 
 func TestValidateChartStep_Run_skipsStatusUpdateWhenConditionsAreUnchanged(t *testing.T) {
@@ -276,7 +373,7 @@ func TestValidateChartStep_Run_skipsStatusUpdateWhenConditionsAreUnchanged(t *te
 			name:          "valid chart with persisted conditions",
 			validStatus:   metav1.ConditionTrue,
 			validReason:   ReasonValid,
-			validMessage:  "chart values satisfy the schema and the chart renders successfully",
+			validMessage:  "chart values satisfy the schema, the chart renders successfully and no volume shrinks or changes its storage class",
 			want:          doguv3.Continue(),
 			existingValid: true,
 		},
@@ -312,9 +409,11 @@ func TestValidateChartStep_Run_skipsStatusUpdateWhenConditionsAreUnchanged(t *te
 			cs := newMockChartService(t)
 			cs.EXPECT().DoguMetaValues(mock.Anything, doguResource).Return(nil, false, nil)
 			cs.EXPECT().RuntimePatchTemplate(mock.Anything, doguResource).Return(nil, false, nil)
-			cs.EXPECT().ValidateValues(mock.Anything, doguResource, map[string]any(assembledValues)).Return(tt.validateErr)
+			cs.EXPECT().ValidateValues(mock.Anything, doguResource, assembledValues).Return(tt.validateErr)
+			rc := NewMockResizeChecker(t)
 			if tt.validateErr == nil {
-				cs.EXPECT().Render(mock.Anything, doguResource, map[string]any(assembledValues)).Return(nil, nil)
+				cs.EXPECT().Render(mock.Anything, doguResource, assembledValues).Return(nil, nil)
+				rc.EXPECT().Check(mock.Anything, testNamespace, []*unstructured.Unstructured(nil)).Return(pvc.CheckResult{}, nil)
 			}
 			as := newMockValueAssembler(t)
 			as.EXPECT().Assemble(mock.Anything, doguResource, []byte(nil), []byte(nil)).Return(assembledValues, nil)
@@ -332,7 +431,7 @@ func TestValidateChartStep_Run_skipsStatusUpdateWhenConditionsAreUnchanged(t *te
 				}).
 				Build()
 
-			got := NewValidateChartStep(cs, as, k8sClient).Run(testCtx, doguResource)
+			got := NewValidateChartStep(cs, as, rc, k8sClient).Run(testCtx, doguResource)
 
 			assert.Equal(t, tt.want, got)
 			assert.Equal(t, tt.wantUpdates, updates)

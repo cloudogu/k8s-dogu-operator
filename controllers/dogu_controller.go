@@ -328,7 +328,8 @@ func v3HealthyStatusChanged(e event.UpdateEvent) bool {
 }
 
 func healthyStatus(dogu *doguv2.Dogu) string {
-	condition := meta.FindStatusCondition(dogu.Status.Conditions, v3beta1.ConditionHealthy)
+	// the conversion renames v3beta1 "Healthy" to v2 "healthy", and this predicate only sees v2 objects
+	condition := meta.FindStatusCondition(dogu.Status.Conditions, doguv2.ConditionHealthy)
 	if condition == nil {
 		return ""
 	}

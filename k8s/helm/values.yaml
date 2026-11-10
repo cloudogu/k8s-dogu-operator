@@ -17,7 +17,7 @@ controllerManager:
   image:
     registry: docker.io
     repository: cloudogu/k8s-dogu-operator
-    tag: 3.36.0
+    tag: 3.37.0
   imagePullPolicy: IfNotPresent
   env:
     logLevel: debug
@@ -28,6 +28,10 @@ controllerManager:
     # List of simple dogu names without dogu namespaces e.g. ["grafana", "..."]
     warpMenuDisabledV2Dogus: []
     doguV3Enabled: false
+    # Install v3 dogus from the dev chart in the annotation k8s.cloudogu.com/dev-chart-url instead of the dogu registry.
+    doguV3DevChartsEnabled: false
+    # offlineVolumeExpansion detaches volumes of v3 dogus before growing them. Enable it for storage that cannot expand mounted volumes.
+    offlineVolumeExpansion: false
     disablePostfixDependencyCheck: false
     doguStartupProbeTimeout: 1
     doguRestartSuccessfulHistoryLimit: 3
@@ -42,6 +46,12 @@ controllerManager:
     # doguHelmRetryInterval defines the interval in which Helm installs or upgrade for a dogu should be retried on error.
     # Values are suffixed by duration units f.i. 5m.
     doguHelmRetryInterval: 5m
+    # migrationJobStartTimeout defines how long to wait for the migration jobs of a dogu to appear during a v2 to v3 migration.
+    # Values are suffixed by duration units f.i. 5m.
+    migrationJobStartTimeout: 5m
+    # migrationJobCompletionTimeout defines how long a single migration job may run during a v2 to v3 migration.
+    # Values are suffixed by duration units f.i. 1h.
+    migrationJobCompletionTimeout: 1h
     # imageConfigCacheSize is the maximum number of dogu image configs cached in memory
     # Set to 0 to disable caching.
     imageConfigCacheSize: 50

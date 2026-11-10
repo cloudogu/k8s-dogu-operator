@@ -6,7 +6,7 @@ metadata:
   labels:
     {{- include "k8s-dogu-operator.labels" . | nindent 4 }}
 rules:
-  # dogu v3: retain and rebind existing volumes during migration from v2.
+  # dogu v3: retain and rebind existing volumes during migration from v2, release them after the migration.
   # list and watch are required by the caching client.
   - apiGroups:
       - ""
@@ -17,4 +17,5 @@ rules:
       - list
       - watch
       - update
+      - patch
 {{- end }}

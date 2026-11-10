@@ -20,6 +20,9 @@ const (
 	globalConfigFileName = "config.yaml"
 )
 
+// MigrationJobKey is the values key a chart declares to ship migration jobs for a v2 to v3 migration.
+const MigrationJobKey = "migrationJob"
+
 type Mapping struct {
 	Path    string            `yaml:"path"`
 	Mapping map[string]string `yaml:"mapping"`

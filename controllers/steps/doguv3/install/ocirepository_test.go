@@ -75,6 +75,7 @@ var (
 	testScheme             = runtime.NewScheme()
 	_                      = v3beta1.AddToScheme(testScheme)
 	_                      = flux.AddToScheme(testScheme)
+	_                      = v1.AddToScheme(testScheme)
 )
 
 func TestEnsureOCIRepositoryStep_Run(t *testing.T) {
@@ -274,6 +275,188 @@ func TestEnsureOCIRepositoryStep_Run(t *testing.T) {
 	}
 }
 
+const testDevChartURL = "oci://k3d-registry-proxy.localhost:5000/testing/dogu/v3/charts/nexus"
+
+func TestEnsureOCIRepositoryStep_Run_devCharts(t *testing.T) {
+	t.Run("should use the dev chart from the annotation without asking the registry if dev charts are enabled", func(t *testing.T) {
+		// given
+		doguResource := testDoguResource.DeepCopy()
+		doguResource.Spec.Version = "1.0.0-dev.1"
+		doguResource.Annotations = map[string]string{AnnotationDevChartURL: testDevChartURL}
+		c := fake.NewClientBuilder().WithScheme(testScheme).WithObjects(doguResource).Build()
+
+		recorderMock := NewMockEventRecorder(t)
+		recorderMock.EXPECT().Event(doguResource, v1.EventTypeNormal, ReasonDevChart, "OCIRepository created from dev chart oci://k3d-registry-proxy.localhost:5000/testing/dogu/v3/charts/nexus:1.0.0-dev.1")
+
+		sut := NewEnsureOCIRepositoryStep(c, NewMockDoguRegistryReader(t), recorderMock, true)
+
+		// when
+		got := sut.Run(testCtx, doguResource)
+
+		// then
+		assert.Equal(t, testStepResultContinue, got)
+		repo := &flux.OCIRepository{}
+		require.NoError(t, c.Get(testCtx, testNamespacedName, repo))
+		assert.Equal(t, testDevChartURL, repo.Spec.URL)
+		assert.Equal(t, "1.0.0-dev.1", repo.Spec.Reference.Tag)
+		assert.Equal(t, "1.0.0-dev.1", repo.Labels[v3beta1.DoguLabelVersion])
+		assert.False(t, repo.Spec.Insecure)
+	})
+
+	t.Run("should mark the repository as insecure if the dev chart is insecure", func(t *testing.T) {
+		// given
+		doguResource := testDoguResource.DeepCopy()
+		doguResource.Annotations = map[string]string{
+			AnnotationDevChartURL:      testDevChartURL,
+			AnnotationDevChartInsecure: "true",
+		}
+		c := fake.NewClientBuilder().WithScheme(testScheme).WithObjects(doguResource).Build()
+
+		recorderMock := NewMockEventRecorder(t)
+		recorderMock.EXPECT().Event(doguResource, v1.EventTypeNormal, ReasonDevChart, "OCIRepository created from dev chart oci://k3d-registry-proxy.localhost:5000/testing/dogu/v3/charts/nexus:1.0.0")
+
+		sut := NewEnsureOCIRepositoryStep(c, NewMockDoguRegistryReader(t), recorderMock, true)
+
+		// when
+		got := sut.Run(testCtx, doguResource)
+
+		// then
+		assert.Equal(t, testStepResultContinue, got)
+		repo := &flux.OCIRepository{}
+		require.NoError(t, c.Get(testCtx, testNamespacedName, repo))
+		assert.True(t, repo.Spec.Insecure)
+	})
+
+	t.Run("should not mark the repository as insecure if the dev chart insecure annotation is not true", func(t *testing.T) {
+		// given
+		doguResource := testDoguResource.DeepCopy()
+		doguResource.Annotations = map[string]string{
+			AnnotationDevChartURL:      testDevChartURL,
+			AnnotationDevChartInsecure: "false",
+		}
+		c := fake.NewClientBuilder().WithScheme(testScheme).WithObjects(doguResource).Build()
+
+		recorderMock := NewMockEventRecorder(t)
+		recorderMock.EXPECT().Event(doguResource, v1.EventTypeNormal, ReasonDevChart, "OCIRepository created from dev chart oci://k3d-registry-proxy.localhost:5000/testing/dogu/v3/charts/nexus:1.0.0")
+
+		sut := NewEnsureOCIRepositoryStep(c, NewMockDoguRegistryReader(t), recorderMock, true)
+
+		// when
+		got := sut.Run(testCtx, doguResource)
+
+		// then
+		assert.Equal(t, testStepResultContinue, got)
+		repo := &flux.OCIRepository{}
+		require.NoError(t, c.Get(testCtx, testNamespacedName, repo))
+		assert.False(t, repo.Spec.Insecure)
+	})
+
+	t.Run("should update an existing repository to the new dev chart version", func(t *testing.T) {
+		// given
+		doguResource := testDoguResource.DeepCopy()
+		doguResource.Spec.Version = "1.0.0-dev.2"
+		doguResource.Annotations = map[string]string{AnnotationDevChartURL: testDevChartURL}
+		existingRepository := testRepository.DeepCopy()
+		existingRepository.Spec.URL = testDevChartURL
+		existingRepository.Spec.Reference.Tag = "1.0.0-dev.1"
+		c := fake.NewClientBuilder().WithScheme(testScheme).WithObjects(doguResource, existingRepository).Build()
+
+		recorderMock := NewMockEventRecorder(t)
+		recorderMock.EXPECT().Event(doguResource, v1.EventTypeNormal, ReasonDevChart, "OCIRepository updated from dev chart oci://k3d-registry-proxy.localhost:5000/testing/dogu/v3/charts/nexus:1.0.0-dev.2")
+
+		sut := NewEnsureOCIRepositoryStep(c, NewMockDoguRegistryReader(t), recorderMock, true)
+
+		// when
+		got := sut.Run(testCtx, doguResource)
+
+		// then
+		assert.Equal(t, testStepResultContinue, got)
+		repo := &flux.OCIRepository{}
+		require.NoError(t, c.Get(testCtx, testNamespacedName, repo))
+		assert.Equal(t, "1.0.0-dev.2", repo.Spec.Reference.Tag)
+	})
+
+	t.Run("should ignore the dev chart annotations, warn and use the dogu registry if dev charts are disabled", func(t *testing.T) {
+		// given
+		doguResource := testDoguResource.DeepCopy()
+		doguResource.Annotations = map[string]string{
+			AnnotationDevChartURL:      testDevChartURL,
+			AnnotationDevChartInsecure: "true",
+		}
+		c := fake.NewClientBuilder().WithScheme(testScheme).WithObjects(doguResource).Build()
+
+		doguRegistryMock := NewMockDoguRegistryReader(t)
+		doguRegistryMock.EXPECT().Get(testCtx, testIdentifier).Return(testDoguDescriptor, nil)
+
+		recorderMock := NewMockEventRecorder(t)
+		recorderMock.EXPECT().Event(doguResource, v1.EventTypeWarning, ReasonDevChartsDisabled, "Ignoring annotation k8s.cloudogu.com/dev-chart-url because dev charts are disabled in the dogu operator; using the dogu registry")
+		recorderMock.EXPECT().Event(doguResource, v1.EventTypeNormal, v3beta1.ConditionChartAvailable, "OCIRepository created")
+
+		sut := NewEnsureOCIRepositoryStep(c, doguRegistryMock, recorderMock, false)
+
+		// when
+		got := sut.Run(testCtx, doguResource)
+
+		// then
+		assert.Equal(t, testStepResultContinue, got)
+		checkExpectedRepositoryValues(t, c)
+		repo := &flux.OCIRepository{}
+		require.NoError(t, c.Get(testCtx, testNamespacedName, repo))
+		assert.False(t, repo.Spec.Insecure)
+	})
+
+	t.Run("should use the dogu registry without the dev chart annotation if dev charts are enabled", func(t *testing.T) {
+		// given
+		doguResource := testDoguResource.DeepCopy()
+		doguResource.Annotations = map[string]string{AnnotationDevChartInsecure: "true"}
+		existingRepository := testRepository.DeepCopy()
+		existingRepository.Spec.URL = testDevChartURL
+		existingRepository.Spec.Insecure = true
+		c := fake.NewClientBuilder().WithScheme(testScheme).WithObjects(doguResource, existingRepository).Build()
+
+		doguRegistryMock := NewMockDoguRegistryReader(t)
+		doguRegistryMock.EXPECT().Get(testCtx, testIdentifier).Return(testDoguDescriptor, nil)
+
+		recorderMock := NewMockEventRecorder(t)
+		recorderMock.EXPECT().Event(doguResource, v1.EventTypeNormal, v3beta1.ConditionChartAvailable, "OCIRepository updated")
+
+		sut := NewEnsureOCIRepositoryStep(c, doguRegistryMock, recorderMock, true)
+
+		// when
+		got := sut.Run(testCtx, doguResource)
+
+		// then
+		assert.Equal(t, testStepResultContinue, got)
+		checkExpectedRepositoryValues(t, c)
+		repo := &flux.OCIRepository{}
+		require.NoError(t, c.Get(testCtx, testNamespacedName, repo))
+		assert.False(t, repo.Spec.Insecure)
+	})
+
+	t.Run("should not apply the dev chart if reconciliation is paused", func(t *testing.T) {
+		// given
+		doguResource := testDoguResource.DeepCopy()
+		doguResource.Spec.PauseReconciliation = true
+		doguResource.Annotations = map[string]string{AnnotationDevChartURL: testDevChartURL}
+		existingRepository := testRepository.DeepCopy()
+		c := fake.NewClientBuilder().WithScheme(testScheme).WithObjects(doguResource, existingRepository).WithStatusSubresource(doguResource).Build()
+
+		recorderMock := NewMockEventRecorder(t)
+		recorderMock.EXPECT().Event(doguResource, v1.EventTypeNormal, v3beta1.ConditionUpdatePending, "Changes not propagated to OCIRepository, because dogu reconciliation is paused")
+
+		sut := NewEnsureOCIRepositoryStep(c, NewMockDoguRegistryReader(t), recorderMock, true)
+
+		// when
+		got := sut.Run(testCtx, doguResource)
+
+		// then
+		assert.Equal(t, testStepResultContinue, got)
+		repo := &flux.OCIRepository{}
+		require.NoError(t, c.Get(testCtx, testNamespacedName, repo))
+		assert.Equal(t, testChartURL, repo.Spec.URL)
+	})
+}
+
 func checkExpectedRepositoryValues(t *testing.T, client K8sClient) {
 	repo := &flux.OCIRepository{}
 	err := client.Get(testCtx, testNamespacedName, repo)
@@ -303,11 +486,12 @@ func TestNewEnsureOCIRepositoryStep(t *testing.T) {
 	recorderMock := NewMockEventRecorder(t)
 
 	// when
-	sut := NewEnsureOCIRepositoryStep(clientMock, doguRegistryMock, recorderMock)
+	sut := NewEnsureOCIRepositoryStep(clientMock, doguRegistryMock, recorderMock, true)
 
 	// then
 	assert.NotNil(t, sut)
 	assert.Equal(t, clientMock, sut.k8sClient)
 	assert.Equal(t, doguRegistryMock, sut.doguRegistry)
 	assert.Equal(t, recorderMock, sut.eventRecorder)
+	assert.True(t, sut.devChartsEnabled)
 }

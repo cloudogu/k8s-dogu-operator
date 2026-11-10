@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"k8s.io/utils/ptr"
 	"os"
 	"runtime"
 	"testing"
@@ -28,9 +29,12 @@ func TestNewOperatorConfig(t *testing.T) {
 	_ = os.Unsetenv("EXPOSITION_ENABLED")
 	_ = os.Unsetenv("WARP_MENU_ENTRY_ENABLED")
 	_ = os.Unsetenv("DOGU_V3_ENABLED")
+	_ = os.Unsetenv("DOGU_V3_DEV_CHARTS_ENABLED")
 	_ = os.Unsetenv("REQUEUE_TIME_FOR_DOGU_RESOURCE_IN_NANOSECONDS")
 	_ = os.Unsetenv("DOGU_HELM_RECONCILIATION_INTERVAL")
 	_ = os.Unsetenv("DOGU_HELM_RETRY_INTERVAL")
+	_ = os.Unsetenv("MIGRATION_JOB_START_TIMEOUT")
+	_ = os.Unsetenv("MIGRATION_JOB_COMPLETION_TIMEOUT")
 
 	expectedNamespace := "myNamespace"
 	expectedDoguRegistryData := DoguRegistryData{
@@ -98,6 +102,7 @@ func TestNewOperatorConfig(t *testing.T) {
 	t.Setenv("EXPOSITION_ENABLED", "true")
 	t.Setenv("WARP_MENU_ENTRY_ENABLED", "true")
 	t.Setenv("DOGU_V3_ENABLED", "true")
+	t.Setenv("DOGU_V3_DEV_CHARTS_ENABLED", "true")
 	t.Setenv("DISABLE_POSTFIX_DEPENDENCY_CHECK", "true")
 	t.Setenv("DOGU_V3_REGISTRY_ENDPOINT", expectedV3DoguRegistryData.Endpoint)
 	t.Setenv("DOGU_V3_REGISTRY_USERNAME", expectedV3DoguRegistryData.Username)
@@ -163,6 +168,32 @@ func TestNewOperatorConfig(t *testing.T) {
 	})
 
 	t.Setenv("DOGU_HELM_RETRY_INTERVAL", "300s")
+
+	t.Run("Error on missing migration job start timeout", func(t *testing.T) {
+		// when
+		operatorConfig, err := NewOperatorConfig("0.0.0")
+
+		// then
+		require.Error(t, err)
+		assert.ErrorContains(t, err, "failed to read migration job start timeout")
+		assert.Nil(t, operatorConfig)
+	})
+
+	t.Setenv("MIGRATION_JOB_START_TIMEOUT", "5m")
+
+	t.Run("Error on invalid migration job completion timeout", func(t *testing.T) {
+		t.Setenv("MIGRATION_JOB_COMPLETION_TIMEOUT", "60")
+
+		// when
+		operatorConfig, err := NewOperatorConfig("0.0.0")
+
+		// then
+		require.Error(t, err)
+		assert.ErrorContains(t, err, "failed to read migration job completion timeout")
+		assert.Nil(t, operatorConfig)
+	})
+
+	t.Setenv("MIGRATION_JOB_COMPLETION_TIMEOUT", "1h")
 	t.Run("Create config successfully", func(t *testing.T) {
 		// when
 		operatorConfig, err := NewOperatorConfig("0.1.0")
@@ -177,10 +208,13 @@ func TestNewOperatorConfig(t *testing.T) {
 		assert.True(t, operatorConfig.ExpositionEnabled)
 		assert.True(t, operatorConfig.WarpMenuEntryEnabled)
 		assert.True(t, operatorConfig.DoguV3Enabled)
+		assert.True(t, operatorConfig.DoguV3DevChartsEnabled)
 		assert.Equal(t, expectedV3DoguRegistryData, operatorConfig.DoguV3Registry)
 		assert.Equal(t, 50*time.Microsecond, operatorConfig.RequeueTimeForDoguReconciler)
 		assert.Equal(t, 15*time.Second, operatorConfig.DoguHelmReconciliationInterval)
 		assert.Equal(t, 5*time.Minute, operatorConfig.DoguHelmRetryInterval)
+		assert.Equal(t, 5*time.Minute, operatorConfig.MigrationJobStartTimeout)
+		assert.Equal(t, time.Hour, operatorConfig.MigrationJobCompletionTimeout)
 	})
 }
 
@@ -217,6 +251,8 @@ func TestOperatorConfig_GetRemoteConfiguration(t *testing.T) {
 	t.Setenv(envVarRequeueTimeForDoguResourceInNanoseconds, "5")
 	t.Setenv(envVarDoguHelmReconciliationInterval, "3m")
 	t.Setenv(envVarDoguHelmRetryInterval, "5m")
+	t.Setenv(envVarMigrationJobStartTimeout, "5m")
+	t.Setenv(envVarMigrationJobCompletionTimeout, "1h")
 
 	for _, tt := range tests {
 		t.Setenv(envVarDoguRegistryURLSchema, tt.urlSchemaEnv)
@@ -443,6 +479,36 @@ func Test_getDoguV3Enabled(t *testing.T) {
 	}
 }
 
+func Test_readOfflineVolumeExpansion(t *testing.T) {
+	tests := []struct {
+		name    string
+		value   string
+		want    bool
+		wantErr string
+	}{
+		{name: "default to online expansion when unset", want: false},
+		{name: "enable offline expansion", value: "true", want: true},
+		{name: "disable offline expansion", value: "false", want: false},
+		{name: "fail on invalid value", value: "invalid", wantErr: "failed to parse value of environment variable OFFLINE_VOLUME_EXPANSION"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.value != "" {
+				t.Setenv(envVarOfflineVolumeExpansion, tt.value)
+			}
+
+			got, err := readOfflineVolumeExpansion()
+
+			if tt.wantErr != "" {
+				require.ErrorContains(t, err, tt.wantErr)
+				return
+			}
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
 func Test_getWarpMenuDisabledV2Dogus(t *testing.T) {
 	tests := []struct {
 		name      string
@@ -474,6 +540,28 @@ func Test_getWarpMenuDisabledV2Dogus(t *testing.T) {
 				tt.envSetter(t)
 			}
 			assert.Equalf(t, tt.want, getWarpMenuDisabledV2Dogus(), "getWarpMenuDisabledV2Dogus()")
+		})
+	}
+}
+
+func Test_getDoguV3DevChartsEnabled(t *testing.T) {
+	tests := []struct {
+		name  string
+		value *string
+		want  bool
+	}{
+		{name: "return default false if not set", value: nil, want: false},
+		{name: "return default false on invalid value", value: ptr.To("invalid"), want: false},
+		{name: "return false if disabled", value: ptr.To("false"), want: false},
+		{name: "return true if enabled", value: ptr.To("true"), want: true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.value != nil {
+				t.Setenv("DOGU_V3_DEV_CHARTS_ENABLED", *tt.value)
+			}
+
+			assert.Equal(t, tt.want, getDoguV3DevChartsEnabled())
 		})
 	}
 }

@@ -59,10 +59,12 @@ func TestNewDoguInstallOrChangeUseCase(t *testing.T) {
 	waitOCIStep := &install.WaitForOCIRepositoryReadyStep{}
 	validateChartStep := &install.ValidateChartStep{}
 	suspendStep := &install.SuspendHelmReleaseStep{}
+	requestVolumeResizeStep := &install.RequestVolumeResizeStep{}
 	helmReleaseStep := &install.EnsureHelmReleaseStep{}
 	helmReleaseStatusStep := &install.HelmReleaseStatusStep{}
 	exportModeStep := &install.ExportModeStep{}
 	updatePendingStep := &install.UpdatePendingStep{}
+	volumeStatusStep := &install.VolumeStatusStep{}
 
 	got := NewDoguInstallOrChangeUseCase(
 		finalizerStep,
@@ -70,10 +72,12 @@ func TestNewDoguInstallOrChangeUseCase(t *testing.T) {
 		waitOCIStep,
 		validateChartStep,
 		suspendStep,
+		requestVolumeResizeStep,
 		helmReleaseStep,
 		helmReleaseStatusStep,
 		updatePendingStep,
 		exportModeStep,
+		volumeStatusStep,
 		clientMock,
 		recorderMock,
 	)
@@ -86,9 +90,11 @@ func TestNewDoguInstallOrChangeUseCase(t *testing.T) {
 		"*install.ValidateChartStep",
 		"*install.SuspendHelmReleaseStep",
 		"*install.StopWorkloadsStep",
+		"*install.RequestVolumeResizeStep",
 		"*install.EnsureHelmReleaseStep",
 		"*install.HelmReleaseStatusStep",
 		"*install.UpdatePendingStep",
+		"*install.VolumeStatusStep",
 	}
 
 	assert.NotNil(t, got)
@@ -114,7 +120,10 @@ func TestNewDoguMigrationUseCase(t *testing.T) {
 		&migration.MigrationSecretStep{},
 		&migration.MigrateDoguPVCStep{},
 		&migration.CleanupV2ResourcesStep{},
-		&migration.MigrationPendingStep{},
+		&migration.PrepareMigrationJobsStep{},
+		&install.EnsureHelmReleaseStep{},
+		&migration.MigrationJobStep{},
+		&migration.MigrationCleanupStep{},
 		clientMock,
 		recorderMock,
 	)
@@ -128,7 +137,10 @@ func TestNewDoguMigrationUseCase(t *testing.T) {
 		"*migration.MigrationSecretStep",
 		"*migration.MigrateDoguPVCStep",
 		"*migration.CleanupV2ResourcesStep",
-		"*migration.MigrationPendingStep",
+		"*migration.PrepareMigrationJobsStep",
+		"*install.EnsureHelmReleaseStep",
+		"*migration.MigrationJobStep",
+		"*migration.MigrationCleanupStep",
 	}
 
 	assert.NotNil(t, got)
