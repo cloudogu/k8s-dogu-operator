@@ -5,12 +5,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [v3.37.0] - 2026-11-10
 ### Added
 - [#391] Run the migration jobs of a v3 dogu chart during the migration from v2 and delete the v2 volume afterward
 - [#359] Reject v3 dogu changes that shrink a volume or change its storage class (`Valid=False`).
 - [#359] Enable V3 dogus to increase the volume size of their pvcs.
 - [#359] Grow volumes of v3 dogus online by default; Helm value `offlineVolumeExpansion` enables the offline flow for storage that only expands unmounted volumes.
-
 
 ## [v3.36.0] - 2026-11-06
 ### Removed
