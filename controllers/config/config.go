@@ -69,6 +69,8 @@ const (
 	envVarDoguHelmReconciliationInterval          = "DOGU_HELM_RECONCILIATION_INTERVAL"
 	envVarDoguHelmRetryInterval                   = "DOGU_HELM_RETRY_INTERVAL"
 	envVarOfflineVolumeExpansion                  = "OFFLINE_VOLUME_EXPANSION"
+	envVarMigrationJobStartTimeout                = "MIGRATION_JOB_START_TIMEOUT"
+	envVarMigrationJobCompletionTimeout           = "MIGRATION_JOB_COMPLETION_TIMEOUT"
 )
 
 const (
@@ -133,6 +135,10 @@ type OperatorConfig struct {
 	DoguHelmRetryInterval time.Duration `json:"dogu_helm_retry_interval"`
 	// OfflineVolumeExpansion defines whether v3 dogus detach their volumes before growing them, for storage providers that cannot expand mounted volumes.
 	OfflineVolumeExpansion bool `json:"offline_volume_expansion"`
+	// MigrationJobStartTimeout defines how long to wait for the migration jobs of a dogu to appear during a v2 to v3 migration
+	MigrationJobStartTimeout time.Duration `json:"migration_job_start_timeout"`
+	// MigrationJobCompletionTimeout defines how long a single migration job may run during a v2 to v3 migration
+	MigrationJobCompletionTimeout time.Duration `json:"migration_job_completion_timeout"`
 }
 
 type Version string
@@ -186,6 +192,18 @@ func NewOperatorConfig(version Version) (*OperatorConfig, error) {
 	}
 	log.Info(fmt.Sprintf("Using offline volume expansion for v3 dogus: %t", offlineVolumeExpansion))
 
+	migrationJobStartTimeout, err := readDuration(envVarMigrationJobStartTimeout)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read migration job start timeout: %w", err)
+	}
+	log.Info(fmt.Sprintf("Found stored migration job start timeout! Using timeout %s", migrationJobStartTimeout))
+
+	migrationJobCompletionTimeout, err := readDuration(envVarMigrationJobCompletionTimeout)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read migration job completion timeout: %w", err)
+	}
+	log.Info(fmt.Sprintf("Found stored migration job completion timeout! Using timeout %s", migrationJobCompletionTimeout))
+
 	return &OperatorConfig{
 		Namespace:                      namespace,
 		DoguRegistry:                   doguRegistryData,
@@ -203,6 +221,8 @@ func NewOperatorConfig(version Version) (*OperatorConfig, error) {
 		DoguV3Registry:                 readDoguV3RegistryData(),
 		DoguHelmReconciliationInterval: doguHelmReconciliationInterval,
 		DoguHelmRetryInterval:          doguHelmRetryInterval,
+		MigrationJobStartTimeout:       migrationJobStartTimeout,
+		MigrationJobCompletionTimeout:  migrationJobCompletionTimeout,
 		ExperimentalHelmfileSupport:    getExperimentalHelmfileSupport(),
 		HelmfileGlobalConfig:           getHelmfileGlobalConfig(),
 		HelmfileOpenDeskConfig:         getHelmfileOpenDeskConfig(),

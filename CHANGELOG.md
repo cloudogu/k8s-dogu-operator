@@ -5,6 +5,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Added
+- [#391] Run the migration jobs of a v3 dogu chart during the migration from v2 and delete the v2 volume afterward
+- [#359] Reject v3 dogu changes that shrink a volume or change its storage class (`Valid=False`).
+- [#359] Enable V3 dogus to increase the volume size of their pvcs.
+- [#359] Grow volumes of v3 dogus online by default; Helm value `offlineVolumeExpansion` enables the offline flow for storage that only expands unmounted volumes.
+
 
 ## [v3.36.0] - 2026-11-06
 ### Removed
@@ -14,9 +20,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Make targets `registry-staging`, `registry-prod` and `registry-env-status` to switch Harbor and the DCC v3 between staging and prod.
 - [#360] Support stopping and starting v3 dogu workloads.
-- [#359] Reject v3 dogu changes that shrink a volume or change its storage class (`Valid=False`).
-- [#359] Enable V3 dogus to increase the volume size of their pvcs.
-- [#359] Grow volumes of v3 dogus online by default; Helm value `offlineVolumeExpansion` enables the offline flow for storage that only expands unmounted volumes.
 - [#358] Support `DoguRestart` for dogu v3.
 - [#367] Warning condition and event when activating the export mode for V3 Dogus because is not implemented
 - [#368] Detect whether a v3 dogu has to be migrated from v2 or installed

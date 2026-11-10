@@ -31,10 +31,22 @@ type EnsureHelmReleaseStep struct {
 	retryInterval         metav1.Duration
 	chartService          chartService
 	assembler             valueAssembler
+	disableWait           bool
 }
 
-func NewEnsureHelmReleaseStep(k8sClient K8sClient, operatorConfig *config.OperatorConfig, chartService chartService, assembler valueAssembler, recorder EventRecorder) *EnsureHelmReleaseStep {
-	return &EnsureHelmReleaseStep{
+// EnsureHelmReleaseOption configures an EnsureHelmReleaseStep.
+type EnsureHelmReleaseOption func(*EnsureHelmReleaseStep)
+
+// WithoutWait disables Helm's wait for the chart resources on install and upgrade.
+// The migration needs this, because its workloads render no replicas and their dependent resources never get ready.
+func WithoutWait() EnsureHelmReleaseOption {
+	return func(step *EnsureHelmReleaseStep) {
+		step.disableWait = true
+	}
+}
+
+func NewEnsureHelmReleaseStep(k8sClient K8sClient, operatorConfig *config.OperatorConfig, chartService chartService, assembler valueAssembler, recorder EventRecorder, opts ...EnsureHelmReleaseOption) *EnsureHelmReleaseStep {
+	step := &EnsureHelmReleaseStep{
 		k8sClient:             k8sClient,
 		eventRecorder:         recorder,
 		helmReconcileInterval: metav1.Duration{Duration: operatorConfig.DoguHelmReconciliationInterval},
@@ -42,6 +54,12 @@ func NewEnsureHelmReleaseStep(k8sClient K8sClient, operatorConfig *config.Operat
 		chartService:          chartService,
 		assembler:             assembler,
 	}
+
+	for _, opt := range opts {
+		opt(step)
+	}
+
+	return step
 }
 
 func (ehr *EnsureHelmReleaseStep) Run(ctx context.Context, doguResource *doguv3.Dogu) stepsv3.StepResult {
@@ -62,6 +80,8 @@ func (ehr *EnsureHelmReleaseStep) Run(ctx context.Context, doguResource *doguv3.
 	// CreateOrUpdate would produce conflict errors and increase the number of reconciles.
 	result, err := controllerutil.CreateOrPatch(ctx, ehr.k8sClient, release, func() error {
 		configureHelmRelease(release, doguResource, combinedValues, &ehr.retryInterval, &ehr.helmReconcileInterval)
+		release.Spec.Install.DisableWait = ehr.disableWait
+		release.Spec.Upgrade.DisableWait = ehr.disableWait
 		return controllerutil.SetControllerReference(doguResource, release, ehr.k8sClient.Scheme())
 	})
 

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	doguv2 "github.com/cloudogu/k8s-dogu-lib/v3/api/v2"
 	"github.com/cloudogu/k8s-dogu-lib/v3/api/v3beta1"
@@ -12,6 +13,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 )
+
+const pendingRequeueTime = time.Minute
 
 // MigrationPreconditionsStep checks whether the v2 dogu can be migrated to v3.
 // The preconditions are only checked before the migration starts, a migration in progress continues.

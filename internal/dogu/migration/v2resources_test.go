@@ -151,10 +151,10 @@ func TestV2ResourceFinder_FindV2Resources(t *testing.T) {
 		newExposition("exposition", true, true),
 		newWarpMenuEntry("warp-menu-entry-1", true, true),
 		newWarpMenuEntry("warp-menu-entry-2", true, true),
-		newNetworkPolicy("network-policy", true, true),
+		newTestNetworkPolicy("network-policy", true, true),
 	}
 	notToFind := []client.Object{
-		newNetworkPolicy("netpol-no-owner", true, false),
+		newTestNetworkPolicy("netpol-no-owner", true, false),
 		newWarpMenuEntry("warp-unrelated", false, false),
 		newExposition("exposition-unrelated", false, false),
 		newAuthRegistration("authreg-no-label", false, true),
@@ -253,7 +253,7 @@ func newWarpMenuEntry(name string, withLabel bool, withOwner bool) client.Object
 	return setupObject(warpMenuEntry, name, withLabel, withOwner)
 }
 
-func newNetworkPolicy(name string, withLabel bool, withOwner bool) client.Object {
+func newTestNetworkPolicy(name string, withLabel bool, withOwner bool) client.Object {
 	networkPolicy := &netpol.NetworkPolicy{
 		Kind:       "NetworkPolicy",
 		APIVersion: "networking.k8s.io/v1",
