@@ -3,7 +3,7 @@ values:
   images:
     doguOperator: cloudogu/k8s-dogu-operator:3.35.0
     chownInitImage: busybox:1.36
-    exporterImage: registry.cloudogu.com/k8s/rsync-sidecar:1.1.0
+    exporterImage: registry.cloudogu.com/k8s/rsync-sidecar:1.1.2
     additionalMountsInitContainerImage: cloudogu/dogu-additional-mounts-init:0.1.4
     reloaderImage: ghcr.io/stakater/reloader:v1.4.21
 patches:
