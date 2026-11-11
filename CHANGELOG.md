@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Added
+- [#402] Operations documentation for installing, configuring, stopping and restarting v3 dogus
 
 ## [v3.39.0] - 2026-11-11
 ### Fixed
