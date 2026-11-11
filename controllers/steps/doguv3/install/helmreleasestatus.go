@@ -85,11 +85,34 @@ func (hrs *HelmReleaseStatusStep) Run(ctx context.Context, doguResource *v3beta1
 		return stepsv3.RequeueAfter(defaultRequeueAfter, v3beta1.ReasonStopping, "Waiting for HelmRelease suspension")
 	}
 
+	if err := hrs.clearStopped(ctx, doguResource); err != nil {
+		return stepsv3.RequeueWithError(err, v3beta1.ReasonStarting)
+	}
+
 	desired := fluxstate.NewDesiredRelease(doguResource.Spec.Version, release)
 
 	state := fluxstate.EvaluateRelease(release, desired)
 
 	return hrs.stepResultForRelease(ctx, state, doguResource)
+}
+
+// clearStopped resets the stopped flag of a dogu whose HelmRelease has been resumed, so its workloads start again.
+func (hrs *HelmReleaseStatusStep) clearStopped(ctx context.Context, doguResource *v3beta1.Dogu) error {
+	if !doguResource.Status.Stopped {
+		return nil
+	}
+	doguResource.Status.Stopped = false
+	metautil.SetStatusCondition(&doguResource.Status.Conditions, metav1.Condition{
+		Type:               v3beta1.ConditionStopped,
+		Status:             metav1.ConditionFalse,
+		Reason:             v3beta1.ReasonStarting,
+		Message:            "Dogu workloads are starting",
+		ObservedGeneration: doguResource.Generation,
+	})
+	if err := hrs.k8sClient.Status().Update(ctx, doguResource); err != nil {
+		return fmt.Errorf("failed to clear stopped status of dogu: %w", err)
+	}
+	return nil
 }
 
 func (hrs *HelmReleaseStatusStep) stepResultForRelease(ctx context.Context, state fluxstate.ReleaseState, doguResource *v3beta1.Dogu) stepsv3.StepResult {

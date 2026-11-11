@@ -109,6 +109,67 @@ func TestHelmReleaseStatusStep_Run(t *testing.T) {
 
 		assert.Equal(t, stepsv3.Continue(), result)
 	})
+	t.Run("should clear the stopped flag once the release is resumed", func(t *testing.T) {
+		doguResource := testDoguResource.DeepCopy()
+		doguResource.Status.Stopped = true
+		meta.SetStatusCondition(&doguResource.Status.Conditions, metav1.Condition{
+			Type: v3beta1.ConditionStopped, Status: metav1.ConditionTrue, Reason: v3beta1.ReasonSucceeded,
+		})
+		c := fake.NewClientBuilder().WithScheme(helmScheme).WithStatusSubresource(doguResource).
+			WithObjects(release.DeepCopy(), doguResource.DeepCopy()).Build()
+		require.NoError(t, c.Get(context.Background(), client.ObjectKeyFromObject(doguResource), doguResource))
+		step := NewHelmReleaseStatusStep(c, nil, nil, &config.OperatorConfig{}, nil, NewMockEventRecorder(t))
+
+		result := step.Run(context.Background(), doguResource)
+
+		require.NoError(t, result.Err)
+		assert.Equal(t, v3beta1.ReasonInstalling, result.ReadyReason)
+		persisted := &v3beta1.Dogu{}
+		require.NoError(t, c.Get(context.Background(), client.ObjectKeyFromObject(doguResource), persisted))
+		assert.False(t, persisted.Status.Stopped)
+		stopped := meta.FindStatusCondition(persisted.Status.Conditions, v3beta1.ConditionStopped)
+		require.NotNil(t, stopped)
+		assert.Equal(t, metav1.ConditionFalse, stopped.Status)
+		assert.Equal(t, v3beta1.ReasonStarting, stopped.Reason)
+	})
+
+	t.Run("should keep the stopped flag while the release is still suspended", func(t *testing.T) {
+		suspended := release.DeepCopy()
+		suspended.Spec.Suspend = true
+		doguResource := testDoguResource.DeepCopy()
+		doguResource.Status.Stopped = true
+		c := fake.NewClientBuilder().WithScheme(helmScheme).WithStatusSubresource(doguResource).
+			WithObjects(suspended, doguResource.DeepCopy()).Build()
+		step := NewHelmReleaseStatusStep(c, nil, nil, &config.OperatorConfig{}, nil, NewMockEventRecorder(t))
+
+		result := step.Run(context.Background(), doguResource)
+
+		require.NoError(t, result.Err)
+		assert.Equal(t, v3beta1.ReasonStarting, result.ReadyReason)
+		persisted := &v3beta1.Dogu{}
+		require.NoError(t, c.Get(context.Background(), client.ObjectKeyFromObject(doguResource), persisted))
+		assert.True(t, persisted.Status.Stopped)
+	})
+
+	t.Run("should requeue with error if the stopped flag cannot be cleared", func(t *testing.T) {
+		doguResource := testDoguResource.DeepCopy()
+		doguResource.Status.Stopped = true
+		c := fake.NewClientBuilder().WithScheme(helmScheme).WithStatusSubresource(doguResource).
+			WithObjects(release.DeepCopy(), doguResource.DeepCopy()).
+			WithInterceptorFuncs(interceptor.Funcs{
+				SubResourceUpdate: func(ctx context.Context, client client.Client, subResourceName string, obj client.Object, opts ...client.SubResourceUpdateOption) error {
+					return assert.AnError
+				},
+			}).Build()
+		step := NewHelmReleaseStatusStep(c, nil, nil, &config.OperatorConfig{}, nil, NewMockEventRecorder(t))
+
+		result := step.Run(context.Background(), doguResource)
+
+		assert.ErrorIs(t, result.Err, assert.AnError)
+		assert.Equal(t, v3beta1.ReasonStarting, result.ReadyReason)
+		assert.False(t, result.Continue)
+	})
+
 	t.Run("should report pending installation during pause", func(t *testing.T) {
 		doguResource := testDoguResource.DeepCopy()
 		doguResource.Spec.PauseReconciliation = true

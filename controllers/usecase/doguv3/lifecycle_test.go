@@ -309,7 +309,9 @@ func TestV3StartWaitsForCurrentHealthBeforeReset(t *testing.T) {
 
 			require.NoError(t, err)
 			assert.Positive(t, delay)
-			assert.Equal(t, scenario.stopCompleted, f.dogu.Status.Stopped)
+			// The stopped flag is cleared as soon as the HelmRelease is resumed, not only after health is confirmed.
+			// Consumers like the service discovery only react to Healthy changes and would miss a later reset.
+			assert.False(t, f.dogu.Status.Stopped)
 			assert.Equal(t, scenario.stopCompleted, meta.IsStatusConditionTrue(f.dogu.Status.Conditions, v3beta1.ConditionUpdatePending))
 
 			// Only current-generation health confirms the start and clears pending.
