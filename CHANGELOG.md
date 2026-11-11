@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ### Added
 - [#402] Operations documentation for installing, configuring, stopping and restarting v3 dogus
+- [#404] Operations documentation for migrating v2 dogus to v3
 
 ### Fixed
 - Clear the stopped status of a v3 dogu as soon as its HelmRelease is resumed, so that the dogu is reachable again after a restart.
