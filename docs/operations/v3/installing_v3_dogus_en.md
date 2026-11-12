@@ -2,7 +2,7 @@
 
 Like a v2 dogu, a v3 dogu is installed via a dogu resource.
 The difference lies in the API version of the resource and in the field `spec.doguApiVersion`, which specifies that the dogu is installed as a v3 dogu.
-Before the first v3 dogu can be installed, a few prerequisites must be met in the cluster.
+Installing v3 dogus requires the following prerequisites in the cluster.
 
 The examples assume the namespace `ecosystem` and use the Nexus dogu.
 
@@ -110,8 +110,8 @@ Notes:
 
 - Always read and edit v3 dogus via `dogus.v3beta1.k8s.cloudogu.com`.
   A plain `kubectl get dogu` uses the API version `v2` and does not show v3 fields such as `values`.
-- A v3 dogu cannot be turned back into a v2 dogu.
-  The operator rejects this with `Ready=False` and the reason `DowngradeNotAllowed`.
+- A migration back from v3 to v2 is not supported.
+  The operator rejects it with `Ready=False` and the reason `DowngradeNotAllowed`.
 - If `spec.doguApiVersion: v3` is set on an already installed v2 dogu, it is migrated to v3, see [Migrating from v2](migrating_from_v2_to_v3_en.md).
 
 ## Checking the installation
@@ -146,11 +146,12 @@ All conditions and events are described in [Conditions and events of v3 dogus](c
 
 | Symptom                                                   | Cause / solution                                                                                |
 |-----------------------------------------------------------|-------------------------------------------------------------------------------------------------|
-| Nothing happens, operator log `dogu v3 feature flag is disabled` | v3 dogus are not enabled in the operator.                                                |
+| Dogu resource is not processed, operator log `dogu v3 feature flag is disabled` | v3 dogus are not enabled in the operator.                                 |
 | Dogu is installed as a v2 dogu                            | `spec.doguApiVersion: v3` is missing.                                                           |
 | `Ready=False`, reason `DownloadFailed`                    | Check `dogu-registry-v3`, dogu namespace and version; restart the operator after changing the secret. |
 | `Ready=False`, reason `Unauthorized`                      | Check the entry for the chart registry in `ces-container-registries`.                           |
 | `Ready=False`, reason `ChartNotFound`                     | The version does not exist as a v3 dogu.                                                        |
 | `Ready=False`, reason `SchemaInvalid` or `RenderFailed`   | The configuration does not match the dogu, see [Validation](configuring_v3_dogus_en.md#validation). |
 | `Ready=False`, reason `InstallFailed`                     | The installation failed and is retried automatically after `doguHelmRetryInterval`; details are in the message of the condition. |
-| `Ready=True`, `Healthy=False`                             | The dogu is installed but does not start; check pods and logs.                                  |
+| `Ready=False`, reason `WorkloadsNotReady`                 | The Helm release is deployed, but the pods of the dogu are not ready; check pods and logs.       |
+| `Ready=True`, `Healthy=False`                             | The dogu was ready before and failed afterward, e.g. due to a pod crash, or it is stopped (reason `Stopped`); check pods and logs. |

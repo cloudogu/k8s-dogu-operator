@@ -20,9 +20,9 @@ kubectl -n ecosystem get events --field-selector involvedObject.kind=Dogu,involv
 
 ### `Ready`
 
-`Ready` ist die wichtigste Condition.
+`Ready` beschreibt den Gesamtzustand der Dogu-Ressource.
 Sie ist `True`, wenn der gewünschte Zustand der Dogu-Ressource vollständig umgesetzt ist.
-Bei `False` nennt der Reason, welcher Vorgang gerade läuft oder woran es scheitert:
+Bei `False` nennt der Reason den laufenden Vorgang oder den aufgetretenen Fehler:
 
 | Reason                                                                   | Bedeutung                                                                             |
 |--------------------------------------------------------------------------|---------------------------------------------------------------------------------------|
@@ -35,8 +35,8 @@ Bei `False` nennt der Reason, welcher Vorgang gerade läuft oder woran es scheit
 | `SchemaInvalid`, `RenderFailed`, `VolumeShrink`, `StorageClassImmutable` | Ungültige Konfiguration, siehe [Validierung](configuring_v3_dogus_de.md#validierung). |
 | `InstallFailed`, `UpgradeFailed`                                         | Installation bzw. Upgrade ist fehlgeschlagen; wird automatisch wiederholt.            |
 | `MigrationPending`, `MigrationFailed`                                    | Siehe [Migration von v2](migrating_from_v2_to_v3_de.md).                              |
-| `Deleting`, `DeletionFailed`, `DeletionStalled`                          | Das Dogu wird gelöscht bzw. das Löschen hängt.                                        |
-| `DowngradeNotAllowed`                                                    | Ein v3-Dogu kann nicht wieder zu einem v2-Dogu werden.                                |
+| `Deleting`, `DeletionFailed`, `DeletionStalled`                          | Das Dogu wird gelöscht bzw. das Löschen ist fehlgeschlagen oder blockiert.            |
+| `DowngradeNotAllowed`                                                    | Eine Rückmigration von v3 nach v2 wird nicht unterstützt.                             |
 | `StepFailed`, `ReconciliationAborted`                                    | Allgemeiner Fehler; Message und Operator-Log nennen die Ursache.                      |
 
 Schlägt ein Vorgang fehl, läuft das Dogu in der Regel mit dem bisherigen Stand weiter.
@@ -60,9 +60,9 @@ Ein Dogu kann also `Ready=True` und gleichzeitig `Healthy=False` sein, z. B. wen
 
 ## Events
 
-Events zeigen, was mit dem Dogu passiert ist, und eignen sich daher vor allem zur Fehlersuche im Nachhinein.
+Events protokollieren Vorgänge und Zustandswechsel des Dogus und dienen vor allem der nachträglichen Fehleranalyse.
 
-| Typ     | Reason                         | Wann                                                        |
+| Typ     | Reason                         | Auslöser                                                    |
 |---------|--------------------------------|-------------------------------------------------------------|
 | Normal  | `ReconcileSucceeded`           | Der gewünschte Zustand ist umgesetzt.                       |
 | Normal  | `ChartAvailable`               | Das Chart wurde geladen bzw. die Installation aktualisiert. |

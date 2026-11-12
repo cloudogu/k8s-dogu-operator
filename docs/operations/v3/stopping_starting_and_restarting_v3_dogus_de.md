@@ -18,9 +18,9 @@ kubectl -n ecosystem patch dogus.v3beta1.k8s.cloudogu.com nexus --type=merge -p 
 
 ### Stoppen
 
-Mit `spec.stopped: true` werden alle Deployments und StatefulSets des Dogus auf null skaliert.
+Mit `spec.stopped: true` werden alle Deployments und StatefulSets des Dogus auf 0 Replicas skaliert.
 DaemonSets werden nicht gestoppt.
-Die Volumes des Dogus bleiben erhalten, es gehen also keine Daten verloren.
+Die Volumes und damit die Daten des Dogus bleiben erhalten.
 
 Der Stopp ist abgeschlossen, wenn die Condition `Stopped` auf `True` steht.
 Während des Stoppens ist sie `False` mit dem Reason `PartiallyStopped`.
@@ -29,13 +29,13 @@ Ein gestopptes Dogu ist `Ready=True`, weil der gewünschte Zustand erreicht ist,
 ### Änderungen an einem gestoppten Dogu
 
 Ein gestopptes Dogu kann weiterhin konfiguriert oder aktualisiert werden.
-Die Änderungen werden angenommen und geprüft, aber erst beim nächsten Start ausgerollt.
+Die Änderungen werden validiert, aber erst beim nächsten Start ausgerollt.
 Solange Änderungen ausstehen, zeigt das Dogu `UpdatePending=True`.
 
 ### Starten
 
 Mit `spec.stopped: false` wird das Dogu wieder gestartet.
-Dabei werden auch alle Änderungen ausgerollt, die während des Stopps angefallen sind.
+Dabei werden auch alle Änderungen ausgerollt, die während des Stopps vorgenommen wurden.
 Der Start ist abgeschlossen, wenn das Dogu wieder `Ready=True` und `Healthy=True` ist.
 
 ## Reconciliation pausieren
@@ -49,7 +49,7 @@ kubectl -n ecosystem patch dogus.v3beta1.k8s.cloudogu.com nexus --type=merge -p 
 ```
 
 Solange `spec.pauseReconciliation` gesetzt ist, werden Änderungen an der Dogu-Ressource weder geprüft noch ausgerollt.
-Das ist z. B. hilfreich, um mehrere Änderungen zu sammeln und gemeinsam auszurollen.
+Dadurch lassen sich z. B. mehrere Änderungen gesammelt ausrollen.
 Das laufende Dogu bleibt dabei unverändert.
 
 - Das Dogu ist `Ready=False` mit dem Reason `ReconciliationPaused`.
@@ -92,4 +92,4 @@ kubectl -n ecosystem get dogurestart <name> \
 | `Ready`     | `True`  | `Superseded`        | Ein neuerer Neustart desselben Dogus wurde bereits ausgeführt.           |
 | `Ready`     | `False` | `DoguNotFound`      | Das Dogu existiert nicht.                                                |
 
-Ob Konfigurationsänderungen von selbst einen Neustart auslösen, steht in [v3-Dogus konfigurieren](configuring_v3_dogus_de.md#neustart-bei-konfigurationsänderungen).
+Ob Konfigurationsänderungen automatisch einen Neustart auslösen, steht in [v3-Dogus konfigurieren](configuring_v3_dogus_de.md#neustart-bei-konfigurationsänderungen).

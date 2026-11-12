@@ -2,15 +2,15 @@
 
 v3 dogus are configured via Helm values.
 They replace the dogu config keys used to configure v2 dogus.
-As an operator, you set the values on the dogu resource, either directly in `spec.values` or via generic keys in `spec.mappedValues`.
+As an administrator, you set the values on the dogu resource, either directly in `spec.values` or via generic keys in `spec.mappedValues`.
 In addition, every v3 dogu receives the global configuration of the CES.
 The dogu operator merges all sources and rolls out the result.
 
 The examples assume the namespace `ecosystem` and use the Nexus dogu.
 
-## Which values exist?
+## Available values
 
-The values a dogu knows are defined by the dogu itself.
+The available values are defined by the respective dogu.
 They are listed in the documentation of the dogu and in the following files of its Helm chart:
 
 | File                        | Content                                                            |
@@ -105,8 +105,7 @@ The merge patch deletes the key from `spec.values`; afterwards the default appli
 
 ## `spec.mappedValues`
 
-Some settings should be configurable the same way for all dogus, without knowing the structure of the respective dogu's values.
-This is what mapped values are for: generic keys such as `mainLogLevel`.
+Mapped values are generic keys such as `mainLogLevel` that are set uniformly for all dogus, independent of the structure of the respective dogu's values.
 The dogu defines in its `dogu-values-metadata.yaml` which of its values a key affects and which values are allowed.
 
 ```yaml
@@ -117,7 +116,7 @@ spec:
 
 - `spec.mappedValues` has the highest rank and also overrides `spec.values`.
 - Keys the dogu does not know are ignored without an error message.
-  A typo in a key therefore only shows in that nothing changes.
+  Invalid keys are therefore not reported and have no effect.
 
 ### Log level
 
@@ -160,7 +159,7 @@ The cause is shown as reason on the conditions `Valid` and `Ready`; additionally
 | Reason                  | Cause                                                  |
 |-------------------------|--------------------------------------------------------|
 | `SchemaInvalid`         | The values violate the dogu's `values.schema.json`.    |
-| `RenderFailed`          | The dogu cannot be rendered with the values.           |
+| `RenderFailed`          | The Helm chart cannot be rendered with the values.     |
 | `VolumeShrink`          | A volume would be shrunk.                              |
 | `StorageClassImmutable` | The storage class of a volume would be changed.        |
 
@@ -171,7 +170,7 @@ The dry-run rendering and the volume checks still take place.
 The condition `SchemaValidationSkipped` is then `True`.
 
 > [!WARNING]
-> Without schema validation, invalid values only show up during the rollout or in the running dogu.
+> Without schema validation, invalid values are only detected during the rollout or at runtime of the dogu.
 
 ## Restart on configuration changes
 
@@ -182,16 +181,16 @@ Which settings trigger a restart is described in the documentation of the dogu.
 
 A manual restart is possible at any time, see [Restarting](stopping_starting_and_restarting_v3_dogus_en.md#restarting).
 
-## What not to do
+## Unsupported changes
 
 - **Changing the dogu's resources directly** (ConfigMaps, StatefulSets, ...):
-  Such changes are reverted automatically after a short time.
+  Such changes are reverted within `doguHelmReconciliationInterval`.
   Configuration is done exclusively via the dogu resource.
 - **Editing the dogu resource via the API version `v2`** (`kubectl edit dogu`):
   `values` and `mappedValues` are not visible there.
   Therefore, always edit v3 dogus via `dogus.v3beta1.k8s.cloudogu.com`.
 
-## Checking whether a change has arrived
+## Checking the rollout of a change
 
 ```bash
 kubectl -n ecosystem get dogus.v3beta1.k8s.cloudogu.com nexus
