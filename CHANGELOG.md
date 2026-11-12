@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [v3.39.0] - 2026-11-11
 ### Fixed
 - Clear the stopped status of a v3 dogu as soon as its HelmRelease is resumed, so that the dogu is reachable again after a restart.
 
