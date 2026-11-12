@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v3.39.0] - 2026-11-11
+### Fixed
+- Clear the stopped status of a v3 dogu as soon as its HelmRelease is resumed, so that the dogu is reachable again after a restart.
+
 ## [v3.38.0] - 2026-11-10
 
 ### Changed
