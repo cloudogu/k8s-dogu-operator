@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
+	"slices"
 	"testing"
 
 	"github.com/cloudogu/ces-commons-lib/dogu"
@@ -768,7 +769,9 @@ func TestUpdateDeploymentStep_Run(t *testing.T) {
 					mck := newMockCommandExecutor(t)
 					mck.EXPECT().ExecCommandForPod(testCtx, &v1.Pod{}, exec.NewShellCommand("/bin/mkdir", "-p", preUpgradeScriptDir)).Return(&bytes.Buffer{}, nil)
 					mck.EXPECT().ExecCommandForPod(testCtx, &v1.Pod{}, exec.NewShellCommandWithStdin(&bytes.Buffer{}, "/bin/tar", "xf", "-", "-C", preUpgradeScriptDir)).Return(&bytes.Buffer{}, nil)
-					mck.EXPECT().ExecCommandForPod(testCtx, &v1.Pod{}, exec.NewShellCommand(filepath.Join(preUpgradeScriptDir, filepath.Base("")), "", "")).Return(nil, assert.AnError)
+					mck.EXPECT().ExecCommandForPod(testCtx, &v1.Pod{}, mock.MatchedBy(func(command exec.ShellCommand) bool {
+						return slices.Equal(command.CommandWithArgs(), []string{filepath.Join(preUpgradeScriptDir, filepath.Base("")), "", ""})
+					})).Return(nil, assert.AnError)
 					return mck
 				},
 			},

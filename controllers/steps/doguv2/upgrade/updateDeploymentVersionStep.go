@@ -201,7 +201,14 @@ func (uds *UpdateDeploymentVersionStep) applyPreUpgradeScriptToOlderDogu(
 
 	preUpgradeScriptPath := filepath.Join(preUpgradeScriptDir, filepath.Base(preUpgradeCmd.Command))
 
-	preUpgradeShellCmd := exec.NewShellCommand(preUpgradeScriptPath, fromDoguVersion, toDoguResource.Spec.Version)
+	logger := logging.FromContext(ctx).WithValues("dogu", toDoguResource.Name, "namespace", toDoguResource.Namespace,
+		"script", core.ExposedCommandPreUpgrade, "pod", fromDoguPod.Name)
+	stdout := &scriptOutputWriter{logger: logger.WithValues("stream", "stdout")}
+	stderr := &scriptOutputWriter{logger: logger.WithValues("stream", "stderr")}
+	defer stdout.flush()
+	defer stderr.flush()
+
+	preUpgradeShellCmd := exec.NewShellCommandWithOutput(stdout, stderr, preUpgradeScriptPath, fromDoguVersion, toDoguResource.Spec.Version)
 
 	logging.Info(ctx, "Executing pre-upgrade command "+preUpgradeShellCmd.String())
 	outBuf, err := uds.doguCommandExecutor.ExecCommandForPod(ctx, fromDoguPod, preUpgradeShellCmd)

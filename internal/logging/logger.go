@@ -39,7 +39,11 @@ func NewZapLogger() *zap.Logger {
 	level, levelErr := logLevelFromEnv()
 	encoder, formatErr := encoderFromEnv()
 
-	zapLogger := crzap.NewRaw(crzap.Level(level), crzap.Encoder(encoder))
+	// Sampling would discard repeated script-output chunks and leave support logs incomplete.
+	// Keep the controller-runtime encoder and production stacktrace behavior without its sampler.
+	sink := zapcore.Lock(os.Stderr)
+	core := zapcore.NewCore(&crzap.KubeAwareEncoder{Encoder: encoder}, sink, level)
+	zapLogger := zap.New(core, zap.AddStacktrace(zapcore.ErrorLevel), zap.ErrorOutput(sink))
 
 	// invalid configuration can only be reported once the logger exists
 	for _, err := range []error{levelErr, formatErr} {
