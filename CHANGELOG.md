@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Include stdout and stderr of Dogu V2 pre- and post-upgrade scripts in the operator logs, including output before a script failure.
+- Disable operator log sampling to preserve repeated upgrade-script output, and finish active output writes before returning from a canceled exec.
+
 ## [v3.39.0] - 2026-11-11
 ### Fixed
 - Clear the stopped status of a v3 dogu as soon as its HelmRelease is resumed, so that the dogu is reachable again after a restart.
