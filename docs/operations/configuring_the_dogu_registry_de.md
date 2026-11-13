@@ -44,11 +44,15 @@ Strukturell bleibt die Konfiguration nahezu identisch mit dem Secret `k8s-dogu-o
 
 ```bash
 kubectl --namespace <cesNamespace> create secret generic dogu-registry-v3 \
---from-literal=endpoint="https://my-registry.com/api/v3" \
+--from-literal=endpoint="https://my-registry.com/api/v3/dogus" \
 --from-literal=username="myusername" \
 --from-literal=password="mypassword" \
 --from-literal=urlschema="default" \
 --from-literal=insecureSkipVerify=false
 ```
 
-> Solange der Dogu-Operator noch nicht vollständig die API v3 unterstützt, ist dieses Secret optional.
+Der Endpoint muss den vollständigen Pfad der v3-API inklusive `/api/v3/dogus` enthalten, z. B. `https://dogu.cloudogu.com/api/v3/dogus`.
+
+> Das Secret wird nur für v3-Dogus benötigt.
+> Der Operator liest es beim Start; nach einer Änderung muss er neu gestartet werden.
+> Weitere Details siehe [v3-Dogus installieren](v3/installing_v3_dogus_de.md#secrets).

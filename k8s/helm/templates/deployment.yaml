@@ -43,6 +43,8 @@ spec:
               value: {{ quote .Values.controllerManager.env.doguV3Enabled | default false }}
             - name: DOGU_V3_DEV_CHARTS_ENABLED
               value: {{ quote .Values.controllerManager.env.doguV3DevChartsEnabled | default false }}
+            - name: OFFLINE_VOLUME_EXPANSION
+              value: {{ quote .Values.controllerManager.env.offlineVolumeExpansion | default false }}
             - name: WARP_MENU_ENTRY_ENABLED
               value: {{ quote .Values.controllerManager.env.warpMenuEntryEnabled | default false }}
             - name: WARP_MENU_DISBALED_V2_DOGUS
@@ -138,6 +140,10 @@ spec:
               value: {{ quote .Values.controllerManager.env.doguHelmReconciliationInterval | default "30s" }}
             - name: DOGU_HELM_RETRY_INTERVAL
               value: {{ quote .Values.controllerManager.env.doguHelmRetryInterval | default "5m" }}
+            - name: MIGRATION_JOB_START_TIMEOUT
+              value: {{ quote .Values.controllerManager.env.migrationJobStartTimeout | default "5m" }}
+            - name: MIGRATION_JOB_COMPLETION_TIMEOUT
+              value: {{ quote .Values.controllerManager.env.migrationJobCompletionTimeout | default "1h" }}
             - name: EXPERIMENTAL_HELMFILE_SUPPORT
               value: {{ quote .Values.controllerManager.experimental.helmfileSupport.enabled | default false }}
             {{- if .Values.controllerManager.experimental.helmfileSupport.enabled }}

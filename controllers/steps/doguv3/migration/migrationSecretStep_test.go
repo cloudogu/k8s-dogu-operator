@@ -18,6 +18,15 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 )
 
+var testCtx = context.Background()
+
+func testDogu() *v3beta1.Dogu {
+	return &v3beta1.Dogu{
+		Name: "nexus", Namespace: "ecosystem",
+		Spec: v3beta1.DoguSpec{Name: "nexus", DoguNamespace: "official", DoguApiVersion: v3beta1.DoguApiVersionV3},
+	}
+}
+
 func testScheme(t *testing.T) *runtime.Scheme {
 	t.Helper()
 	scheme := runtime.NewScheme()

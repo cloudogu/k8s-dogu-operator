@@ -291,6 +291,53 @@ func Test_Service_DoguMetaValues(t *testing.T) {
 	})
 }
 
+func Test_Service_HasMigrationJob(t *testing.T) {
+	ctx := context.Background()
+	dogu := testDogu("ecosystem", "nexus")
+
+	// Helm saves the values.yaml from the raw files only.
+	chartWithValues := func(t *testing.T, values string) []byte {
+		t.Helper()
+		return saveChartArchive(t, &helmChart.Chart{
+			Metadata: &helmChart.Metadata{APIVersion: helmChart.APIVersionV2, Name: "nexus", Version: "0.1.0"},
+			Raw:      []*helmChart.File{{Name: chartutil.ValuesfileName, Data: []byte(values)}},
+		})
+	}
+
+	t.Run("reports true when the default values contain the migrationJob key", func(t *testing.T) {
+		archive := chartWithValues(t, "migrationJob:\n  enabled: false\n")
+		s := NewService(staticLoader("d", archive), nil, chartutil.DefaultCapabilities, installResolver())
+
+		found, err := s.HasMigrationJob(ctx, dogu)
+
+		require.NoError(t, err)
+		assert.True(t, found)
+	})
+
+	t.Run("reports false when the default values lack the migrationJob key", func(t *testing.T) {
+		archive := chartWithValues(t, "replicas: 1\n")
+		s := NewService(staticLoader("d", archive), nil, chartutil.DefaultCapabilities, installResolver())
+
+		found, err := s.HasMigrationJob(ctx, dogu)
+
+		require.NoError(t, err)
+		assert.False(t, found)
+	})
+
+	t.Run("propagates loader error", func(t *testing.T) {
+		loader := &MockChartProvider{
+			ArtifactDigestFunc: func(context.Context, *v3beta1.Dogu) (string, error) {
+				return "", assert.AnError
+			},
+		}
+		s := NewService(loader, nil, chartutil.DefaultCapabilities, installResolver())
+
+		_, err := s.HasMigrationJob(ctx, dogu)
+
+		assert.ErrorIs(t, err, assert.AnError)
+	})
+}
+
 func Test_Service_Render(t *testing.T) {
 	ctx := context.Background()
 	dogu := testDogu("ecosystem", "cas")

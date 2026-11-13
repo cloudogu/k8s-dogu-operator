@@ -14,6 +14,14 @@ type MigrationDetector interface {
 	Detect(ctx context.Context, dogu *v3beta1.Dogu) (migration.State, error)
 }
 
+type ChartService interface {
+	HasMigrationJob(ctx context.Context, dogu *v3beta1.Dogu) (bool, error)
+}
+
+type JobMonitor interface {
+	Status(ctx context.Context, dogu *v3beta1.Dogu) (migration.JobsStatus, error)
+}
+
 type ResourceFinder interface {
 	FindV2Resources(ctx context.Context, doguRef v1.ObjectReference) ([]client.Object, error)
 }

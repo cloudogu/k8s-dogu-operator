@@ -5,6 +5,25 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Added
+- [#402] Operations documentation for installing, configuring, stopping and restarting v3 dogus
+- [#404] Operations documentation for migrating v2 dogus to v3
+
+## [v3.39.0] - 2026-11-11
+### Fixed
+- Clear the stopped status of a v3 dogu as soon as its HelmRelease is resumed, so that the dogu is reachable again after a restart.
+
+## [v3.38.0] - 2026-11-10
+
+### Changed
+- [#387] updated exporter-sidecar to registry.cloudogu.com/k8s/rsync-sidecar:1.1.2
+
+## [v3.37.0] - 2026-11-10
+### Added
+- [#391] Run the migration jobs of a v3 dogu chart during the migration from v2 and delete the v2 volume afterward
+- [#359] Reject v3 dogu changes that shrink a volume or change its storage class (`Valid=False`).
+- [#359] Enable V3 dogus to increase the volume size of their pvcs.
+- [#359] Grow volumes of v3 dogus online by default; Helm value `offlineVolumeExpansion` enables the offline flow for storage that only expands unmounted volumes.
 
 ### Added
 - [#393] Dev mode for v3 dogus: install a dogu from the dev chart in the annotation `k8s.cloudogu.com/dev-chart-url` instead of the dogu registry.

@@ -517,8 +517,8 @@ func testDogu(apiVersion v3beta1.DoguApiVersion, generation int64, conditions ..
 }
 
 func Test_doguReconcilePredicate_Update(t *testing.T) {
-	healthyTrue := v1.Condition{Type: v3beta1.ConditionHealthy, Status: v1.ConditionTrue, Reason: "SomeReason", Message: "all workloads are ready"}
-	healthyFalse := v1.Condition{Type: v3beta1.ConditionHealthy, Status: v1.ConditionFalse, Reason: "SomeReason", Message: "deployment ldap is not ready"}
+	healthyTrue := v1.Condition{Type: v2.ConditionHealthy, Status: v1.ConditionTrue, Reason: "SomeReason", Message: "all workloads are ready"}
+	healthyFalse := v1.Condition{Type: v2.ConditionHealthy, Status: v1.ConditionFalse, Reason: "SomeReason", Message: "deployment ldap is not ready"}
 
 	tests := []struct {
 		name   string
@@ -547,7 +547,7 @@ func Test_doguReconcilePredicate_Update(t *testing.T) {
 		{
 			name:   "should not trigger on Healthy message-only change of a v3 dogu",
 			oldObj: testDogu(v3beta1.DoguApiVersionV3, 1, healthyFalse),
-			newObj: testDogu(v3beta1.DoguApiVersionV3, 1, v1.Condition{Type: v3beta1.ConditionHealthy, Status: v1.ConditionFalse, Reason: "SomeReason", Message: "other message"}),
+			newObj: testDogu(v3beta1.DoguApiVersionV3, 1, v1.Condition{Type: v2.ConditionHealthy, Status: v1.ConditionFalse, Reason: "SomeReason", Message: "other message"}),
 			want:   false,
 		},
 		{
@@ -558,8 +558,8 @@ func Test_doguReconcilePredicate_Update(t *testing.T) {
 		},
 		{
 			name:   "should not trigger on unrelated status change of a v3 dogu",
-			oldObj: testDogu(v3beta1.DoguApiVersionV3, 1, healthyTrue, v1.Condition{Type: v3beta1.ConditionReady, Status: v1.ConditionFalse, Reason: "SomeReason", Message: ""}),
-			newObj: testDogu(v3beta1.DoguApiVersionV3, 1, healthyTrue, v1.Condition{Type: v3beta1.ConditionReady, Status: v1.ConditionTrue, Reason: "SomeReason", Message: ""}),
+			oldObj: testDogu(v3beta1.DoguApiVersionV3, 1, healthyTrue, v1.Condition{Type: v2.ConditionReady, Status: v1.ConditionFalse, Reason: "SomeReason", Message: ""}),
+			newObj: testDogu(v3beta1.DoguApiVersionV3, 1, healthyTrue, v1.Condition{Type: v2.ConditionReady, Status: v1.ConditionTrue, Reason: "SomeReason", Message: ""}),
 			want:   false,
 		},
 	}

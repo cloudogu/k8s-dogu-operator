@@ -328,6 +328,78 @@ func TestNewEnsureHelmReleaseStep(t *testing.T) {
 	assert.Equal(t, recorder, step.eventRecorder)
 	assert.Equal(t, metav1.Duration{Duration: 1 * time.Second}, step.retryInterval)
 	assert.Equal(t, metav1.Duration{Duration: 2 * time.Minute}, step.helmReconcileInterval)
+	assert.False(t, step.disableWait)
+}
+
+func TestNewEnsureHelmReleaseStep_WithoutWait(t *testing.T) {
+	step := NewEnsureHelmReleaseStep(NewMockK8sClient(t), &config.OperatorConfig{}, newMockChartService(t), newMockValueAssembler(t), NewMockEventRecorder(t), WithoutWait())
+
+	assert.True(t, step.disableWait)
+}
+
+func TestEnsureHelmReleaseStep_Run_DisableWait(t *testing.T) {
+	testScheme := runtime.NewScheme()
+	_ = core.AddToScheme(testScheme)
+	_ = doguv3.AddToScheme(testScheme)
+	_ = fluxhelm.AddToScheme(testScheme)
+	doguResource := &doguv3.Dogu{
+		Name:      "dogu",
+		Namespace: "namespace",
+		Spec: doguv3.DoguSpec{
+			Name:          "dogu",
+			DoguNamespace: "namespace",
+			Version:       "1.2.3",
+		},
+	}
+	globalConfig := core.ConfigMap{
+		Namespace: "namespace",
+		Name:      "global-config",
+		Data: map[string]string{
+			"config.yaml": "{}",
+		},
+	}
+
+	run := func(t *testing.T, disableWait bool, objects ...client.Object) *fluxhelm.HelmRelease {
+		t.Helper()
+		k8sClient := fake.NewClientBuilder().WithScheme(testScheme).WithObjects(append(objects, &globalConfig)...).Build()
+		service := newMockChartService(t)
+		service.EXPECT().DoguMetaValues(mock.Anything, doguResource).Return(nil, false, nil)
+		service.EXPECT().RuntimePatchTemplate(mock.Anything, doguResource).Return(nil, false, nil)
+		recorder := NewMockEventRecorder(t)
+		recorder.EXPECT().Event(doguResource, core.EventTypeNormal, doguv3.ConditionChartAvailable, mock.Anything)
+		step := &EnsureHelmReleaseStep{k8sClient: k8sClient, chartService: service, eventRecorder: recorder, assembler: values3.NewAssembler(k8sClient), disableWait: disableWait}
+
+		result := step.Run(t.Context(), doguResource)
+
+		require.Equal(t, v3steps.Continue(), result)
+		release := &fluxhelm.HelmRelease{}
+		require.NoError(t, k8sClient.Get(t.Context(), client.ObjectKey{Namespace: "namespace", Name: "dogu"}, release))
+
+		return release
+	}
+
+	t.Run("should disable wait on install and upgrade", func(t *testing.T) {
+		release := run(t, true)
+
+		assert.True(t, release.Spec.Install.DisableWait)
+		assert.True(t, release.Spec.Upgrade.DisableWait)
+	})
+
+	t.Run("should re-enable wait of a release created without wait", func(t *testing.T) {
+		existing := &fluxhelm.HelmRelease{
+			Name:      "dogu",
+			Namespace: "namespace",
+			Spec: fluxhelm.HelmReleaseSpec{
+				Install: &fluxhelm.Install{DisableWait: true},
+				Upgrade: &fluxhelm.Upgrade{DisableWait: true},
+			},
+		}
+
+		release := run(t, false, existing)
+
+		assert.False(t, release.Spec.Install.DisableWait)
+		assert.False(t, release.Spec.Upgrade.DisableWait)
+	})
 }
 
 func TestEnsureHelmReleaseStep_Run(t *testing.T) {
