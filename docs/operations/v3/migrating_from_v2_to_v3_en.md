@@ -60,6 +60,7 @@ Before the migration, look up the configuration of the v2 dogu and transfer it t
 
 ```bash
 kubectl -n ecosystem get configmap nexus-config -o jsonpath='{.data.config\.yaml}'
+kubectl -n ecosystem get secret nexus-config -o jsonpath='{.data.config\.yaml}' | base64 -d
 ```
 
 The values are set in the same change as `spec.doguApiVersion`, see [Starting the migration](#starting-the-migration).
@@ -145,8 +146,9 @@ kubectl -n ecosystem get jobs -l k8s.cloudogu.com/migration-job=true,k8s.cloudog
 kubectl -n ecosystem logs job/<job>
 ```
 
-The migration is complete when the dogu is `Ready=True` with the reason `Succeeded`.
-Then, as with an installation, the dogu starts and becomes `Healthy=True`.
+The migration is complete when the event `Migration resources removed` appears.
+Then the dogu starts as with an installation.
+It is operational when it is `Healthy=True` and `Ready=True`.
 
 ## Failed migration
 
@@ -177,7 +179,7 @@ This also restarts the `migrationJobStartTimeout`.
 
 If the migration cannot be completed, restore the backup.
 
-### What not to do
+### Important notes
 
 - Do not delete the secret or the claim `<dogu>-migration`.
   Until the migration is complete, the claim holds the only copy of the data.

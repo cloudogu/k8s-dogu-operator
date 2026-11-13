@@ -182,7 +182,7 @@ Which settings trigger a restart is described in the documentation of the dogu.
 
 A manual restart is possible at any time, see [Restarting](stopping_starting_and_restarting_v3_dogus_en.md#restarting).
 
-## What not to do
+## Important notes
 
 - **Changing the dogu's resources directly** (ConfigMaps, StatefulSets, ...):
   Such changes are reverted automatically after a short time.

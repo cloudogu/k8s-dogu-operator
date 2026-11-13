@@ -182,7 +182,7 @@ Welche Einstellungen einen Neustart auslösen, steht in der Dokumentation des Do
 
 Ein manueller Neustart ist jederzeit möglich, siehe [Neu starten](stopping_starting_and_restarting_v3_dogus_de.md#neu-starten).
 
-## Was man nicht tun sollte
+## Wichtige Hinweise
 
 - **Ressourcen des Dogus direkt ändern** (ConfigMaps, StatefulSets, ...):
   Solche Änderungen werden nach kurzer Zeit automatisch zurückgesetzt.
