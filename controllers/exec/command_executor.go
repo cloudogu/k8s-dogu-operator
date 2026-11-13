@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/url"
 	"strings"
+	"sync"
 
 	v2 "github.com/cloudogu/k8s-dogu-lib/v3/api/v2"
 	"k8s.io/apimachinery/pkg/types"
@@ -28,7 +29,17 @@ type shellCommand struct {
 	// args contains any parameters, switches etc. that the command needs to run properly.
 	args []string
 	// stdin contains standard input for the command, input that could for example be piped in a CLI environment.
-	stdin io.Reader
+	stdin  io.Reader
+	stdout io.Writer
+	stderr io.Writer
+}
+
+func (sc *shellCommand) Stdout() io.Writer {
+	return sc.stdout
+}
+
+func (sc *shellCommand) Stderr() io.Writer {
+	return sc.stderr
 }
 
 func (sc *shellCommand) Stdin() io.Reader {
@@ -51,6 +62,14 @@ func NewShellCommand(command string, args ...string) *shellCommand {
 
 func NewShellCommandWithStdin(stdin io.Reader, command string, args ...string) *shellCommand {
 	return &shellCommand{command: command, args: args, stdin: stdin}
+}
+
+// NewShellCommandWithOutput creates a command that also streams output to the given writers.
+// Either writer may be nil. Output is still captured for the command result and execution errors.
+// client-go logs writer errors but does not return them as execution errors.
+// Output writers are no longer called after execution returns, including on cancellation.
+func NewShellCommandWithOutput(stdout, stderr io.Writer, command string, args ...string) *shellCommand {
+	return &shellCommand{command: command, args: args, stdout: stdout, stderr: stderr}
 }
 
 // stateError is returned when a specific resource (pod/dogu) does not meet the requirements for the exec.
@@ -135,12 +154,25 @@ func (ce *defaultCommandExecutor) streamCommandToPod(
 	stdin := command.Stdin()
 	buffer := bytes.NewBuffer([]byte{})
 	bufferErr := bytes.NewBuffer([]byte{})
+	stdout := &commandOutputWriter{writer: buffer}
+	if output := command.Stdout(); output != nil {
+		stdout.writer = io.MultiWriter(buffer, output)
+	}
+	stderr := &commandOutputWriter{writer: bufferErr}
+	if output := command.Stderr(); output != nil {
+		stderr.writer = io.MultiWriter(bufferErr, output)
+	}
+
 	err := exec.StreamWithContext(ctx, remotecommand.StreamOptions{
 		Stdin:  stdin,
-		Stdout: buffer,
-		Stderr: bufferErr,
+		Stdout: stdout,
+		Stderr: stderr,
 		Tty:    false,
 	})
+	// On cancellation client-go can return while stream-copy goroutines are still writing.
+	// Finish active writes and reject late output before reading buffers or letting callers flush.
+	stdout.close()
+	stderr.close()
 	if err != nil {
 		return nil, &stateError{
 			sourceError: fmt.Errorf("error streaming command to pod; out: '%s': errOut: '%s': %w", buffer, bufferErr, err),
@@ -149,6 +181,31 @@ func (ce *defaultCommandExecutor) streamCommandToPod(
 	}
 
 	return buffer, nil
+}
+
+// commandOutputWriter limits output writes to the lifetime of ExecCommandForPod.
+// Closing waits for an active Write and prevents later copies from reaching the buffer or output sink.
+type commandOutputWriter struct {
+	mutex  sync.Mutex
+	writer io.Writer
+	closed bool
+}
+
+func (w *commandOutputWriter) Write(output []byte) (int, error) {
+	w.mutex.Lock()
+	defer w.mutex.Unlock()
+
+	if w.closed {
+		return 0, io.ErrClosedPipe
+	}
+	return w.writer.Write(output)
+}
+
+func (w *commandOutputWriter) close() {
+	w.mutex.Lock()
+	defer w.mutex.Unlock()
+
+	w.closed = true
 }
 
 func (ce *defaultCommandExecutor) getCreateExecRequest(pod *corev1.Pod, command ShellCommand) *rest.Request {

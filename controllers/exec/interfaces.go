@@ -52,6 +52,10 @@ type ShellCommand interface {
 	CommandWithArgs() []string
 	// Stdin returns the appropriate reader for standard input.
 	Stdin() io.Reader
+	// Stdout returns an optional writer that receives standard output in addition to the returned buffer.
+	Stdout() io.Writer
+	// Stderr returns an optional writer that receives standard error without changing the returned stdout buffer.
+	Stderr() io.Writer
 }
 
 // PodStatusForExec describes a state in the lifecycle of a pod.
