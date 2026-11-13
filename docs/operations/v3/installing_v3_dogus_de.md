@@ -2,7 +2,7 @@
 
 Ein v3-Dogu wird wie ein v2-Dogu über eine Dogu-Ressource installiert.
 Der Unterschied liegt in der API-Version der Ressource und im Feld `spec.doguApiVersion`, das festlegt, dass das Dogu als v3-Dogu installiert wird.
-Bevor das erste v3-Dogu installiert werden kann, müssen im Cluster einige Voraussetzungen erfüllt sein.
+Für die Installation von v3-Dogus müssen im Cluster die folgenden Voraussetzungen erfüllt sein.
 
 Die Beispiele gehen vom Namespace `ecosystem` aus und verwenden das Nexus-Dogu.
 
@@ -10,11 +10,11 @@ Die Beispiele gehen vom Namespace `ecosystem` aus und verwenden das Nexus-Dogu.
 
 - **Flux** ist installiert, über `ecosystem-core` mit `flux.enabled: true`.
   Der Dogu-Operator nutzt Flux, um v3-Dogus auszurollen.
-- **v3-Dogus sind im Dogu-Operator eingeschaltet**, siehe [v3-Dogus im Operator einschalten](#v3-dogus-im-operator-einschalten).
+- **v3-Dogus sind im Dogu-Operator aktiviert**, siehe [v3-Dogus im Operator aktivieren](#v3-dogus-im-operator-aktivieren).
 - **Secret `dogu-registry-v3`** enthält Endpoint und Zugangsdaten der Dogu-Registry v3, siehe [Secrets](#secrets).
 - **Secret `ces-container-registries`** enthält einen Eintrag für die Registry, aus der die Charts geladen werden (für offizielle Dogus `registry.cloudogu.com`).
 
-### v3-Dogus im Operator einschalten
+### v3-Dogus im Operator aktivieren
 
 v3-Dogus werden nur verarbeitet, wenn der Helm-Value `controllerManager.env.doguV3Enabled` des Operators `true` ist.
 Ist er nicht gesetzt, ignoriert der Operator v3-Dogus.
@@ -32,7 +32,7 @@ spec:
 
 > [!WARNING]
 > Der Patch ersetzt den gesamten bisherigen Inhalt von `valuesYamlOverwrite`.
-> Vorhandene Overrides müssen deshalb mit in den Patch.
+> Bestehende Overrides müssen deshalb im Patch enthalten sein.
 
 ### Secrets
 
@@ -110,8 +110,8 @@ Hinweise:
 
 - v3-Dogus immer über `dogus.v3beta1.k8s.cloudogu.com` lesen und bearbeiten.
   Ein einfaches `kubectl get dogu` nutzt die API-Version `v2` und zeigt v3-Felder wie `values` nicht.
-- Ein v3-Dogu kann nicht wieder zu einem v2-Dogu gemacht werden.
-  Der Operator lehnt das mit `Ready=False` und dem Reason `DowngradeNotAllowed` ab.
+- Eine Rückmigration von v3 nach v2 wird nicht unterstützt.
+  Der Operator lehnt sie mit `Ready=False` und dem Reason `DowngradeNotAllowed` ab.
 - Wird `spec.doguApiVersion: v3` an einem bereits installierten v2-Dogu gesetzt, wird es nach v3 migriert, siehe [Migration von v2](migrating_from_v2_to_v3_de.md).
 
 ## Installation prüfen
@@ -146,11 +146,12 @@ Alle Conditions und Events sind in [Conditions und Events von v3-Dogus](conditio
 
 | Symptom                                                   | Ursache / Lösung                                                                                   |
 |-----------------------------------------------------------|----------------------------------------------------------------------------------------------------|
-| Nichts passiert, Operator-Log `dogu v3 feature flag is disabled` | v3-Dogus sind im Operator nicht eingeschaltet.                                              |
+| Dogu-Ressource wird nicht verarbeitet, Operator-Log `dogu v3 feature flag is disabled` | v3-Dogus sind im Operator nicht aktiviert.                            |
 | Dogu wird als v2-Dogu installiert                         | `spec.doguApiVersion: v3` fehlt.                                                                   |
 | `Ready=False`, Reason `DownloadFailed`                    | `dogu-registry-v3`, Dogu-Namespace und Version prüfen; nach Änderung am Secret den Operator neu starten. |
 | `Ready=False`, Reason `Unauthorized`                      | Eintrag für die Chart-Registry in `ces-container-registries` prüfen.                               |
 | `Ready=False`, Reason `ChartNotFound`                     | Die Version existiert nicht als v3-Dogu.                                                           |
 | `Ready=False`, Reason `SchemaInvalid` oder `RenderFailed` | Die Konfiguration passt nicht zum Dogu, siehe [Validierung](configuring_v3_dogus_de.md#validierung). |
 | `Ready=False`, Reason `InstallFailed`                     | Die Installation ist fehlgeschlagen und wird nach `doguHelmRetryInterval` automatisch wiederholt; Details stehen in der Message der Condition. |
-| `Ready=True`, `Healthy=False`                             | Das Dogu ist installiert, startet aber nicht; Pods und Logs prüfen.                                |
+| `Ready=False`, Reason `WorkloadsNotReady`                 | Das Helm-Release ist ausgerollt, die Pods des Dogus sind nicht bereit; Pods und Logs prüfen.        |
+| `Ready=True`, `Healthy=False`                             | Das Dogu war bereits bereit und ist danach ausgefallen, z. B. durch einen Pod-Absturz, oder es ist gestoppt (Reason `Stopped`); Pods und Logs prüfen. |

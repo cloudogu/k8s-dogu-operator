@@ -3,7 +3,7 @@
 v3-Dogus werden als Helm-Chart ausgeliefert und vom Dogu-Operator installiert.
 Wie bei v2-Dogus beschreibt eine Dogu-Ressource, welches Dogu in welcher Version installiert sein soll.
 
-Für Betreiber ändert sich vor allem:
+Für Administratoren ändert sich vor allem:
 
 - **Installation**: Die Dogu-Ressource wird mit `apiVersion: k8s.cloudogu.com/v3beta1` und `spec.doguApiVersion: v3` angelegt.
 - **Konfiguration**: Statt Dogu-Config-Keys werden Helm-Values an der Dogu-Ressource gesetzt (`spec.values`, `spec.mappedValues`).

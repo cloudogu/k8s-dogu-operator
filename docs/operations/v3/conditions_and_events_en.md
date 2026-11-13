@@ -20,9 +20,9 @@ kubectl -n ecosystem get events --field-selector involvedObject.kind=Dogu,involv
 
 ### `Ready`
 
-`Ready` is the most important condition.
+`Ready` describes the overall state of the dogu resource.
 It is `True` when the desired state of the dogu resource is fully applied.
-With `False`, the reason names the operation in progress or what is failing:
+With `False`, the reason names the operation in progress or the error that occurred:
 
 | Reason                                                                   | Meaning                                                                         |
 |--------------------------------------------------------------------------|---------------------------------------------------------------------------------|
@@ -35,8 +35,8 @@ With `False`, the reason names the operation in progress or what is failing:
 | `SchemaInvalid`, `RenderFailed`, `VolumeShrink`, `StorageClassImmutable` | Invalid configuration, see [Validation](configuring_v3_dogus_en.md#validation). |
 | `InstallFailed`, `UpgradeFailed`                                         | Installation or upgrade failed; retried automatically.                          |
 | `MigrationPending`, `MigrationFailed`                                    | See [Migrating from v2](migrating_from_v2_to_v3_en.md).                         |
-| `Deleting`, `DeletionFailed`, `DeletionStalled`                          | The dogu is being deleted or the deletion is stuck.                             |
-| `DowngradeNotAllowed`                                                    | A v3 dogu cannot become a v2 dogu again.                                        |
+| `Deleting`, `DeletionFailed`, `DeletionStalled`                          | The dogu is being deleted or the deletion failed or is blocked.                 |
+| `DowngradeNotAllowed`                                                    | A migration back from v3 to v2 is not supported.                                |
 | `StepFailed`, `ReconciliationAborted`                                    | Generic error; message and operator log name the cause.                         |
 
 If an operation fails, the dogu usually keeps running with its previous state.
@@ -60,9 +60,9 @@ A dogu can therefore be `Ready=True` and `Healthy=False` at the same time, e.g. 
 
 ## Events
 
-Events show what happened to the dogu and are therefore mainly useful for troubleshooting after the fact.
+Events record operations and state changes of the dogu and are mainly used for retrospective troubleshooting.
 
-| Type    | Reason                         | When                                                  |
+| Type    | Reason                         | Trigger                                               |
 |---------|--------------------------------|-------------------------------------------------------|
 | Normal  | `ReconcileSucceeded`           | The desired state is applied.                         |
 | Normal  | `ChartAvailable`               | The chart was pulled or the installation was updated. |

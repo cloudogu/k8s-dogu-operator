@@ -2,15 +2,15 @@
 
 v3-Dogus werden über Helm-Values konfiguriert.
 Sie ersetzen die Dogu-Config-Keys, über die v2-Dogus konfiguriert wurden.
-Als Betreiber setzt man die Values an der Dogu-Ressource, entweder direkt in `spec.values` oder über generische Schlüssel in `spec.mappedValues`.
+Administratoren setzen die Values an der Dogu-Ressource, entweder direkt in `spec.values` oder über generische Schlüssel in `spec.mappedValues`.
 Zusätzlich erhält jedes v3-Dogu die globale Konfiguration des CES.
 Der Dogu-Operator führt alle Quellen zusammen und rollt das Ergebnis aus.
 
 Die Beispiele gehen vom Namespace `ecosystem` aus und verwenden das Nexus-Dogu.
 
-## Welche Values gibt es?
+## Verfügbare Values
 
-Welche Values ein Dogu kennt, legt das Dogu selbst fest.
+Die verfügbaren Values legt das jeweilige Dogu fest.
 Sie stehen in der Dokumentation des Dogus und in den folgenden Dateien seines Helm-Charts:
 
 | Datei                       | Inhalt                                                             |
@@ -105,8 +105,7 @@ Der Merge-Patch löscht den Schlüssel aus `spec.values`, danach gilt wieder der
 
 ## `spec.mappedValues`
 
-Manche Einstellungen sollen sich für alle Dogus gleich setzen lassen, ohne die Struktur der Values des jeweiligen Dogus zu kennen.
-Dafür gibt es Mapped Values: generische Schlüssel wie `mainLogLevel`.
+Mapped Values sind generische Schlüssel wie `mainLogLevel`, die für alle Dogus einheitlich gesetzt werden, unabhängig von der Struktur der Values des jeweiligen Dogus.
 Das Dogu legt in seiner `dogu-values-metadata.yaml` fest, auf welche seiner Values ein Schlüssel wirkt und welche Werte erlaubt sind.
 
 ```yaml
@@ -117,7 +116,7 @@ spec:
 
 - `spec.mappedValues` hat den höchsten Rang und überschreibt auch `spec.values`.
 - Schlüssel, die das Dogu nicht kennt, werden ohne Fehlermeldung ignoriert.
-  Ein Tippfehler im Schlüssel fällt deshalb nur dadurch auf, dass sich nichts ändert.
+  Fehlerhafte Schlüssel werden daher nicht gemeldet und bleiben wirkungslos.
 
 ### Log-Level
 
@@ -160,7 +159,7 @@ Die Ursache steht als Reason an den Conditions `Valid` und `Ready`, zusätzlich 
 | Reason                  | Ursache                                                   |
 |-------------------------|-----------------------------------------------------------|
 | `SchemaInvalid`         | Die Values verletzen die `values.schema.json` des Dogus.  |
-| `RenderFailed`          | Das Dogu lässt sich mit den Values nicht rendern.         |
+| `RenderFailed`          | Das Helm-Chart lässt sich mit den Values nicht rendern.   |
 | `VolumeShrink`          | Ein Volume würde verkleinert.                             |
 | `StorageClassImmutable` | Die StorageClass eines Volumes würde geändert.            |
 
@@ -171,7 +170,7 @@ Das probeweise Rendern und die Prüfung der Volumes finden weiterhin statt.
 Die Condition `SchemaValidationSkipped` ist dann `True`.
 
 > [!WARNING]
-> Ohne Schema-Prüfung fallen ungültige Werte erst beim Rollout oder im laufenden Dogu auf.
+> Ohne Schema-Prüfung werden ungültige Werte erst beim Rollout oder zur Laufzeit des Dogus erkannt.
 
 ## Neustart bei Konfigurationsänderungen
 
@@ -182,16 +181,16 @@ Welche Einstellungen einen Neustart auslösen, steht in der Dokumentation des Do
 
 Ein manueller Neustart ist jederzeit möglich, siehe [Neu starten](stopping_starting_and_restarting_v3_dogus_de.md#neu-starten).
 
-## Wichtige Hinweise
+## Nicht unterstützte Änderungen
 
 - **Ressourcen des Dogus direkt ändern** (ConfigMaps, StatefulSets, ...):
-  Solche Änderungen werden nach kurzer Zeit automatisch zurückgesetzt.
+  Solche Änderungen werden spätestens nach `doguHelmReconciliationInterval` zurückgesetzt.
   Konfiguriert wird ausschließlich über die Dogu-Ressource.
 - **Die Dogu-Ressource über die API-Version `v2` bearbeiten** (`kubectl edit dogu`):
   `values` und `mappedValues` sind dort nicht sichtbar.
   v3-Dogus deshalb immer über `dogus.v3beta1.k8s.cloudogu.com` bearbeiten.
 
-## Prüfen, ob eine Änderung angekommen ist
+## Rollout einer Änderung prüfen
 
 ```bash
 kubectl -n ecosystem get dogus.v3beta1.k8s.cloudogu.com nexus

@@ -18,9 +18,9 @@ kubectl -n ecosystem patch dogus.v3beta1.k8s.cloudogu.com nexus --type=merge -p 
 
 ### Stopping
 
-With `spec.stopped: true`, all deployments and StatefulSets of the dogu are scaled to zero.
+With `spec.stopped: true`, all deployments and StatefulSets of the dogu are scaled to 0 replicas.
 DaemonSets are not stopped.
-The volumes of the dogu are retained, so no data is lost.
+The volumes and thus the data of the dogu are retained.
 
 The stop is complete when the condition `Stopped` is `True`.
 While stopping, it is `False` with the reason `PartiallyStopped`.
@@ -29,7 +29,7 @@ A stopped dogu is `Ready=True`, because the desired state is reached, and `Healt
 ### Changes to a stopped dogu
 
 A stopped dogu can still be configured or upgraded.
-The changes are accepted and checked but only rolled out on the next start.
+The changes are validated but only rolled out on the next start.
 As long as changes are pending, the dogu shows `UpdatePending=True`.
 
 ### Starting
@@ -49,7 +49,7 @@ kubectl -n ecosystem patch dogus.v3beta1.k8s.cloudogu.com nexus --type=merge -p 
 ```
 
 As long as `spec.pauseReconciliation` is set, changes to the dogu resource are neither checked nor rolled out.
-This is useful, e.g., to collect several changes and roll them out together.
+This allows, e.g., rolling out several changes together.
 The running dogu stays unchanged.
 
 - The dogu is `Ready=False` with the reason `ReconciliationPaused`.
@@ -92,4 +92,4 @@ kubectl -n ecosystem get dogurestart <name> \
 | `Ready`   | `True`  | `Superseded`        | A newer restart of the same dogu has already been applied.               |
 | `Ready`   | `False` | `DoguNotFound`      | The dogu does not exist.                                                 |
 
-Whether configuration changes trigger a restart by themselves is described in [Configuring v3 dogus](configuring_v3_dogus_en.md#restart-on-configuration-changes).
+Whether configuration changes trigger a restart automatically is described in [Configuring v3 dogus](configuring_v3_dogus_en.md#restart-on-configuration-changes).
