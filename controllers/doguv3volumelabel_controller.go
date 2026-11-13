@@ -66,17 +66,16 @@ func (r *DoguVolumeLabelReconciler) setupWithManager(mgr ctrlManager) error {
 		Complete(r)
 }
 
-// doguWorkloadChangedPredicate passes dogu workload events that can change volume ownership, dropping status-only updates.
+// doguWorkloadChangedPredicate passes dogu workload events that can change volume ownership, dropping updates without spec change.
 func doguWorkloadChangedPredicate() predicate.Predicate {
 	hasDoguLabel := predicate.NewPredicateFuncs(func(object client.Object) bool {
 		_, ok := object.GetLabels()[v3beta1.DoguLabelName]
 		return ok
 	})
-	// include LabelChangedPredicate as a safety-net if dogu-label is changed on a workload
-	return predicate.And(hasDoguLabel, predicate.Or[client.Object](predicate.GenerationChangedPredicate{}, predicate.LabelChangedPredicate{}))
+	return predicate.And[client.Object](hasDoguLabel, predicate.GenerationChangedPredicate{})
 }
 
-// Reconcile sets the dogu labels on a volume that a v3 dogu workload mounts or generates from a StatefulSet claim template.
+// Reconcile sets the dogu labels on an unlabelled volume that a v3 dogu workload mounts or generates from a StatefulSet claim template.
 func (r *DoguVolumeLabelReconciler) Reconcile(ctx context.Context, req reconcile.Request) (reconcile.Result, error) {
 	volume := &corev1.PersistentVolumeClaim{}
 	if err := r.client.Get(ctx, req.NamespacedName, volume); err != nil {
@@ -88,6 +87,11 @@ func (r *DoguVolumeLabelReconciler) Reconcile(ctx context.Context, req reconcile
 	}
 	if !volume.DeletionTimestamp.IsZero() {
 		logging.Debug(ctx, "Volume is being deleted; skipping dogu labels", "volume", req.NamespacedName)
+		return reconcile.Result{}, nil
+	}
+	// Both labels are set and equal
+	if doguName := volume.Labels[v3beta1.DoguLabelName]; doguName != "" && volume.Labels[doguv2.DoguLabelName] == doguName {
+		logging.Debug(ctx, "Volume already carries dogu labels; skipping dogu labels", "volume", req.NamespacedName, "dogu", doguName)
 		return reconcile.Result{}, nil
 	}
 
@@ -162,13 +166,8 @@ func claimNames(podSpec corev1.PodSpec) []string {
 	return names
 }
 
-// ensureDoguLabels patches only the dogu labels of the volume, and only if one of them is missing or wrong.
+// ensureDoguLabels patches only the dogu labels of the volume.
 func (r *DoguVolumeLabelReconciler) ensureDoguLabels(ctx context.Context, volume *corev1.PersistentVolumeClaim, doguName string) error {
-	if volume.Labels[v3beta1.DoguLabelName] == doguName && volume.Labels[doguv2.DoguLabelName] == doguName {
-		logging.Debug(ctx, "Volume dogu labels already correct", "volume", client.ObjectKeyFromObject(volume), "dogu", doguName)
-		return nil
-	}
-
 	original := volume.DeepCopy()
 	if volume.Labels == nil {
 		volume.Labels = map[string]string{}

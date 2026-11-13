@@ -174,7 +174,7 @@ func TestDoguVolumeLabelReconciler_Reconcile(t *testing.T) {
 			want:   ldapVolumeLabels,
 		},
 		{
-			name:      "should overwrite a wrong dogu label value and keep other labels",
+			name:      "should replace incomplete dogu labels and keep other labels",
 			workloads: []client.Object{volumeLabelTestStatefulSet("ldap", doguLabels, "data")},
 			volume:    &corev1.PersistentVolumeClaim{Name: "data-ldap-0", Namespace: testNamespace, Labels: map[string]string{v3beta1.DoguLabelName: "cas", "app": "ces"}},
 			want:      map[string]string{v3beta1.DoguLabelName: "ldap", doguv2.DoguLabelName: "ldap", "app": "ces"},
@@ -236,6 +236,12 @@ func TestDoguVolumeLabelReconciler_Reconcile(t *testing.T) {
 			name:      "should not write a volume whose dogu labels are already correct",
 			workloads: []client.Object{volumeLabelTestStatefulSet("ldap", doguLabels, "data")},
 			volume:    &corev1.PersistentVolumeClaim{Name: "data-ldap-0", Namespace: testNamespace, Labels: ldapVolumeLabels},
+			want:      nil,
+		},
+		{
+			name:      "should trust existing dogu labels of another dogu",
+			workloads: []client.Object{volumeLabelTestStatefulSet("ldap", doguLabels, "data")},
+			volume:    &corev1.PersistentVolumeClaim{Name: "data-ldap-0", Namespace: testNamespace, Labels: map[string]string{v3beta1.DoguLabelName: "cas", doguv2.DoguLabelName: "cas"}},
 			want:      nil,
 		},
 		{
@@ -473,7 +479,7 @@ func TestDoguWorkloadChangedPredicate(t *testing.T) {
 		passes bool
 	}{
 		{name: "should pass a spec change", old: statefulSet(1, doguLabels, 1), new: statefulSet(2, doguLabels, 1), passes: true},
-		{name: "should pass a label change", old: statefulSet(1, doguLabels, 1), new: statefulSet(1, map[string]string{v3beta1.DoguLabelName: "cas"}, 1), passes: true},
+		{name: "should drop a label-only change", old: statefulSet(1, doguLabels, 1), new: statefulSet(1, map[string]string{v3beta1.DoguLabelName: "cas"}, 1), passes: false},
 		{name: "should drop a status-only change", old: statefulSet(1, doguLabels, 0), new: statefulSet(1, doguLabels, 1), passes: false},
 		{name: "should drop a spec change of a workload without dogu label", old: statefulSet(1, nil, 1), new: statefulSet(2, nil, 1), passes: false},
 	}
