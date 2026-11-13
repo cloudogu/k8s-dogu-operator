@@ -25,6 +25,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [#359] Enable V3 dogus to increase the volume size of their pvcs.
 - [#359] Grow volumes of v3 dogus online by default; Helm value `offlineVolumeExpansion` enables the offline flow for storage that only expands unmounted volumes.
 
+### Added
+- [#393] Dev mode for v3 dogus: install a dogu from the dev chart in the annotation `k8s.cloudogu.com/dev-chart-url` instead of the dogu registry.
+- [#388] Ensure dogu labels on all associated volumes of V3-Dogus
+
+### Security
+- [#397] Fix GO-CVEs: GO-2026-6865, GO-2026-6860, GO-2026-6866
+
 ## [v3.36.0] - 2026-11-06
 ### Removed
 - [#374] Remove Dogu samples. Instead, use https://github.com/cloudogu/k8s-ecosystem-samples
@@ -42,7 +49,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [#377] Move the service account credentials of a v2 dogu into the migration secret `<dogu>-migration`
 - [#381] create a migration pvc for dogu v2 to dogu v3 migration
 - [#379] Cleanup Dogu v2 resources during migration to Dogu v3
-- [#393] Dev mode for v3 dogus: install a dogu from the dev chart in the annotation `k8s.cloudogu.com/dev-chart-url` instead of the dogu registry.
 
 ### Changed
 - [#383] Reduce logger noise on every reconcile
@@ -52,9 +58,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - [#372] Ignore updates of HelmReleases that only toggle the `Reconciling` condition, to avoid unnecessary reconciliations
-
-### Security
-- [#397] Fix GO-CVEs: GO-2026-6865, GO-2026-6860, GO-2026-6866
 
 ## [v3.35.0] - 2026-10-20
 ### Added

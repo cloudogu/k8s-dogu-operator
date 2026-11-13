@@ -93,6 +93,7 @@ rules:
       - delete
       - watch
   # dogu v3: recreate PVCs when migrating existing volumes from v2.
+  # dogu v3: set the dogu labels on the volumes of dogus
   # read and grow a dogu's volumes.
   # watch is needed for the caching k8s-client
   - apiGroups:
