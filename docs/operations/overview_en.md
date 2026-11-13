@@ -62,6 +62,12 @@ kubectl get dogus
 kubectl delete dogu ldap
 ```
 
+## v3 dogus
+
+Besides the v2 dogus described here, the dogu operator also installs v3 dogus.
+They are delivered as Helm charts and installed with Flux.
+Installation, configuration and operation are described in [v3 dogus](v3/overview_en.md).
+
 ## dogu operator vs `cesapp`
 
 In terms of their function, dogu operator and `cesapp` are very comparable because both take care of managing and orchestrating dogus in their respective execution environments.
