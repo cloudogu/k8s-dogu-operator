@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"unicode/utf8"
 
+	"github.com/cloudogu/k8s-dogu-operator/v3/internal/logging"
 	"github.com/go-logr/logr"
 )
 
@@ -50,7 +51,7 @@ func (w *scriptOutputWriter) Write(output []byte) (int, error) {
 				break
 			}
 
-			w.logger.Info("upgrade script output", "output", string(line[:end]))
+			w.logger.Info(logging.UpgradeScriptOutputMessage, "output", string(line[:end]))
 			line = line[end:]
 		}
 		output = output[lineEnd:]
@@ -61,7 +62,7 @@ func (w *scriptOutputWriter) Write(output []byte) (int, error) {
 
 func (w *scriptOutputWriter) flush() {
 	if len(w.pending) > 0 {
-		w.logger.Info("upgrade script output", "output", string(w.pending))
+		w.logger.Info(logging.UpgradeScriptOutputMessage, "output", string(w.pending))
 		w.pending = nil
 	}
 }

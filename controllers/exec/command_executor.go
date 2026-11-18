@@ -29,8 +29,10 @@ type shellCommand struct {
 	// args contains any parameters, switches etc. that the command needs to run properly.
 	args []string
 	// stdin contains standard input for the command, input that could for example be piped in a CLI environment.
-	stdin  io.Reader
+	stdin io.Reader
+	// stdout optionally receives standard output in addition to the captured command result.
 	stdout io.Writer
+	// stderr optionally receives standard error in addition to the output captured for execution errors.
 	stderr io.Writer
 }
 
