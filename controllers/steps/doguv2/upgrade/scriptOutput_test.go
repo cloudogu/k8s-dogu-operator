@@ -22,16 +22,81 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zaptest/observer"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
+func TestScriptOutputWriterLineEndings(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		writes   []string
+		expected []string
+	}{
+		{
+			name:     "line endings and whitespace",
+			writes:   []string{"first\r\n\n  \nsecond\n", "tail"},
+			expected: []string{"first", "  ", "second", "tail"},
+		},
+		{
+			name:     "CRLF at chunk boundary",
+			writes:   []string{strings.Repeat("a", 1023) + "\r\n"},
+			expected: []string{strings.Repeat("a", 1023)},
+		},
+		{
+			name:     "internal carriage return at chunk boundary",
+			writes:   []string{strings.Repeat("a", 1023) + "\rX\n"},
+			expected: []string{strings.Repeat("a", 1023) + "\r", "X"},
+		},
+		{
+			name:     "CRLF split across writes",
+			writes:   []string{"first\r", "\nsecond\n"},
+			expected: []string{"first", "second"},
+		},
+		{
+			name:     "UTF-8 split across writes",
+			writes:   []string{"\xe2", "\x82\xac\n"},
+			expected: []string{"€"},
+		},
+		{
+			name:     "newline separates incomplete UTF-8",
+			writes:   []string{"\xe2\n\x82\xac"},
+			expected: []string{"\xe2", "\x82\xac"},
+		},
+		{
+			name:     "trailing carriage return separates incomplete UTF-8",
+			writes:   []string{"\xe2\r", "\x82\xac"},
+			expected: []string{"\xe2", "\x82\xac"},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			observedCore, entries := observer.New(zap.InfoLevel)
+			writer := scriptOutputWriter{logger: zapr.NewLogger(zap.New(observedCore))}
+
+			for _, output := range tc.writes {
+				n, err := io.WriteString(&writer, output)
+				require.NoError(t, err)
+				require.Equal(t, len(output), n)
+			}
+			writer.flush()
+
+			var outputs []string
+			for _, entry := range entries.All() {
+				outputs = append(outputs, entry.ContextMap()["output"].(string))
+			}
+			require.Equal(t, tc.expected, outputs)
+		})
+	}
+}
+
 func TestUpgradeSteps_LogScriptOutput(t *testing.T) {
 	t.Setenv("LOG_LEVEL", "info")
 	t.Setenv("LOG_FORMAT", "json")
-	stdout := strings.Repeat("x", 1023) + "ä" + strings.Repeat("long line", 30000) + " stdout tail"
+	longOutput := strings.Repeat("x", 1023) + "ä" + strings.Repeat("long line", 30000)
+	stdout := longOutput + "\r\nstdout tail\r\n"
 	stderr := strings.Repeat("\r", 1500) + "stderr\nwithout trailing newline"
 
 	for _, script := range []string{core.ExposedCommandPreUpgrade, core.ExposedCommandPostUpgrade} {
@@ -142,12 +207,14 @@ func TestUpgradeSteps_LogScriptOutput(t *testing.T) {
 					stream := entry["stream"].(string)
 					output := entry["output"].(string)
 					assert.True(t, utf8.ValidString(output))
+					assert.NotEmpty(t, output)
+					assert.NotContains(t, output, "\n")
+					assert.LessOrEqual(t, len(output), 1024)
 					outputs[stream] += output
 				}
-				require.Len(t, outputs["stdout"], len(stdout))
-				assert.Equal(t, stdout, outputs["stdout"])
+				assert.Equal(t, longOutput+"stdout tail", outputs["stdout"])
 				// A final incomplete UTF-8 character must be flushed, using the JSON encoder's replacement character.
-				assert.Equal(t, stderr+"\ufffd", outputs["stderr"])
+				assert.Equal(t, strings.Repeat("\r", 1500)+"stderrwithout trailing newline\ufffd", outputs["stderr"])
 			})
 		}
 	}

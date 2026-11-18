@@ -11,6 +11,7 @@ import (
 const scriptOutputChunkBytes = 1024
 
 // scriptOutputWriter logs bounded chunks without waiting for a newline. Each stream has its own writer.
+// Trailing CR/LF are omitted from lines and final fragments; other bytes are retained.
 // Only an incomplete UTF-8 character is buffered until the next Write or flush after command execution.
 type scriptOutputWriter struct {
 	logger  logr.Logger
@@ -25,21 +26,34 @@ func (w *scriptOutputWriter) Write(output []byte) (int, error) {
 	}
 
 	for len(output) > 0 {
-		end := min(len(output), scriptOutputChunkBytes)
-		characterStart := end - 1
-		for characterStart > 0 && !utf8.RuneStart(output[characterStart]) {
-			characterStart--
-		}
-		if !utf8.FullRune(output[characterStart:end]) {
-			end = characterStart
-		}
-		if end == 0 {
-			w.pending = bytes.Clone(output)
-			break
+		lineEnd := len(output)
+		newline := bytes.IndexByte(output, '\n')
+		if newline >= 0 {
+			lineEnd = newline + 1
 		}
 
-		w.logger.Info("upgrade script output", "output", string(output[:end]))
-		output = output[end:]
+		// Trim before chunking so internal carriage returns at chunk boundaries survive.
+		line := bytes.TrimRight(output[:lineEnd], "\r\n")
+		lineTerminated := len(line) < lineEnd
+		for len(line) > 0 {
+			end := min(len(line), scriptOutputChunkBytes)
+			characterStart := end - 1
+			for characterStart > 0 && !utf8.RuneStart(line[characterStart]) {
+				characterStart--
+			}
+			// A line ending terminates an incomplete UTF-8 sequence; it must not join the next line.
+			if !utf8.FullRune(line[characterStart:end]) && (end < len(line) || !lineTerminated) {
+				end = characterStart
+			}
+			if end == 0 {
+				w.pending = bytes.Clone(line)
+				break
+			}
+
+			w.logger.Info("upgrade script output", "output", string(line[:end]))
+			line = line[end:]
+		}
+		output = output[lineEnd:]
 	}
 
 	return written, nil
