@@ -776,7 +776,7 @@ func TestUpdateDeploymentStep_Run(t *testing.T) {
 				},
 			},
 			doguResource: &v2.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "test"}},
-			want:         steps.RequeueWithError(fmt.Errorf("pre-upgrade failed: %w", fmt.Errorf("failed to execute '%s': output: '<nil>': %w", "/tmp/pre-upgrade  ", assert.AnError))),
+			want:         steps.RequeueWithError(fmt.Errorf("pre-upgrade failed: %w", fmt.Errorf("failed to execute '%s': %w", "/tmp/pre-upgrade  ", assert.AnError))),
 		},
 	}
 	for _, tt := range tests {

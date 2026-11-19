@@ -132,9 +132,9 @@ func (rsps *PostUpgradeStep) executePostUpgradeScript(ctx context.Context, toDog
 	defer stderr.flush()
 
 	postUpgradeShellCmd := exec.NewShellCommandWithOutput(stdout, stderr, postUpgradeCmd.Command, fromDoguVersion, toDoguResource.Spec.Version)
-	outBuf, err := rsps.doguCommandExecutor.ExecCommandForPod(ctx, toDoguPod, postUpgradeShellCmd)
+	_, err := rsps.doguCommandExecutor.ExecCommandForPod(ctx, toDoguPod, postUpgradeShellCmd)
 	if err != nil {
-		return fmt.Errorf("failed to execute '%s': output: '%s': %w", postUpgradeShellCmd, outBuf, err)
+		return fmt.Errorf("failed to execute '%s': %w", postUpgradeShellCmd, err)
 	}
 
 	return nil

@@ -211,9 +211,9 @@ func (uds *UpdateDeploymentVersionStep) applyPreUpgradeScriptToOlderDogu(
 	preUpgradeShellCmd := exec.NewShellCommandWithOutput(stdout, stderr, preUpgradeScriptPath, fromDoguVersion, toDoguResource.Spec.Version)
 
 	logging.Info(ctx, "Executing pre-upgrade command "+preUpgradeShellCmd.String())
-	outBuf, err := uds.doguCommandExecutor.ExecCommandForPod(ctx, fromDoguPod, preUpgradeShellCmd)
+	_, err := uds.doguCommandExecutor.ExecCommandForPod(ctx, fromDoguPod, preUpgradeShellCmd)
 	if err != nil {
-		return fmt.Errorf("failed to execute '%s': output: '%s': %w", preUpgradeShellCmd, outBuf, err)
+		return fmt.Errorf("failed to execute '%s': %w", preUpgradeShellCmd, err)
 	}
 
 	return nil
