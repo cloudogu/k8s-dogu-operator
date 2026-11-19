@@ -131,3 +131,20 @@ func trimBuildMetadata(version string) string {
 	trimmed, _, _ := strings.Cut(version, "+")
 	return trimmed
 }
+
+// DeployedChartVersion returns the chart version of the release revision that is currently deployed, without build metadata.
+// It reports false if no revision is deployed.
+func DeployedChartVersion(release *helmflux.HelmRelease) (string, bool) {
+	var deployed *helmflux.Snapshot
+	for _, snapshot := range release.Status.History {
+		if snapshot.Status == statusDeployed && (deployed == nil || snapshot.Version > deployed.Version) {
+			deployed = snapshot
+		}
+	}
+
+	if deployed == nil {
+		return "", false
+	}
+
+	return trimBuildMetadata(deployed.ChartVersion), true
+}
