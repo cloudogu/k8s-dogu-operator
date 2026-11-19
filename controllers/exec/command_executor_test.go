@@ -3,9 +3,13 @@ package exec
 import (
 	"bytes"
 	"context"
+	"fmt"
+	"io"
 	"net/url"
 	"strings"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/mock"
 
@@ -180,18 +184,12 @@ func TestExposedCommandExecutor_ExecCommandForPod(t *testing.T) {
 		clientSet := testclient.NewSimpleClientset(readyPod)
 		sut := NewCommandExecutor(cli, &rest.Config{}, clientSet, &fake.RESTClient{})
 		reader := strings.NewReader("abc")
-		buffer := bytes.NewBuffer([]byte{})
-		bufferErr := bytes.NewBuffer([]byte{})
 
 		sut.(*defaultCommandExecutor).commandExecutorCreator = func(config *rest.Config, method string, url *url.URL) (remotecommand.Executor, error) {
 			mockExecutor := newMockRemoteExecutor(t)
-			mockExecutor.EXPECT().StreamWithContext(mock.Anything, remotecommand.StreamOptions{
-				// expects the reader as stream option in the mocked call to verify the stdin command
-				Stdin:  reader,
-				Stdout: buffer,
-				Stderr: bufferErr,
-				Tty:    false,
-			}).RunAndReturn(streamWithContextRun())
+			mockExecutor.EXPECT().StreamWithContext(mock.Anything, mock.MatchedBy(func(options remotecommand.StreamOptions) bool {
+				return options.Stdin == reader && options.Stdout != nil && options.Stderr != nil && !options.Tty
+			})).RunAndReturn(streamWithContextRun())
 			return mockExecutor, nil
 		}
 
@@ -236,6 +234,147 @@ func TestExposedCommandExecutor_ExecCommandForPod(t *testing.T) {
 		require.Error(t, err)
 		assert.ErrorContains(t, err, assert.AnError.Error())
 	})
+}
+
+func TestCommandExecutor_StreamsOutputWithoutChangingResults(t *testing.T) {
+	stdout := "binary stdout\x00\xff\nlast fragment"
+	stderr := "separate stderr\rprogress"
+
+	for _, executionErr := range []error{nil, assert.AnError} {
+		for _, streamOutput := range []bool{false, true} {
+			t.Run(fmt.Sprintf("error=%v/stream=%t", executionErr, streamOutput), func(t *testing.T) {
+				ctx := t.Context()
+				pod := &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "script-pod", Namespace: "test"}}
+				var receivedStdout, receivedStderr bytes.Buffer
+				command := NewShellCommand("script", "1.0.0", "2.0.0")
+				if streamOutput {
+					command = NewShellCommandWithOutput(&receivedStdout, &receivedStderr, "script", "1.0.0", "2.0.0")
+				}
+
+				executor := NewCommandExecutor(nil, &rest.Config{}, nil, &fake.RESTClient{}).(*defaultCommandExecutor)
+				executor.commandExecutorCreator = func(*rest.Config, string, *url.URL) (remotecommand.Executor, error) {
+					transport := newMockRemoteExecutor(t)
+					transport.EXPECT().StreamWithContext(ctx, mock.Anything).RunAndReturn(func(_ context.Context, options remotecommand.StreamOptions) error {
+						_, err := io.WriteString(options.Stdout, stdout)
+						require.NoError(t, err)
+						_, err = io.WriteString(options.Stderr, stderr)
+						require.NoError(t, err)
+						return executionErr
+					})
+					return transport, nil
+				}
+
+				output, err := executor.ExecCommandForPod(ctx, pod, command)
+
+				if executionErr == nil {
+					require.NoError(t, err)
+					require.NotNil(t, output)
+					assert.Equal(t, stdout, output.String())
+				} else {
+					require.Error(t, err)
+					assert.Nil(t, output)
+					assert.ErrorContains(t, err, stdout)
+					assert.ErrorContains(t, err, stderr)
+					assert.ErrorContains(t, err, executionErr.Error())
+				}
+				if streamOutput {
+					assert.Equal(t, stdout, receivedStdout.String())
+					assert.Equal(t, stderr, receivedStderr.String())
+				} else {
+					assert.Empty(t, receivedStdout.String())
+					assert.Empty(t, receivedStderr.String())
+				}
+			})
+		}
+	}
+}
+
+type outputWriterFunc func([]byte) (int, error)
+
+func (write outputWriterFunc) Write(output []byte) (int, error) {
+	return write(output)
+}
+
+func TestCommandExecutor_CancellationFinishesActiveWritesAndRejectsLateOutput(t *testing.T) {
+	for _, stream := range []string{"stdout", "stderr"} {
+		t.Run(stream, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(t.Context())
+			defer cancel()
+			writeStarted := make(chan struct{})
+			releaseWrite := make(chan struct{})
+			unblockWrite := sync.OnceFunc(func() { close(releaseWrite) })
+			t.Cleanup(unblockWrite)
+			var received bytes.Buffer
+			writer := outputWriterFunc(func(output []byte) (int, error) {
+				if string(output) == "before cancellation" {
+					close(writeStarted)
+					<-releaseWrite
+				}
+				return received.Write(output)
+			})
+			var stdout, stderr io.Writer
+			if stream == "stdout" {
+				stdout = writer
+			} else {
+				stderr = writer
+			}
+			command := NewShellCommandWithOutput(stdout, stderr, "script")
+			optionsReady := make(chan remotecommand.StreamOptions, 1)
+			transportReturned := make(chan struct{})
+			executor := NewCommandExecutor(nil, &rest.Config{}, nil, &fake.RESTClient{}).(*defaultCommandExecutor)
+			executor.commandExecutorCreator = func(*rest.Config, string, *url.URL) (remotecommand.Executor, error) {
+				transport := newMockRemoteExecutor(t)
+				transport.EXPECT().StreamWithContext(ctx, mock.Anything).RunAndReturn(func(_ context.Context, options remotecommand.StreamOptions) error {
+					optionsReady <- options
+					<-ctx.Done()
+					// Like client-go, return without joining an active stream-copy goroutine.
+					close(transportReturned)
+					return ctx.Err()
+				})
+				return transport, nil
+			}
+			results := make(chan error, 1)
+			go func() {
+				_, err := executor.ExecCommandForPod(ctx, &corev1.Pod{}, command)
+				results <- err
+			}()
+			options := <-optionsReady
+			output := options.Stdout
+			if stream == "stderr" {
+				output = options.Stderr
+			}
+			writeResults := make(chan error, 1)
+			go func() {
+				_, err := io.WriteString(output, "before cancellation")
+				writeResults <- err
+			}()
+			<-writeStarted
+
+			cancel()
+			<-transportReturned
+
+			var executionErr error
+			returnedEarly := false
+			select {
+			case executionErr = <-results:
+				returnedEarly = true
+			case <-time.After(25 * time.Millisecond):
+			}
+			unblockWrite()
+			if !returnedEarly {
+				executionErr = <-results
+			}
+			assert.False(t, returnedEarly, "exec must finish active output writes before callers can flush")
+			require.ErrorContains(t, executionErr, context.Canceled.Error())
+			require.NoError(t, <-writeResults)
+
+			written, err := io.WriteString(output, "after exec returned")
+
+			assert.Zero(t, written)
+			assert.ErrorIs(t, err, io.ErrClosedPipe)
+			assert.Equal(t, "before cancellation", received.String())
+		})
+	}
 }
 
 func streamWithContextRun() func(ctx context.Context, options remotecommand.StreamOptions) error {

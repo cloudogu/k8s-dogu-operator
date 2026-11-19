@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/go-logr/logr"
 	"github.com/go-logr/zapr"
@@ -39,7 +40,14 @@ func NewZapLogger() *zap.Logger {
 	level, levelErr := logLevelFromEnv()
 	encoder, formatErr := encoderFromEnv()
 
-	zapLogger := crzap.NewRaw(crzap.Level(level), crzap.Encoder(encoder))
+	sink := zapcore.Lock(os.Stderr)
+	core := zapcore.NewCore(&crzap.KubeAwareEncoder{Encoder: encoder}, sink, level)
+	// Keep controller-runtime's production sampling except for script output, which must remain complete.
+	sampledCore := &scriptOutputSamplingCore{
+		Core:    core,
+		sampled: zapcore.NewSamplerWithOptions(core, time.Second, 100, 100),
+	}
+	zapLogger := zap.New(sampledCore, zap.AddStacktrace(zapcore.ErrorLevel), zap.ErrorOutput(sink))
 
 	// invalid configuration can only be reported once the logger exists
 	for _, err := range []error{levelErr, formatErr} {
@@ -49,6 +57,26 @@ func NewZapLogger() *zap.Logger {
 	}
 
 	return zapLogger
+}
+
+// UpgradeScriptOutputMessage identifies script-output records that must bypass sampling.
+// Use it only for upgrade script payloads, not ordinary operator messages.
+const UpgradeScriptOutputMessage = "upgrade script output"
+
+type scriptOutputSamplingCore struct {
+	zapcore.Core
+	sampled zapcore.Core
+}
+
+func (c *scriptOutputSamplingCore) With(fields []zapcore.Field) zapcore.Core {
+	return &scriptOutputSamplingCore{Core: c.Core.With(fields), sampled: c.sampled.With(fields)}
+}
+
+func (c *scriptOutputSamplingCore) Check(entry zapcore.Entry, checked *zapcore.CheckedEntry) *zapcore.CheckedEntry {
+	if entry.Message == UpgradeScriptOutputMessage {
+		return c.Core.Check(entry, checked)
+	}
+	return c.sampled.Check(entry, checked)
 }
 
 // NewLogger wraps the zap logger into a logr logger for controller-runtime.
