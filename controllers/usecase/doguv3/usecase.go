@@ -12,6 +12,7 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv3/deletion"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv3/install"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv3/migration"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv3/upgrade"
 	"github.com/cloudogu/k8s-dogu-operator/v3/internal/logging"
 	coreV1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -131,6 +132,25 @@ func NewDoguMigrationUseCase(
 			migrationHelmReleaseStep,
 			migrationJobStep,
 			migrationCleanupStep,
+		},
+		k8sClient:     client,
+		eventRecorder: recorder,
+	}
+}
+
+// NewDoguUpgradeUseCase creates a new DoguUseCase instance that detects and validates the version change of an installed dogu.
+// The steps are executed in the order they are provided.
+// The upgrade itself is not executed yet.
+func NewDoguUpgradeUseCase(
+	exportModeStep *install.ExportModeStep,
+	validateUpgradeStep *upgrade.ValidateUpgradeStep,
+	client K8sClient,
+	recorder EventRecorder,
+) *DoguUseCase {
+	return &DoguUseCase{
+		steps: []Step{
+			exportModeStep,
+			validateUpgradeStep,
 		},
 		k8sClient:     client,
 		eventRecorder: recorder,

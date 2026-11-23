@@ -8,9 +8,11 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv3/deletion"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv3/install"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv3/migration"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv3/upgrade"
 	"github.com/cloudogu/k8s-dogu-operator/v3/internal/charts"
 	dogumigration "github.com/cloudogu/k8s-dogu-operator/v3/internal/dogu/migration"
 	"github.com/cloudogu/k8s-dogu-operator/v3/internal/dogu/pvc"
+	doguupgrade "github.com/cloudogu/k8s-dogu-operator/v3/internal/dogu/upgrade"
 	"github.com/cloudogu/k8s-dogu-operator/v3/internal/dogu/values"
 	"github.com/cloudogu/k8s-dogu-operator/v3/internal/dogu/workloads"
 	"github.com/cloudogu/k8s-dogu-operator/v3/internal/flux"
@@ -21,7 +23,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-// NewDoguV3UseCases assembles the DoguV3 install-or-change and delete use-cases from the shared
+// NewDoguV3UseCases assembles the DoguV3 install-or-change, migration, upgrade and delete use-cases from the shared
 // infrastructure fx provides. It performs the cluster capability discovery and dogu-registry
 // client construction eagerly, so a failure here aborts operator startup (fail-fast).
 func NewDoguV3UseCases(
@@ -77,11 +79,16 @@ func NewDoguV3UseCases(
 	migrationJobStep := migration.NewMigrationJobStep(chartService, jobMonitor, recorder)
 	migrationCleanupStep := migration.NewMigrationCleanupStep(k8sClient, recorder)
 
+	upgradeDetector := doguupgrade.NewDetector(k8sClient)
+	upgradeValidator := doguupgrade.NewValidator(upgradeDetector, registryReader)
+	validateUpgradeStep := upgrade.NewValidateUpgradeStep(upgradeValidator, k8sClient, recorder, operatorConfig.DoguV3DevChartsEnabled)
+
 	installUseCase := NewDoguInstallOrChangeUseCase(finalizerStep, ociStep, waitStep, validateStep, suspendStep, requestVolumeResizeStep, helmReleaseStep, helmReleaseStatusStep, updatePendingStep, exportModeStep, volumeStatusStep, k8sClient, recorder)
 	migrationUseCase := NewDoguMigrationUseCase(finalizerStep, migrationPreconditionsStep, ociStep, waitStep, validateStep, migrationSecretStep, migrateDoguPVCStep, cleanupV2ResourcesStep, prepareMigrationJobsStep, migrationHelmReleaseStep, migrationJobStep, migrationCleanupStep, k8sClient, recorder)
+	upgradeUseCase := NewDoguUpgradeUseCase(exportModeStep, validateUpgradeStep, k8sClient, recorder)
 	deleteUseCase := NewDoguDeleteUseCase(unsuspendStep, deleteHelmReleaseStep, deleteOCIRepositoryStep, removeFinalizerStep, k8sClient, recorder)
 
-	changeHandler := NewDoguChangeHandler(detector, installUseCase, migrationUseCase)
+	changeHandler := NewDoguChangeHandler(detector, upgradeDetector, installUseCase, migrationUseCase, upgradeUseCase)
 
 	return changeHandler, deleteUseCase, nil
 }
