@@ -40,13 +40,13 @@ func TestValidator_Validate(t *testing.T) {
 		registry := NewMockDoguRegistryReader(t)
 		registry.EXPECT().Get(context.Background(), targetIdentifier).Return(&doguv3.Dogu{Upgrades: adrDescriptor}, nil)
 
-		result, err := validator(t, registry, deployed("1.5.0")).Validate(context.Background(), testDogu("2.0.0"), false)
+		result, err := validator(t, registry, deployed("1.8.0")).Validate(context.Background(), testDogu("2.0.0"), false)
 
 		require.NoError(t, err)
 		assert.Equal(t, Result{
-			Change:  Change{Kind: Upgrade, Installed: "1.5.0", Target: "2.0.0"},
+			Change:  Change{Kind: Upgrade, Installed: "1.8.0", Target: "2.0.0"},
 			Verdict: Valid,
-			Message: "Upgrade from version 1.5.0 to 2.0.0 is valid",
+			Message: "Upgrade from version 1.8.0 to 2.0.0 is valid",
 		}, result)
 	})
 
@@ -123,6 +123,7 @@ func TestValidator_Validate(t *testing.T) {
 			wantCause Cause
 		}{
 			{name: "without upgrade path", installed: "0.9.0", upgrades: adrDescriptor, wantCause: CauseInvalidUpgradePath},
+			{name: "across several upgrade steps", installed: "1.5.0", upgrades: adrDescriptor, wantCause: CauseInvalidUpgradePath},
 			{name: "with an invalid descriptor", installed: "1.5.0", upgrades: []doguv3.Upgrade{{From: ">=a.b", To: "2.0.0"}}, wantCause: CauseInvalidDescriptor},
 		}
 

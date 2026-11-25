@@ -32,11 +32,33 @@ func TestValidatePath(t *testing.T) {
 		assert.ErrorIs(t, err, ErrNoUpgradePath)
 	})
 
+	t.Run("installed version outside of the descriptor names the installed version", func(t *testing.T) {
+		err := ValidatePath("0.9.0", "2.0.0", adrDescriptor)
+
+		assert.EqualError(t, err, "no upgrade path: installed version 0.9.0 is not part of the upgrade descriptor")
+	})
+
 	t.Run("target version outside of the descriptor has no upgrade path", func(t *testing.T) {
 		err := ValidatePath("1.5.0", "2.1.0", adrDescriptor)
 
-		assert.ErrorIs(t, err, ErrNoUpgradePath)
+		assert.EqualError(t, err, "no upgrade path: target version 2.1.0 cannot be reached from installed version 1.5.0")
 	})
+
+	multiHopTests := []struct {
+		name   string
+		target string
+	}{
+		{name: "into the range of a following entry", target: "1.9.0"},
+		{name: "across several entries", target: "2.0.0"},
+	}
+	for _, tt := range multiHopTests {
+		t.Run("upgrade "+tt.name+" is refused with the next upgrade step", func(t *testing.T) {
+			err := ValidatePath("1.5.0", tt.target, adrDescriptor)
+
+			assert.ErrorIs(t, err, ErrNoUpgradePath)
+			assert.EqualError(t, err, "no upgrade path: target version "+tt.target+" requires more than one upgrade step; upgrade to 1.8.0 first")
+		})
+	}
 
 	validTests := []struct {
 		name      string
@@ -45,10 +67,8 @@ func TestValidatePath(t *testing.T) {
 	}{
 		{name: "within the same range", installed: "1.2.0", target: "1.5.0"},
 		{name: "to the version of the matching entry", installed: "1.5.0", target: "1.8.0"},
-		{name: "across several entries", installed: "1.5.0", target: "2.0.0"},
-		{name: "into the range of a following entry", installed: "1.5.0", target: "1.9.0"},
 		{name: "from a pre-release within a range that includes pre-releases", installed: "1.8.0-rc.1", target: "2.0.0"},
-		{name: "from a version with v prefix", installed: "v1.5.0", target: "2.0.0"},
+		{name: "from a version with v prefix", installed: "v1.5.0", target: "1.8.0"},
 	}
 	for _, tt := range validTests {
 		t.Run("upgrade "+tt.name+" is valid", func(t *testing.T) {
