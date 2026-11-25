@@ -19,8 +19,9 @@ The examples assume the namespace `ecosystem` and use the Nexus dogu.
    If this fails, the v2 dogu remains untouched.
 3. It copies the credentials of the service accounts from the sensitive config of the v2 dogu into the secret
    `<dogu>-migration`.
-4. It scales the v2 dogu down to 0. **The downtime of the dogu starts here.**
+4. If the v2 dogu has a volume, the operator scales it down to 0. **The downtime of the dogu starts here.**
    The volume of the v2 dogu is kept and bound to the new claim `<dogu>-migration`.
+   A v2 dogu without a volume keeps running until its deployment is deleted in the next step.
 5. It deletes the remaining resources of the v2 dogu: config, sensitive config, deployment, services,
    network policies and the `AuthRegistration`, `Exposition` and `WarpMenuEntry` resources.
 6. If the chart ships migration jobs, the operator installs the chart with the migration jobs enabled.

@@ -19,8 +19,9 @@ Die Beispiele gehen vom Namespace `ecosystem` aus und verwenden das Nexus-Dogu.
    Schlägt das fehl, bleibt das v2-Dogu unverändert.
 3. Er kopiert die Zugangsdaten der Service-Accounts aus der sensiblen Konfiguration des v2-Dogus in das Secret
    `<dogu>-migration`.
-4. Er skaliert das v2-Dogu auf 0. **Ab hier beginnt die Downtime des Dogus.**
+4. Hat das v2-Dogu ein Volume, skaliert der Operator es auf 0. **Ab hier beginnt die Downtime des Dogus.**
    Das Volume des v2-Dogus bleibt erhalten und wird an den neuen Claim `<dogu>-migration` gebunden.
+   Ein v2-Dogu ohne Volume läuft weiter, bis sein Deployment im nächsten Schritt gelöscht wird.
 5. Er löscht die übrigen Ressourcen des v2-Dogus: Konfiguration, sensible Konfiguration, Deployment, Services,
    NetworkPolicies sowie die Ressourcen `AuthRegistration`, `Exposition` und `WarpMenuEntry`.
 6. Bringt das Chart Migrations-Jobs mit, installiert der Operator das Chart mit aktivierten Migrations-Jobs.
