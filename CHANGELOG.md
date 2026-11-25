@@ -8,6 +8,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - [#411] Detect and validate dogu v3 upgrades
 
+## [v3.39.1] - 2026-11-19
+### Added
+- [#402] Operations documentation for installing, configuring, stopping and restarting v3 dogus
+- [#404] Operations documentation for migrating v2 dogus to v3
+
+### Fixed
+- [#408] Omit trailing CR/LF from upgrade script log lines to avoid visible line-ending escapes.
+- [#408] Include stdout and stderr of Dogu V2 pre- and post-upgrade scripts in the operator logs, including output before a script failure.
+- [#408] Exempt upgrade-script output from log sampling and finish active output writes before returning from a canceled exec.
+
+## [v3.39.0] - 2026-11-11
 ### Fixed
 - Clear the stopped status of a v3 dogu as soon as its HelmRelease is resumed, so that the dogu is reachable again after a restart.
 
@@ -22,6 +33,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [#359] Reject v3 dogu changes that shrink a volume or change its storage class (`Valid=False`).
 - [#359] Enable V3 dogus to increase the volume size of their pvcs.
 - [#359] Grow volumes of v3 dogus online by default; Helm value `offlineVolumeExpansion` enables the offline flow for storage that only expands unmounted volumes.
+
+### Added
+- [#393] Dev mode for v3 dogus: install a dogu from the dev chart in the annotation `k8s.cloudogu.com/dev-chart-url` instead of the dogu registry.
+- [#388] Ensure dogu labels on all associated volumes of V3-Dogus
+
+### Security
+- [#397] Fix GO-CVEs: GO-2026-6865, GO-2026-6860, GO-2026-6866
 
 ## [v3.36.0] - 2026-11-06
 ### Removed
@@ -40,7 +58,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [#377] Move the service account credentials of a v2 dogu into the migration secret `<dogu>-migration`
 - [#381] create a migration pvc for dogu v2 to dogu v3 migration
 - [#379] Cleanup Dogu v2 resources during migration to Dogu v3
-- [#393] Dev mode for v3 dogus: install a dogu from the dev chart in the annotation `k8s.cloudogu.com/dev-chart-url` instead of the dogu registry.
 
 ### Changed
 - [#383] Reduce logger noise on every reconcile
@@ -50,9 +67,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - [#372] Ignore updates of HelmReleases that only toggle the `Reconciling` condition, to avoid unnecessary reconciliations
-
-### Security
-- [#397] Fix GO-CVEs: GO-2026-6865, GO-2026-6860, GO-2026-6866
 
 ## [v3.35.0] - 2026-10-20
 ### Added

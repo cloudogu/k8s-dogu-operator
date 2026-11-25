@@ -119,16 +119,22 @@ func (rsps *PostUpgradeStep) applyPostUpgradeScript(ctx context.Context, toDoguR
 }
 
 func (rsps *PostUpgradeStep) executePostUpgradeScript(ctx context.Context, toDoguResource *v2.Dogu, fromDoguVersion string, postUpgradeCmd *core.ExposedCommand) error {
-	postUpgradeShellCmd := exec.NewShellCommand(postUpgradeCmd.Command, fromDoguVersion, toDoguResource.Spec.Version)
-
 	toDoguPod, getPodErr := toDoguResource.GetPod(ctx, rsps.client)
 	if getPodErr != nil {
 		return fmt.Errorf("failed to get new %s pod for post upgrade: %w", toDoguResource.Name, getPodErr)
 	}
 
-	outBuf, err := rsps.doguCommandExecutor.ExecCommandForPod(ctx, toDoguPod, postUpgradeShellCmd)
+	logger := logging.FromContext(ctx).WithValues("dogu", toDoguResource.Name, "namespace", toDoguResource.Namespace,
+		"script", core.ExposedCommandPostUpgrade, "pod", toDoguPod.Name)
+	stdout := &scriptOutputWriter{logger: logger.WithValues("stream", "stdout")}
+	stderr := &scriptOutputWriter{logger: logger.WithValues("stream", "stderr")}
+	defer stdout.flush()
+	defer stderr.flush()
+
+	postUpgradeShellCmd := exec.NewShellCommandWithOutput(stdout, stderr, postUpgradeCmd.Command, fromDoguVersion, toDoguResource.Spec.Version)
+	_, err := rsps.doguCommandExecutor.ExecCommandForPod(ctx, toDoguPod, postUpgradeShellCmd)
 	if err != nil {
-		return fmt.Errorf("failed to execute '%s': output: '%s': %w", postUpgradeShellCmd, outBuf, err)
+		return fmt.Errorf("failed to execute '%s': %w", postUpgradeShellCmd, err)
 	}
 
 	return nil

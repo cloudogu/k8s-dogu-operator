@@ -717,6 +717,52 @@ func (_c *MockShellCommand_CommandWithArgs_Call) RunAndReturn(run func() []strin
 	return _c
 }
 
+// Stderr provides a mock function for the type MockShellCommand
+func (_mock *MockShellCommand) Stderr() io.Writer {
+	ret := _mock.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for Stderr")
+	}
+
+	var r0 io.Writer
+	if returnFunc, ok := ret.Get(0).(func() io.Writer); ok {
+		r0 = returnFunc()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(io.Writer)
+		}
+	}
+	return r0
+}
+
+// MockShellCommand_Stderr_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Stderr'
+type MockShellCommand_Stderr_Call struct {
+	*mock.Call
+}
+
+// Stderr is a helper method to define mock.On call
+func (_e *MockShellCommand_Expecter) Stderr() *MockShellCommand_Stderr_Call {
+	return &MockShellCommand_Stderr_Call{Call: _e.mock.On("Stderr")}
+}
+
+func (_c *MockShellCommand_Stderr_Call) Run(run func()) *MockShellCommand_Stderr_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockShellCommand_Stderr_Call) Return(writer io.Writer) *MockShellCommand_Stderr_Call {
+	_c.Call.Return(writer)
+	return _c
+}
+
+func (_c *MockShellCommand_Stderr_Call) RunAndReturn(run func() io.Writer) *MockShellCommand_Stderr_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Stdin provides a mock function for the type MockShellCommand
 func (_mock *MockShellCommand) Stdin() io.Reader {
 	ret := _mock.Called()
@@ -759,6 +805,52 @@ func (_c *MockShellCommand_Stdin_Call) Return(reader io.Reader) *MockShellComman
 }
 
 func (_c *MockShellCommand_Stdin_Call) RunAndReturn(run func() io.Reader) *MockShellCommand_Stdin_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// Stdout provides a mock function for the type MockShellCommand
+func (_mock *MockShellCommand) Stdout() io.Writer {
+	ret := _mock.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for Stdout")
+	}
+
+	var r0 io.Writer
+	if returnFunc, ok := ret.Get(0).(func() io.Writer); ok {
+		r0 = returnFunc()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(io.Writer)
+		}
+	}
+	return r0
+}
+
+// MockShellCommand_Stdout_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Stdout'
+type MockShellCommand_Stdout_Call struct {
+	*mock.Call
+}
+
+// Stdout is a helper method to define mock.On call
+func (_e *MockShellCommand_Expecter) Stdout() *MockShellCommand_Stdout_Call {
+	return &MockShellCommand_Stdout_Call{Call: _e.mock.On("Stdout")}
+}
+
+func (_c *MockShellCommand_Stdout_Call) Run(run func()) *MockShellCommand_Stdout_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockShellCommand_Stdout_Call) Return(writer io.Writer) *MockShellCommand_Stdout_Call {
+	_c.Call.Return(writer)
+	return _c
+}
+
+func (_c *MockShellCommand_Stdout_Call) RunAndReturn(run func() io.Writer) *MockShellCommand_Stdout_Call {
 	_c.Call.Return(run)
 	return _c
 }
