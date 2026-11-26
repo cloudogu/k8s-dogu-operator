@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ### Added
 - [#411] Detect and validate dogu v3 upgrades
+- [#416] Scale Workoads during dogu-upgrade 
 
 ### Fixed
 - [#412] Migrate v2 dogus without a volume to v3
