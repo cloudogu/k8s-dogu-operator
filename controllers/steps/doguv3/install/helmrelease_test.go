@@ -229,6 +229,25 @@ func Test_configureHelmRelease(t *testing.T) {
 			assert.Equal(t, skipValidation, release.Spec.Upgrade.DisableSchemaValidation, "upgrade")
 		}
 	})
+
+	t.Run("postrenderer for protectSARE", func(t *testing.T) {
+		release := &fluxhelm.HelmRelease{}
+		dogu := &doguv3.Dogu{}
+		values := &apiext.JSON{}
+		retryInterval := &metav1.Duration{Duration: 30 * time.Second}
+		reconcileInterval := &metav1.Duration{Duration: 60 * time.Second}
+
+		for _, protectSARE := range []bool{false, true} {
+			dogu.Spec.ProtectSARE = protectSARE
+
+			configureHelmRelease(release, dogu, values, retryInterval, reconcileInterval)
+
+			assert.Equal(t, protectSARE, release.Spec.PostRenderers != nil)
+			if protectSARE {
+				assert.Equal(t, "ServiceAccountRequest", release.Spec.PostRenderers[0].Kustomize.Patches[0].Target.Kind)
+			}
+		}
+	})
 }
 
 func newTestDogu(stopped, paused bool) *doguv3.Dogu {

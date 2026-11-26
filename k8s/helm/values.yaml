@@ -22,9 +22,9 @@ controllerManager:
   env:
     logLevel: debug
     stage: development
-    authRegistrationEnabled: false
-    expositionEnabled: false
-    warpMenuEntryEnabled: false
+    authRegistrationEnabled: true
+    expositionEnabled: true
+    warpMenuEntryEnabled: true
     # List of simple dogu names without dogu namespaces e.g. ["grafana", "..."]
     warpMenuDisabledV2Dogus: []
     doguV3Enabled: false
@@ -32,7 +32,7 @@ controllerManager:
     doguV3DevChartsEnabled: false
     # offlineVolumeExpansion detaches volumes of v3 dogus before growing them. Enable it for storage that cannot expand mounted volumes.
     offlineVolumeExpansion: false
-    disablePostfixDependencyCheck: false
+    disablePostfixDependencyCheck: true
     doguStartupProbeTimeout: 1
     doguRestartSuccessfulHistoryLimit: 3
     doguRestartFailedHistoryLimit: 3

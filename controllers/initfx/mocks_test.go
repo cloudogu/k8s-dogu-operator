@@ -96,7 +96,6 @@ import (
 	v121 "k8s.io/client-go/kubernetes/typed/storagemigration/v1"
 	v1beta117 "k8s.io/client-go/kubernetes/typed/storagemigration/v1beta1"
 	"k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/events"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/flowcontrol"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
@@ -104,6 +103,7 @@ import (
 	config0 "sigs.k8s.io/controller-runtime/pkg/config"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
+	"sigs.k8s.io/controller-runtime/pkg/recorder"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/conversion"
 )
@@ -1747,19 +1747,19 @@ func (_c *mockK8sManager_GetConverterRegistry_Call) RunAndReturn(run func() conv
 }
 
 // GetEventRecorder provides a mock function for the type mockK8sManager
-func (_mock *mockK8sManager) GetEventRecorder(name string) events.EventRecorder {
+func (_mock *mockK8sManager) GetEventRecorder(name string) recorder.EventRecorder {
 	ret := _mock.Called(name)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetEventRecorder")
 	}
 
-	var r0 events.EventRecorder
-	if returnFunc, ok := ret.Get(0).(func(string) events.EventRecorder); ok {
+	var r0 recorder.EventRecorder
+	if returnFunc, ok := ret.Get(0).(func(string) recorder.EventRecorder); ok {
 		r0 = returnFunc(name)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(events.EventRecorder)
+			r0 = ret.Get(0).(recorder.EventRecorder)
 		}
 	}
 	return r0
@@ -1789,12 +1789,12 @@ func (_c *mockK8sManager_GetEventRecorder_Call) Run(run func(name string)) *mock
 	return _c
 }
 
-func (_c *mockK8sManager_GetEventRecorder_Call) Return(eventRecorder events.EventRecorder) *mockK8sManager_GetEventRecorder_Call {
+func (_c *mockK8sManager_GetEventRecorder_Call) Return(eventRecorder recorder.EventRecorder) *mockK8sManager_GetEventRecorder_Call {
 	_c.Call.Return(eventRecorder)
 	return _c
 }
 
-func (_c *mockK8sManager_GetEventRecorder_Call) RunAndReturn(run func(name string) events.EventRecorder) *mockK8sManager_GetEventRecorder_Call {
+func (_c *mockK8sManager_GetEventRecorder_Call) RunAndReturn(run func(name string) recorder.EventRecorder) *mockK8sManager_GetEventRecorder_Call {
 	_c.Call.Return(run)
 	return _c
 }
