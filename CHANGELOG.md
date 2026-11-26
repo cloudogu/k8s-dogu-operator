@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - [#411] Detect and validate dogu v3 upgrades
 
+### Fixed
+- [#412] Migrate v2 dogus without a volume to v3
+
 ## [v3.39.1] - 2026-11-19
 ### Added
 - [#402] Operations documentation for installing, configuring, stopping and restarting v3 dogus
