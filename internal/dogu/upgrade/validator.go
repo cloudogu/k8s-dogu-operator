@@ -98,7 +98,7 @@ func (v *Validator) Validate(ctx context.Context, dogu *v3beta1.Dogu, devChart b
 			Verdict: Refused,
 			Cause:   CauseInvalidVersion,
 			Message: fmt.Sprintf("Version change from %s to %s is not allowed because a version is not a valid semantic version", change.Installed, change.Target),
-		}, err
+		}, nil
 
 	default:
 	}
