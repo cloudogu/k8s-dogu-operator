@@ -103,9 +103,6 @@ func TestValidateUpgradeStep_Run(t *testing.T) {
 		assert.Equal(t, stepsv3.Continue(), got)
 	})
 
-	t.Run("refused Upgrades", func(t *testing.T) {
-
-	})
 
 	refusedTests := []struct {
 		name       string
