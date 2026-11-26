@@ -15,6 +15,7 @@ import (
 	values3 "github.com/cloudogu/k8s-dogu-operator/v3/internal/dogu/values"
 	"github.com/cloudogu/k8s-dogu-operator/v3/internal/logging"
 	flux "github.com/fluxcd/helm-controller/api/v2"
+	"github.com/fluxcd/pkg/apis/kustomize"
 	fluxoci "github.com/fluxcd/source-controller/api/v1"
 	core "k8s.io/api/core/v1"
 	apiext "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
@@ -154,6 +155,27 @@ func configureHelmRelease(release *flux.HelmRelease, doguResource *doguv3.Dogu, 
 				resource.CommonLabelKeyPartOf:  resource.LabelValueCes,
 			},
 		},
+	}
+	if doguResource.Spec.ProtectSARE {
+		// set annotation helm.sh/resource-policy=keep to avoid deletion of SAREs
+		release.Spec.PostRenderers = []flux.PostRenderer{{
+			Kustomize: &flux.Kustomize{
+				Patches: []kustomize.Patch{{
+					Target: &kustomize.Selector{
+						Group: "k8s.cloudogu.com",
+						Kind:  "ServiceAccountRequest",
+					},
+					Patch: `
+- op: add
+  path: /metadata/annotations/helm.sh~1resource-policy
+  value: keep
+`,
+				}},
+			},
+		}}
+	} else {
+		// removing the post-renderer also removes the annotation
+		release.Spec.PostRenderers = nil
 	}
 }
 
