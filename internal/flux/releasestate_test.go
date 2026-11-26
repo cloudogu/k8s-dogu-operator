@@ -173,3 +173,58 @@ func TestTrimBuildMetadata(t *testing.T) {
 	assert.Equal(t, "3.86.2-7-dev.1791444074", trimBuildMetadata("3.86.2-7-dev.1791444074+ebb48ffcdce3"))
 	assert.Equal(t, "3.86.2-7", trimBuildMetadata("3.86.2-7"))
 }
+
+func TestDeployedChartVersion(t *testing.T) {
+	tests := []struct {
+		name         string
+		release      *helmflux.HelmRelease
+		wantVersion  string
+		wantDeployed bool
+	}{
+		{
+			name:         "not deployed without history",
+			release:      release(1, 1, nil),
+			wantVersion:  "",
+			wantDeployed: false,
+		},
+		{
+			name:         "not deployed if no revision is deployed",
+			release:      release(1, 1, nil, snapshot(2, "failed", testChartVersionBuild), snapshot(1, statusSuperseded, testOldChartVersion)),
+			wantVersion:  "",
+			wantDeployed: false,
+		},
+		{
+			name:         "deployed revision without build metadata",
+			release:      release(1, 1, nil, snapshot(1, statusDeployed, testChartVersionBuild)),
+			wantVersion:  testChartVersion,
+			wantDeployed: true,
+		},
+		{
+			name:         "deployed revision without build metadata in its chart version",
+			release:      release(1, 1, nil, snapshot(1, statusDeployed, "1.2.3")),
+			wantVersion:  "1.2.3",
+			wantDeployed: true,
+		},
+		{
+			name:         "failed latest revision is ignored",
+			release:      release(1, 1, nil, snapshot(3, "failed", "3.86.2-8+0123456789ab"), snapshot(2, statusDeployed, testChartVersionBuild), snapshot(1, statusSuperseded, testOldChartVersion)),
+			wantVersion:  testChartVersion,
+			wantDeployed: true,
+		},
+		{
+			name:         "newest deployed revision wins regardless of history order",
+			release:      release(1, 1, nil, snapshot(1, statusDeployed, testOldChartVersion), snapshot(2, statusDeployed, testChartVersionBuild)),
+			wantVersion:  testChartVersion,
+			wantDeployed: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			version, deployed := DeployedChartVersion(tt.release)
+
+			assert.Equal(t, tt.wantVersion, version)
+			assert.Equal(t, tt.wantDeployed, deployed)
+		})
+	}
+}

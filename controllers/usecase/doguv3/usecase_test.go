@@ -13,6 +13,7 @@ import (
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv3/deletion"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv3/install"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv3/migration"
+	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv3/upgrade"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -141,6 +142,32 @@ func TestNewDoguMigrationUseCase(t *testing.T) {
 		"*install.EnsureHelmReleaseStep",
 		"*migration.MigrationJobStep",
 		"*migration.MigrationCleanupStep",
+	}
+
+	assert.NotNil(t, got)
+	assert.Equal(t, clientMock, got.k8sClient)
+	assert.Equal(t, recorderMock, got.eventRecorder)
+	require.True(t,
+		slices.Equal(typesOf(got.steps), wantTypes),
+		"order mismatch: got=%v want=%v",
+		typesOf(got.steps), wantTypes,
+	)
+}
+
+func TestNewDoguUpgradeUseCase(t *testing.T) {
+	clientMock := NewMockK8sClient(t)
+	recorderMock := NewMockEventRecorder(t)
+
+	got := NewDoguUpgradeUseCase(
+		&install.ExportModeStep{},
+		&upgrade.ValidateUpgradeStep{},
+		clientMock,
+		recorderMock,
+	)
+
+	wantTypes := []string{
+		"*install.ExportModeStep",
+		"*upgrade.ValidateUpgradeStep",
 	}
 
 	assert.NotNil(t, got)

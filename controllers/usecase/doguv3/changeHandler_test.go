@@ -7,6 +7,7 @@ import (
 	"github.com/cloudogu/k8s-dogu-lib/v3/api/v3beta1"
 	"github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv3"
 	"github.com/cloudogu/k8s-dogu-operator/v3/internal/dogu/migration"
+	"github.com/cloudogu/k8s-dogu-operator/v3/internal/dogu/upgrade"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -29,12 +30,19 @@ func useCaseWithSteps(doguResource *v3beta1.Dogu, steps ...Step) *DoguUseCase {
 	return &DoguUseCase{steps: steps, k8sClient: client}
 }
 
+// upgradeDetector returns a detector that reports the given kind of version change for the dogu.
+func upgradeDetector(t *testing.T, doguResource *v3beta1.Dogu, kind upgrade.Kind) *MockUpgradeDetector {
+	detector := NewMockUpgradeDetector(t)
+	detector.EXPECT().Detect(testCtx, doguResource).Return(upgrade.Change{Kind: kind}, nil)
+	return detector
+}
+
 func TestDoguChangeHandler_HandleUntilApplied(t *testing.T) {
 	t.Run("dogu without migration is installed or changed", func(t *testing.T) {
 		doguResource := testDoguResource.DeepCopy()
 		detector := NewMockMigrationDetector(t)
 		detector.EXPECT().Detect(testCtx, doguResource).Return(migration.NotRequired, nil)
-		handler := NewDoguChangeHandler(detector, requeueingUseCase(t, doguResource, 5*time.Second), unusedUseCase(t, doguResource))
+		handler := NewDoguChangeHandler(detector, upgradeDetector(t, doguResource, upgrade.NoChange), requeueingUseCase(t, doguResource, 5*time.Second), unusedUseCase(t, doguResource), unusedUseCase(t, doguResource))
 
 		requeueAfter, err := handler.HandleUntilApplied(testCtx, doguResource)
 
@@ -46,7 +54,7 @@ func TestDoguChangeHandler_HandleUntilApplied(t *testing.T) {
 		doguResource := testDoguResource.DeepCopy()
 		detector := NewMockMigrationDetector(t)
 		detector.EXPECT().Detect(testCtx, doguResource).Return(migration.Required, nil)
-		handler := NewDoguChangeHandler(detector, unusedUseCase(t, doguResource), requeueingUseCase(t, doguResource, 2*time.Minute))
+		handler := NewDoguChangeHandler(detector, NewMockUpgradeDetector(t), unusedUseCase(t, doguResource), requeueingUseCase(t, doguResource, 2*time.Minute), unusedUseCase(t, doguResource))
 
 		requeueAfter, err := handler.HandleUntilApplied(testCtx, doguResource)
 
@@ -58,7 +66,7 @@ func TestDoguChangeHandler_HandleUntilApplied(t *testing.T) {
 		doguResource := testDoguResource.DeepCopy()
 		detector := NewMockMigrationDetector(t)
 		detector.EXPECT().Detect(testCtx, doguResource).Return(migration.InProgress, nil)
-		handler := NewDoguChangeHandler(detector, unusedUseCase(t, doguResource), requeueingUseCase(t, doguResource, 7*time.Minute))
+		handler := NewDoguChangeHandler(detector, NewMockUpgradeDetector(t), unusedUseCase(t, doguResource), requeueingUseCase(t, doguResource, 7*time.Minute), unusedUseCase(t, doguResource))
 
 		requeueAfter, err := handler.HandleUntilApplied(testCtx, doguResource)
 
@@ -70,12 +78,49 @@ func TestDoguChangeHandler_HandleUntilApplied(t *testing.T) {
 		doguResource := testDoguResource.DeepCopy()
 		detector := NewMockMigrationDetector(t)
 		detector.EXPECT().Detect(testCtx, doguResource).Return(migration.NotRequired, assert.AnError)
-		handler := NewDoguChangeHandler(detector, unusedUseCase(t, doguResource), unusedUseCase(t, doguResource))
+		handler := NewDoguChangeHandler(detector, NewMockUpgradeDetector(t), unusedUseCase(t, doguResource), unusedUseCase(t, doguResource), unusedUseCase(t, doguResource))
 
 		requeueAfter, err := handler.HandleUntilApplied(testCtx, doguResource)
 
 		assert.Zero(t, requeueAfter)
 		assert.ErrorIs(t, err, assert.AnError)
 		assert.ErrorContains(t, err, `failed to detect migration state of dogu "nexus"`)
+	})
+
+	versionChangeTests := []struct {
+		name string
+		kind upgrade.Kind
+	}{
+		{name: "dogu with upgrade is upgraded", kind: upgrade.Upgrade},
+		{name: "dogu with downgrade is handled by the upgrade use-case", kind: upgrade.Downgrade},
+		{name: "dogu with invalid version change is handled by the upgrade use-case", kind: upgrade.InvalidVersion},
+	}
+	for _, tt := range versionChangeTests {
+		t.Run(tt.name, func(t *testing.T) {
+			doguResource := testDoguResource.DeepCopy()
+			detector := NewMockMigrationDetector(t)
+			detector.EXPECT().Detect(testCtx, doguResource).Return(migration.NotRequired, nil)
+			handler := NewDoguChangeHandler(detector, upgradeDetector(t, doguResource, tt.kind), unusedUseCase(t, doguResource), unusedUseCase(t, doguResource), requeueingUseCase(t, doguResource, 3*time.Minute))
+
+			requeueAfter, err := handler.HandleUntilApplied(testCtx, doguResource)
+
+			assert.NoError(t, err)
+			assert.Equal(t, 3*time.Minute, requeueAfter)
+		})
+	}
+
+	t.Run("upgrade detection error is returned without running a use-case", func(t *testing.T) {
+		doguResource := testDoguResource.DeepCopy()
+		detector := NewMockMigrationDetector(t)
+		detector.EXPECT().Detect(testCtx, doguResource).Return(migration.NotRequired, nil)
+		failingUpgradeDetector := NewMockUpgradeDetector(t)
+		failingUpgradeDetector.EXPECT().Detect(testCtx, doguResource).Return(upgrade.Change{}, assert.AnError)
+		handler := NewDoguChangeHandler(detector, failingUpgradeDetector, unusedUseCase(t, doguResource), unusedUseCase(t, doguResource), unusedUseCase(t, doguResource))
+
+		requeueAfter, err := handler.HandleUntilApplied(testCtx, doguResource)
+
+		assert.Zero(t, requeueAfter)
+		assert.ErrorIs(t, err, assert.AnError)
+		assert.ErrorContains(t, err, `failed to detect version change of dogu "nexus"`)
 	})
 }
