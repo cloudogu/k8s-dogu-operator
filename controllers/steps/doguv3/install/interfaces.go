@@ -52,6 +52,10 @@ type WorkloadRemover interface {
 	Unmount(ctx context.Context, namespace string, workloads workloads.Workloads, volumes []pvc.Volume, claims []string) (workloads.UnmountResult, error)
 }
 
+type WorkloadScaler interface {
+	ScaleDown(ctx context.Context, releaseKey client.ObjectKey, workloads workloads.Workloads) (workloads.ScaleState, error)
+}
+
 type K8sClient interface {
 	client.Client
 }
