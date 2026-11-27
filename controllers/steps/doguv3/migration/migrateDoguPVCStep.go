@@ -8,6 +8,7 @@ import (
 	"github.com/cloudogu/k8s-dogu-lib/v3/api/v3beta1"
 	v3beta1ac "github.com/cloudogu/k8s-dogu-lib/v3/applyconfiguration/api/v3beta1"
 	stepsv3 "github.com/cloudogu/k8s-dogu-operator/v3/controllers/steps/doguv3"
+	"github.com/cloudogu/k8s-dogu-operator/v3/internal/logging"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -37,6 +38,19 @@ func (s *MigrateDoguPVCStep) Run(ctx context.Context, doguResource *v3beta1.Dogu
 	}
 	if completed {
 		return stepsv3.Continue()
+	}
+
+	// A persisted source PV means the PVC migration has started and must be finished.
+	// Without it, a v2 dogu without a PVC (e.g. without a volume) has nothing to migrate.
+	if doguResource.Annotations[migrationSourcePVAnnotation] == "" {
+		pvcs := &corev1.PersistentVolumeClaimList{}
+		if err := s.client.List(ctx, pvcs, client.InNamespace(doguResource.Namespace), client.MatchingLabels{"dogu.name": doguResource.Spec.Name}); err != nil {
+			return stepsv3.RequeueWithError(fmt.Errorf("could not list source PVCs for dogu %s: %w", doguResource.Spec.Name, err), v3beta1.ReasonMigrationPending)
+		}
+		if len(pvcs.Items) == 0 {
+			logging.Info(ctx, "The v2 dogu has no PVC, skipping the PVC migration.", "dogu", doguResource.Spec.Name)
+			return stepsv3.Continue()
+		}
 	}
 
 	if result := s.scaleDownV2Deployment(ctx, doguResource); !result.Continue {

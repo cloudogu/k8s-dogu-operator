@@ -167,7 +167,6 @@ func TestMigrateDoguPVCStepSourcePVDiscovery(t *testing.T) {
 		applyErr   bool
 		errMessage string
 	}{
-		{name: "missing source PVC", errMessage: "found 0 source PVCs"},
 		{name: "ambiguous source PVCs", claimCount: 2, volumeName: "source-pv", errMessage: "found 2 source PVCs"},
 		{name: "unbound source PVC", claimCount: 1},
 		{name: "annotation apply fails", claimCount: 1, volumeName: "source-pv", applyErr: true, errMessage: "could not persist migration source PV"},
@@ -644,4 +643,62 @@ func TestMigrateDoguPVCStepAPIErrors(t *testing.T) {
 			assert.Nil(t, meta.FindStatusCondition(stored.Status.Conditions, v3beta1.ConditionReady))
 		})
 	}
+}
+
+func TestMigrateDoguPVCStepV2DoguWithoutPVC(t *testing.T) {
+	scheme := runtime.NewScheme()
+	require.NoError(t, corev1.AddToScheme(scheme))
+	require.NoError(t, appsv1.AddToScheme(scheme))
+	require.NoError(t, v3beta1.AddToScheme(scheme))
+	dogu := &v3beta1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "baseline", Namespace: "ecosystem"}}
+	dogu.Spec.Name = "baseline"
+	deployment := &appsv1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{Name: "baseline", Namespace: dogu.Namespace, Labels: map[string]string{"dogu.name": "baseline"}},
+		Spec:       appsv1.DeploymentSpec{Replicas: new(int32(1))},
+		Status:     appsv1.DeploymentStatus{Replicas: 1},
+	}
+	// A PVC of another dogu must not be taken for the PVC of the migrated dogu.
+	otherPVC := &corev1.PersistentVolumeClaim{
+		ObjectMeta: metav1.ObjectMeta{Name: "nexus", Namespace: dogu.Namespace, Labels: map[string]string{"dogu.name": "nexus"}},
+	}
+	k8sClient := fake.NewClientBuilder().WithScheme(scheme).WithObjects(dogu, deployment, otherPVC).Build()
+	recorder := record.NewFakeRecorder(10)
+	step := NewMigrateDoguPVCStep(k8sClient, recorder)
+
+	// The step is repeated after the v2 cleanup, so it must skip every time.
+	for range 2 {
+		result := step.Run(t.Context(), dogu)
+		assert.Equal(t, stepsv3.Continue(), result)
+	}
+
+	// The v2 dogu keeps running until the v2 cleanup deletes it.
+	require.NoError(t, k8sClient.Get(t.Context(), client.ObjectKeyFromObject(deployment), deployment))
+	assert.EqualValues(t, 1, *deployment.Spec.Replicas)
+	storedDogu := &v3beta1.Dogu{}
+	require.NoError(t, k8sClient.Get(t.Context(), client.ObjectKeyFromObject(dogu), storedDogu))
+	assert.Empty(t, storedDogu.Annotations[migrationSourcePVAnnotation])
+	assert.Empty(t, recorder.Events)
+}
+
+func TestMigrateDoguPVCStepListSourcePVCsFails(t *testing.T) {
+	scheme := runtime.NewScheme()
+	require.NoError(t, corev1.AddToScheme(scheme))
+	require.NoError(t, v3beta1.AddToScheme(scheme))
+	dogu := &v3beta1.Dogu{ObjectMeta: metav1.ObjectMeta{Name: "baseline", Namespace: "ecosystem"}}
+	dogu.Spec.Name = "baseline"
+	apiErr := errors.New("API request rejected")
+	k8sClient := fake.NewClientBuilder().WithScheme(scheme).WithObjects(dogu).
+		WithInterceptorFuncs(interceptor.Funcs{
+			List: func(ctx context.Context, c client.WithWatch, list client.ObjectList, opts ...client.ListOption) error {
+				return apiErr
+			},
+		}).Build()
+	step := NewMigrateDoguPVCStep(k8sClient, record.NewFakeRecorder(10))
+
+	result := step.Run(t.Context(), dogu)
+
+	require.ErrorIs(t, result.Err, apiErr)
+	require.ErrorContains(t, result.Err, "could not list source PVCs for dogu baseline")
+	assert.False(t, result.Continue)
+	assert.Equal(t, v3beta1.ReasonMigrationPending, result.ReadyReason)
 }
